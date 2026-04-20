@@ -1,0 +1,6 @@
+{
+  "name": "Shopee Link Transformer",
+  "description": "Convert Shopee product links into custom hotsnew.click links with affiliate or tracking support.",
+  "requestFramePermissions": [],
+  "majorCapabilities": []
+}

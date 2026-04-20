@@ -1,0 +1,59 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // 3. Helper Functions
+    function isSignedIn() { return request.auth != null; }
+    function isAdmin() { return isSignedIn() && exists(/databases/$(database)/documents/admins/$(request.auth.uid)); }
+    function isApproved() { 
+      return isSignedIn() && (
+        isAdmin() || 
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isApproved == true
+      );
+    }
+    function isOwner(uid) { return isSignedIn() && request.auth.uid == uid; }
+
+    // 0. Default Deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Admins Collection
+    match /admins/{uid} {
+      allow read: if isSignedIn();
+      allow write: if false; // Managed via Firebase Console
+    }
+
+    // Users Collection
+    match /users/{userId} {
+      allow read: if isSignedIn() && (isOwner(userId) || isAdmin());
+      allow create: if isSignedIn() && isOwner(userId) 
+        && request.resource.data.keys().hasAll(['email', 'isApproved', 'isAdmin', 'createdAt'])
+        && request.resource.data.isApproved == false // Users start unapproved
+        && request.resource.data.isAdmin == false // Users cannot make themselves admin
+        && request.resource.data.email == request.auth.token.email;
+      allow update: if isSignedIn() && (
+        isAdmin() || (isOwner(userId) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['displayName', 'photoURL']))
+      );
+    }
+
+    // Links collection
+    match /links/{linkId} {
+      // Redirects need to read originalUrl, so allow get but not list for public
+      allow get: if true; 
+      // Only approved users can list or create links
+      allow list: if isApproved(); 
+      allow create: if isApproved() 
+        && request.resource.data.originalUrl.matches('^https?://.*shopee\\.(vn|com).*')
+        && request.resource.data.shortCode is string
+        && request.resource.data.shortCode.size() >= 8
+        && request.resource.data.userId == request.auth.uid;
+    }
+
+    // Clicks collection
+    match /clicks/{clickId} {
+      allow create: if true; // Tracking is anonymous
+      allow read: if isAdmin();
+    }
+  }
+}
