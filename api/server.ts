@@ -1,6 +1,5 @@
 import 'dotenv/config';
 import express from 'express';
-import { createServer as createViteServer } from 'vite';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import helmet from 'helmet';
@@ -14,6 +13,7 @@ console.log('🏁 SERVER.TS LOADING...');
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+const PORT = Number(process.env.PORT) || 3000;
 
 // 1. Cloudinary Config - Safe Wrap
 try {
@@ -35,7 +35,6 @@ try {
 let _supabaseClient: any = null;
 const getSupabase = () => {
   if (!_supabaseClient) {
-    // Check all possible names for these variables
     const url = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || '';
     const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_SERVICE_ROLE_KEY || '';
     
@@ -132,7 +131,7 @@ app.post('/api/v1/upload-avatar', upload.single('file'), async (req: any, res) =
     const fileExt = req.file.originalname.split('.').pop() || 'png';
     const fileName = `${userId}_${Date.now()}.${fileExt}`;
 
-    const { data, error } = await supabase.storage
+    const { error } = await supabase.storage
       .from('avatars')
       .upload(fileName, req.file.buffer, {
         contentType: req.file.mimetype,
@@ -305,7 +304,7 @@ app.all('/api/*', (req, res) => {
   res.status(404).json({ error: `API route not found: ${req.method} ${req.url}` });
 });
 
-// Global Error Handler for express
+// Global Error Handler
 app.use((err: any, req: any, res: any, next: any) => {
   console.error('💥 FINAL EXPRESS ERROR:', err);
   res.status(500).json({ error: 'Internal Server Error', message: err.message });
@@ -314,13 +313,14 @@ app.use((err: any, req: any, res: any, next: any) => {
 // E. LOCAL SERVER START & VITE MIDDLEWARE
 async function startLocalServer() {
   if (process.env.NODE_ENV !== 'production' && !process.env.VERCEL) {
+    const { createServer: createViteServer } = await import('vite');
     const vite = await createViteServer({
       server: { middlewareMode: true, hmr: { port: 3001 } },
       appType: 'spa',
     });
     app.use(vite.middlewares);
   } else if (!process.env.VERCEL) {
-    const distPath = path.join(__dirname, 'dist');
+    const distPath = path.join(__dirname, '../dist');
     app.use(express.static(distPath));
     app.get('*', (req, res) => res.sendFile(path.join(distPath, 'index.html')));
   }
