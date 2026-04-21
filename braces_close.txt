@@ -1,0 +1,150 @@
+3:import { createServer as createViteServer } from 'vite';
+5:import { fileURLToPath } from 'url';
+9:import { v2 as cloudinary } from 'cloudinary';
+10:import { createClient } from '@supabase/supabase-js';
+12:import { nanoid } from 'nanoid';
+13:import { z } from 'zod';
+24:});
+33:}
+41:  limits: { fileSize: 100 * 1024 * 1024 } // 100MB
+42:});
+52:}));
+55:app.use(helmet({ contentSecurityPolicy: false }));
+56:app.use(express.json({ limit: '100mb' }));
+57:app.use(express.urlencoded({ limit: '100mb', extended: true }));
+66:    console.log(`[API] ${req.method} ${req.path}`);
+71:  }
+73:});
+85:    }));
+86:  });
+90:    console.log(`--- Upload API Hit: ${req.file?.originalname || 'No file'} ---`);
+92:      if (!req.file) return res.status(400).json({ error: 'No file provided in body' });
+95:        { resource_type: 'auto', folder: 'hotsnew' },
+99:            return res.status(500).json({ error: error.message });
+100:          }
+102:          res.json({ secure_url: result?.secure_url });
+103:        }
+106:    } catch (e: any) {
+108:      res.status(500).json({ error: e.message });
+109:    }
+110:  });
+114:    console.log(`--- Avatar Upload API Hit: ${req.file?.originalname || 'No file'} ---`);
+116:      if (!req.file) return res.status(400).json({ error: 'No file provided' });
+118:      if (!userId) return res.status(400).json({ error: 'Missing userId in body' });
+121:      const fileName = `${userId}_${Date.now()}.${fileExt}`;
+123:      console.log(`📤 Uploading to Supabase via Server Role: ${fileName}`);
+125:      const { data, error } = await supabase.storage
+130:        });
+134:        return res.status(500).json({ error: error.message });
+135:      }
+137:      const { data: publicData } = supabase.storage
+142:      res.json({ secure_url: publicData.publicUrl });
+143:    } catch (e: any) {
+145:      res.status(500).json({ error: e.message });
+146:    }
+147:  });
+152:      const { userId } = req.query;
+153:      if (!userId) return res.status(400).json({ error: 'Missing userId' });
+154:      const { data, error } = await supabase.from('profiles').select('*').eq('id', userId).maybeSingle();
+157:    } catch (e: any) {
+158:      res.status(500).json({ error: e.message });
+159:    }
+160:  });
+165:      const { userId, email, full_name, avatar_url } = req.body;
+166:      if (!userId) return res.status(400).json({ error: 'Missing userId' });
+168:      console.log(`📡 Updating profile for ${userId} (${email}) to:`, { full_name, avatar_url });
+170:      const { data, error } = await supabase
+178:        })
+184:        return res.status(500).json({ error: error.message });
+185:      }
+189:    } catch (e: any) {
+191:      res.status(500).json({ error: e.message });
+192:    }
+193:  });
+198:      const { url, userId, customTitle, customDescription, customImageUrl, videoUrl } = req.body;
+199:      if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+202:      const { data, error } = await supabase.from('links').insert({
+210:      }).select().single();
+213:      res.json({ converted_url: `https://hotsnew.click/s/${shortCode}`, shortCode });
+214:    } catch (e: any) {
+215:      res.status(400).json({ error: e.message });
+216:    }
+217:  });
+221:      const { userId } = req.query;
+222:      if (!userId) return res.status(400).json({ error: 'Missing userId' });
+224:      const { count, error } = await supabase
+226:        .select('*', { count: 'exact', head: true })
+230:      res.json({ totalLinks: count || 0, totalClicks: 0 });
+231:    } catch (e: any) {
+232:      res.status(500).json({ error: e.message });
+233:    }
+234:  });
+238:      const { userId } = req.query;
+239:      if (!userId) return res.status(400).json({ error: 'Missing userId' });
+242:      const { data: links, error: linksError } = await supabase
+249:        return res.json({ history: [], topLinks: [] });
+250:      }
+252:      if (!links || links.length === 0) return res.json({ history: [], topLinks: [] });
+261:      const { data: clicks, error: clicksError } = await supabase
+269:        return res.json({ history: [], topLinks: [] });
+270:      }
+272:      const historyMap: Record<string, number> = {};
+273:      const linksStats: Record<string, number> = {};
+280:        });
+281:      }
+284:        .map(([date, clicks]) => ({ date, clicks }))
+288:        .map(([id, clicks]) => ({ id, clicks, title: linkMap[id] }))
+292:      res.json({ history, topLinks });
+293:    } catch (e: any) {
+295:      res.json({ history: [], topLinks: [], error: e.message });
+296:    }
+297:  });
+301:      const { userId } = req.query;
+302:      if (!userId) return res.status(400).json({ error: 'Missing userId' });
+303:      const { data, error } = await supabase
+307:        .order('created_at', { ascending: false });
+310:    } catch (e: any) {
+311:      res.status(500).json({ error: e.message });
+312:    }
+313:  });
+317:      const { adminId } = req.query;
+318:      if (!adminId) return res.status(400).json({ error: 'Missing adminId' });
+320:      const { data, error } = await supabase
+323:        .order('created_at', { ascending: false });
+326:    } catch (e: any) {
+327:      res.status(500).json({ error: e.message });
+328:    }
+329:  });
+333:      const { targetUid } = req.params;
+334:      const { isApproved } = req.body;
+335:      const { error } = await supabase
+337:        .update({ status: isApproved ? 'approved' : 'pending' })
+340:      res.json({ success: true });
+341:    } catch (e: any) {
+342:      res.status(500).json({ error: e.message });
+343:    }
+344:  });
+349:      const { shortCode } = req.params;
+350:      const { data: link, error } = await supabase
+363:      }).then();
+366:    } catch (e) {
+368:    }
+369:  });
+373:    console.log(`[404 API] No match for: ${req.method} ${req.url}`);
+375:      error: `API Route Not Found: ${req.method} ${req.url}`,
+376:      diagnostics: { method: req.method, path: req.path, url: req.url }
+377:    });
+378:  });
+388:    });
+389:  });
+393:      server: { middlewareMode: true, hmr: { port: 3001 } },
+395:    });
+397:  } else if (process.env.NODE_ENV === 'production' && !process.env.VERCEL) {
+401:  }
+405:      console.log(`>>> SERVER LISTENING ON PORT ${PORT} <<<`);
+407:    });
+408:  }
+409:}
+416:  });
+417:} else {
+421:}
