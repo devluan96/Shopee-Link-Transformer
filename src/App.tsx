@@ -109,6 +109,19 @@ export default function App() {
     // 1. Auth Listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       console.log('🔄 Auth State Changed:', event, !!session);
+      
+      // Force logout on specific refresh errors to prevent infinite loops/stuck state
+      if (event === 'INITIAL_SESSION' && !session) {
+        // Just checking, but if we had an error here it usually appears in console
+      }
+
+      if (event === 'SIGNED_OUT') {
+        setUser(null);
+        setProfile(null);
+        setAuthLoading(false);
+        return;
+      }
+
       const currentUser = session?.user ?? null;
       setUser(currentUser);
       
