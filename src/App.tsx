@@ -88,6 +88,29 @@ interface AuthUser {
   photoURL?: string | null;
 }
 
+interface LinkApi {
+  id: string;
+  original_url: string;
+  short_code: string;
+  user_id: string;
+  custom_title: string | null;
+  custom_description: string | null;
+  custom_image_url: string | null;
+  video_url: string | null;
+  created_at: string;
+}
+
+type Link = {
+  id: string;
+  originalUrl: string;
+  shortCode: string;
+  customTitle: string | null;
+  customDescription: string | null;
+  customImageUrl: string | null;
+  videoUrl: string | null;
+  createdAt: string;
+};
+
 type Tab = "dashboard" | "create" | "list" | "analytics" | "admin" | "profile";
 
 // --- Components ---
@@ -139,7 +162,7 @@ export default function App() {
   const [result, setResult] = useState<any>(null);
 
   // List State
-  const [links, setLinks] = useState<ConvertedLink[]>([]);
+  const [links, setLinks] = useState<Link[]>([]);
   const [analyticsData, setAnalyticsData] = useState<{
     history: any[];
     topLinks: any[];
@@ -423,21 +446,34 @@ export default function App() {
   const fetchLinks = async () => {
     if (!user) return;
     setListLoading(true);
+
     try {
       const response = await fetch(`/api/v1/user/links?userId=${user.id}`);
-      const data = await response.json();
-      setLinks(
-        data.sort(
-          (a: any, b: any) => b.createdAt?._seconds - a.createdAt?._seconds,
-        ),
-      );
+      const data: LinkApi[] = await response.json();
+
+      const normalized: Link[] = data
+        .map((item: LinkApi) => ({
+          id: item.id,
+          customTitle: item.custom_title,
+          customDescription: item.custom_description,
+          customImageUrl: item.custom_image_url,
+          videoUrl: item.video_url,
+          shortCode: item.short_code,
+          originalUrl: item.original_url,
+          createdAt: item.created_at,
+        }))
+        .sort(
+          (a, b) =>
+            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+        );
+
+      setLinks(normalized);
     } catch (e) {
       console.error(e);
     } finally {
       setListLoading(false);
     }
   };
-
   const fetchAllUsers = async () => {
     if (!user) return;
     setAdminLoading(true);
@@ -1826,9 +1862,7 @@ export default function App() {
                             </span>
                             <span className="text-[10px] font-medium text-gray-400 uppercase tracking-tighter">
                               {l.createdAt &&
-                                formatDistanceToNow(
-                                  new Date(l.createdAt._seconds * 1000),
-                                )}{" "}
+                                formatDistanceToNow(new Date(l.createdAt))}{" "}
                               ago
                             </span>
                           </div>
