@@ -89,7 +89,7 @@ export default function App() {
   const fetchAnalytics = async () => {
     if (!user) return;
     try {
-      const res = await fetch(`/api/v1/user/analytics?userId=${user.id}`);
+      const res = await fetch(`/api/v1/user/analytics?userId=${user.id}&_t=${Date.now()}`);
       const data = await res.json();
       setAnalyticsData(data);
     } catch (e) {
@@ -131,7 +131,7 @@ export default function App() {
           };
 
           try {
-             const profileUrl = `${window.location.origin}/api/v1/user/profile?userId=${currentUser.id}`;
+             const profileUrl = `${window.location.origin}/api/v1/user/profile?userId=${currentUser.id}&_t=${Date.now()}`;
              console.log('📡 Fetching profile via:', profileUrl);
              existingProfile = await fetchWithRetry(profileUrl);
              if (existingProfile) console.log('✅ Profile fetch success');
@@ -242,7 +242,7 @@ export default function App() {
   const fetchStats = async () => {
     if (!user) return;
     try {
-      const response = await fetch(`/api/v1/user/stats?userId=${user.id}`);
+      const response = await fetch(`/api/v1/user/stats?userId=${user.id}&_t=${Date.now()}`);
       const data = await response.json();
       setStats(data);
     } catch (e) {
@@ -254,7 +254,7 @@ export default function App() {
     if (!user) return;
     setListLoading(true);
     try {
-      const response = await fetch(`/api/v1/user/links?userId=${user.id}`);
+      const response = await fetch(`/api/v1/user/links?userId=${user.id}&_t=${Date.now()}`);
       const data = await response.json();
       setLinks(data);
     } catch (e) {
@@ -268,7 +268,7 @@ export default function App() {
     if (!user) return;
     setAdminLoading(true);
     try {
-      const response = await fetch(`/api/v1/admin/users?adminId=${user.id}`);
+      const response = await fetch(`/api/v1/admin/users?adminId=${user.id}&_t=${Date.now()}`);
       const data = await response.json();
       setAllUsers(data);
     } catch (e) {
