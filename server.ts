@@ -7,8 +7,6 @@ import helmet from "helmet";
 import cors from "cors";
 import multer from "multer";
 import { v2 as cloudinary } from "cloudinary";
-import admin from "firebase-admin";
-import { getFirestore, FieldValue } from "firebase-admin/firestore";
 import { createClient } from "@supabase/supabase-js";
 import fs from "fs";
 import { nanoid } from "nanoid";
@@ -25,36 +23,7 @@ cloudinary.config({
   api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
-// 2. Firebase Admin
-const firebaseConfigPath = path.join(__dirname, "firebase-applet-config.json");
-const firebaseServiceAccountPath = process.env.FIREBASE_SERVICE_ACCOUNT_PATH;
-const firebaseServiceAccountKey = process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
-
-const firebaseAdminOptions: admin.AppOptions = {};
-
-if (firebaseServiceAccountKey) {
-  firebaseAdminOptions.credential = admin.credential.cert(
-    JSON.parse(firebaseServiceAccountKey),
-  );
-} else if (
-  firebaseServiceAccountPath &&
-  fs.existsSync(firebaseServiceAccountPath)
-) {
-  firebaseAdminOptions.credential = admin.credential.cert(
-    JSON.parse(fs.readFileSync(firebaseServiceAccountPath, "utf-8")),
-  );
-} else if (fs.existsSync(firebaseConfigPath)) {
-  const firebaseConfig = JSON.parse(
-    fs.readFileSync(firebaseConfigPath, "utf-8"),
-  );
-  firebaseAdminOptions.projectId = firebaseConfig.projectId;
-}
-
-if (!admin.apps.length) {
-  admin.initializeApp(firebaseAdminOptions);
-}
-const db = getFirestore();
-
+// 2. Supabase Configuration (using client-side config)
 const supabaseUrl = process.env.VITE_SUPABASE_URL;
 const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
@@ -303,16 +272,19 @@ async function startServer() {
       } = req.body;
       if (!userId) return res.status(401).json({ error: "Unauthorized" });
       const shortCode = nanoid(8);
-      await db.collection("links").add({
-        originalUrl: url,
-        shortCode,
-        userId,
-        customTitle,
-        customDescription,
-        customImageUrl,
-        videoUrl,
-        createdAt: FieldValue.serverTimestamp(),
+
+      const { error } = await supabaseAdmin.from("links").insert({
+        original_url: url,
+        short_code: shortCode,
+        user_id: userId,
+        custom_title: customTitle,
+        custom_description: customDescription,
+        custom_image_url: customImageUrl,
+        video_url: videoUrl,
       });
+
+      if (error) throw error;
+
       res.json({
         converted_url: `https://hotsnew.click/s/${shortCode}`,
         shortCode,

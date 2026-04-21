@@ -683,7 +683,7 @@ export default function App() {
     };
 
     return (
-      <div className="min-h-screen bg-[#FDFCFB] flex flex-col items-center justify-center p-6 font-sans">
+      <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6 font-sans">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -943,7 +943,7 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-[#F8F9FA] flex">
+    <div className="min-h-screen bg-slate-100 flex">
       {/* --- Sidebar --- */}
       <aside className="w-72 bg-white border-r border-gray-200 hidden lg:flex flex-col p-6 sticky top-0 h-screen">
         <div className="flex items-center gap-3 mb-12">
