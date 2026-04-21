@@ -42,30 +42,30 @@ const upload = multer({
 });
 
 const PORT = 3000;
+const app = express();
+
+// A. ENSURE CORS IS AT THE VERY TOP
+app.use(cors({
+  origin: '*',
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'Accept']
+}));
+
+// NEW: Move body parsers to the top so API routes can read req.body
+app.use(helmet({ contentSecurityPolicy: false }));
+app.use(express.json({ limit: '100mb' }));
+app.use(express.urlencoded({ limit: '100mb', extended: true }));
+
+// B. TRUST PROXY FOR CLOUD ENV
+app.set('trust proxy', 1);
+
+// C. DEBUG LOGGING
+app.use((req, res, next) => {
+  console.log(`[${new Date().toISOString()}] ${req.method} ${req.path}`);
+  next();
+});
 
 async function startServer() {
-  const app = express();
-
-  // A. ENSURE CORS IS AT THE VERY TOP
-  app.use(cors({
-    origin: '*',
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'Accept']
-  }));
-
-  // NEW: Move body parsers to the top so API routes can read req.body
-  app.use(helmet({ contentSecurityPolicy: false }));
-  app.use(express.json({ limit: '100mb' }));
-  app.use(express.urlencoded({ limit: '100mb', extended: true }));
-
-  // B. TRUST PROXY FOR CLOUD ENV
-  app.set('trust proxy', 1);
-
-  // C. DEBUG LOGGING
-  app.use((req, res, next) => {
-    console.log(`[${new Date().toISOString()}] ${req.method} ${req.path}`);
-    next();
-  });
 
   // D. CRITICAL API HANDLERS (DEFINED DIRECTLY ON APP)
   
@@ -383,25 +383,29 @@ async function startServer() {
     });
   });
 
-  if (process.env.NODE_ENV !== 'production') {
+  if (process.env.NODE_ENV !== 'production' && !process.env.VERCEL) {
     const vite = await createViteServer({
       server: { middlewareMode: true, hmr: { port: 3001 } },
       appType: 'spa',
     });
     app.use(vite.middlewares);
-  } else {
+  } else if (process.env.NODE_ENV === 'production' && !process.env.VERCEL) {
     const distPath = path.join(__dirname, 'dist');
     app.use(express.static(distPath));
     app.get('*', (req, res) => res.sendFile(path.join(distPath, 'index.html')));
   }
 
-  app.listen(PORT, '0.0.0.0', () => {
-    console.log(`>>> SERVER LISTENING ON PORT ${PORT} <<<`);
-    console.log(`--- Ready to handle API and Web traffic ---`);
-  });
+  if (!process.env.VERCEL) {
+    app.listen(PORT, '0.0.0.0', () => {
+      console.log(`>>> SERVER LISTENING ON PORT ${PORT} <<<`);
+      console.log(`--- Ready to handle API and Web traffic ---`);
+    });
+  }
 }
 
 startServer().catch(err => {
   console.error('FATAL SERVER STARTUP FAIL:', err);
   process.exit(1);
 });
+
+export default app;
