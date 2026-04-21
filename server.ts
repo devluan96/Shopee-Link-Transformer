@@ -58,10 +58,20 @@ app.use(express.urlencoded({ limit: '100mb', extended: true }));
 
 // B. TRUST PROXY FOR CLOUD ENV
 app.set('trust proxy', 1);
+app.set('etag', false); // Tắt ETag để tránh phản hồi 304, buộc trả về 200 OK
 
-// C. DEBUG LOGGING
+// C. DEBUG LOGGING & NO-CACHE HEADERS
 app.use((req, res, next) => {
   console.log(`[${new Date().toISOString()}] ${req.method} ${req.path}`);
+  
+  // Nếu là API, buộc không cho trình duyệt lưu cache
+  if (req.path.startsWith('/api/')) {
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+    res.setHeader('Surrogate-Control', 'no-store');
+  }
+  
   next();
 });
 
