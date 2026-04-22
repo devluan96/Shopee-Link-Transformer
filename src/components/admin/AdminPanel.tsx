@@ -1,118 +1,100 @@
 import React from 'react';
 import { motion } from 'motion/react';
-import { Users as UsersIcon, Check, UserCheck, Trash2, CalendarClock } from 'lucide-react';
+import { Users as UsersIcon, Check, UserCheck, Trash2, User } from 'lucide-react';
+import { cn } from '@/src/lib/utils';
 import { UserProfile } from '@/src/types';
-import { getPlanLabel, hasActiveSubscription } from '@/src/lib/subscription';
 
 interface AdminPanelProps {
   allUsers: UserProfile[];
   adminLoading: boolean;
   handleApproveUser: (userId: string) => void;
-  handleDeleteUser: (user: UserProfile) => void;
-  handleSetSubscription: (userId: string, plan: 'monthly' | 'yearly' | 'none') => void;
-  currentUserId?: string;
-  deletingUserId?: string | null;
-  subscriptionUpdatingUserId?: string | null;
+  handleUpdateSubscription: (userId: string, plan: 'free' | 'monthly' | 'yearly') => void;
 }
 
-export const AdminPanel = ({
-  allUsers,
-  adminLoading,
-  handleApproveUser,
-  handleDeleteUser,
-  handleSetSubscription,
-  currentUserId,
-  deletingUserId,
-  subscriptionUpdatingUserId,
-}: AdminPanelProps) => {
+export const AdminPanel = ({ allUsers, adminLoading, handleApproveUser, handleUpdateSubscription }: AdminPanelProps) => {
   return (
     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} key="admin">
       <header className="mb-12">
-        <h2 className="mb-2 text-3xl font-black text-gray-900">Quản Lý Người Dùng</h2>
-        <p className="font-medium italic text-gray-500">Phê duyệt user và cấp gói tháng hoặc gói năm cho tài khoản.</p>
+        <h2 className="text-3xl font-black text-gray-900 mb-2">Quản Lý Người Dùng</h2>
+        <p className="text-gray-500 font-medium italic">Kích hoạt và phê duyệt thành viên mới tham gia hotsnew.click</p>
       </header>
 
-      <div className="overflow-hidden rounded-[3rem] border border-gray-100 bg-white shadow-sm">
-        <div className="flex items-center justify-between border-b border-gray-100 bg-gray-50/50 p-8">
-          <h3 className="flex items-center gap-2 text-sm font-black uppercase tracking-widest">
-            <UsersIcon size={18} /> Thành viên hệ thống
-          </h3>
-          <span className="rounded-full bg-gray-900 px-3 py-1 text-[10px] font-bold text-white">{allUsers.length} Users</span>
+      <div className="bg-white rounded-[3rem] border border-gray-100 overflow-hidden shadow-sm">
+        <div className="p-8 border-b border-gray-100 bg-gray-50/50 flex items-center justify-between">
+           <h3 className="font-black text-sm uppercase tracking-widest flex items-center gap-2">
+             <UsersIcon size={18} /> Thành viên hệ thống
+           </h3>
+           <span className="bg-gray-900 text-white px-3 py-1 rounded-full text-[10px] font-bold">{allUsers.length} Users</span>
         </div>
-
+        
         <div className="divide-y divide-gray-100">
           {adminLoading ? (
-            <div className="p-20 text-center font-bold text-gray-300">Đang tải danh sách user...</div>
+            <div className="p-20 text-center text-gray-300 font-bold">Loading users...</div>
           ) : allUsers.length === 0 ? (
-            <div className="p-20 text-center font-medium italic text-gray-400">Chưa có người dùng nào khác.</div>
-          ) : allUsers.map((u) => (
-            <div key={u.id} className="flex flex-col gap-5 p-6 transition-all hover:bg-gray-50 xl:flex-row xl:items-center xl:justify-between">
-              <div className="flex items-center gap-4">
-                <img src={u.avatar_url || 'https://via.placeholder.com/40'} className="h-12 w-12 rounded-full bg-gray-100 ring-2 ring-white shadow-md" onError={(e) => (e.currentTarget.src = 'https://via.placeholder.com/40')} />
-                <div>
-                  <p className="font-bold text-gray-900">{u.full_name || 'Người dùng chưa đặt tên'}</p>
-                  <p className="text-xs font-medium text-gray-400">{u.email}</p>
-                  <div className="mt-2 flex flex-wrap items-center gap-2 text-[10px] font-black uppercase tracking-wider">
-                    <span className={`rounded-full px-2.5 py-1 ${hasActiveSubscription(u) ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-100 text-slate-500'}`}>
-                      {getPlanLabel(u.subscription_plan)}
-                    </span>
-                    {u.subscription_requested_plan && (
-                      <span className="rounded-full bg-amber-50 px-2.5 py-1 text-amber-600">
-                        Yêu cầu {getPlanLabel(u.subscription_requested_plan).toLowerCase()}
-                      </span>
-                    )}
+            <div className="p-20 text-center text-gray-400 font-medium italic">Chưa có người dùng nào khác.</div>
+          ) : allUsers.map(u => (
+            <div key={u.id} className="p-6 flex items-center justify-between gap-6 hover:bg-gray-50 transition-all">
+               <div className="flex items-center gap-4">
+                  <div className="relative w-12 h-12">
+                    {u.avatar_url ? (
+                      <img 
+                        src={u.avatar_url} 
+                        className="w-12 h-12 rounded-full ring-2 ring-white shadow-md bg-gray-100 object-cover" 
+                        onError={(e) => {
+                          e.currentTarget.style.display = 'none';
+                          e.currentTarget.parentElement?.querySelector('.avatar-placeholder')?.classList.remove('hidden');
+                        }} 
+                      />
+                    ) : null}
+                    <div className={cn(
+                      "w-12 h-12 rounded-full ring-2 ring-white shadow-md bg-gray-100 flex items-center justify-center text-gray-400 avatar-placeholder",
+                      u.avatar_url ? "hidden" : ""
+                    )}>
+                      <User size={24} />
+                    </div>
                   </div>
-                </div>
-              </div>
+                  <div>
+                     <p className="font-bold text-gray-900">{u.full_name || 'Unnamed User'}</p>
+                     <p className="text-xs text-gray-400 font-medium mb-1">{u.email}</p>
+                     <div className="flex gap-2">
+                        <span className={cn(
+                          "text-[9px] font-black px-2 py-0.5 rounded-md uppercase",
+                          u.subscription_plan === 'yearly' ? "bg-purple-100 text-purple-600" :
+                          u.subscription_plan === 'monthly' ? "bg-blue-100 text-blue-600" :
+                          "bg-gray-100 text-gray-500"
+                        )}>
+                          Plan: {u.subscription_plan || 'free'}
+                        </span>
+                     </div>
+                  </div>
+               </div>
+               <div className="flex items-center gap-3">
+                  <select 
+                    className="bg-gray-50 border border-gray-200 rounded-lg text-[10px] font-bold px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-orange-500/20"
+                    value={u.subscription_plan || 'free'}
+                    onChange={(e) => handleUpdateSubscription(u.id, e.target.value as any)}
+                  >
+                    <option value="free">FREE</option>
+                    <option value="monthly">MONTHLY (30 Days)</option>
+                    <option value="yearly">YEARLY (365 Days)</option>
+                  </select>
 
-              <div className="flex flex-col items-stretch gap-3 xl:items-end">
-                <div className="flex flex-wrap gap-2">
-                  <button
-                    onClick={() => handleSetSubscription(u.id, 'monthly')}
-                    disabled={subscriptionUpdatingUserId === u.id}
-                    className="rounded-xl bg-slate-900 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-white transition hover:bg-orange-600 disabled:opacity-50"
-                  >
-                    <CalendarClock size={12} className="mr-1 inline-block" /> Tháng
-                  </button>
-                  <button
-                    onClick={() => handleSetSubscription(u.id, 'yearly')}
-                    disabled={subscriptionUpdatingUserId === u.id}
-                    className="rounded-xl bg-orange-500 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-white transition hover:bg-orange-600 disabled:opacity-50"
-                  >
-                    Năm
-                  </button>
-                  <button
-                    onClick={() => handleSetSubscription(u.id, 'none')}
-                    disabled={subscriptionUpdatingUserId === u.id}
-                    className="rounded-xl border border-slate-200 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-slate-500 transition hover:bg-slate-50 disabled:opacity-50"
-                  >
-                    Tắt gói
-                  </button>
-                </div>
-
-                <div className="flex items-center gap-4">
                   {u.status === 'approved' ? (
-                    <span className="flex items-center gap-1.5 rounded-full bg-green-50 px-3 py-1.5 text-[10px] font-black uppercase tracking-tighter text-green-600">
-                      <Check size={10} /> Đã duyệt
-                    </span>
+                     <span className="flex items-center gap-1.5 text-[10px] font-black text-green-600 bg-green-50 px-3 py-1.5 rounded-full uppercase tracking-tighter">
+                       <Check size={10} /> Đã Duyệt
+                     </span>
                   ) : (
-                    <button
+                    <button 
                       onClick={() => handleApproveUser(u.id)}
-                      className="flex items-center gap-2 rounded-2xl bg-orange-600 px-6 py-3 text-[11px] font-black uppercase tracking-widest text-white transition-all hover:bg-orange-700 active:scale-95"
+                      className="flex items-center gap-2 px-6 py-3 bg-orange-600 text-white rounded-2xl text-[11px] font-black uppercase tracking-widest hover:bg-orange-700 transition-all active:scale-95"
                     >
-                      <UserCheck size={16} /> Duyệt ngay
+                      <UserCheck size={16} /> Duyệt Ngay
                     </button>
                   )}
-                  <button
-                    onClick={() => handleDeleteUser(u)}
-                    disabled={deletingUserId === u.id || currentUserId === u.id}
-                    title={currentUserId === u.id ? 'Không thể xóa tài khoản đang đăng nhập' : 'Xóa người dùng'}
-                    className="rounded-xl bg-gray-100 p-3 text-gray-400 transition-all hover:bg-red-50 hover:text-red-500 disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    <Trash2 size={16} />
+                  <button className="p-3 bg-gray-100 text-gray-400 rounded-xl hover:bg-red-50 hover:text-red-500 transition-all">
+                     <Trash2 size={16} />
                   </button>
-                </div>
-              </div>
+               </div>
             </div>
           ))}
         </div>
