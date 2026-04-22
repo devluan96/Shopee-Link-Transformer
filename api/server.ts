@@ -308,6 +308,25 @@ app.post('/api/v1/admin/users/:targetUid/subscription', async (req, res) => {
   }
 });
 
+app.delete('/api/v1/admin/users/:targetUid', async (req, res) => {
+  try {
+    const supabase = getSupabase();
+    const { targetUid } = req.params;
+    const { adminId } = req.query; // For logging or permission checks if needed
+    
+    // 1. Delete associated links first
+    await supabase.from('links').delete().eq('user_id', targetUid);
+    
+    // 2. Delete profile
+    const { error } = await supabase.from('profiles').delete().eq('id', targetUid);
+    
+    if (error) throw error;
+    res.json({ success: true });
+  } catch (e: any) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 app.get('/s/:shortCode', async (req, res) => {
   try {
     const supabase = getSupabase();

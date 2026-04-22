@@ -9,11 +9,57 @@ interface AdminPanelProps {
   adminLoading: boolean;
   handleApproveUser: (userId: string) => void;
   handleUpdateSubscription: (userId: string, plan: 'free' | 'monthly' | 'yearly') => void;
+  handleDeleteUser: (userId: string) => void;
 }
 
-export const AdminPanel = ({ allUsers, adminLoading, handleApproveUser, handleUpdateSubscription }: AdminPanelProps) => {
+export const AdminPanel = ({ allUsers, adminLoading, handleApproveUser, handleUpdateSubscription, handleDeleteUser }: AdminPanelProps) => {
+  const [deleteId, setDeleteId] = React.useState<string | null>(null);
+
+  const confirmDelete = () => {
+    if (deleteId) {
+      handleDeleteUser(deleteId);
+      setDeleteId(null);
+    }
+  };
+
   return (
     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} key="admin">
+      {/* Confirmation Dialog */}
+      {deleteId && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          <motion.div 
+            initial={{ opacity: 0 }} 
+            animate={{ opacity: 1 }} 
+            onClick={() => setDeleteId(null)}
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm" 
+          />
+          <motion.div 
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            className="relative bg-white rounded-[2.5rem] p-8 max-w-sm w-full shadow-2xl border border-gray-100"
+          >
+            <h3 className="text-xl font-black text-gray-900 mb-2">Xác nhận xóa?</h3>
+            <p className="text-gray-500 font-medium text-sm leading-relaxed mb-8">
+              Bạn có chắc chắn muốn xóa người dùng này? Mọi liên kết và dữ liệu liên quan sẽ bị xóa vĩnh viễn.
+            </p>
+            <div className="flex gap-4">
+              <button 
+                onClick={() => setDeleteId(null)}
+                className="flex-1 py-4 bg-gray-100 text-gray-500 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-gray-200 transition-all"
+              >
+                Hủy
+              </button>
+              <button 
+                onClick={confirmDelete}
+                className="flex-1 py-4 bg-red-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-red-700 transition-all shadow-lg shadow-red-100"
+              >
+                Xóa ngay
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
+
       <header className="mb-12">
         <h2 className="text-3xl font-black text-gray-900 mb-2">Quản Lý Người Dùng</h2>
         <p className="text-gray-500 font-medium italic">Kích hoạt và phê duyệt thành viên mới tham gia hotsnew.click</p>
@@ -68,9 +114,10 @@ export const AdminPanel = ({ allUsers, adminLoading, handleApproveUser, handleUp
                      </div>
                   </div>
                </div>
+               
                <div className="flex items-center gap-3">
                   <select 
-                    className="bg-gray-50 border border-gray-200 rounded-lg text-[10px] font-bold px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-orange-500/20"
+                    className="bg-gray-50 border border-gray-200 rounded-lg text-[10px] font-bold px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-orange-500/20 cursor-pointer"
                     value={u.subscription_plan || 'free'}
                     onChange={(e) => handleUpdateSubscription(u.id, e.target.value as any)}
                   >
@@ -79,21 +126,24 @@ export const AdminPanel = ({ allUsers, adminLoading, handleApproveUser, handleUp
                     <option value="yearly">YEARLY (365 Days)</option>
                   </select>
 
-                  {u.status === 'approved' ? (
-                     <span className="flex items-center gap-1.5 text-[10px] font-black text-green-600 bg-green-50 px-3 py-1.5 rounded-full uppercase tracking-tighter">
-                       <Check size={10} /> Đã Duyệt
-                     </span>
-                  ) : (
-                    <button 
-                      onClick={() => handleApproveUser(u.id)}
-                      className="flex items-center gap-2 px-6 py-3 bg-orange-600 text-white rounded-2xl text-[11px] font-black uppercase tracking-widest hover:bg-orange-700 transition-all active:scale-95"
-                    >
-                      <UserCheck size={16} /> Duyệt Ngay
-                    </button>
-                  )}
-                  <button className="p-3 bg-gray-100 text-gray-400 rounded-xl hover:bg-red-50 hover:text-red-500 transition-all">
-                     <Trash2 size={16} />
-                  </button>
+                   {u.status === 'approved' ? (
+                      <span className="flex items-center gap-1.5 text-[10px] font-black text-green-600 bg-green-50 px-3 py-1.5 rounded-full uppercase tracking-tighter">
+                        <Check size={10} /> Đã Duyệt
+                      </span>
+                   ) : (
+                     <button 
+                       onClick={() => handleApproveUser(u.id)}
+                       className="flex items-center gap-2 px-6 py-3 bg-orange-600 text-white rounded-2xl text-[11px] font-black uppercase tracking-widest hover:bg-orange-700 transition-all active:scale-95"
+                     >
+                       <UserCheck size={16} /> Duyệt Ngay
+                     </button>
+                   )}
+                   <button 
+                     onClick={() => setDeleteId(u.id)}
+                     className="p-3 bg-gray-100 text-gray-400 rounded-xl hover:bg-red-50 hover:text-red-500 transition-all active:scale-90"
+                   >
+                      <Trash2 size={16} />
+                   </button>
                </div>
             </div>
           ))}

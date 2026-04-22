@@ -7,7 +7,8 @@ import {
   Users as UsersIcon, 
   LogOut,
   PlusCircle,
-  User
+  User,
+  Tag
 } from 'lucide-react';
 import { cn } from '@/src/lib/utils';
 import { Tab, UserProfile } from '@/src/types';
@@ -86,6 +87,7 @@ export const Sidebar = ({
         <nav className="flex-1 space-y-2 overflow-y-auto">
         <div className="mb-4 text-[10px] font-black text-gray-400 uppercase tracking-widest px-4">Menu chính</div>
         <SidebarItem icon={LayoutDashboard} label="Bảng điều khiển" active={activeTab === 'dashboard'} onClick={() => setActiveTab('dashboard')} />
+        <SidebarItem icon={Tag} label="Bảng giá" active={activeTab === 'pricing'} onClick={() => setActiveTab('pricing')} />
         <SidebarItem icon={PlusCircle} label="Tạo Link" active={activeTab === 'create'} onClick={() => setActiveTab('create')} />
         <SidebarItem icon={List} label="Danh sách Link" active={activeTab === 'list'} onClick={() => setActiveTab('list')} />
         <SidebarItem icon={BarChart3} label="Phân tích dữ liệu" active={activeTab === 'analytics'} onClick={() => setActiveTab('analytics')} />

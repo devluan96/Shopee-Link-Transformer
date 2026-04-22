@@ -9,8 +9,10 @@ import { supabase, logout, registerWithEmail, loginWithEmail } from './lib/supab
 import { User } from '@supabase/supabase-js';
 
 // --- Types & Components ---
+import { Toaster, toast } from 'sonner';
 import { ConvertedLink, UserProfile, Tab, LinkStats } from './types';
 import { Sidebar } from './components/layout/Sidebar';
+import { Pricing } from './components/Pricing';
 import { AuthScreen } from './components/auth/AuthScreen';
 import { AdminPanel } from './components/admin/AdminPanel';
 import { Overview } from './components/dashboard/Overview';
@@ -301,9 +303,15 @@ export default function App() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ isApproved: status, adminId: user.id }),
       });
-      if (response.ok) fetchAllUsers();
+      if (response.ok) {
+        fetchAllUsers();
+        toast.success(status ? 'Đã duyệt người dùng!' : 'Đã hủy duyệt người dùng!');
+      } else {
+        toast.error('Lỗi khi cập nhật trạng thái duyệt');
+      }
     } catch (e) {
       console.error(e);
+      toast.error('Lỗi hệ thống');
     }
   };
 
@@ -329,11 +337,31 @@ export default function App() {
       });
       if (response.ok) {
         fetchAllUsers();
-        alert(`Đã cập nhật gói ${plan} cho người dùng!`);
+        toast.success(`Đã cập nhật gói ${plan.toUpperCase()} thành công!`);
+      } else {
+        toast.error('Không thể cập nhật gói cước');
       }
     } catch (e) {
       console.error(e);
-      alert('Lỗi cập nhật gói cước');
+      toast.error('Lỗi hệ thống khi cập nhật gói');
+    }
+  };
+
+  const handleDeleteUser = async (targetUid: string) => {
+    if (!user) return;
+    try {
+      const response = await fetch(`/api/v1/admin/users/${targetUid}?adminId=${user.id}`, {
+        method: 'DELETE'
+      });
+      if (response.ok) {
+        fetchAllUsers();
+        toast.success('Đã xóa người dùng và dữ liệu liên quan thành công!');
+      } else {
+        toast.error('Lỗi khi xóa người dùng');
+      }
+    } catch (e) {
+      console.error(e);
+      toast.error('Lỗi kết nối máy chủ khi xóa');
     }
   };
 
@@ -551,18 +579,12 @@ export default function App() {
 
   const handleUpdateProfile = async (data: { full_name: string; avatar_url: string }) => {
     if (!user) {
-      console.error('❌ Update failed: No user authenticated');
-      alert('Lỗi: Bạn chưa đăng nhập!');
+      toast.error('Bạn chưa đăng nhập!');
       return;
     }
     
-    console.log('🚀 [App] START handleUpdateProfile (Proxy Mode)');
-    console.log('📦 Payload:', data);
-    
     setProfileLoading(true);
     try {
-      console.log('📡 Fetching /api/v1/user/profile/update...');
-      
       const res = await fetch('/api/v1/user/profile/update', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -577,21 +599,14 @@ export default function App() {
       const resultData = await res.json();
 
       if (!res.ok) {
-        throw new Error(resultData.error || 'Server proxy update failed');
+        throw new Error(resultData.error || 'Lỗi cập nhật hồ sơ');
       }
       
-      console.log('✅ Proxy profile update Success:', resultData);
-      
-      // Update local state with the result from server
       setProfile(resultData as UserProfile);
-      
-      alert('Cập nhật thông tin thành công!');
-      console.log('✨ handleUpdateProfile sequence complete');
+      toast.success('Cập nhật thông tin thành công!');
     } catch (e: any) {
-      console.error('❌ Fatal error in handleUpdateProfile (Proxy):', e);
-      alert('Lỗi hệ thống: ' + (e.message || 'Không thể cập nhật hồ sơ qua Server'));
+      toast.error(e.message || 'Lỗi hệ thống');
     } finally {
-      console.log('🔃 Setting profileLoading to false');
       setProfileLoading(false);
     }
   };
@@ -647,6 +662,7 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-slate-50 lg:flex font-sans relative">
+      <Toaster position="top-right" richColors />
       <Sidebar 
         activeTab={activeTab}
         setActiveTab={(tab) => {
@@ -682,6 +698,10 @@ export default function App() {
               stats={stats}
               setActiveTab={setActiveTab}
             />
+          )}
+
+          {activeTab === 'pricing' && (
+            <Pricing userProfile={profile} />
           )}
 
           {activeTab === 'create' && (
@@ -722,10 +742,11 @@ export default function App() {
 
           {(activeTab === 'admin' && isAdminRole) && (
             <AdminPanel 
-              allUsers={allUsers}
+              allUsers={allUsers.filter(u => u.id !== user?.id && u.role !== 'admin')}
               adminLoading={adminLoading}
               handleApproveUser={handleApproveUser}
               handleUpdateSubscription={handleUpdateSubscription}
+              handleDeleteUser={handleDeleteUser}
             />
           )}
 

@@ -21,7 +21,7 @@ export interface UserProfile {
   subscription_expiry?: string;
 }
 
-export type Tab = 'dashboard' | 'create' | 'list' | 'analytics' | 'admin' | 'profile';
+export type Tab = 'dashboard' | 'pricing' | 'create' | 'list' | 'analytics' | 'admin' | 'profile';
 
 export interface LinkStats {
   totalLinks: number;
