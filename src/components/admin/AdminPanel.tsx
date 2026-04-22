@@ -1,5 +1,4 @@
 import React from 'react';
-import { motion } from 'motion/react';
 import { Users as UsersIcon, Check, UserCheck, Trash2, User } from 'lucide-react';
 import { cn } from '@/src/lib/utils';
 import { UserProfile } from '@/src/types';
@@ -23,19 +22,15 @@ export const AdminPanel = ({ allUsers, adminLoading, handleApproveUser, handleUp
   };
 
   return (
-    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} key="admin">
+    <div key="admin">
       {/* Confirmation Dialog */}
       {deleteId && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-          <motion.div 
-            initial={{ opacity: 0 }} 
-            animate={{ opacity: 1 }} 
+          <div 
             onClick={() => setDeleteId(null)}
             className="absolute inset-0 bg-black/60 backdrop-blur-sm" 
           />
-          <motion.div 
-            initial={{ scale: 0.9, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
+          <div 
             className="relative bg-white rounded-[2.5rem] p-8 max-w-sm w-full shadow-2xl border border-gray-100"
           >
             <h3 className="text-xl font-black text-gray-900 mb-2">Xác nhận xóa?</h3>
@@ -56,7 +51,7 @@ export const AdminPanel = ({ allUsers, adminLoading, handleApproveUser, handleUp
                 Xóa ngay
               </button>
             </div>
-          </motion.div>
+          </div>
         </div>
       )}
 
@@ -149,6 +144,6 @@ export const AdminPanel = ({ allUsers, adminLoading, handleApproveUser, handleUp
           ))}
         </div>
       </div>
-    </motion.div>
+    </div>
   );
 };

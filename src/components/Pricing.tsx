@@ -1,5 +1,4 @@
 import React from 'react';
-import { motion } from 'motion/react';
 import { Check, Crown, Zap, Sparkles } from 'lucide-react';
 import { cn } from '@/src/lib/utils';
 import { UserProfile } from '@/src/types';
@@ -48,12 +47,7 @@ export const Pricing = ({ userProfile }: PricingProps) => {
   ];
 
   return (
-    <motion.div 
-      initial={{ opacity: 0, y: 20 }} 
-      animate={{ opacity: 1, y: 0 }} 
-      exit={{ opacity: 0, y: -20 }}
-      className="max-w-6xl mx-auto"
-    >
+    <div className="max-w-6xl mx-auto">
       <header className="mb-12">
         <h2 className="text-3xl font-black text-gray-900 mb-2">Bảng giá dịch vụ</h2>
         <p className="text-gray-500 font-medium italic">Nâng cấp tài khoản để mở khóa toàn bộ tính năng chuyển đổi link.</p>
@@ -134,12 +128,9 @@ export const Pricing = ({ userProfile }: PricingProps) => {
               )}
             >
               {plan.buttonText}
-              <motion.span
-                animate={{ x: [0, 5, 0] }}
-                transition={{ duration: 1.5, repeat: Infinity }}
-              >
+              <span>
                 →
-              </motion.span>
+              </span>
             </button>
           </div>
         ))}
@@ -148,6 +139,6 @@ export const Pricing = ({ userProfile }: PricingProps) => {
       <footer className="mt-12 text-center">
         <p className="text-[10px] font-black text-gray-300 uppercase tracking-widest">© 2026 HOTSNEW.CLICK INFRASTRUCTURE</p>
       </footer>
-    </motion.div>
+    </div>
   );
 };

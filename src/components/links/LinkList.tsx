@@ -1,5 +1,4 @@
 import React from 'react';
-import { motion } from 'motion/react';
 import { Search, Image as ImageIcon, Video as VideoIcon, ExternalLink } from 'lucide-react';
 import { ConvertedLink } from '@/src/types';
 import { formatDistanceToNow } from 'date-fns';
@@ -22,7 +21,7 @@ export const LinkList = ({
   copiedId
 }: LinkListProps) => {
   return (
-    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} key="list">
+    <div key="list">
       <header className="mb-12 flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div>
           <h2 className="text-3xl font-black text-gray-900 mb-2">Kho Lưu Trữ Link</h2>
@@ -78,6 +77,6 @@ export const LinkList = ({
            </div>
         ))}
       </div>
-    </motion.div>
+    </div>
   );
 };

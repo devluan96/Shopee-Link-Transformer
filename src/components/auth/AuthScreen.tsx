@@ -1,5 +1,4 @@
 import React from 'react';
-import { motion } from 'motion/react'; 
 import { Zap, Users as UsersIcon, ShieldCheck, AlertCircle, ArrowRight } from 'lucide-react';
 import { cn } from '@/src/lib/utils';
 import { signInWithGoogle } from '@/src/lib/supabase';
@@ -14,6 +13,7 @@ interface AuthScreenProps {
   loading: boolean;
   authError: string | null;
   handleEmailAuth: (e: React.FormEvent) => void;
+  resetLoading?: () => void;
 }
 
 export const AuthScreen = ({
@@ -25,15 +25,12 @@ export const AuthScreen = ({
   setPassword,
   loading,
   authError,
-  handleEmailAuth
+  handleEmailAuth,
+  resetLoading
 }: AuthScreenProps) => {
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-8 font-sans">
-      <motion.div 
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="max-w-md w-full"
-      >
+      <div className="max-w-md w-full">
         <div className="text-center mb-8">
           <div className="w-16 h-16 bg-orange-600 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-2xl shadow-orange-200">
             <Zap className="text-white w-8 h-8 fill-current" />
@@ -106,6 +103,16 @@ export const AuthScreen = ({
               )}
               {!loading && <ArrowRight size={14} />}
             </button>
+            
+            {loading && resetLoading && (
+              <button 
+                type="button" 
+                onClick={resetLoading}
+                className="w-full text-center text-[10px] text-gray-400 font-bold uppercase tracking-widest hover:text-orange-600 transition-colors mt-2"
+              >
+                Hủy và thử lại nếu bị treo
+              </button>
+            )}
           </form>
 
           <div className="relative flex items-center py-4">
@@ -126,7 +133,7 @@ export const AuthScreen = ({
         <p className="text-center mt-8 text-xs text-gray-400 font-medium italic">
           Bằng cách tiếp tục, bạn đồng ý với các Điều khoản dịch vụ của Hotsnew.
         </p>
-      </motion.div>
+      </div>
     </div>
   );
 };

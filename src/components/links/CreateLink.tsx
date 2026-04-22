@@ -1,5 +1,4 @@
 import React from 'react';
-import { motion } from 'motion/react';
 import { 
   Globe, 
   Type, 
@@ -58,7 +57,7 @@ export const CreateLink = ({
   copiedId
 }: CreateLinkProps) => {
   return (
-    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} key="create">
+    <div key="create">
       <header className="mb-12">
         <h2 className="text-3xl font-black text-gray-900 mb-2">Tạo Landing Page Mới</h2>
         <p className="text-gray-500 font-medium italic">Chúng tôi sẽ tự động lấy dữ liệu và tối ưu hóa hiển thị trên Facebook.</p>
@@ -67,9 +66,7 @@ export const CreateLink = ({
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
         <div className="space-y-8">
           {error && (
-            <motion.div 
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: 'auto' }}
+            <div 
               className="bg-red-50 border-2 border-red-100 p-4 rounded-2xl flex items-start gap-3 text-red-600 mb-4"
             >
               <AlertCircle className="shrink-0 mt-0.5" size={18} />
@@ -77,7 +74,7 @@ export const CreateLink = ({
                 {error}
                 <button onClick={() => setError(null)} className="block mt-1 text-[10px] uppercase underline">Đóng thông báo</button>
               </div>
-            </motion.div>
+            </div>
           )}
           <form onSubmit={handleConvert} className="bg-white p-10 rounded-[3rem] border border-gray-100 shadow-sm space-y-6">
             <div>
@@ -136,19 +133,15 @@ export const CreateLink = ({
                   </button>
                   
                   {videoUploadSuccess && (
-                    <motion.div 
-                      initial={{ opacity: 0, x: -10 }} 
-                      animate={{ opacity: 1, x: 0 }}
+                    <div 
                       className="flex items-center gap-2 text-[10px] font-black text-green-600 bg-green-50 px-4 py-2 rounded-xl uppercase tracking-widest"
                     >
                       <ShieldCheck size={14} /> Tải video lên Cloudinary thành công!
-                    </motion.div>
+                    </div>
                   )}
                   
                   {videoUrl && (
-                    <motion.div 
-                      initial={{ opacity: 0, scale: 0.9 }}
-                      animate={{ opacity: 1, scale: 1 }}
+                    <div 
                       className="relative aspect-video rounded-2xl overflow-hidden bg-black shadow-lg"
                     >
                        <video src={videoUrl} controls className="w-full h-full" />
@@ -159,7 +152,7 @@ export const CreateLink = ({
                        >
                          <X size={16} />
                        </button>
-                    </motion.div>
+                    </div>
                   )}
                 </div>
               </div>
@@ -247,6 +240,6 @@ export const CreateLink = ({
           </div>
         </div>
       </div>
-    </motion.div>
+    </div>
   );
 };

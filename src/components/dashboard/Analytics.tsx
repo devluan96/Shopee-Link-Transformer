@@ -1,5 +1,4 @@
 import React from 'react';
-import { motion } from 'motion/react';
 import { 
   MousePointer2, 
   Activity, 
@@ -27,13 +26,7 @@ export const Analytics = ({ analyticsData, linksCount }: AnalyticsProps) => {
   const totalClicks = history.reduce((a, b) => a + (b.clicks || 0), 0);
 
   return (
-    <motion.div 
-      initial={{ opacity: 0, y: 20 }} 
-      animate={{ opacity: 1, y: 0 }} 
-      exit={{ opacity: 0, y: -20 }} 
-      key="analytics" 
-      className="space-y-8 pb-12"
-    >
+    <div className="space-y-8 pb-12">
        {/* Stats Overview */}
        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {[
@@ -167,6 +160,6 @@ export const Analytics = ({ analyticsData, linksCount }: AnalyticsProps) => {
              <p className="text-center text-xs text-gray-400 font-medium italic">Dữ liệu phân tích dựa trên HTTP Referrer</p>
           </div>
        </div>
-    </motion.div>
+    </div>
   );
 };

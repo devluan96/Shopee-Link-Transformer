@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useRef, Suspense, lazy } from 'react';
-import { AnimatePresence } from 'motion/react';
 import { 
   Zap, 
   Clock,
@@ -101,6 +100,15 @@ export default function App() {
   }, []);
 
   // Fetch Analytics
+  useEffect(() => {
+    window.onerror = (message, source, lineno, colno, error) => {
+      console.error('🔴 [Global Error]:', message, 'at', source, ':', lineno, ':', colno, error);
+    };
+    window.onunhandledrejection = (event) => {
+      console.error('🟠 [Unhandled Rejection]:', event.reason);
+    };
+  }, []);
+
   const fetchAnalytics = async () => {
     if (!user) return;
     try {
@@ -129,13 +137,27 @@ export default function App() {
   useEffect(() => {
     let profileChannel: any = null;
 
-    // 1. Auth Listener
+    // 1. Explicit Session Check on Mount
+    const checkInitialSession = async () => {
+      console.log('🔍 [Listener] Running explicit session check...');
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.user) {
+          console.log('✅ [Listener] Initial session found via getSession:', session.user.id);
+          setUser(session.user);
+        }
+      } catch (err) {
+        console.error('❌ [Listener] Initial session check error:', err);
+      }
+    };
+    checkInitialSession();
+
+    // 2. Auth Listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log('🔄 Auth State Changed:', event, !!session);
+      console.log('🔄 [Listener] Auth State Changed:', event, 'User present:', !!session?.user);
       
-      // Force logout on specific refresh errors to prevent infinite loops/stuck state
       if (event === 'INITIAL_SESSION' && !session) {
-        // Just checking, but if we had an error here it usually appears in console
+         console.log('ℹ️ [Listener] No initial session found.');
       }
 
       if (event === 'SIGNED_OUT') {
@@ -449,15 +471,25 @@ export default function App() {
   const handleLogout = async () => {
     try {
       setAuthLoading(true);
+      console.log('🚪 [Auth] Logging out...');
+      
       // Aggressive logout
       await supabase.auth.signOut({ scope: 'global' });
+      
       // Clear all local states
       setUser(null);
       setProfile(null);
+      
+      // Clear browser storage to ensure no stale tokens
+      localStorage.clear();
+      sessionStorage.clear();
+      
+      console.log('🔄 [Auth] Redirecting after logout...');
       // Force hard refresh to clear any cached sessions/states
       window.location.href = window.location.origin + '?logout=' + Date.now();
     } catch (e) {
       console.error('Logout error:', e);
+      localStorage.clear();
       window.location.reload();
     } finally {
       setAuthLoading(false);
@@ -643,8 +675,11 @@ export default function App() {
 
   if (authLoading) {
     return (
-      <div className="min-h-screen bg-slate-900 flex items-center justify-center">
+      <div className="min-h-screen bg-slate-900 flex flex-col items-center justify-center gap-4">
         <div className="w-16 h-16 border-4 border-orange-500/20 border-t-orange-500 rounded-full animate-spin" />
+        <div className="text-gray-400 font-bold uppercase tracking-widest text-[10px] animate-pulse">
+          Đang khởi tạo hệ thống...
+        </div>
       </div>
     );
   }
@@ -652,17 +687,39 @@ export default function App() {
   if (!user) {
     const handleEmailAuth = async (e: React.FormEvent) => {
       e.preventDefault();
+      if (loading) return;
+      
+      console.log('🚀 [Auth] Starting login attempt for:', email);
       setAuthError(null);
       setLoading(true);
+
+      // Safety timeout for the spinner
+      const safetyTimer = setTimeout(() => {
+        setLoading(prev => {
+          if (prev) {
+            console.warn('⚠️ [Auth] Login taking too long, resetting spinner');
+            return false;
+          }
+          return prev;
+        });
+      }, 15000);
+
       try {
         if (isRegistering) {
-          await registerWithEmail(email, password);
+          console.log('📝 [Auth] Calling registerWithEmail...');
+          const user = await registerWithEmail(email, password);
+          console.log('✅ [Auth] Register success:', user?.id);
         } else {
-          await loginWithEmail(email, password);
+          console.log('🔑 [Auth] Calling loginWithEmail...');
+          const user = await loginWithEmail(email, password);
+          console.log('✅ [Auth] Login success:', user?.id);
         }
       } catch (err: any) {
+        console.error('❌ [Auth] Email auth error:', err);
         setAuthError(err.message || 'Authentication failed');
       } finally {
+        clearTimeout(safetyTimer);
+        console.log('🏁 [Auth] Email auth finished, resetting loading');
         setLoading(false);
       }
     };
@@ -678,6 +735,7 @@ export default function App() {
         loading={loading}
         authError={authError}
         handleEmailAuth={handleEmailAuth}
+        resetLoading={() => setLoading(false)}
       />
     );
   }
@@ -723,7 +781,6 @@ export default function App() {
 
       <main className="flex-1 p-6 lg:p-12 min-h-screen pb-32">
         <Suspense fallback={<TabLoading />}>
-          <AnimatePresence mode="wait">
           {activeTab === 'dashboard' && (
             <Overview 
               stats={stats}
@@ -808,9 +865,8 @@ export default function App() {
               onAvatarUpload={handleAvatarUpload}
             />
           )}
-        </AnimatePresence>
-      </Suspense>
-    </main>
+        </Suspense>
+      </main>
 
       <Footer />
     </div>

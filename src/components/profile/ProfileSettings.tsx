@@ -1,5 +1,4 @@
 import React, { useRef } from 'react';
-import { motion } from 'motion/react';
 import { User, Camera, Save, ShieldCheck } from 'lucide-react';
 import { UserProfile } from '@/src/types';
 
@@ -52,14 +51,8 @@ export const ProfileSettings = ({ profile, updating, onUpdate, onAvatarUpload }:
   };
 
   return (
-    <motion.div 
-      initial={{ opacity: 0, y: 20 }} 
-      animate={{ opacity: 1, y: 0 }} 
-      exit={{ opacity: 0, y: -20 }} 
-      key="profile"
-      className="max-w-4xl"
-    >
-      <header className="mb-12">
+    <div className="max-w-4xl">
+       <header className="mb-12">
         <h2 className="text-3xl font-black text-gray-900 mb-2">Hồ Sơ Cá Nhân</h2>
         <p className="text-gray-500 font-medium italic">Chỉnh sửa thông tin và cá nhân hóa tài khoản của bạn.</p>
       </header>
@@ -146,6 +139,6 @@ export const ProfileSettings = ({ profile, updating, onUpdate, onAvatarUpload }:
           </div>
         </div>
       </div>
-    </motion.div>
+    </div>
   );
 };

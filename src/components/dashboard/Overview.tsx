@@ -1,5 +1,4 @@
 import React from 'react';
-import { motion, AnimatePresence } from 'motion/react';
 import { 
   Zap, PlusCircle, List, BarChart3, TrendingUp, MousePointer2, Activity 
 } from 'lucide-react';
@@ -18,7 +17,7 @@ interface OverviewProps {
 
 export const Overview = ({ stats, setActiveTab, canAccessCreate }: OverviewProps) => {
   return (
-    <motion.div initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} key="dashboard">
+    <div key="dashboard">
        <header className="mb-12">
         <h2 className="text-4xl font-black text-gray-900 mb-2 tracking-tight">Chào buổi sáng!</h2>
         <p className="text-gray-500 font-medium italic">Đây là tóm tắt chiến dịch hotsnew của bạn trong 24h qua.</p>
@@ -86,6 +85,6 @@ export const Overview = ({ stats, setActiveTab, canAccessCreate }: OverviewProps
             </div>
          </div>
       </div>
-    </motion.div>
+    </div>
   );
 };
