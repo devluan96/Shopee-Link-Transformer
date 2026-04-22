@@ -75,6 +75,14 @@ export default function App() {
   const [stats, setStats] = useState({ totalLinks: 0, totalClicks: 0 });
   const videoInputRef = useRef<HTMLInputElement>(null);
 
+  useEffect(() => {
+    const currentUrl = new URL(window.location.href);
+    if (currentUrl.searchParams.has('logout')) {
+      currentUrl.searchParams.delete('logout');
+      window.history.replaceState({}, document.title, `${currentUrl.pathname}${currentUrl.search}${currentUrl.hash}`);
+    }
+  }, []);
+
   // Check API Accessibility
   useEffect(() => {
     const apiBase = '/api';
@@ -486,7 +494,7 @@ export default function App() {
       
       console.log('🔄 [Auth] Redirecting after logout...');
       // Force hard refresh to clear any cached sessions/states
-      window.location.href = window.location.origin + '?logout=' + Date.now();
+      window.location.replace(`${window.location.origin}${window.location.pathname}`);
     } catch (e) {
       console.error('Logout error:', e);
       localStorage.clear();
