@@ -5,7 +5,7 @@ import {
   Menu,
 } from 'lucide-react';
 import { supabase, logout, registerWithEmail, loginWithEmail, clearStoredSession } from './lib/supabase';
-import { User } from '@supabase/supabase-js';
+import { Session, User } from '@supabase/supabase-js';
 
 // --- Types ---
 import { Toaster, toast } from 'sonner';
@@ -80,6 +80,7 @@ export default function App() {
   });
   const videoInputRef = useRef<HTMLInputElement>(null);
   const isLoggingOutRef = useRef(false);
+  const sessionRef = useRef<Session | null>(null);
 
   useEffect(() => {
     const currentUrl = new URL(window.location.href);
@@ -91,6 +92,8 @@ export default function App() {
 
   // Check API Accessibility
   useEffect(() => {
+    if (!import.meta.env.DEV) return;
+
     const apiBase = '/api';
     console.log('🔍 Diagnostic Info:', {
       href: window.location.href,
@@ -123,36 +126,24 @@ export default function App() {
     };
   }, []);
 
-  useEffect(() => {
-    let isCancelled = false;
-
-    const ensureResolvedAuthState = async () => {
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!isCancelled && !session?.user) {
-          setUser(null);
-          setProfile(null);
-          setAuthLoading(false);
-        }
-      } catch (err) {
-        if (!isCancelled) {
-          console.error('[Auth] Session bootstrap failed:', err);
-          setAuthLoading(false);
-        }
-      }
-    };
-
-    ensureResolvedAuthState();
-
-    return () => {
-      isCancelled = true;
-    };
-  }, []);
-
   const getAccessToken = async () => {
+    const nowInSeconds = Math.floor(Date.now() / 1000);
+    const cachedSession = sessionRef.current;
+
+    if (cachedSession?.access_token) {
+      const expiresAt = cachedSession.expires_at ?? 0;
+      if (expiresAt - nowInSeconds > 60) {
+        return cachedSession.access_token;
+      }
+    }
+
     const { data: { session } } = await supabase.auth.getSession();
+    sessionRef.current = session ?? null;
     if (session?.access_token) {
-      return session.access_token;
+      const expiresAt = session.expires_at ?? 0;
+      if (expiresAt - nowInSeconds > 60) {
+        return session.access_token;
+      }
     }
 
     const { data: refreshed, error } = await supabase.auth.refreshSession();
@@ -161,6 +152,7 @@ export default function App() {
       return null;
     }
 
+    sessionRef.current = refreshed.session ?? null;
     return refreshed.session?.access_token ?? null;
   };
 
@@ -209,12 +201,15 @@ export default function App() {
 
       if (response.status === 401) {
         clearStoredSession();
+        sessionRef.current = null;
         setUser(null);
         setProfile(null);
         setAuthLoading(false);
       }
 
-      throw new Error(errorMessage);
+      const error = new Error(errorMessage) as Error & { status?: number };
+      error.status = response.status;
+      throw error;
     }
 
     return response;
@@ -243,12 +238,18 @@ export default function App() {
 
   useEffect(() => {
     let profileChannel: any = null;
+    const shouldRetryProfileFetch = (err: unknown) => {
+      if (!navigator.onLine) return false;
+      if (err instanceof TypeError) return true;
+      const status = typeof err === 'object' && err !== null ? (err as { status?: number }).status : undefined;
+      return status === 408 || status === 425 || status === 429 || (typeof status === 'number' && status >= 500);
+    };
 
-    // 1. Explicit Session Check on Mount
     const checkInitialSession = async () => {
       console.log('🔍 [Listener] Running explicit session check...');
       try {
         const { data: { session } } = await supabase.auth.getSession();
+        sessionRef.current = session ?? null;
         if (session?.user) {
           console.log('✅ [Listener] Initial session found via getSession:', session.user.id);
           setUser(session.user);
@@ -257,12 +258,12 @@ export default function App() {
         console.error('❌ [Listener] Initial session check error:', err);
       }
     };
-    checkInitialSession();
 
-    // 2. Auth Listener
+    // Auth Listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       console.log('🔄 [Listener] Auth State Changed:', event, 'User present:', !!session?.user);
       
+      sessionRef.current = session ?? null;
       if (event === 'INITIAL_SESSION' && !session) {
          setUser(null);
          setProfile(null);
@@ -273,6 +274,7 @@ export default function App() {
 
       if (event === 'SIGNED_OUT') {
         isLoggingOutRef.current = false;
+        sessionRef.current = null;
         setUser(null);
         setProfile(null);
         setActiveTab('dashboard');
@@ -295,7 +297,7 @@ export default function App() {
                 if (res.ok) return await res.json();
                 if (res.status === 404) return null; // No profile yet
               } catch (err) {
-                if (i === retries - 1) throw err;
+                if (i === retries - 1 || !shouldRetryProfileFetch(err)) throw err;
                 console.warn(`⏳ Fetch failed, retrying in ${delay}ms... (${i + 1}/${retries})`);
                 await new Promise(r => setTimeout(r, delay));
               }
