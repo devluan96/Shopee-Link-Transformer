@@ -17,9 +17,16 @@ export interface UserProfile {
   avatar_url?: string;
   status?: string;
   role?: string;
+  subscription_plan?: 'monthly' | 'yearly' | null;
+  subscription_status?: 'inactive' | 'active' | 'expired' | null;
+  subscription_started_at?: string | null;
+  subscription_expires_at?: string | null;
+  subscription_requested_plan?: 'monthly' | 'yearly' | null;
+  stripe_customer_id?: string | null;
+  stripe_subscription_id?: string | null;
 }
 
-export type Tab = 'dashboard' | 'create' | 'list' | 'analytics' | 'admin' | 'profile';
+export type Tab = 'dashboard' | 'create' | 'list' | 'analytics' | 'pricing' | 'admin' | 'profile';
 
 export interface LinkStats {
   totalLinks: number;
