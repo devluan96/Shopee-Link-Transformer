@@ -4,7 +4,7 @@ import {
   Clock,
   Menu,
 } from 'lucide-react';
-import { supabase, logout, registerWithEmail, loginWithEmail } from './lib/supabase';
+import { supabase, logout, registerWithEmail, loginWithEmail, clearStoredSession } from './lib/supabase';
 import { User } from '@supabase/supabase-js';
 
 // --- Types ---
@@ -79,6 +79,7 @@ export default function App() {
     topLinks: []
   });
   const videoInputRef = useRef<HTMLInputElement>(null);
+  const isLoggingOutRef = useRef(false);
 
   useEffect(() => {
     const currentUrl = new URL(window.location.href);
@@ -122,9 +123,45 @@ export default function App() {
     };
   }, []);
 
+  useEffect(() => {
+    let isCancelled = false;
+
+    const ensureResolvedAuthState = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!isCancelled && !session?.user) {
+          setUser(null);
+          setProfile(null);
+          setAuthLoading(false);
+        }
+      } catch (err) {
+        if (!isCancelled) {
+          console.error('[Auth] Session bootstrap failed:', err);
+          setAuthLoading(false);
+        }
+      }
+    };
+
+    ensureResolvedAuthState();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, []);
+
   const getAccessToken = async () => {
     const { data: { session } } = await supabase.auth.getSession();
-    return session?.access_token ?? null;
+    if (session?.access_token) {
+      return session.access_token;
+    }
+
+    const { data: refreshed, error } = await supabase.auth.refreshSession();
+    if (error) {
+      console.error('[Auth] refreshSession failed:', error);
+      return null;
+    }
+
+    return refreshed.session?.access_token ?? null;
   };
 
   const fetchWithAuth = async (input: RequestInfo | URL, init: RequestInit = {}) => {
@@ -140,10 +177,23 @@ export default function App() {
       headers.set('Content-Type', 'application/json');
     }
 
-    const response = await fetch(input, {
+    let response = await fetch(input, {
       ...init,
       headers
     });
+
+    if (response.status === 401) {
+      const { data: refreshed, error: refreshError } = await supabase.auth.refreshSession();
+      const refreshedToken = refreshed.session?.access_token;
+
+      if (!refreshError && refreshedToken) {
+        headers.set('Authorization', `Bearer ${refreshedToken}`);
+        response = await fetch(input, {
+          ...init,
+          headers
+        });
+      }
+    }
 
     if (!response.ok) {
       let errorMessage = `Request failed with status ${response.status}`;
@@ -155,6 +205,13 @@ export default function App() {
       } else {
         const text = await response.text().catch(() => '');
         if (text) errorMessage = text;
+      }
+
+      if (response.status === 401) {
+        clearStoredSession();
+        setUser(null);
+        setProfile(null);
+        setAuthLoading(false);
       }
 
       throw new Error(errorMessage);
@@ -207,12 +264,19 @@ export default function App() {
       console.log('🔄 [Listener] Auth State Changed:', event, 'User present:', !!session?.user);
       
       if (event === 'INITIAL_SESSION' && !session) {
+         setUser(null);
+         setProfile(null);
+         setAuthLoading(false);
+         return;
          console.log('ℹ️ [Listener] No initial session found.');
       }
 
       if (event === 'SIGNED_OUT') {
+        isLoggingOutRef.current = false;
         setUser(null);
         setProfile(null);
+        setActiveTab('dashboard');
+        setIsSidebarOpen(false);
         setAuthLoading(false);
         return;
       }
@@ -297,6 +361,7 @@ export default function App() {
           setAuthLoading(false);
         }
       } else {
+        isLoggingOutRef.current = false;
         setProfile(null);
         if (profileChannel) {
           supabase.removeChannel(profileChannel);
@@ -320,6 +385,12 @@ export default function App() {
       if (profileChannel) supabase.removeChannel(profileChannel);
     };
   }, []);
+
+  useEffect(() => {
+    if (isLoggingOutRef.current && authLoading) {
+      setAuthLoading(false);
+    }
+  }, [authLoading]);
 
   // Sync Tabs based on Admin
   useEffect(() => {
@@ -509,31 +580,51 @@ export default function App() {
   };
 
   const handleLogout = async () => {
+    if (isLoggingOutRef.current) return;
+
+    isLoggingOutRef.current = true;
+    setIsSidebarOpen(false);
+    setActiveTab('dashboard');
+    setAuthError(null);
+    setUser(null);
+    setProfile(null);
+    setLinks([]);
+    setAllUsers([]);
+    setStats({
+      totalLinks: 0,
+      totalClicks: 0,
+      recentClicks: [],
+      topLinks: []
+    });
+    setAnalyticsData({ history: [], topLinks: [] });
+    setListLoading(false);
+    setAdminLoading(false);
+    setProfileLoading(false);
+
     try {
-      setAuthLoading(true);
+      setAuthLoading(false);
       console.log('🚪 [Auth] Logging out...');
       
       // Aggressive logout
-      await supabase.auth.signOut({ scope: 'global' });
+      await logout();
+      clearStoredSession();
       
       // Clear all local states
       setUser(null);
       setProfile(null);
       
       // Clear browser storage to ensure no stale tokens
-      localStorage.clear();
-      sessionStorage.clear();
       
       console.log('🔄 [Auth] Redirecting after logout...');
       console.log('[Auth] Logout completed.');
     } catch (e) {
       console.error('Logout error:', e);
-      localStorage.clear();
-      sessionStorage.clear();
+      clearStoredSession();
       setUser(null);
       setProfile(null);
     } finally {
       setAuthLoading(false);
+      isLoggingOutRef.current = false;
     }
   };
 

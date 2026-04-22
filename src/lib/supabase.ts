@@ -2,6 +2,14 @@ import { createClient } from '@supabase/supabase-js';
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+const supabaseProjectRef = (() => {
+  try {
+    return new URL(supabaseUrl || 'https://placeholder.supabase.co').hostname.split('.')[0];
+  } catch {
+    return 'placeholder';
+  }
+})();
+export const supabaseStorageKey = `sb-${supabaseProjectRef}-auth-token`;
 
 console.log('🛠️ [Supabase Config] URL:', supabaseUrl ? 'Defined' : 'MISSING');
 console.log('🛠️ [Supabase Config] Key:', supabaseAnonKey ? 'Defined' : 'MISSING');
@@ -10,7 +18,13 @@ if (!supabaseUrl || !supabaseAnonKey) {
   console.error('🚨 CRITICAL: Supabase environment variables are missing! Authentication will NOT work.');
 }
 
-export const supabase = createClient(supabaseUrl || 'https://placeholder.supabase.co', supabaseAnonKey || 'placeholder');
+export const supabase = createClient(supabaseUrl || 'https://placeholder.supabase.co', supabaseAnonKey || 'placeholder', {
+  auth: {
+    storageKey: supabaseStorageKey,
+    persistSession: true,
+    autoRefreshToken: true,
+  }
+});
 
 export const signInWithGoogle = async () => {
   console.log('📡 [Supabase] signInWithGoogle start');
@@ -95,4 +109,27 @@ export const loginWithEmail = async (email: string, pass: string) => {
 export const logout = async () => {
   const { error } = await supabase.auth.signOut();
   if (error) throw error;
+};
+
+export const clearStoredSession = () => {
+  const authKeys = new Set([
+    supabaseStorageKey,
+    'supabase.auth.token',
+  ]);
+
+  for (let i = localStorage.length - 1; i >= 0; i -= 1) {
+    const key = localStorage.key(i);
+    if (!key) continue;
+    if (authKeys.has(key) || key.startsWith('sb-')) {
+      localStorage.removeItem(key);
+    }
+  }
+
+  for (let i = sessionStorage.length - 1; i >= 0; i -= 1) {
+    const key = sessionStorage.key(i);
+    if (!key) continue;
+    if (authKeys.has(key) || key.startsWith('sb-')) {
+      sessionStorage.removeItem(key);
+    }
+  }
 };
