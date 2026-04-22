@@ -241,14 +241,44 @@ app.get('/api/v1/user/analytics', async (req, res) => {
   try {
     const supabase = getSupabase();
     const { userId } = req.query;
-    if (!userId) return res.status(400).json({ error: 'Missing userId' });
-    const { data: links } = await supabase.from('links').select('id, custom_title, short_code').eq('user_id', userId);
-    if (!links || links.length === 0) return res.json({ history: [], topLinks: [] });
+    console.log(`📈 [Analytics] Request for userId: ${userId}`);
+
+    if (!userId) {
+      console.warn('⚠️ [Analytics] Missing userId');
+      return res.status(400).json({ error: 'Missing userId' });
+    }
+
+    const { data: links, error: linksError } = await supabase.from('links').select('id, custom_title, short_code').eq('user_id', userId);
+    
+    if (linksError) {
+      console.error('❌ [Analytics] Links query error:', linksError);
+      throw linksError;
+    }
+
+    if (!links || links.length === 0) {
+      console.log('ℹ️ [Analytics] No links found for user');
+      return res.json({ history: [], topLinks: [] });
+    }
+
     const linkIds = links.map((d: any) => d.id);
     const linkMap = Object.fromEntries(links.map((d: any) => [d.id, d.custom_title || d.short_code]));
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-    const { data: clicks } = await supabase.from('clicks').select('link_id, created_at').in('link_id', linkIds.slice(0, 50)).gte('created_at', thirtyDaysAgo.toISOString());
+
+    console.log(`📊 [Analytics] Fetching clicks for ${linkIds.length} links since ${thirtyDaysAgo.toISOString()}`);
+
+    const { data: clicks, error: clicksError } = await supabase
+      .from('clicks')
+      .select('link_id, created_at')
+      .in('link_id', linkIds.slice(0, 100)) // Increased slice to 100
+      .gte('created_at', thirtyDaysAgo.toISOString());
+
+    if (clicksError) {
+      console.error('❌ [Analytics] Clicks query error:', clicksError);
+      // Don't throw here, just return empty clicks but log it
+      return res.json({ history: [], topLinks: [] });
+    }
+
     const historyMap: any = {};
     const linksStats: any = {};
     if (clicks) {
@@ -258,10 +288,14 @@ app.get('/api/v1/user/analytics', async (req, res) => {
         linksStats[c.link_id] = (linksStats[c.link_id] || 0) + 1;
       });
     }
+
     const history = Object.entries(historyMap).map(([date, clicks]) => ({ date, clicks })).sort((a: any, b: any) => a.date.localeCompare(b.date));
     const topLinks = Object.entries(linksStats).map(([id, clicks]) => ({ id, clicks, title: linkMap[id] })).sort((a: any, b: any) => b.clicks - a.clicks).slice(0, 5);
+    
+    console.log(`✅ [Analytics] Success: ${history.length} history points, ${topLinks.length} top links`);
     res.json({ history, topLinks });
   } catch (e: any) {
+    console.error('💥 [Analytics] Final catch block error:', e.message);
     res.json({ history: [], topLinks: [] });
   }
 });
@@ -297,13 +331,25 @@ app.post('/api/v1/admin/users/:targetUid/subscription', async (req, res) => {
     const supabase = getSupabase();
     const { targetUid } = req.params;
     const { plan, expiry } = req.body;
+    
+    console.log(`🛠 [Admin] Updating sub for ${targetUid} to ${plan}`);
+
     const { error } = await supabase.from('profiles').update({ 
       subscription_plan: plan,
       subscription_expiry: expiry 
     }).eq('id', targetUid);
-    if (error) throw error;
+
+    if (error) {
+      console.error('❌ Supabase Update Error:', error);
+      return res.status(400).json({ 
+        error: error.message,
+        details: 'Vui lòng kiểm tra bảng profiles đã có cột subscription_plan và subscription_expiry chưa.'
+      });
+    }
+
     res.json({ success: true });
   } catch (e: any) {
+    console.error('💥 Server Error in subscription update:', e.message);
     res.status(500).json({ error: e.message });
   }
 });

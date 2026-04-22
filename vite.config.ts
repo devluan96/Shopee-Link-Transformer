@@ -16,9 +16,26 @@ export default defineConfig(({mode}) => {
       },
     },
     server: {
-      // HMR is disabled in AI Studio via DISABLE_HMR env var.
-      // Do not modifyâfile watching is disabled to prevent flickering during agent edits.
       hmr: false,
+    },
+    build: {
+      chunkSizeWarningLimit: 1000,
+      rollupOptions: {
+        output: {
+          manualChunks: (id) => {
+            if (id.includes('node_modules')) {
+              if (id.includes('react')) return 'vendor-react';
+              if (id.includes('lucide-react')) return 'vendor-icons';
+              if (id.includes('@supabase')) return 'vendor-supabase';
+              if (id.includes('recharts')) return 'vendor-viz';
+              if (id.includes('motion')) return 'vendor-motion';
+              
+              // Vendor chung cho các thư viện khác trong node_modules
+              return 'vendor-core';
+            }
+          }
+        },
+      },
     },
   };
 });

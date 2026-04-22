@@ -13,9 +13,10 @@ interface OverviewProps {
     topLinks: Array<{ short_code: string; title: string; clicks: number }>;
   } | null;
   setActiveTab: (tab: Tab) => void;
+  canAccessCreate: boolean;
 }
 
-export const Overview = ({ stats, setActiveTab }: OverviewProps) => {
+export const Overview = ({ stats, setActiveTab, canAccessCreate }: OverviewProps) => {
   return (
     <motion.div initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} key="dashboard">
        <header className="mb-12">
@@ -45,12 +46,21 @@ export const Overview = ({ stats, setActiveTab }: OverviewProps) => {
             <div className="relative z-10">
                <h3 className="text-3xl font-black mb-4">Sẵn sàng bùng nổ doanh số?</h3>
                <p className="text-gray-400 font-medium mb-10 max-w-md">Sử dụng công cụ chuyển đổi landing page chuyên nghiệp để tăng tỷ lệ click-through lên đến 300% trên Facebook.</p>
-               <button 
-                 onClick={() => setActiveTab('create')}
-                 className="px-10 py-5 bg-orange-600 rounded-2xl font-black uppercase tracking-widest text-xs flex items-center gap-3 hover:bg-orange-500 transition-all active:scale-95 shadow-xl shadow-orange-900/40"
-               >
-                 <PlusCircle size={20} /> Tạo Link Ngay
-               </button>
+               {canAccessCreate ? (
+                 <button 
+                   onClick={() => setActiveTab('create')}
+                   className="px-10 py-5 bg-orange-600 rounded-2xl font-black uppercase tracking-widest text-xs flex items-center gap-3 hover:bg-orange-500 transition-all active:scale-95 shadow-xl shadow-orange-900/40"
+                 >
+                   <PlusCircle size={20} /> Tạo Link Ngay
+                 </button>
+               ) : (
+                 <button 
+                   onClick={() => setActiveTab('pricing')}
+                   className="px-10 py-5 bg-gradient-to-r from-orange-600 to-amber-500 rounded-2xl font-black uppercase tracking-widest text-xs flex items-center gap-3 hover:opacity-90 transition-all active:scale-95 shadow-xl shadow-orange-900/40"
+                 >
+                   <Zap size={20} /> Nâng cấp Premium Ngay
+                 </button>
+               )}
             </div>
             <Zap size={240} className="absolute -bottom-12 -right-12 text-white opacity-[0.03] fill-current pointer-events-none" />
          </div>

@@ -8,7 +8,8 @@ import {
   LogOut,
   PlusCircle,
   User,
-  Tag
+  Tag,
+  Lock
 } from 'lucide-react';
 import { cn } from '@/src/lib/utils';
 import { Tab, UserProfile } from '@/src/types';
@@ -24,18 +25,21 @@ interface SidebarProps {
   onClose?: () => void;
 }
 
-const SidebarItem = ({ icon: Icon, label, active, onClick }: { icon: any, label: string, active: boolean, onClick: () => void }) => (
+const SidebarItem = ({ icon: Icon, label, active, onClick, isLocked }: { icon: any, label: string, active: boolean, onClick: () => void, isLocked?: boolean }) => (
   <button 
     onClick={onClick}
     className={cn(
-      "w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all font-bold text-sm text-left",
+      "w-full flex items-center justify-between px-4 py-3 rounded-xl transition-all font-bold text-sm text-left group",
       active 
         ? "bg-orange-600 text-white shadow-lg shadow-orange-200" 
         : "text-gray-500 hover:bg-gray-100 hover:text-gray-900"
     )}
   >
-    <Icon size={18} />
-    {label}
+    <div className="flex items-center gap-3">
+      <Icon size={18} />
+      {label}
+    </div>
+    {isLocked && <Lock size={14} className={cn("opacity-40 group-hover:opacity-100 transition-opacity", active ? "text-white" : "text-gray-400")} />}
   </button>
 );
 
@@ -88,7 +92,13 @@ export const Sidebar = ({
         <div className="mb-4 text-[10px] font-black text-gray-400 uppercase tracking-widest px-4">Menu chính</div>
         <SidebarItem icon={LayoutDashboard} label="Bảng điều khiển" active={activeTab === 'dashboard'} onClick={() => setActiveTab('dashboard')} />
         <SidebarItem icon={Tag} label="Bảng giá" active={activeTab === 'pricing'} onClick={() => setActiveTab('pricing')} />
-        <SidebarItem icon={PlusCircle} label="Tạo Link" active={activeTab === 'create'} onClick={() => setActiveTab('create')} />
+        <SidebarItem 
+          icon={PlusCircle} 
+          label="Tạo Link" 
+          active={activeTab === 'create'} 
+          onClick={() => setActiveTab('create')} 
+          isLocked={!isActuallyAdmin && userProfile?.subscription_plan === 'free'}
+        />
         <SidebarItem icon={List} label="Danh sách Link" active={activeTab === 'list'} onClick={() => setActiveTab('list')} />
         <SidebarItem icon={BarChart3} label="Phân tích dữ liệu" active={activeTab === 'analytics'} onClick={() => setActiveTab('analytics')} />
         <SidebarItem icon={User} label="Hồ sơ cá nhân" active={activeTab === 'profile'} onClick={() => setActiveTab('profile')} />
@@ -121,7 +131,10 @@ export const Sidebar = ({
           </div>
           <div className="min-w-0">
             <p className="text-sm font-bold text-gray-900 truncate">{userProfile?.full_name || userEmail}</p>
-            <p className="text-[10px] text-green-600 font-bold uppercase">{isActuallyAdmin ? 'Administrator' : 'Premium Member'}</p>
+            <p className="text-[10px] text-green-600 font-bold uppercase">
+              {isActuallyAdmin ? 'Administrator' : 
+               (userProfile?.subscription_plan === 'monthly' || userProfile?.subscription_plan === 'yearly' ? 'Premium Member' : 'Free Member')}
+            </p>
           </div>
         </div>
         <button 

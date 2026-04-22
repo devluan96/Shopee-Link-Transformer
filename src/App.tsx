@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, Suspense, lazy } from 'react';
 import { AnimatePresence } from 'motion/react';
 import { 
   Zap, 
@@ -8,20 +8,31 @@ import {
 import { supabase, logout, registerWithEmail, loginWithEmail } from './lib/supabase';
 import { User } from '@supabase/supabase-js';
 
-// --- Types & Components ---
+// --- Types ---
 import { Toaster, toast } from 'sonner';
 import { ConvertedLink, UserProfile, Tab, LinkStats } from './types';
+
+// --- Static Components ---
 import { Sidebar } from './components/layout/Sidebar';
-import { Pricing } from './components/Pricing';
 import { AuthScreen } from './components/auth/AuthScreen';
-import { AdminPanel } from './components/admin/AdminPanel';
-import { Overview } from './components/dashboard/Overview';
-import { Analytics } from './components/dashboard/Analytics';
-import { CreateLink } from './components/links/CreateLink';
-import { LinkList } from './components/links/LinkList';
-import { ProfileSettings } from './components/profile/ProfileSettings';
 import { PendingApproval } from './components/PendingApproval';
 import { Footer } from './components/layout/Footer';
+
+// --- Lazy Loaded Components ---
+const Pricing = lazy(() => import('./components/Pricing').then(m => ({ default: m.Pricing })));
+const AdminPanel = lazy(() => import('./components/admin/AdminPanel').then(m => ({ default: m.AdminPanel })));
+const Overview = lazy(() => import('./components/dashboard/Overview').then(m => ({ default: m.Overview })));
+const Analytics = lazy(() => import('./components/dashboard/Analytics').then(m => ({ default: m.Analytics })));
+const CreateLink = lazy(() => import('./components/links/CreateLink').then(m => ({ default: m.CreateLink })));
+const LinkList = lazy(() => import('./components/links/LinkList').then(m => ({ default: m.LinkList })));
+const ProfileSettings = lazy(() => import('./components/profile/ProfileSettings').then(m => ({ default: m.ProfileSettings })));
+
+// Loading Component for Lazy Loading
+const TabLoading = () => (
+  <div className="flex items-center justify-center min-h-[400px]">
+    <div className="w-12 h-12 border-4 border-orange-500/20 border-t-orange-500 rounded-full animate-spin" />
+  </div>
+);
 
 export default function App() {
   const [user, setUser] = useState<User | null>(null);
@@ -93,16 +104,24 @@ export default function App() {
   const fetchAnalytics = async () => {
     if (!user) return;
     try {
+      console.log('📡 Fetching analytics for user:', user.id);
       const res = await fetch(`/api/v1/user/analytics?userId=${user.id}&_t=${Date.now()}`);
+      if (!res.ok) {
+        const errorText = await res.text();
+        throw new Error(`Server responded with ${res.status}: ${errorText.substring(0, 100)}`);
+      }
       const data = await res.json();
+      console.log('📊 Analytics data received:', data);
       setAnalyticsData(data);
-    } catch (e) {
-      console.error('Fetch analytics fail:', e);
+    } catch (e: any) {
+      console.error('Fetch analytics fail:', e?.message || e);
+      toast.error('Không thể tải dữ liệu phân tích. Vui lòng thử lại sau.');
     }
   };
 
   useEffect(() => {
     if (activeTab === 'analytics') {
+      console.log('📊 Active tab changed to analytics, fetching...');
       fetchAnalytics();
     }
   }, [activeTab, user]);
@@ -238,7 +257,7 @@ export default function App() {
 
   // Sync Tabs based on Admin
   useEffect(() => {
-    const isAdminRole = profile?.role === 'admin' || user?.email === 'hqluan13081996@gmail.com' || user?.email === 'devluan1996@gmail.com';
+    const isAdminRole = profile?.role === 'admin' || user?.email === 'devluan1996@gmail.com';
     if (activeTab === 'admin' && !isAdminRole) {
       setActiveTab('dashboard');
     }
@@ -246,7 +265,7 @@ export default function App() {
 
   // Fetch Data
   useEffect(() => {
-    const isAdminRole = profile?.role === 'admin' || user?.email === 'hqluan13081996@gmail.com' || user?.email === 'devluan1996@gmail.com';
+    const isAdminRole = profile?.role === 'admin' || user?.email === 'devluan1996@gmail.com';
     const isApproved = profile?.status === 'approved' || isAdminRole;
     
     if (user && isApproved) {
@@ -370,6 +389,12 @@ export default function App() {
     console.log('🎬 Video input change detected:', file?.name, file?.size);
     if (!file) return;
 
+    if (!canAccessCreate) {
+      toast.error('Vui lòng nâng cấp tài khoản để sử dụng tính năng upload video!');
+      e.target.value = ''; // Reset input
+      return;
+    }
+
     setUploadingVideo(true);
     setError(null);
     const formData = new FormData();
@@ -492,6 +517,11 @@ export default function App() {
   const handleConvert = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!url.trim() || !user) return;
+
+    if (!canAccessCreate) {
+      toast.error('Vui lòng nâng cấp tài khoản để sử dụng tính năng tạo link!');
+      return;
+    }
 
     setLoading(true);
     setError(null);
@@ -652,7 +682,7 @@ export default function App() {
     );
   }
 
-  const isAdminRole = profile?.role === 'admin' || user?.email === 'hqluan13081996@gmail.com' || user?.email === 'devluan1996@gmail.com';
+  const isAdminRole = profile?.role === 'admin' || user?.email === 'devluan1996@gmail.com';
   const hasSub = profile?.subscription_plan && profile.subscription_plan !== 'free';
   const canAccessCreate = isAdminRole || hasSub;
 
@@ -692,11 +722,13 @@ export default function App() {
       </div>
 
       <main className="flex-1 p-6 lg:p-12 min-h-screen pb-32">
-        <AnimatePresence mode="wait">
+        <Suspense fallback={<TabLoading />}>
+          <AnimatePresence mode="wait">
           {activeTab === 'dashboard' && (
             <Overview 
               stats={stats}
               setActiveTab={setActiveTab}
+              canAccessCreate={canAccessCreate}
             />
           )}
 
@@ -777,7 +809,8 @@ export default function App() {
             />
           )}
         </AnimatePresence>
-      </main>
+      </Suspense>
+    </main>
 
       <Footer />
     </div>
