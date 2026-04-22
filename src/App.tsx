@@ -72,7 +72,12 @@ export default function App() {
   const [profileLoading, setProfileLoading] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
-  const [stats, setStats] = useState({ totalLinks: 0, totalClicks: 0 });
+  const [stats, setStats] = useState<LinkStats>({
+    totalLinks: 0,
+    totalClicks: 0,
+    recentClicks: [],
+    topLinks: []
+  });
   const videoInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -117,15 +122,52 @@ export default function App() {
     };
   }, []);
 
+  const getAccessToken = async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    return session?.access_token ?? null;
+  };
+
+  const fetchWithAuth = async (input: RequestInfo | URL, init: RequestInit = {}) => {
+    const token = await getAccessToken();
+    if (!token) {
+      throw new Error('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.');
+    }
+
+    const headers = new Headers(init.headers ?? {});
+    headers.set('Authorization', `Bearer ${token}`);
+
+    if (!(init.body instanceof FormData) && init.body && !headers.has('Content-Type')) {
+      headers.set('Content-Type', 'application/json');
+    }
+
+    const response = await fetch(input, {
+      ...init,
+      headers
+    });
+
+    if (!response.ok) {
+      let errorMessage = `Request failed with status ${response.status}`;
+      const contentType = response.headers.get('content-type') ?? '';
+
+      if (contentType.includes('application/json')) {
+        const errorData = await response.json().catch(() => null);
+        errorMessage = errorData?.error || errorData?.message || errorMessage;
+      } else {
+        const text = await response.text().catch(() => '');
+        if (text) errorMessage = text;
+      }
+
+      throw new Error(errorMessage);
+    }
+
+    return response;
+  };
+
   const fetchAnalytics = async () => {
     if (!user) return;
     try {
       console.log('📡 Fetching analytics for user:', user.id);
-      const res = await fetch(`/api/v1/user/analytics?userId=${user.id}&_t=${Date.now()}`);
-      if (!res.ok) {
-        const errorText = await res.text();
-        throw new Error(`Server responded with ${res.status}: ${errorText.substring(0, 100)}`);
-      }
+      const res = await fetchWithAuth('/api/v1/user/analytics');
       const data = await res.json();
       console.log('📊 Analytics data received:', data);
       setAnalyticsData(data);
@@ -185,7 +227,7 @@ export default function App() {
           const fetchWithRetry = async (url: string, retries = 3, delay = 1000): Promise<any> => {
             for (let i = 0; i < retries; i++) {
               try {
-                const res = await fetch(url);
+                const res = await fetchWithAuth(url);
                 if (res.ok) return await res.json();
                 if (res.status === 404) return null; // No profile yet
               } catch (err) {
@@ -197,7 +239,7 @@ export default function App() {
           };
 
           try {
-             const profileUrl = `${window.location.origin}/api/v1/user/profile?userId=${currentUser.id}&_t=${Date.now()}`;
+             const profileUrl = `${window.location.origin}/api/v1/user/profile`;
              console.log('📡 Fetching profile via:', profileUrl);
              existingProfile = await fetchWithRetry(profileUrl);
              if (existingProfile) console.log('✅ Profile fetch success');
@@ -220,21 +262,15 @@ export default function App() {
             const defaultAvatar = currentUser.user_metadata?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${currentUser.id}`;
             
             // Use server update proxy to insert initial data securely
-            const insertRes = await fetch('/api/v1/user/profile/update', {
+            const insertRes = await fetchWithAuth('/api/v1/user/profile/update', {
               method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
-                userId: currentUser.id,
-                email: currentUser.email,
                 full_name: defaultName,
                 avatar_url: defaultAvatar
               })
             });
-
-            if (insertRes.ok) {
-               const newProfile = await insertRes.json();
-               setProfile(newProfile as UserProfile);
-            }
+            const newProfile = await insertRes.json();
+            setProfile(newProfile as UserProfile);
           } else {
             console.log('✅ Profile found and loaded:', existingProfile.full_name);
             setProfile(existingProfile as UserProfile);
@@ -308,7 +344,7 @@ export default function App() {
   const fetchStats = async () => {
     if (!user) return;
     try {
-      const response = await fetch(`/api/v1/user/stats?userId=${user.id}&_t=${Date.now()}`);
+      const response = await fetchWithAuth('/api/v1/user/stats');
       const data = await response.json();
       setStats(data);
     } catch (e) {
@@ -320,7 +356,7 @@ export default function App() {
     if (!user) return;
     setListLoading(true);
     try {
-      const response = await fetch(`/api/v1/user/links?userId=${user.id}&_t=${Date.now()}`);
+      const response = await fetchWithAuth('/api/v1/user/links');
       const data = await response.json();
       setLinks(data);
     } catch (e) {
@@ -334,7 +370,7 @@ export default function App() {
     if (!user) return;
     setAdminLoading(true);
     try {
-      const response = await fetch(`/api/v1/admin/users?adminId=${user.id}&_t=${Date.now()}`);
+      const response = await fetchWithAuth('/api/v1/admin/users');
       const data = await response.json();
       setAllUsers(data);
     } catch (e) {
@@ -347,10 +383,9 @@ export default function App() {
   const handleApproveUser = async (targetUid: string, status: boolean = true) => {
     if (!user) return;
     try {
-      const response = await fetch(`/api/v1/admin/users/${targetUid}/approve`, {
+      const response = await fetchWithAuth(`/api/v1/admin/users/${targetUid}/approve`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ isApproved: status, adminId: user.id }),
+        body: JSON.stringify({ isApproved: status }),
       });
       if (response.ok) {
         fetchAllUsers();
@@ -379,10 +414,9 @@ export default function App() {
         expiry = d.toISOString();
       }
 
-      const response = await fetch(`/api/v1/admin/users/${targetUid}/subscription`, {
+      const response = await fetchWithAuth(`/api/v1/admin/users/${targetUid}/subscription`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ plan, expiry, adminId: user.id }),
+        body: JSON.stringify({ plan, expiry }),
       });
       if (response.ok) {
         fetchAllUsers();
@@ -399,7 +433,7 @@ export default function App() {
   const handleDeleteUser = async (targetUid: string) => {
     if (!user) return;
     try {
-      const response = await fetch(`/api/v1/admin/users/${targetUid}?adminId=${user.id}`, {
+      const response = await fetchWithAuth(`/api/v1/admin/users/${targetUid}`, {
         method: 'DELETE'
       });
       if (response.ok) {
@@ -434,7 +468,7 @@ export default function App() {
     console.log('🚀 Attempting POST to:', uploadUrl);
 
     try {
-      const response = await fetch(uploadUrl, {
+      const response = await fetchWithAuth(uploadUrl, {
         method: 'POST',
         headers: { 'Accept': 'application/json' },
         body: formData,
@@ -457,13 +491,11 @@ export default function App() {
         setError(null);
         
         // Auto-generate thumbnail if not present
-        if (!customImageUrl) {
-          try {
-            const thumbUrl = await captureVideoThumbnail(data.secure_url);
-            setCustomImageUrl(thumbUrl);
-          } catch (e) {
-            console.error('Auto-thumb capture failed', e);
-          }
+        try {
+          const thumbUrl = await captureVideoThumbnail(data.secure_url);
+          setCustomImageUrl(thumbUrl);
+        } catch (e) {
+          console.error('Auto-thumb capture failed', e);
         }
       } else if (data.error) {
         setError(`Lỗi Cloudinary: ${data.error.message}`);
@@ -532,7 +564,7 @@ export default function App() {
           thumbFormData.append('file', blob, 'thumb.jpg');
           
           try {
-            const res = await fetch(`/api/v1/upload-video`, {
+            const res = await fetchWithAuth('/api/v1/upload-video', {
               method: 'POST',
               body: thumbFormData
             });
@@ -569,13 +601,10 @@ export default function App() {
     setResult(null);
 
     try {
-      const response = await fetch('/api/v1/convert', {
+      const response = await fetchWithAuth('/api/v1/convert', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           url: url.trim(),
-          userId: user.id,
-          email: user.email,
           customTitle,
           customDescription,
           customImageUrl,
@@ -586,7 +615,10 @@ export default function App() {
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || 'Conversion failed');
 
-      setResult(data);
+      setResult({
+        ...data,
+        short_code: data.short_code ?? data.shortCode
+      });
       if (activeTab === 'dashboard') fetchStats();
       // Clear inputs
       // setUrl(''); setCustomTitle(''); setCustomDescription(''); setCustomImageUrl(''); setVideoUrl('');
@@ -617,11 +649,9 @@ export default function App() {
     try {
       console.log('🚀 Starting Server-side Avatar upload proxy...');
       
-      const formData = new FormData();
-      formData.append('userId', user.id);
-      formData.append('file', file);
+      const formData = new FormData();      formData.append('file', file);
 
-      const res = await fetch('/api/v1/upload-avatar', {
+      const res = await fetchWithAuth('/api/v1/upload-avatar', {
         method: 'POST',
         body: formData
       });
@@ -656,12 +686,9 @@ export default function App() {
     
     setProfileLoading(true);
     try {
-      const res = await fetch('/api/v1/user/profile/update', {
+      const res = await fetchWithAuth('/api/v1/user/profile/update', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          userId: user.id,
-          email: user.email,
           full_name: data.full_name,
           avatar_url: data.avatar_url
         })
@@ -881,3 +908,5 @@ export default function App() {
     </div>
   );
 }
+
+

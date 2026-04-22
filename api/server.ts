@@ -1,5 +1,5 @@
 import 'dotenv/config';
-import express from 'express';
+import express, { NextFunction, Request, Response } from 'express';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import helmet from 'helmet';
@@ -68,6 +68,90 @@ const upload = multer({
 
 const app = express();
 
+type SubscriptionPlan = 'free' | 'monthly' | 'yearly';
+
+interface AuthenticatedRequest extends Request {
+  authUser?: {
+    id: string;
+    email?: string;
+  };
+  authProfile?: {
+    id: string;
+    email?: string;
+    role?: string;
+    status?: string;
+    full_name?: string;
+    avatar_url?: string;
+    subscription_plan?: SubscriptionPlan;
+    subscription_expiry?: string | null;
+  } | null;
+}
+
+const getBearerToken = (req: Request) => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader?.startsWith('Bearer ')) return null;
+  return authHeader.slice('Bearer '.length).trim();
+};
+
+const isPremiumProfile = (profile: AuthenticatedRequest['authProfile']) => {
+  if (!profile) return false;
+  if (profile.role === 'admin') return true;
+  if (profile.subscription_plan === 'monthly' || profile.subscription_plan === 'yearly') {
+    if (!profile.subscription_expiry) return true;
+    return new Date(profile.subscription_expiry).getTime() > Date.now();
+  }
+  return false;
+};
+
+const authenticate = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const token = getBearerToken(req);
+    if (!token) return res.status(401).json({ error: 'Missing bearer token' });
+
+    const supabase = getSupabase();
+    const { data: userData, error: userError } = await supabase.auth.getUser(token);
+    if (userError || !userData.user) {
+      return res.status(401).json({ error: 'Invalid or expired token' });
+    }
+
+    req.authUser = {
+      id: userData.user.id,
+      email: userData.user.email ?? undefined
+    };
+
+    const { data: profile, error: profileError } = await supabase
+      .from('profiles')
+      .select('id, email, role, status, full_name, avatar_url, subscription_plan, subscription_expiry')
+      .eq('id', userData.user.id)
+      .maybeSingle();
+
+    if (profileError) {
+      return res.status(500).json({ error: profileError.message });
+    }
+
+    req.authProfile = profile ?? null;
+    next();
+  } catch (e: any) {
+    res.status(500).json({ error: e.message || 'Authentication failed' });
+  }
+};
+
+const checkPremium = (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  if (!req.authUser) return res.status(401).json({ error: 'Unauthorized' });
+  if (!isPremiumProfile(req.authProfile)) {
+    return res.status(403).json({ error: 'Premium plan required' });
+  }
+  next();
+};
+
+const checkAdmin = (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  if (!req.authUser) return res.status(401).json({ error: 'Unauthorized' });
+  if (req.authProfile?.role !== 'admin') {
+    return res.status(403).json({ error: 'Admin access required' });
+  }
+  next();
+};
+
 // A. MIDDLEWARES
 app.use(cors({
   origin: '*',
@@ -105,7 +189,7 @@ app.get('/api/health', (req, res) => {
   });
 });
 
-app.post('/api/v1/upload-video', upload.single('file'), async (req: any, res) => {
+app.post('/api/v1/upload-video', authenticate, checkPremium, upload.single('file'), async (req: any, res) => {
   try {
     if (!req.file) return res.status(400).json({ error: 'No file provided' });
     const stream = cloudinary.uploader.upload_stream(
@@ -121,11 +205,12 @@ app.post('/api/v1/upload-video', upload.single('file'), async (req: any, res) =>
   }
 });
 
-app.post('/api/v1/upload-avatar', upload.single('file'), async (req: any, res) => {
+app.post('/api/v1/upload-avatar', authenticate, upload.single('file'), async (req: any, res) => {
   try {
+    const authReq = req as AuthenticatedRequest;
     const supabase = getSupabase();
     if (!req.file) return res.status(400).json({ error: 'No file provided' });
-    const userId = req.body.userId;
+    const userId = authReq.authUser?.id;
     if (!userId) return res.status(400).json({ error: 'Missing userId' });
 
     const fileExt = req.file.originalname.split('.').pop() || 'png';
@@ -146,10 +231,10 @@ app.post('/api/v1/upload-avatar', upload.single('file'), async (req: any, res) =
   }
 });
 
-app.get('/api/v1/user/profile', async (req, res) => {
+app.get('/api/v1/user/profile', authenticate, async (req: AuthenticatedRequest, res) => {
   try {
     const supabase = getSupabase();
-    const { userId } = req.query;
+    const userId = req.authUser?.id;
     if (!userId) return res.status(400).json({ error: 'Missing userId' });
     const { data, error } = await supabase.from('profiles').select('*').eq('id', userId).maybeSingle();
     if (error) throw error;
@@ -160,10 +245,12 @@ app.get('/api/v1/user/profile', async (req, res) => {
   }
 });
 
-app.post('/api/v1/user/profile/update', async (req, res) => {
+app.post('/api/v1/user/profile/update', authenticate, async (req: AuthenticatedRequest, res) => {
   try {
     const supabase = getSupabase();
-    const { userId, email, full_name, avatar_url } = req.body;
+    const userId = req.authUser?.id;
+    const email = req.authUser?.email;
+    const { full_name, avatar_url } = req.body;
     if (!userId) return res.status(400).json({ error: 'Missing userId' });
     // 1. Get existing profile to preserve sensitive fields (role, subscription)
     const { data: existing } = await supabase.from('profiles').select('subscription_plan, subscription_expiry, role').eq('id', userId).maybeSingle();
@@ -189,10 +276,11 @@ app.post('/api/v1/user/profile/update', async (req, res) => {
   }
 });
 
-app.post('/api/v1/convert', async (req, res) => {
+app.post('/api/v1/convert', authenticate, checkPremium, async (req: AuthenticatedRequest, res) => {
   try {
     const supabase = getSupabase();
-    const { url, userId, customTitle, customDescription, customImageUrl, videoUrl } = req.body;
+    const userId = req.authUser?.id;
+    const { url, customTitle, customDescription, customImageUrl, videoUrl } = req.body;
     if (!userId) return res.status(401).json({ error: 'Unauthorized' });
     const shortCode = nanoid(8);
     const { data, error } = await supabase.from('links').insert({
@@ -205,16 +293,23 @@ app.post('/api/v1/convert', async (req, res) => {
       video_url: videoUrl
     }).select().single();
     if (error) throw error;
-    res.json({ converted_url: `https://hotsnew.click/s/${shortCode}`, shortCode });
+    res.json({
+      id: data.id,
+      converted_url: `https://hotsnew.click/s/${shortCode}`,
+      short_code: data.short_code,
+      shortCode: data.short_code,
+      custom_image_url: data.custom_image_url,
+      video_url: data.video_url
+    });
   } catch (e: any) {
     res.status(400).json({ error: e.message });
   }
 });
 
-app.get('/api/v1/user/links', async (req, res) => {
+app.get('/api/v1/user/links', authenticate, async (req: AuthenticatedRequest, res) => {
   try {
     const supabase = getSupabase();
-    const { userId } = req.query;
+    const userId = req.authUser?.id;
     if (!userId) return res.status(400).json({ error: 'Missing userId' });
     const { data, error } = await supabase.from('links').select('*').eq('user_id', userId).order('created_at', { ascending: false });
     if (error) throw error;
@@ -224,23 +319,23 @@ app.get('/api/v1/user/links', async (req, res) => {
   }
 });
 
-app.get('/api/v1/user/stats', async (req, res) => {
+app.get('/api/v1/user/stats', authenticate, async (req: AuthenticatedRequest, res) => {
   try {
     const supabase = getSupabase();
-    const { userId } = req.query;
+    const userId = req.authUser?.id;
     if (!userId) return res.status(400).json({ error: 'Missing userId' });
     const { count, error } = await supabase.from('links').select('*', { count: 'exact', head: true }).eq('user_id', userId);
     if (error) throw error;
-    res.json({ totalLinks: count || 0, totalClicks: 0 });
+    res.json({ totalLinks: count || 0, totalClicks: 0, recentClicks: [], topLinks: [] });
   } catch (e: any) {
     res.status(500).json({ error: e.message });
   }
 });
 
-app.get('/api/v1/user/analytics', async (req, res) => {
+app.get('/api/v1/user/analytics', authenticate, checkPremium, async (req: AuthenticatedRequest, res) => {
   try {
     const supabase = getSupabase();
-    const { userId } = req.query;
+    const userId = req.authUser?.id;
     console.log(`📈 [Analytics] Request for userId: ${userId}`);
 
     if (!userId) {
@@ -300,11 +395,9 @@ app.get('/api/v1/user/analytics', async (req, res) => {
   }
 });
 
-app.get('/api/v1/admin/users', async (req, res) => {
+app.get('/api/v1/admin/users', authenticate, checkAdmin, async (req, res) => {
   try {
     const supabase = getSupabase();
-    const { adminId } = req.query;
-    if (!adminId) return res.status(400).json({ error: 'Missing adminId' });
     const { data, error } = await supabase.from('profiles').select('*').order('created_at', { ascending: false });
     if (error) throw error;
     res.json(data);
@@ -313,7 +406,7 @@ app.get('/api/v1/admin/users', async (req, res) => {
   }
 });
 
-app.post('/api/v1/admin/users/:targetUid/approve', async (req, res) => {
+app.post('/api/v1/admin/users/:targetUid/approve', authenticate, checkAdmin, async (req, res) => {
   try {
     const supabase = getSupabase();
     const { targetUid } = req.params;
@@ -326,7 +419,7 @@ app.post('/api/v1/admin/users/:targetUid/approve', async (req, res) => {
   }
 });
 
-app.post('/api/v1/admin/users/:targetUid/subscription', async (req, res) => {
+app.post('/api/v1/admin/users/:targetUid/subscription', authenticate, checkAdmin, async (req, res) => {
   try {
     const supabase = getSupabase();
     const { targetUid } = req.params;
@@ -354,11 +447,10 @@ app.post('/api/v1/admin/users/:targetUid/subscription', async (req, res) => {
   }
 });
 
-app.delete('/api/v1/admin/users/:targetUid', async (req, res) => {
+app.delete('/api/v1/admin/users/:targetUid', authenticate, checkAdmin, async (req, res) => {
   try {
     const supabase = getSupabase();
     const { targetUid } = req.params;
-    const { adminId } = req.query; // For logging or permission checks if needed
     
     // 1. Delete associated links first
     await supabase.from('links').delete().eq('user_id', targetUid);

@@ -151,7 +151,18 @@ export const CreateLink = ({
                          className="absolute top-2 right-2 p-1 bg-black/50 text-white rounded-full hover:bg-black transition-all"
                        >
                          <X size={16} />
-                       </button>
+                        </button>
+                    </div>
+                  )}
+
+                  {videoUrl && customImageUrl && (
+                    <div className="rounded-2xl border border-orange-100 bg-orange-50/40 p-4">
+                      <div className="flex items-center gap-2 text-[11px] font-black uppercase tracking-widest text-orange-600 mb-3">
+                        <ImageIcon size={14} /> Thumbnail trích từ video
+                      </div>
+                      <div className="aspect-video rounded-2xl overflow-hidden bg-white border border-orange-100">
+                        <img src={customImageUrl} alt="Video thumbnail" className="w-full h-full object-cover" />
+                      </div>
                     </div>
                   )}
                 </div>
@@ -189,10 +200,10 @@ export const CreateLink = ({
                </div>
             )}
             <div className="aspect-[12/6.3] bg-gray-100 flex items-center justify-center relative">
-              {videoUrl ? (
-                 <video src={videoUrl} muted autoPlay loop className="w-full h-full object-cover" />
-              ) : customImageUrl ? (
+              {customImageUrl ? (
                 <img src={customImageUrl} className="w-full h-full object-cover" />
+              ) : videoUrl ? (
+                 <video src={videoUrl} muted autoPlay loop className="w-full h-full object-cover" />
               ) : (
                 <ImageIcon size={48} className="text-gray-200" />
               )}
