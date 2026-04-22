@@ -493,12 +493,13 @@ export default function App() {
       sessionStorage.clear();
       
       console.log('🔄 [Auth] Redirecting after logout...');
-      // Force hard refresh to clear any cached sessions/states
-      window.location.replace(`${window.location.origin}${window.location.pathname}`);
+      console.log('[Auth] Logout completed.');
     } catch (e) {
       console.error('Logout error:', e);
       localStorage.clear();
-      window.location.reload();
+      sessionStorage.clear();
+      setUser(null);
+      setProfile(null);
     } finally {
       setAuthLoading(false);
     }
