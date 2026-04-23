@@ -8,6 +8,7 @@ export interface ConvertedLink {
   video_url?: string;
   created_at: string;
   user_id: string;
+  clicks?: number;
 }
 
 export interface UserProfile {
@@ -17,11 +18,18 @@ export interface UserProfile {
   avatar_url?: string;
   status?: string;
   role?: string;
-  subscription_plan?: 'free' | 'monthly' | 'yearly';
+  subscription_plan?: "free" | "monthly" | "yearly";
   subscription_expiry?: string;
 }
 
-export type Tab = 'dashboard' | 'pricing' | 'create' | 'list' | 'analytics' | 'admin' | 'profile';
+export type Tab =
+  | "dashboard"
+  | "pricing"
+  | "create"
+  | "list"
+  | "analytics"
+  | "admin"
+  | "profile";
 
 export interface LinkStats {
   totalLinks: number;

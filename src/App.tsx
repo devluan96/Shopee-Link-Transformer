@@ -1,30 +1,56 @@
-import React, { useState, useEffect, useRef, Suspense, lazy } from 'react';
-import { 
-  Zap, 
-  Clock,
-  Menu,
-} from 'lucide-react';
-import { supabase, logout, registerWithEmail, loginWithEmail, clearStoredSession } from './lib/supabase';
-import { Session, User } from '@supabase/supabase-js';
+import React, { useState, useEffect, useRef, Suspense, lazy } from "react";
+import { Zap, Clock, Menu } from "lucide-react";
+import {
+  supabase,
+  logout,
+  registerWithEmail,
+  loginWithEmail,
+  clearStoredSession,
+} from "./lib/supabase";
+import { Session, User } from "@supabase/supabase-js";
 
 // --- Types ---
-import { Toaster, toast } from 'sonner';
-import { ConvertedLink, UserProfile, Tab, LinkStats } from './types';
+import { Toaster, toast } from "sonner";
+import { ConvertedLink, UserProfile, Tab, LinkStats } from "./types";
 
 // --- Static Components ---
-import { Sidebar } from './components/layout/Sidebar';
-import { AuthScreen } from './components/auth/AuthScreen';
-import { PendingApproval } from './components/PendingApproval';
-import { Footer } from './components/layout/Footer';
+import { Sidebar } from "./components/layout/Sidebar";
+import { AuthScreen } from "./components/auth/AuthScreen";
+import { PendingApproval } from "./components/PendingApproval";
+import { Footer } from "./components/layout/Footer";
 
 // --- Lazy Loaded Components ---
-const Pricing = lazy(() => import('./components/Pricing').then(m => ({ default: m.Pricing })));
-const AdminPanel = lazy(() => import('./components/admin/AdminPanel').then(m => ({ default: m.AdminPanel })));
-const Overview = lazy(() => import('./components/dashboard/Overview').then(m => ({ default: m.Overview })));
-const Analytics = lazy(() => import('./components/dashboard/Analytics').then(m => ({ default: m.Analytics })));
-const CreateLink = lazy(() => import('./components/links/CreateLink').then(m => ({ default: m.CreateLink })));
-const LinkList = lazy(() => import('./components/links/LinkList').then(m => ({ default: m.LinkList })));
-const ProfileSettings = lazy(() => import('./components/profile/ProfileSettings').then(m => ({ default: m.ProfileSettings })));
+const Pricing = lazy(() =>
+  import("./components/Pricing").then((m) => ({ default: m.Pricing })),
+);
+const AdminPanel = lazy(() =>
+  import("./components/admin/AdminPanel").then((m) => ({
+    default: m.AdminPanel,
+  })),
+);
+const Overview = lazy(() =>
+  import("./components/dashboard/Overview").then((m) => ({
+    default: m.Overview,
+  })),
+);
+const Analytics = lazy(() =>
+  import("./components/dashboard/Analytics").then((m) => ({
+    default: m.Analytics,
+  })),
+);
+const CreateLink = lazy(() =>
+  import("./components/links/CreateLink").then((m) => ({
+    default: m.CreateLink,
+  })),
+);
+const LinkList = lazy(() =>
+  import("./components/links/LinkList").then((m) => ({ default: m.LinkList })),
+);
+const ProfileSettings = lazy(() =>
+  import("./components/profile/ProfileSettings").then((m) => ({
+    default: m.ProfileSettings,
+  })),
+);
 
 // Loading Component for Lazy Loading
 const TabLoading = () => (
@@ -37,32 +63,35 @@ export default function App() {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<Tab>('dashboard');
+  const [activeTab, setActiveTab] = useState<Tab>("dashboard");
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   // Email Auth State
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [isRegistering, setIsRegistering] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
-  
+
   // Create Link State
-  const [url, setUrl] = useState('');
-  const [customTitle, setCustomTitle] = useState('');
-  const [customDescription, setCustomDescription] = useState('');
-  const [customImageUrl, setCustomImageUrl] = useState('');
-  const [videoUrl, setVideoUrl] = useState('');
+  const [url, setUrl] = useState("");
+  const [customTitle, setCustomTitle] = useState("");
+  const [customDescription, setCustomDescription] = useState("");
+  const [customImageUrl, setCustomImageUrl] = useState("");
+  const [videoUrl, setVideoUrl] = useState("");
   const [uploadingVideo, setUploadingVideo] = useState(false);
   const [videoUploadSuccess, setVideoUploadSuccess] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<any>(null);
-  
+
   // List State
   const [links, setLinks] = useState<ConvertedLink[]>([]);
-  const [analyticsData, setAnalyticsData] = useState<{ history: any[], topLinks: any[] }>({ history: [], topLinks: [] });
+  const [analyticsData, setAnalyticsData] = useState<{
+    history: any[];
+    topLinks: any[];
+  }>({ history: [], topLinks: [] });
   const [listLoading, setListLoading] = useState(false);
-  const [searchTerm, setSearchTerm] = useState('');
+  const [searchTerm, setSearchTerm] = useState("");
 
   // Admin State
   const [allUsers, setAllUsers] = useState<UserProfile[]>([]);
@@ -70,13 +99,16 @@ export default function App() {
 
   // Global Copied State
   const [profileLoading, setProfileLoading] = useState(false);
+  const [checkoutLoadingPlan, setCheckoutLoadingPlan] = useState<
+    "monthly" | "yearly" | null
+  >(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
   const [stats, setStats] = useState<LinkStats>({
     totalLinks: 0,
     totalClicks: 0,
     recentClicks: [],
-    topLinks: []
+    topLinks: [],
   });
   const videoInputRef = useRef<HTMLInputElement>(null);
   const isLoggingOutRef = useRef(false);
@@ -84,9 +116,27 @@ export default function App() {
 
   useEffect(() => {
     const currentUrl = new URL(window.location.href);
-    if (currentUrl.searchParams.has('logout')) {
-      currentUrl.searchParams.delete('logout');
-      window.history.replaceState({}, document.title, `${currentUrl.pathname}${currentUrl.search}${currentUrl.hash}`);
+    const tabParam = currentUrl.searchParams.get("tab");
+
+    if (
+      tabParam === "dashboard" ||
+      tabParam === "pricing" ||
+      tabParam === "create" ||
+      tabParam === "list" ||
+      tabParam === "analytics" ||
+      tabParam === "admin" ||
+      tabParam === "profile"
+    ) {
+      setActiveTab(tabParam);
+    }
+
+    if (currentUrl.searchParams.has("logout")) {
+      currentUrl.searchParams.delete("logout");
+      window.history.replaceState(
+        {},
+        document.title,
+        `${currentUrl.pathname}${currentUrl.search}${currentUrl.hash}`,
+      );
     }
   }, []);
 
@@ -94,35 +144,48 @@ export default function App() {
   useEffect(() => {
     if (!import.meta.env.DEV) return;
 
-    const apiBase = '/api';
-    console.log('🔍 Diagnostic Info:', {
+    const apiBase = "/api";
+    console.log("🔍 Diagnostic Info:", {
       href: window.location.href,
       origin: window.location.origin,
-      pathname: window.location.pathname
+      pathname: window.location.pathname,
     });
 
     fetch(`${apiBase}/health`, {
-      headers: { 'Accept': 'application/json' }
+      headers: { Accept: "application/json" },
     })
-      .then(async r => {
+      .then(async (r) => {
         const text = await r.text();
         try {
           const json = JSON.parse(text);
-          console.log('✅ API Health:', json);
+          console.log("✅ API Health:", json);
         } catch (e) {
-          console.error('❌ API Reachability issue (Not JSON):', text.substring(0, 200));
+          console.error(
+            "❌ API Reachability issue (Not JSON):",
+            text.substring(0, 200),
+          );
         }
       })
-      .catch(e => console.error('❌ API Reachability issue (Network):', e));
+      .catch((e) => console.error("❌ API Reachability issue (Network):", e));
   }, []);
 
   // Fetch Analytics
   useEffect(() => {
     window.onerror = (message, source, lineno, colno, error) => {
-      console.error('🔴 [Global Error]:', message, 'at', source, ':', lineno, ':', colno, error);
+      console.error(
+        "🔴 [Global Error]:",
+        message,
+        "at",
+        source,
+        ":",
+        lineno,
+        ":",
+        colno,
+        error,
+      );
     };
     window.onunhandledrejection = (event) => {
-      console.error('🟠 [Unhandled Rejection]:', event.reason);
+      console.error("🟠 [Unhandled Rejection]:", event.reason);
     };
   }, []);
 
@@ -137,7 +200,9 @@ export default function App() {
       }
     }
 
-    const { data: { session } } = await supabase.auth.getSession();
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
     sessionRef.current = session ?? null;
     if (session?.access_token) {
       const expiresAt = session.expires_at ?? 0;
@@ -148,7 +213,7 @@ export default function App() {
 
     const { data: refreshed, error } = await supabase.auth.refreshSession();
     if (error) {
-      console.error('[Auth] refreshSession failed:', error);
+      console.error("[Auth] refreshSession failed:", error);
       return null;
     }
 
@@ -156,46 +221,54 @@ export default function App() {
     return refreshed.session?.access_token ?? null;
   };
 
-  const fetchWithAuth = async (input: RequestInfo | URL, init: RequestInit = {}) => {
+  const fetchWithAuth = async (
+    input: RequestInfo | URL,
+    init: RequestInit = {},
+  ) => {
     const token = await getAccessToken();
     if (!token) {
-      throw new Error('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.');
+      throw new Error("Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.");
     }
 
     const headers = new Headers(init.headers ?? {});
-    headers.set('Authorization', `Bearer ${token}`);
+    headers.set("Authorization", `Bearer ${token}`);
 
-    if (!(init.body instanceof FormData) && init.body && !headers.has('Content-Type')) {
-      headers.set('Content-Type', 'application/json');
+    if (
+      !(init.body instanceof FormData) &&
+      init.body &&
+      !headers.has("Content-Type")
+    ) {
+      headers.set("Content-Type", "application/json");
     }
 
     let response = await fetch(input, {
       ...init,
-      headers
+      headers,
     });
 
     if (response.status === 401) {
-      const { data: refreshed, error: refreshError } = await supabase.auth.refreshSession();
+      const { data: refreshed, error: refreshError } =
+        await supabase.auth.refreshSession();
       const refreshedToken = refreshed.session?.access_token;
 
       if (!refreshError && refreshedToken) {
-        headers.set('Authorization', `Bearer ${refreshedToken}`);
+        headers.set("Authorization", `Bearer ${refreshedToken}`);
         response = await fetch(input, {
           ...init,
-          headers
+          headers,
         });
       }
     }
 
     if (!response.ok) {
       let errorMessage = `Request failed with status ${response.status}`;
-      const contentType = response.headers.get('content-type') ?? '';
+      const contentType = response.headers.get("content-type") ?? "";
 
-      if (contentType.includes('application/json')) {
+      if (contentType.includes("application/json")) {
         const errorData = await response.json().catch(() => null);
         errorMessage = errorData?.error || errorData?.message || errorMessage;
       } else {
-        const text = await response.text().catch(() => '');
+        const text = await response.text().catch(() => "");
         if (text) errorMessage = text;
       }
 
@@ -218,20 +291,20 @@ export default function App() {
   const fetchAnalytics = async () => {
     if (!user) return;
     try {
-      console.log('📡 Fetching analytics for user:', user.id);
-      const res = await fetchWithAuth('/api/v1/user/analytics');
+      console.log("📡 Fetching analytics for user:", user.id);
+      const res = await fetchWithAuth("/api/v1/user/analytics");
       const data = await res.json();
-      console.log('📊 Analytics data received:', data);
+      console.log("📊 Analytics data received:", data);
       setAnalyticsData(data);
     } catch (e: any) {
-      console.error('Fetch analytics fail:', e?.message || e);
-      toast.error('Không thể tải dữ liệu phân tích. Vui lòng thử lại sau.');
+      console.error("Fetch analytics fail:", e?.message || e);
+      toast.error("Không thể tải dữ liệu phân tích. Vui lòng thử lại sau.");
     }
   };
 
   useEffect(() => {
-    if (activeTab === 'analytics') {
-      console.log('📊 Active tab changed to analytics, fetching...');
+    if (activeTab === "analytics") {
+      console.log("📊 Active tab changed to analytics, fetching...");
       fetchAnalytics();
     }
   }, [activeTab, user]);
@@ -241,43 +314,63 @@ export default function App() {
     const shouldRetryProfileFetch = (err: unknown) => {
       if (!navigator.onLine) return false;
       if (err instanceof TypeError) return true;
-      const status = typeof err === 'object' && err !== null ? (err as { status?: number }).status : undefined;
-      return status === 408 || status === 425 || status === 429 || (typeof status === 'number' && status >= 500);
+      const status =
+        typeof err === "object" && err !== null
+          ? (err as { status?: number }).status
+          : undefined;
+      return (
+        status === 408 ||
+        status === 425 ||
+        status === 429 ||
+        (typeof status === "number" && status >= 500)
+      );
     };
 
     const checkInitialSession = async () => {
-      console.log('🔍 [Listener] Running explicit session check...');
+      console.log("🔍 [Listener] Running explicit session check...");
       try {
-        const { data: { session } } = await supabase.auth.getSession();
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
         sessionRef.current = session ?? null;
         if (session?.user) {
-          console.log('✅ [Listener] Initial session found via getSession:', session.user.id);
+          console.log(
+            "✅ [Listener] Initial session found via getSession:",
+            session.user.id,
+          );
           setUser(session.user);
         }
       } catch (err) {
-        console.error('❌ [Listener] Initial session check error:', err);
+        console.error("❌ [Listener] Initial session check error:", err);
       }
     };
 
     // Auth Listener
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log('🔄 [Listener] Auth State Changed:', event, 'User present:', !!session?.user);
-      
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log(
+        "🔄 [Listener] Auth State Changed:",
+        event,
+        "User present:",
+        !!session?.user,
+      );
+
       sessionRef.current = session ?? null;
-      if (event === 'INITIAL_SESSION' && !session) {
-         setUser(null);
-         setProfile(null);
-         setAuthLoading(false);
-         return;
-         console.log('ℹ️ [Listener] No initial session found.');
+      if (event === "INITIAL_SESSION" && !session) {
+        setUser(null);
+        setProfile(null);
+        setAuthLoading(false);
+        return;
+        console.log("ℹ️ [Listener] No initial session found.");
       }
 
-      if (event === 'SIGNED_OUT') {
+      if (event === "SIGNED_OUT") {
         isLoggingOutRef.current = false;
         sessionRef.current = null;
         setUser(null);
         setProfile(null);
-        setActiveTab('dashboard');
+        setActiveTab("dashboard");
         setIsSidebarOpen(false);
         setAuthLoading(false);
         return;
@@ -285,60 +378,84 @@ export default function App() {
 
       const currentUser = session?.user ?? null;
       setUser(currentUser);
-      
+
       if (currentUser) {
         try {
           // 🔍 Fetch existing profile carefully via proxy with retries
           let existingProfile = null;
-          const fetchWithRetry = async (url: string, retries = 3, delay = 1000): Promise<any> => {
+          const fetchWithRetry = async (
+            url: string,
+            retries = 3,
+            delay = 1000,
+          ): Promise<any> => {
             for (let i = 0; i < retries; i++) {
               try {
                 const res = await fetchWithAuth(url);
                 if (res.ok) return await res.json();
                 if (res.status === 404) return null; // No profile yet
               } catch (err) {
-                if (i === retries - 1 || !shouldRetryProfileFetch(err)) throw err;
-                console.warn(`⏳ Fetch failed, retrying in ${delay}ms... (${i + 1}/${retries})`);
-                await new Promise(r => setTimeout(r, delay));
+                if (i === retries - 1 || !shouldRetryProfileFetch(err))
+                  throw err;
+                console.warn(
+                  `⏳ Fetch failed, retrying in ${delay}ms... (${i + 1}/${retries})`,
+                );
+                await new Promise((r) => setTimeout(r, delay));
               }
             }
           };
 
           try {
-             const profileUrl = `${window.location.origin}/api/v1/user/profile`;
-             console.log('📡 Fetching profile via:', profileUrl);
-             existingProfile = await fetchWithRetry(profileUrl);
-             if (existingProfile) console.log('✅ Profile fetch success');
+            const profileUrl = `${window.location.origin}/api/v1/user/profile`;
+            console.log("📡 Fetching profile via:", profileUrl);
+            existingProfile = await fetchWithRetry(profileUrl);
+            if (existingProfile) console.log("✅ Profile fetch success");
           } catch (fetchError: any) {
-            console.error('❌ Error fetching profile via proxy:', fetchError);
+            console.error("❌ Error fetching profile via proxy:", fetchError);
             // Fallback to client-side fetch if proxy fails (though RLS might be an issue)
             try {
-               const { data } = await supabase.from('profiles').select('*').eq('id', currentUser.id).maybeSingle();
-               if (data) existingProfile = data;
+              const { data } = await supabase
+                .from("profiles")
+                .select("*")
+                .eq("id", currentUser.id)
+                .maybeSingle();
+              if (data) existingProfile = data;
             } catch (fallbackError) {
-               console.error('❌ Fallback profile fetch also failed');
+              console.error("❌ Fallback profile fetch also failed");
             }
           }
 
           if (!existingProfile) {
-            console.log('📝 Profile not found in DB. Creating initial record...');
-            
+            console.log(
+              "📝 Profile not found in DB. Creating initial record...",
+            );
+
             // Generate standard defaults
-            const defaultName = currentUser.user_metadata?.full_name || currentUser.email?.split('@')[0] || 'User';
-            const defaultAvatar = currentUser.user_metadata?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${currentUser.id}`;
-            
+            const defaultName =
+              currentUser.user_metadata?.full_name ||
+              currentUser.email?.split("@")[0] ||
+              "User";
+            const defaultAvatar =
+              currentUser.user_metadata?.avatar_url ||
+              `https://api.dicebear.com/7.x/avataaars/svg?seed=${currentUser.id}`;
+
             // Use server update proxy to insert initial data securely
-            const insertRes = await fetchWithAuth('/api/v1/user/profile/update', {
-              method: 'POST',
-              body: JSON.stringify({
-                full_name: defaultName,
-                avatar_url: defaultAvatar
-              })
-            });
+            const insertRes = await fetchWithAuth(
+              "/api/v1/user/profile/update",
+              {
+                method: "POST",
+                body: JSON.stringify({
+                  full_name: defaultName,
+                  avatar_url: defaultAvatar,
+                }),
+              },
+            );
             const newProfile = await insertRes.json();
             setProfile(newProfile as UserProfile);
           } else {
-            console.log('✅ Profile found and loaded:', existingProfile.full_name);
+            console.log(
+              "✅ Profile found and loaded:",
+              existingProfile.full_name,
+            );
             setProfile(existingProfile as UserProfile);
           }
 
@@ -346,19 +463,22 @@ export default function App() {
           if (profileChannel) supabase.removeChannel(profileChannel);
           profileChannel = supabase
             .channel(`profile-${currentUser.id}`)
-            .on('postgres_changes', { 
-              event: 'UPDATE', 
-              schema: 'public', 
-              table: 'profiles', 
-              filter: `id=eq.${currentUser.id}` 
-            }, payload => {
-              console.log('🔔 Profile updated via Realtime:', payload.new);
-              setProfile(payload.new as UserProfile);
-            })
+            .on(
+              "postgres_changes",
+              {
+                event: "UPDATE",
+                schema: "public",
+                table: "profiles",
+                filter: `id=eq.${currentUser.id}`,
+              },
+              (payload) => {
+                console.log("🔔 Profile updated via Realtime:", payload.new);
+                setProfile(payload.new as UserProfile);
+              },
+            )
             .subscribe();
-
         } catch (e) {
-          console.error('Profile sync error:', e);
+          console.error("Profile sync error:", e);
         } finally {
           setAuthLoading(false);
         }
@@ -375,8 +495,8 @@ export default function App() {
 
     // Safety timeout: stop loading if no event fired in 5s
     const timer = setTimeout(() => {
-      setAuthLoading(prev => {
-        if (prev) console.warn('⚠️ Auth loading safety timeout triggered');
+      setAuthLoading((prev) => {
+        if (prev) console.warn("⚠️ Auth loading safety timeout triggered");
         return false;
       });
     }, 5000);
@@ -396,28 +516,30 @@ export default function App() {
 
   // Sync Tabs based on Admin
   useEffect(() => {
-    const isAdminRole = profile?.role === 'admin' || user?.email === 'devluan1996@gmail.com';
-    if (activeTab === 'admin' && !isAdminRole) {
-      setActiveTab('dashboard');
+    const isAdminRole =
+      profile?.role === "admin" || user?.email === "devluan1996@gmail.com";
+    if (activeTab === "admin" && !isAdminRole) {
+      setActiveTab("dashboard");
     }
   }, [profile, user, activeTab]);
 
   // Fetch Data
   useEffect(() => {
-    const isAdminRole = profile?.role === 'admin' || user?.email === 'devluan1996@gmail.com';
-    const isApproved = profile?.status === 'approved' || isAdminRole;
-    
+    const isAdminRole =
+      profile?.role === "admin" || user?.email === "devluan1996@gmail.com";
+    const isApproved = profile?.status === "approved" || isAdminRole;
+
     if (user && isApproved) {
-      if (activeTab === 'list') fetchLinks();
-      if (activeTab === 'dashboard') fetchStats();
-      if (activeTab === 'admin' && isAdminRole) fetchAllUsers();
+      if (activeTab === "list") fetchLinks();
+      if (activeTab === "dashboard") fetchStats();
+      if (activeTab === "admin" && isAdminRole) fetchAllUsers();
     }
   }, [user, profile, activeTab]);
 
   const fetchStats = async () => {
     if (!user) return;
     try {
-      const response = await fetchWithAuth('/api/v1/user/stats');
+      const response = await fetchWithAuth("/api/v1/user/stats");
       const data = await response.json();
       setStats(data);
     } catch (e) {
@@ -429,7 +551,7 @@ export default function App() {
     if (!user) return;
     setListLoading(true);
     try {
-      const response = await fetchWithAuth('/api/v1/user/links');
+      const response = await fetchWithAuth("/api/v1/user/links");
       const data = await response.json();
       setLinks(data);
     } catch (e) {
@@ -443,7 +565,7 @@ export default function App() {
     if (!user) return;
     setAdminLoading(true);
     try {
-      const response = await fetchWithAuth('/api/v1/admin/users');
+      const response = await fetchWithAuth("/api/v1/admin/users");
       const data = await response.json();
       setAllUsers(data);
     } catch (e) {
@@ -453,53 +575,81 @@ export default function App() {
     }
   };
 
-  const handleApproveUser = async (targetUid: string, status: boolean = true) => {
+  const refreshCurrentProfile = async () => {
+    if (!user) return null;
+
+    const response = await fetchWithAuth("/api/v1/user/profile");
+    const data = await response.json();
+
+    if (data && !data.is_new) {
+      setProfile(data as UserProfile);
+      return data as UserProfile;
+    }
+
+    return null;
+  };
+
+  const handleApproveUser = async (
+    targetUid: string,
+    status: boolean = true,
+  ) => {
     if (!user) return;
     try {
-      const response = await fetchWithAuth(`/api/v1/admin/users/${targetUid}/approve`, {
-        method: 'POST',
-        body: JSON.stringify({ isApproved: status }),
-      });
+      const response = await fetchWithAuth(
+        `/api/v1/admin/users/${targetUid}/approve`,
+        {
+          method: "POST",
+          body: JSON.stringify({ isApproved: status }),
+        },
+      );
       if (response.ok) {
         fetchAllUsers();
-        toast.success(status ? 'Đã duyệt người dùng!' : 'Đã hủy duyệt người dùng!');
+        toast.success(
+          status ? "Đã duyệt người dùng!" : "Đã hủy duyệt người dùng!",
+        );
       } else {
-        toast.error('Lỗi khi cập nhật trạng thái duyệt');
+        toast.error("Lỗi khi cập nhật trạng thái duyệt");
       }
     } catch (e) {
       console.error(e);
-      toast.error('Lỗi hệ thống');
+      toast.error("Lỗi hệ thống");
     }
   };
 
-  const handleUpdateSubscription = async (targetUid: string, plan: 'free' | 'monthly' | 'yearly') => {
+  const handleUpdateSubscription = async (
+    targetUid: string,
+    plan: "free" | "monthly" | "yearly",
+  ) => {
     if (!user) return;
     try {
       // Calculate expiry
       let expiry = null;
-      if (plan === 'monthly') {
+      if (plan === "monthly") {
         const d = new Date();
         d.setDate(d.getDate() + 30);
         expiry = d.toISOString();
-      } else if (plan === 'yearly') {
+      } else if (plan === "yearly") {
         const d = new Date();
         d.setFullYear(d.getFullYear() + 1);
         expiry = d.toISOString();
       }
 
-      const response = await fetchWithAuth(`/api/v1/admin/users/${targetUid}/subscription`, {
-        method: 'POST',
-        body: JSON.stringify({ plan, expiry }),
-      });
+      const response = await fetchWithAuth(
+        `/api/v1/admin/users/${targetUid}/subscription`,
+        {
+          method: "POST",
+          body: JSON.stringify({ plan, expiry }),
+        },
+      );
       if (response.ok) {
         fetchAllUsers();
         toast.success(`Đã cập nhật gói ${plan.toUpperCase()} thành công!`);
       } else {
-        toast.error('Không thể cập nhật gói cước');
+        toast.error("Không thể cập nhật gói cước");
       }
     } catch (e) {
       console.error(e);
-      toast.error('Lỗi hệ thống khi cập nhật gói');
+      toast.error("Lỗi hệ thống khi cập nhật gói");
     }
   };
 
@@ -507,75 +657,83 @@ export default function App() {
     if (!user) return;
     try {
       const response = await fetchWithAuth(`/api/v1/admin/users/${targetUid}`, {
-        method: 'DELETE'
+        method: "DELETE",
       });
       if (response.ok) {
         fetchAllUsers();
-        toast.success('Đã xóa người dùng và dữ liệu liên quan thành công!');
+        toast.success("Đã xóa người dùng và dữ liệu liên quan thành công!");
       } else {
-        toast.error('Lỗi khi xóa người dùng');
+        toast.error("Lỗi khi xóa người dùng");
       }
     } catch (e) {
       console.error(e);
-      toast.error('Lỗi kết nối máy chủ khi xóa');
+      toast.error("Lỗi kết nối máy chủ khi xóa");
     }
   };
 
   const handleVideoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    console.log('🎬 Video input change detected:', file?.name, file?.size);
+    console.log("🎬 Video input change detected:", file?.name, file?.size);
     if (!file) return;
 
     if (!canAccessCreate) {
-      toast.error('Vui lòng nâng cấp tài khoản để sử dụng tính năng upload video!');
-      e.target.value = ''; // Reset input
+      toast.error(
+        "Vui lòng nâng cấp tài khoản để sử dụng tính năng upload video!",
+      );
+      e.target.value = ""; // Reset input
       return;
     }
 
     setUploadingVideo(true);
     setError(null);
     const formData = new FormData();
-    formData.append('file', file);
+    formData.append("file", file);
 
-    const uploadUrl = '/api/v1/upload-video';
-    console.log('🚀 Attempting POST to:', uploadUrl);
+    const uploadUrl = "/api/v1/upload-video";
+    console.log("🚀 Attempting POST to:", uploadUrl);
 
     try {
       const response = await fetchWithAuth(uploadUrl, {
-        method: 'POST',
-        headers: { 'Accept': 'application/json' },
+        method: "POST",
+        headers: { Accept: "application/json" },
         body: formData,
       });
 
-      console.log('📡 Response received:', response.status, response.statusText);
+      console.log(
+        "📡 Response received:",
+        response.status,
+        response.statusText,
+      );
 
       if (!response.ok) {
         const errorText = await response.text();
-        console.error('❌ Server returned error:', errorText);
-        throw new Error(`Server error (${response.status}): ${errorText.substring(0, 100)}`);
+        console.error("❌ Server returned error:", errorText);
+        throw new Error(
+          `Server error (${response.status}): ${errorText.substring(0, 100)}`,
+        );
       }
 
       const data = await response.json();
-      console.log('✅ Upload Success Data:', data);
+      console.log("✅ Upload Success Data:", data);
       if (data.secure_url) {
         setVideoUrl(data.secure_url);
         setVideoUploadSuccess(true);
         setTimeout(() => setVideoUploadSuccess(false), 5000); // Hide success after 5s
         setError(null);
-        
+
         // Auto-generate thumbnail if not present
         try {
           const thumbUrl = await captureVideoThumbnail(data.secure_url);
           setCustomImageUrl(thumbUrl);
         } catch (e) {
-          console.error('Auto-thumb capture failed', e);
+          console.error("Auto-thumb capture failed", e);
         }
       } else if (data.error) {
         setError(`Lỗi Cloudinary: ${data.error.message}`);
       }
     } catch (err: any) {
-      console.error('Video upload failed', err);
-      setError(`Lỗi tải video: ${err.message || 'Không xác định'}`);
+      console.error("Video upload failed", err);
+      setError(`Lỗi tải video: ${err.message || "Không xác định"}`);
     } finally {
       setUploadingVideo(false);
     }
@@ -586,7 +744,7 @@ export default function App() {
 
     isLoggingOutRef.current = true;
     setIsSidebarOpen(false);
-    setActiveTab('dashboard');
+    setActiveTab("dashboard");
     setAuthError(null);
     setUser(null);
     setProfile(null);
@@ -596,7 +754,7 @@ export default function App() {
       totalLinks: 0,
       totalClicks: 0,
       recentClicks: [],
-      topLinks: []
+      topLinks: [],
     });
     setAnalyticsData({ history: [], topLinks: [] });
     setListLoading(false);
@@ -605,22 +763,22 @@ export default function App() {
 
     try {
       setAuthLoading(false);
-      console.log('🚪 [Auth] Logging out...');
-      
+      console.log("🚪 [Auth] Logging out...");
+
       // Aggressive logout
       await logout();
       clearStoredSession();
-      
+
       // Clear all local states
       setUser(null);
       setProfile(null);
-      
+
       // Clear browser storage to ensure no stale tokens
-      
-      console.log('🔄 [Auth] Redirecting after logout...');
-      console.log('[Auth] Logout completed.');
+
+      console.log("🔄 [Auth] Redirecting after logout...");
+      console.log("[Auth] Logout completed.");
     } catch (e) {
-      console.error('Logout error:', e);
+      console.error("Logout error:", e);
       clearStoredSession();
       setUser(null);
       setProfile(null);
@@ -632,47 +790,53 @@ export default function App() {
 
   const captureVideoThumbnail = async (vUrl: string): Promise<string> => {
     return new Promise((resolve, reject) => {
-      const video = document.createElement('video');
+      const video = document.createElement("video");
       video.src = vUrl;
-      video.crossOrigin = 'anonymous';
+      video.crossOrigin = "anonymous";
       video.muted = true;
       video.playsInline = true;
       video.playbackRate = 16; // Skip forward faster
-      
+
       video.onloadeddata = () => {
         video.currentTime = 1.5; // Capture at 1.5s
       };
 
       video.onseeked = () => {
-        const canvas = document.createElement('canvas');
+        const canvas = document.createElement("canvas");
         canvas.width = video.videoWidth;
         canvas.height = video.videoHeight;
-        const ctx = canvas.getContext('2d');
-        if (!ctx) return reject('No context');
+        const ctx = canvas.getContext("2d");
+        if (!ctx) return reject("No context");
         ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-        
-        canvas.toBlob(async (blob) => {
-          if (!blob) return reject('Blob failed');
-          const thumbFormData = new FormData();
-          thumbFormData.append('file', blob, 'thumb.jpg');
-          
-          try {
-            const res = await fetchWithAuth('/api/v1/upload-video', {
-              method: 'POST',
-              body: thumbFormData
-            });
-            
-            if (!res.ok) {
-              const text = await res.text();
-              throw new Error(`Thumbnail upload failed (${res.status}): ${text.substring(0, 50)}`);
-            }
 
-            const data = await res.json();
-            resolve(data.secure_url);
-          } catch (e) {
-            reject(e);
-          }
-        }, 'image/jpeg', 0.85);
+        canvas.toBlob(
+          async (blob) => {
+            if (!blob) return reject("Blob failed");
+            const thumbFormData = new FormData();
+            thumbFormData.append("file", blob, "thumb.jpg");
+
+            try {
+              const res = await fetchWithAuth("/api/v1/upload-video", {
+                method: "POST",
+                body: thumbFormData,
+              });
+
+              if (!res.ok) {
+                const text = await res.text();
+                throw new Error(
+                  `Thumbnail upload failed (${res.status}): ${text.substring(0, 50)}`,
+                );
+              }
+
+              const data = await res.json();
+              resolve(data.secure_url);
+            } catch (e) {
+              reject(e);
+            }
+          },
+          "image/jpeg",
+          0.85,
+        );
       };
 
       video.onerror = (e) => reject(e);
@@ -685,7 +849,7 @@ export default function App() {
     if (!url.trim() || !user) return;
 
     if (!canAccessCreate) {
-      toast.error('Vui lòng nâng cấp tài khoản để sử dụng tính năng tạo link!');
+      toast.error("Vui lòng nâng cấp tài khoản để sử dụng tính năng tạo link!");
       return;
     }
 
@@ -694,25 +858,25 @@ export default function App() {
     setResult(null);
 
     try {
-      const response = await fetchWithAuth('/api/v1/convert', {
-        method: 'POST',
-        body: JSON.stringify({ 
+      const response = await fetchWithAuth("/api/v1/convert", {
+        method: "POST",
+        body: JSON.stringify({
           url: url.trim(),
           customTitle,
           customDescription,
           customImageUrl,
-          videoUrl
+          videoUrl,
         }),
       });
 
       const data = await response.json();
-      if (!response.ok) throw new Error(data.error || 'Conversion failed');
+      if (!response.ok) throw new Error(data.error || "Conversion failed");
 
       setResult({
         ...data,
-        short_code: data.short_code ?? data.shortCode
+        short_code: data.short_code ?? data.shortCode,
       });
-      if (activeTab === 'dashboard') fetchStats();
+      if (activeTab === "dashboard") fetchStats();
       // Clear inputs
       // setUrl(''); setCustomTitle(''); setCustomDescription(''); setCustomImageUrl(''); setVideoUrl('');
     } catch (err: any) {
@@ -733,70 +897,169 @@ export default function App() {
     }
   };
 
+  const handleDeleteLink = async (id: string) => {
+    try {
+      const res = await fetchWithAuth(`/api/v1/user/links/${id}`, {
+        method: "DELETE",
+      });
+      if (!res.ok) throw new Error("Delete failed");
+      setLinks((prev) => prev.filter((l) => l.id !== id));
+      toast.success("Đã xóa link thành công!");
+    } catch (e: any) {
+      toast.error("Lỗi khi xóa link: " + e.message);
+    }
+  };
+
+  const handleUpdateLink = async (id: string, data: Partial<ConvertedLink>) => {
+    try {
+      const res = await fetchWithAuth(`/api/v1/user/links/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+      if (!res.ok) throw new Error("Update failed");
+      const updated = await res.json();
+      // Update links list with click count preserved
+      setLinks((prev) =>
+        prev.map((l) => (l.id === id ? { ...l, ...updated } : l)),
+      );
+      toast.success("Đã cập nhật link thành công!");
+    } catch (e: any) {
+      toast.error("Lỗi khi cập nhật link: " + e.message);
+    }
+  };
+
+  const handleCreateZaloPayOrder = async (plan: "monthly" | "yearly") => {
+    setCheckoutLoadingPlan(plan);
+    try {
+      const res = await fetchWithAuth("/api/v1/billing/zalopay/create-order", {
+        method: "POST",
+        body: JSON.stringify({ plan }),
+      });
+      const resultData = await res.json();
+
+      if (!res.ok) {
+        throw new Error(resultData.error || "Khong the tao don thanh toan");
+      }
+
+      if (!resultData.order_url) {
+        throw new Error("ZaloPay khong tra ve link thanh toan");
+      }
+
+      window.location.href = resultData.order_url;
+    } catch (e: any) {
+      toast.error(e.message || "Loi khi khoi tao thanh toan ZaloPay");
+      setCheckoutLoadingPlan(null);
+    }
+  };
+
+  const handleCheckZaloPayStatus = async (appTransId: string) => {
+    try {
+      const res = await fetchWithAuth(
+        `/api/v1/billing/zalopay/status/${encodeURIComponent(appTransId)}`,
+      );
+      const resultData = await res.json();
+
+      if (!res.ok) {
+        throw new Error(
+          resultData.error || "Khong the kiem tra trang thai thanh toan",
+        );
+      }
+
+      if (resultData.paid) {
+        await refreshCurrentProfile();
+        toast.success("Thanh toan thanh cong. Goi dich vu da duoc kich hoat.");
+        return { paid: true, processing: false };
+      }
+
+      if (resultData.processing) {
+        toast.message(
+          "Giao dich dang duoc xu ly. Vui long doi it phut roi kiem tra lai.",
+        );
+        return { paid: false, processing: true };
+      }
+
+      toast.error("Thanh toan chua hoan tat hoac da that bai.");
+      return { paid: false, processing: false };
+    } catch (e: any) {
+      toast.error(e.message || "Khong the kiem tra giao dich ZaloPay");
+      return { paid: false, processing: false };
+    }
+  };
+
   const handleAvatarUpload = async (file: File) => {
     if (!user) {
-      console.error('❌ Avatar upload failed: No authenticated user found');
+      console.error("❌ Avatar upload failed: No authenticated user found");
       return null;
     }
-    
-    try {
-      console.log('🚀 Starting Server-side Avatar upload proxy...');
-      
-      const formData = new FormData();      formData.append('file', file);
 
-      const res = await fetchWithAuth('/api/v1/upload-avatar', {
-        method: 'POST',
-        body: formData
+    try {
+      console.log("🚀 Starting Server-side Avatar upload proxy...");
+
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const res = await fetchWithAuth("/api/v1/upload-avatar", {
+        method: "POST",
+        body: formData,
       });
 
-      const contentType = res.headers.get('content-type');
-      if (!contentType || !contentType.includes('application/json')) {
+      const contentType = res.headers.get("content-type");
+      if (!contentType || !contentType.includes("application/json")) {
         const text = await res.text();
-        console.error('❌ Server returned non-JSON response:', text.slice(0, 500));
-        throw new Error(`Server returned ${res.status} ${res.statusText}. Check console for details.`);
+        console.error(
+          "❌ Server returned non-JSON response:",
+          text.slice(0, 500),
+        );
+        throw new Error(
+          `Server returned ${res.status} ${res.statusText}. Check console for details.`,
+        );
       }
 
       const data = await res.json();
-      
+
       if (!res.ok) {
-        throw new Error(data.error || 'Server upload failed');
+        throw new Error(data.error || "Server upload failed");
       }
 
-      console.log('🔗 Proxy Upload Result:', data.secure_url);
+      console.log("🔗 Proxy Upload Result:", data.secure_url);
       return data.secure_url;
     } catch (e: any) {
-      console.error('❌ Proxy Avatar upload catch:', e);
-      alert('Lỗi tải ảnh qua Server: ' + (e.message || 'Lỗi không xác định'));
+      console.error("❌ Proxy Avatar upload catch:", e);
+      alert("Lỗi tải ảnh qua Server: " + (e.message || "Lỗi không xác định"));
       return null;
     }
   };
 
-  const handleUpdateProfile = async (data: { full_name: string; avatar_url: string }) => {
+  const handleUpdateProfile = async (data: {
+    full_name: string;
+    avatar_url: string;
+  }) => {
     if (!user) {
-      toast.error('Bạn chưa đăng nhập!');
+      toast.error("Bạn chưa đăng nhập!");
       return;
     }
-    
+
     setProfileLoading(true);
     try {
-      const res = await fetchWithAuth('/api/v1/user/profile/update', {
-        method: 'POST',
+      const res = await fetchWithAuth("/api/v1/user/profile/update", {
+        method: "POST",
         body: JSON.stringify({
           full_name: data.full_name,
-          avatar_url: data.avatar_url
-        })
+          avatar_url: data.avatar_url,
+        }),
       });
 
       const resultData = await res.json();
 
       if (!res.ok) {
-        throw new Error(resultData.error || 'Lỗi cập nhật hồ sơ');
+        throw new Error(resultData.error || "Lỗi cập nhật hồ sơ");
       }
-      
+
       setProfile(resultData as UserProfile);
-      toast.success('Cập nhật thông tin thành công!');
+      toast.success("Cập nhật thông tin thành công!");
     } catch (e: any) {
-      toast.error(e.message || 'Lỗi hệ thống');
+      toast.error(e.message || "Lỗi hệ thống");
     } finally {
       setProfileLoading(false);
     }
@@ -817,16 +1080,16 @@ export default function App() {
     const handleEmailAuth = async (e: React.FormEvent) => {
       e.preventDefault();
       if (loading) return;
-      
-      console.log('🚀 [Auth] Starting login attempt for:', email);
+
+      console.log("🚀 [Auth] Starting login attempt for:", email);
       setAuthError(null);
       setLoading(true);
 
       // Safety timeout for the spinner
       const safetyTimer = setTimeout(() => {
-        setLoading(prev => {
+        setLoading((prev) => {
           if (prev) {
-            console.warn('⚠️ [Auth] Login taking too long, resetting spinner');
+            console.warn("⚠️ [Auth] Login taking too long, resetting spinner");
             return false;
           }
           return prev;
@@ -835,26 +1098,26 @@ export default function App() {
 
       try {
         if (isRegistering) {
-          console.log('📝 [Auth] Calling registerWithEmail...');
+          console.log("📝 [Auth] Calling registerWithEmail...");
           const user = await registerWithEmail(email, password);
-          console.log('✅ [Auth] Register success:', user?.id);
+          console.log("✅ [Auth] Register success:", user?.id);
         } else {
-          console.log('🔑 [Auth] Calling loginWithEmail...');
+          console.log("🔑 [Auth] Calling loginWithEmail...");
           const user = await loginWithEmail(email, password);
-          console.log('✅ [Auth] Login success:', user?.id);
+          console.log("✅ [Auth] Login success:", user?.id);
         }
       } catch (err: any) {
-        console.error('❌ [Auth] Email auth error:', err);
-        setAuthError(err.message || 'Authentication failed');
+        console.error("❌ [Auth] Email auth error:", err);
+        setAuthError(err.message || "Authentication failed");
       } finally {
         clearTimeout(safetyTimer);
-        console.log('🏁 [Auth] Email auth finished, resetting loading');
+        console.log("🏁 [Auth] Email auth finished, resetting loading");
         setLoading(false);
       }
     };
 
     return (
-      <AuthScreen 
+      <AuthScreen
         isRegistering={isRegistering}
         setIsRegistering={setIsRegistering}
         email={email}
@@ -869,18 +1132,20 @@ export default function App() {
     );
   }
 
-  const isAdminRole = profile?.role === 'admin' || user?.email === 'devluan1996@gmail.com';
-  const hasSub = profile?.subscription_plan && profile.subscription_plan !== 'free';
-  const canAccessCreate = isAdminRole || hasSub;
+  const isAdminRole =
+    profile?.role === "admin" || user?.email === "devluan1996@gmail.com";
+  const hasSub =
+    profile?.subscription_plan && profile.subscription_plan !== "free";
+  const canAccessCreate = !!(isAdminRole || hasSub);
 
-  if (profile && profile.status !== 'approved' && !isAdminRole) {
+  if (profile && profile.status !== "approved" && !isAdminRole) {
     return <PendingApproval handleLogout={handleLogout} />;
   }
 
   return (
     <div className="min-h-screen bg-slate-50 lg:flex font-sans relative">
       <Toaster position="top-right" richColors />
-      <Sidebar 
+      <Sidebar
         activeTab={activeTab}
         setActiveTab={(tab) => {
           setActiveTab(tab);
@@ -898,9 +1163,11 @@ export default function App() {
       <div className="lg:hidden bg-white border-b border-gray-100 px-6 py-4 flex items-center justify-between sticky top-0 z-30">
         <div className="flex items-center gap-2">
           <Zap className="text-orange-600 w-5 h-5 fill-current" />
-          <span className="font-black text-gray-900 tracking-tight">HotsNew</span>
+          <span className="font-black text-gray-900 tracking-tight">
+            HotsNew
+          </span>
         </div>
-        <button 
+        <button
           onClick={() => setIsSidebarOpen(true)}
           className="p-2 text-gray-500 hover:text-gray-900 transition-colors"
         >
@@ -910,57 +1177,74 @@ export default function App() {
 
       <main className="flex-1 p-6 lg:p-12 min-h-screen pb-32">
         <Suspense fallback={<TabLoading />}>
-          {activeTab === 'dashboard' && (
-            <Overview 
+          {activeTab === "dashboard" && (
+            <Overview
               stats={stats}
               setActiveTab={setActiveTab}
               canAccessCreate={canAccessCreate}
             />
           )}
 
-          {activeTab === 'pricing' && (
-            <Pricing userProfile={profile} />
+          {activeTab === "pricing" && (
+            <Pricing
+              userProfile={profile}
+              checkoutLoadingPlan={checkoutLoadingPlan}
+              onCheckout={handleCreateZaloPayOrder}
+              onCheckPaymentStatus={handleCheckZaloPayStatus}
+            />
           )}
 
-          {activeTab === 'create' && (
-            canAccessCreate ? (
-              <CreateLink 
-                url={url} setUrl={setUrl}
-                customTitle={customTitle} setCustomTitle={setCustomTitle}
-                customDescription={customDescription} setCustomDescription={setCustomDescription}
-                customImageUrl={customImageUrl} setCustomImageUrl={setCustomImageUrl}
-                videoUrl={videoUrl} setVideoUrl={setVideoUrl}
+          {activeTab === "create" &&
+            (canAccessCreate ? (
+              <CreateLink
+                url={url}
+                setUrl={setUrl}
+                customTitle={customTitle}
+                setCustomTitle={setCustomTitle}
+                customDescription={customDescription}
+                setCustomDescription={setCustomDescription}
+                customImageUrl={customImageUrl}
+                setCustomImageUrl={setCustomImageUrl}
+                videoUrl={videoUrl}
+                setVideoUrl={setVideoUrl}
                 uploadingVideo={uploadingVideo}
                 videoUploadSuccess={videoUploadSuccess}
                 videoInputRef={videoInputRef}
                 handleVideoUpload={handleVideoUpload}
                 handleConvert={handleConvert}
                 loading={loading}
-                error={error} setError={setError}
+                error={error}
+                setError={setError}
                 result={result}
                 copyToClipboard={copyToClipboard}
-                copiedId={copiedId || ''}
+                copiedId={copiedId || ""}
               />
             ) : (
               <div className="p-12 text-center bg-white rounded-[3rem] border border-gray-100 shadow-sm max-w-2xl mx-auto mt-12">
                 <div className="w-20 h-20 bg-orange-50 rounded-3xl flex items-center justify-center mx-auto mb-6">
                   <Zap className="text-orange-600 w-10 h-10 fill-current" />
                 </div>
-                <h3 className="text-2xl font-black text-gray-900 mb-4">Nâng cấp tài khoản</h3>
-                <p className="text-gray-500 font-medium mb-8">Tính năng chuyển đổi link Shopee & TikTok dành riêng cho tài khoản Premium. Vui lòng liên hệ Admin để nâng cấp gói cước!</p>
-                <button 
-                  onClick={() => setActiveTab('dashboard')}
+                <h3 className="text-2xl font-black text-gray-900 mb-4">
+                  Nâng cấp tài khoản
+                </h3>
+                <p className="text-gray-500 font-medium mb-8">
+                  Tính năng chuyển đổi link Shopee & TikTok dành riêng cho tài
+                  khoản Premium. Vui lòng liên hệ Admin để nâng cấp gói cước!
+                </p>
+                <button
+                  onClick={() => setActiveTab("dashboard")}
                   className="px-8 py-4 bg-gray-900 text-white rounded-2xl font-black uppercase tracking-widest text-xs"
                 >
                   Quay lại Dashboard
                 </button>
               </div>
-            )
-          )}
+            ))}
 
-          {(activeTab === 'admin' && isAdminRole) && (
-            <AdminPanel 
-              allUsers={allUsers.filter(u => u.id !== user?.id && u.role !== 'admin')}
+          {activeTab === "admin" && isAdminRole && (
+            <AdminPanel
+              allUsers={allUsers.filter(
+                (u) => u.id !== user?.id && u.role !== "admin",
+              )}
               adminLoading={adminLoading}
               handleApproveUser={handleApproveUser}
               handleUpdateSubscription={handleUpdateSubscription}
@@ -968,26 +1252,28 @@ export default function App() {
             />
           )}
 
-          {activeTab === 'list' && (
-             <LinkList 
-               links={links}
-               listLoading={listLoading}
-               searchTerm={searchTerm}
-               setSearchTerm={setSearchTerm}
-               copyToClipboard={copyToClipboard}
-               copiedId={copiedId || ''}
-             />
+          {activeTab === "list" && (
+            <LinkList
+              links={links}
+              listLoading={listLoading}
+              searchTerm={searchTerm}
+              setSearchTerm={setSearchTerm}
+              copyToClipboard={copyToClipboard}
+              copiedId={copiedId || ""}
+              onDeleteLink={handleDeleteLink}
+              onUpdateLink={handleUpdateLink}
+            />
           )}
 
-          {activeTab === 'analytics' && (
-            <Analytics 
+          {activeTab === "analytics" && (
+            <Analytics
               analyticsData={analyticsData}
               linksCount={links.length}
             />
           )}
 
-          {activeTab === 'profile' && (
-            <ProfileSettings 
+          {activeTab === "profile" && (
+            <ProfileSettings
               profile={profile}
               updating={profileLoading}
               onUpdate={handleUpdateProfile}
@@ -1001,5 +1287,3 @@ export default function App() {
     </div>
   );
 }
-
-
