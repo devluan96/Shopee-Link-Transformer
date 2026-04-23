@@ -1,19 +1,21 @@
 import React from "react";
 import {
-  Globe,
-  Type,
-  Video as VideoIcon,
-  UploadCloud,
-  Check,
-  ShieldCheck,
-  X,
-  ArrowRight,
-  Copy,
-  QrCode,
-  Image as ImageIcon,
   AlertCircle,
+  ArrowRight,
+  Check,
+  Copy,
+  Globe,
+  Image as ImageIcon,
+  QrCode,
+  ShieldCheck,
+  Type,
+  UploadCloud,
+  Video as VideoIcon,
+  X,
 } from "lucide-react";
 import { cn } from "@/src/lib/utils";
+
+const MAX_SHORT_CODE_LENGTH = 50;
 
 interface CreateLinkProps {
   url: string;
@@ -22,6 +24,8 @@ interface CreateLinkProps {
   setCustomTitle: (v: string) => void;
   customDescription: string;
   setCustomDescription: (v: string) => void;
+  customShortCode: string;
+  setCustomShortCode: (v: string) => void;
   usageContext: string;
   setUsageContext: (v: string) => void;
   customImageUrl: string;
@@ -41,6 +45,17 @@ interface CreateLinkProps {
   copiedId: string;
 }
 
+const usageOptions = [
+  { value: "", label: "Chọn vị trí sử dụng" },
+  { value: "Bài viết Facebook", label: "Bài viết Facebook" },
+  { value: "Reel Facebook", label: "Reel Facebook" },
+  { value: "Bio TikTok", label: "Bio TikTok" },
+  { value: "Video TikTok", label: "Video TikTok" },
+  { value: "Zalo OA", label: "Zalo OA" },
+  { value: "Nhóm seeding", label: "Nhóm seeding" },
+  { value: "Livestream", label: "Livestream" },
+];
+
 export const CreateLink = ({
   url,
   setUrl,
@@ -48,6 +63,8 @@ export const CreateLink = ({
   setCustomTitle,
   customDescription,
   setCustomDescription,
+  customShortCode,
+  setCustomShortCode,
   usageContext,
   setUsageContext,
   customImageUrl,
@@ -66,6 +83,15 @@ export const CreateLink = ({
   copyToClipboard,
   copiedId,
 }: CreateLinkProps) => {
+  const normalizedShortCodePreview = customShortCode
+    .trim()
+    .toLowerCase()
+    .normalize("NFC")
+    .replace(/\s+/g, "-")
+    .replace(/[^\p{L}\p{N}-]+/gu, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "");
+
   return (
     <div key="create">
       <header className="mb-12">
@@ -73,7 +99,8 @@ export const CreateLink = ({
           Tạo Landing Page Mới
         </h2>
         <p className="text-gray-500 font-medium italic">
-          Chúng tôi sẽ tự động lấy dữ liệu và tối ưu hóa hiển thị trên Facebook.
+          Chúng tôi sẽ tự động lấy dữ liệu và tối ưu hóa hiển thị trên
+          Facebook.
         </p>
       </header>
 
@@ -99,6 +126,30 @@ export const CreateLink = ({
             className="bg-white p-10 rounded-[3rem] border border-gray-100 shadow-2xl space-y-8 relative overflow-hidden backdrop-blur-xl bg-white/95"
           >
             <div className="absolute top-0 right-0 w-32 h-32 bg-orange-600/5 rounded-full -mr-16 -mt-16 blur-3xl pointer-events-none" />
+
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="text-[11px] font-black uppercase tracking-widest text-gray-400 px-1 mb-2">
+                  Thiết lập link
+                </p>
+                <h3 className="text-2xl font-black text-gray-900 tracking-tight">
+                  Rút gọn link Shopee
+                </h3>
+              </div>
+              <button
+                type="submit"
+                disabled={loading || !url || uploadingVideo}
+                className="shrink-0 px-7 py-4 bg-gradient-to-r from-orange-600 to-amber-500 text-white rounded-[1.25rem] font-black uppercase tracking-[0.18em] shadow-xl shadow-orange-600/30 hover:shadow-2xl hover:shadow-orange-600/40 hover:-translate-y-0.5 active:scale-[0.98] transition-all flex items-center justify-center gap-3 disabled:grayscale disabled:opacity-50"
+              >
+                {loading ? (
+                  <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                ) : (
+                  <>
+                    Rút gọn link <ArrowRight size={18} />
+                  </>
+                )}
+              </button>
+            </div>
 
             <div>
               <label className="flex items-center gap-2 text-[11px] font-black uppercase tracking-widest text-gray-400 mb-3 px-1">
@@ -151,36 +202,66 @@ export const CreateLink = ({
 
               <div>
                 <label className="flex items-center gap-2 text-[11px] font-black uppercase tracking-widest text-gray-400 mb-3 px-1">
-                  <Type size={14} className="text-orange-500" /> Dùng ở đâu
+                  <Type size={14} className="text-orange-500" /> Mã rút gọn tùy
+                  chỉnh
                 </label>
                 <input
                   type="text"
-                  value={usageContext}
-                  onChange={(e) => setUsageContext(e.target.value)}
-                  placeholder="Ví dụ: Bài viết Facebook, bio TikTok, group seeding..."
+                  value={customShortCode}
+                  onChange={(e) => setCustomShortCode(e.target.value)}
+                  maxLength={MAX_SHORT_CODE_LENGTH}
+                  placeholder="Ví dụ: tôi yêu em"
                   className="w-full px-6 py-4 bg-gray-50 border-2 border-transparent rounded-2xl transition-all outline-none font-medium focus:bg-white focus:border-orange-500/20"
                 />
+                <p className="text-[11px] text-gray-400 font-medium mt-2 px-1">
+                  Link sẽ thành:{" "}
+                  <span className="font-black text-orange-600">
+                    {normalizedShortCodePreview
+                      ? `https://hotsnew.click/s/${normalizedShortCodePreview}`
+                      : "https://hotsnew.click/s/ma-rut-gon-cua-ban"}
+                  </span>
+                </p>
+                <p className="text-[11px] text-gray-400 font-medium mt-1 px-1">
+                  Tối đa {MAX_SHORT_CODE_LENGTH} ký tự.
+                </p>
               </div>
 
               <div>
                 <label className="flex items-center gap-2 text-[11px] font-black uppercase tracking-widest text-gray-400 mb-3 px-1">
-                  <VideoIcon size={14} className="text-orange-500" /> Đính kèm
-                  Video (Tùy chọn)
+                  <Type size={14} className="text-orange-500" /> Dùng ở đâu
                 </label>
-                <input
-                  type="file"
-                  accept="video/*"
-                  ref={(el) => {
-                    if (videoInputRef) (videoInputRef as any).current = el;
-                  }}
-                  onChange={handleVideoUpload}
-                  className="hidden"
-                />
-                <div className="space-y-4">
+                <select
+                  value={usageContext}
+                  onChange={(e) => setUsageContext(e.target.value)}
+                  className="w-full px-6 py-4 bg-gray-50 border-2 border-transparent rounded-2xl transition-all outline-none font-medium focus:bg-white focus:border-orange-500/20 text-gray-900"
+                >
+                  {usageOptions.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch">
+                <div className="space-y-4 flex flex-col">
+                  <label className="flex items-center gap-2 text-[11px] font-black uppercase tracking-widest text-gray-400 px-1">
+                    <VideoIcon size={14} className="text-orange-500" /> Đính kèm
+                    Video (Tùy chọn)
+                  </label>
+                  <input
+                    type="file"
+                    accept="video/*"
+                    ref={(el) => {
+                      if (videoInputRef) (videoInputRef as any).current = el;
+                    }}
+                    onChange={handleVideoUpload}
+                    className="hidden"
+                  />
                   <button
                     type="button"
                     onClick={() => videoInputRef?.current?.click()}
-                    className="w-full flex items-center justify-between px-6 py-5 bg-orange-50/30 border-2 border-dashed border-orange-100 rounded-2xl hover:border-orange-300 hover:bg-orange-50/50 transition-all group"
+                    className="w-full min-h-[84px] flex items-center justify-between px-6 py-5 bg-orange-50/30 border-2 border-dashed border-orange-100 rounded-2xl hover:border-orange-300 hover:bg-orange-50/50 transition-all group"
                   >
                     <div className="flex items-center gap-3 text-orange-400 font-bold group-hover:text-orange-600">
                       <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-sm">
@@ -209,11 +290,11 @@ export const CreateLink = ({
                   )}
 
                   {videoUrl && (
-                    <div className="relative aspect-video rounded-3xl overflow-hidden bg-black shadow-2xl ring-4 ring-white">
+                    <div className="relative aspect-video rounded-3xl overflow-hidden bg-black shadow-2xl ring-4 ring-white mt-auto">
                       <video
                         src={videoUrl}
                         controls
-                        className="w-full h-full"
+                        className="w-full h-full object-cover"
                       />
                       <button
                         type="button"
@@ -225,11 +306,9 @@ export const CreateLink = ({
                     </div>
                   )}
                 </div>
-              </div>
 
-              {!videoUrl && (
-                <div>
-                  <label className="flex items-center gap-2 text-[11px] font-black uppercase tracking-widest text-gray-400 mb-3 px-1">
+                <div className="space-y-4 flex flex-col">
+                  <label className="flex items-center gap-2 text-[11px] font-black uppercase tracking-widest text-gray-400 px-1">
                     <ImageIcon size={14} className="text-orange-500" />{" "}
                     Thumbnail URL
                   </label>
@@ -238,33 +317,27 @@ export const CreateLink = ({
                     value={customImageUrl}
                     onChange={(e) => setCustomImageUrl(e.target.value)}
                     placeholder="Link ảnh cover..."
-                    className="w-full px-6 py-4 bg-gray-50 border-2 border-transparent rounded-2xl transition-all outline-none font-medium focus:bg-white focus:border-orange-500/20"
+                    className="w-full min-h-[84px] px-6 py-4 bg-gray-50 border-2 border-transparent rounded-2xl transition-all outline-none font-medium focus:bg-white focus:border-orange-500/20"
                   />
+
+                  {customImageUrl && (
+                    <div className="relative aspect-video rounded-3xl overflow-hidden bg-gray-100 shadow-xl ring-4 ring-white mt-auto">
+                      <img
+                        src={customImageUrl}
+                        alt="Thumbnail preview"
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                  )}
                 </div>
-              )}
+              </div>
             </div>
 
-            <button
-              type="submit"
-              disabled={loading || !url || uploadingVideo}
-              className="w-full py-6 bg-gradient-to-r from-orange-600 to-amber-500 text-white rounded-[1.5rem] font-black uppercase tracking-[0.2em] shadow-xl shadow-orange-600/30 hover:shadow-2xl hover:shadow-orange-600/40 hover:-translate-y-0.5 active:scale-[0.98] transition-all flex items-center justify-center gap-3 disabled:grayscale disabled:opacity-50"
-            >
-              {loading ? (
-                <div className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-              ) : (
-                <>
-                  Tạo Landing Page <ArrowRight size={20} />
-                </>
-              )}
-            </button>
           </form>
         </div>
 
-        <div className="space-y-6">
-          <h3 className="text-[11px] font-black uppercase tracking-widest text-gray-400 px-1">
-            Facebook Share Preview
-          </h3>
-          <div className="bg-white rounded-[3rem] border border-gray-200 overflow-hidden shadow-2xl relative">
+        <div className="space-y-5 max-w-xl">
+          <div className="bg-white rounded-[2.25rem] border border-gray-200 overflow-hidden shadow-xl relative">
             {!result && (
               <div className="absolute inset-0 bg-white/40 backdrop-blur-[2px] z-10 flex items-center justify-center p-6 text-center">
                 <p className="bg-gray-900 text-white px-4 py-2 rounded-full font-bold text-[10px] uppercase">
@@ -272,37 +345,29 @@ export const CreateLink = ({
                 </p>
               </div>
             )}
-            <div className="aspect-[12/6.3] bg-gray-100 flex items-center justify-center relative">
-              {videoUrl ? (
-                <video
-                  src={videoUrl}
-                  muted
-                  autoPlay
-                  loop
-                  className="w-full h-full object-cover"
-                />
-              ) : customImageUrl ? (
+            <div className="aspect-[12/5.4] bg-gray-100 flex items-center justify-center relative">
+              {customImageUrl ? (
                 <img
                   src={customImageUrl}
                   className="w-full h-full object-cover"
                 />
               ) : (
                 <div className="flex flex-col items-center gap-2 opacity-20">
-                  <ImageIcon size={48} />
+                  <ImageIcon size={40} />
                   <span className="text-[10px] font-black uppercase tracking-widest">
                     No Preview Available
                   </span>
                 </div>
               )}
             </div>
-            <div className="p-8 bg-[#F2F3F5]">
-              <p className="text-[11px] text-gray-400 uppercase font-bold mb-2 flex items-center gap-2">
+            <div className="p-6 bg-[#F2F3F5]">
+              <p className="text-[10px] text-gray-400 uppercase font-bold mb-2 flex items-center gap-2">
                 <Globe size={10} /> HOTSNEW.CLICK
               </p>
-              <h4 className="text-xl font-black text-gray-900 leading-tight mb-3 line-clamp-2">
+              <h4 className="text-lg font-black text-gray-900 leading-tight mb-2 line-clamp-2">
                 {customTitle || "Tiêu đề của bạn sẽ xuất hiện tại đây..."}
               </h4>
-              <p className="text-sm text-gray-600 line-clamp-2 leading-relaxed opacity-70 font-medium">
+              <p className="text-[13px] text-gray-600 line-clamp-2 leading-relaxed opacity-70 font-medium">
                 {customDescription ||
                   "Hệ thống sẽ tự động tạo Landing Page chứa video và tiêu đề chuyên nghiệp như một trang tin tức thực thụ."}
               </p>
@@ -311,7 +376,7 @@ export const CreateLink = ({
 
           <div
             className={cn(
-              "p-10 rounded-[3rem] border-2 transition-all duration-500 relative overflow-hidden",
+              "p-8 rounded-[2.25rem] border-2 transition-all duration-500 relative overflow-hidden",
               result
                 ? "bg-white border-orange-100 shadow-2xl scale-100"
                 : "bg-gray-50 border-gray-100 opacity-50 pointer-events-none grayscale scale-[0.98]",

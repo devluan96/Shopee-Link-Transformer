@@ -11,6 +11,7 @@ import {
   Save,
   QrCode,
   AlertTriangle,
+  Link2,
 } from "lucide-react";
 import { ConvertedLink } from "@/src/types";
 import { formatDistanceToNow } from "date-fns";
@@ -51,6 +52,11 @@ export const LinkList = ({
   });
   const [isUpdating, setIsUpdating] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+
+  const buildTrackedLink = (
+    shortCode: string,
+    source: "facebook" | "tiktok" | "zalo",
+  ) => `https://hotsnew.click/s/${shortCode}?src=${source}`;
 
   const startEdit = (link: ConvertedLink) => {
     setEditingLink(link);
@@ -187,6 +193,53 @@ export const LinkList = ({
                       formatDistanceToNow(new Date(l.created_at))}{" "}
                     ago
                   </span>
+                </div>
+                {l.tracked_sources && l.tracked_sources.length > 0 && (
+                  <div className="flex flex-wrap items-center gap-2 mt-3">
+                    {l.tracked_sources.map((source) => (
+                      <span
+                        key={`${l.id}-${source.label}`}
+                        className="text-[10px] font-black text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-100 uppercase tracking-wider"
+                      >
+                        {source.label} · {source.count}
+                      </span>
+                    ))}
+                  </div>
+                )}
+                <div className="flex flex-wrap items-center gap-2 mt-3">
+                  <button
+                    onClick={() =>
+                      copyToClipboard(
+                        buildTrackedLink(l.short_code, "facebook"),
+                        `${l.id}-facebook`,
+                      )
+                    }
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 text-blue-700 rounded-full text-[10px] font-black uppercase tracking-wider border border-blue-100 hover:bg-blue-100 transition-all"
+                  >
+                    <Link2 size={11} /> Facebook
+                  </button>
+                  <button
+                    onClick={() =>
+                      copyToClipboard(
+                        buildTrackedLink(l.short_code, "tiktok"),
+                        `${l.id}-tiktok`,
+                      )
+                    }
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 text-slate-700 rounded-full text-[10px] font-black uppercase tracking-wider border border-slate-200 hover:bg-slate-200 transition-all"
+                  >
+                    <Link2 size={11} /> TikTok
+                  </button>
+                  <button
+                    onClick={() =>
+                      copyToClipboard(
+                        buildTrackedLink(l.short_code, "zalo"),
+                        `${l.id}-zalo`,
+                      )
+                    }
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-cyan-50 text-cyan-700 rounded-full text-[10px] font-black uppercase tracking-wider border border-cyan-100 hover:bg-cyan-100 transition-all"
+                  >
+                    <Link2 size={11} /> Zalo
+                  </button>
                 </div>
               </div>
               <div className="flex items-center gap-2">

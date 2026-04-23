@@ -121,10 +121,154 @@ interface PublicLinkRecord {
   video_url?: string | null;
 }
 
+interface TrackedSourceSummary {
+  label: string;
+  count: number;
+}
+
+const MAX_SHORT_CODE_LENGTH = 50;
+
 const getBearerToken = (req: Request) => {
   const authHeader = req.headers.authorization;
   if (!authHeader?.startsWith("Bearer ")) return null;
   return authHeader.slice("Bearer ".length).trim();
+};
+
+const normalizeTrafficSource = (value?: string | null) => {
+  if (!value) return null;
+  const normalized = value.trim().toLowerCase();
+  if (!normalized) return null;
+
+  if (normalized.includes("facebook")) return "facebook";
+  if (normalized.includes("tiktok")) return "tiktok";
+  if (normalized.includes("zalo")) return "zalo";
+  if (normalized.includes("instagram")) return "instagram";
+  if (normalized.includes("youtube")) return "youtube";
+  if (normalized.includes("telegram")) return "telegram";
+  if (normalized.includes("google")) return "google";
+  if (normalized.includes("direct")) return "direct";
+  return normalized.slice(0, 64);
+};
+
+const normalizeShortCode = (value?: string | null) => {
+  if (!value) return null;
+
+  const normalized = value
+    .trim()
+    .toLowerCase()
+    .normalize("NFC")
+    .replace(/\s+/g, "-")
+    .replace(/[^\p{L}\p{N}-]+/gu, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "");
+
+  if (!normalized) return null;
+  if (normalized.length < 3) {
+    throw new Error("Mã rút gọn phải có ít nhất 3 ký tự.");
+  }
+  if (normalized.length > 80) {
+    throw new Error("Mã rút gọn không được vượt quá 80 ký tự.");
+  }
+
+  return normalized;
+};
+
+const getTrafficSourceFromRequest = (req: Request) => {
+  const srcParam =
+    (typeof req.query.src === "string" && req.query.src) ||
+    (typeof req.query.source === "string" && req.query.source) ||
+    (typeof req.query.utm_source === "string" && req.query.utm_source) ||
+    null;
+  const referer =
+    typeof req.headers.referer === "string" ? req.headers.referer : null;
+  const inferredFromReferer = normalizeTrafficSource(referer);
+  const source = normalizeTrafficSource(srcParam) || inferredFromReferer;
+
+  return {
+    source,
+    source_detail: srcParam?.trim() || null,
+    referer,
+  };
+};
+
+const insertClickWithTracking = async (
+  supabase: ReturnType<typeof getSupabase>,
+  payload: Record<string, unknown>,
+) => {
+  const { error } = await supabase.from("clicks").insert(payload);
+  if (!error) return;
+
+  const message = error.message || "";
+  const missingTrackingColumns =
+    message.includes("source") ||
+    message.includes("referer") ||
+    message.includes("source_detail");
+
+  if (!missingTrackingColumns) throw error;
+
+  const fallbackPayload = {
+    link_id: payload.link_id,
+    user_agent: payload.user_agent,
+    ip: payload.ip,
+  };
+  await supabase.from("clicks").insert(fallbackPayload);
+};
+
+const attachTrackedSourcesToLinks = async (
+  supabase: ReturnType<typeof getSupabase>,
+  links: any[],
+) => {
+  if (!links.length) return links;
+
+  try {
+    const linkIds = links.map((link) => link.id).filter(Boolean);
+    const { data: clicks, error } = await supabase
+      .from("clicks")
+      .select("link_id, source, source_detail, referer")
+      .in("link_id", linkIds)
+      .limit(5000);
+
+    if (error) throw error;
+
+    const sourceMap = new Map<string, Map<string, number>>();
+
+    (clicks || []).forEach((click: any) => {
+      const sourceLabel =
+        normalizeTrafficSource(click.source_detail) ||
+        normalizeTrafficSource(click.source) ||
+        normalizeTrafficSource(click.referer) ||
+        "unknown";
+      const linkId = click.link_id;
+      if (!linkId) return;
+
+      if (!sourceMap.has(linkId)) {
+        sourceMap.set(linkId, new Map<string, number>());
+      }
+
+      const linkSources = sourceMap.get(linkId)!;
+      linkSources.set(sourceLabel, (linkSources.get(sourceLabel) || 0) + 1);
+    });
+
+    return links.map((link) => {
+      const trackedSources = Array.from(
+        sourceMap.get(link.id)?.entries() || [],
+      )
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 4)
+        .map(([label, count]) => ({ label, count })) as TrackedSourceSummary[];
+
+      return {
+        ...link,
+        tracked_sources: trackedSources,
+      };
+    });
+  } catch (error: any) {
+    console.warn(
+      "[Links] tracked source aggregation skipped:",
+      error?.message || error,
+    );
+    return links;
+  }
 };
 
 const escapeHtml = (value: string) =>
@@ -274,14 +418,14 @@ const renderLinkLandingPage = (
 
       .card {
         position: relative;
-        width: min(1080px, 100%);
+        width: min(1240px, 100%);
         display: grid;
-        grid-template-columns: minmax(280px, 1.1fr) minmax(280px, 0.9fr);
-        gap: 1.5rem;
+        grid-template-columns: minmax(360px, 1.35fr) minmax(280px, 0.75fr);
+        gap: 1.25rem;
         background: var(--panel);
         border: 1px solid var(--border);
         border-radius: 2rem;
-        padding: 1.5rem;
+        padding: 1.25rem;
         backdrop-filter: blur(24px) saturate(130%);
         box-shadow:
           0 1.5rem 4rem rgba(0, 0, 0, 0.34),
@@ -293,20 +437,20 @@ const renderLinkLandingPage = (
         background: rgba(255, 255, 255, 0.03);
         border: 1px solid rgba(255, 255, 255, 0.08);
         border-radius: 1.5rem;
-        padding: 1rem;
-        min-height: 24rem;
+        min-height: 38rem;
       }
 
       .media-panel {
         display: grid;
         place-items: center;
         overflow: hidden;
+        padding: 0.75rem;
       }
 
       .hero-media {
         width: 100%;
         height: 100%;
-        max-height: 34rem;
+        min-height: 36.5rem;
         object-fit: cover;
         border-radius: 1.15rem;
         display: block;
@@ -316,7 +460,7 @@ const renderLinkLandingPage = (
       .hero-placeholder {
         width: 100%;
         height: 100%;
-        min-height: 22rem;
+        min-height: 36.5rem;
         border-radius: 1.15rem;
         display: grid;
         place-items: center;
@@ -352,38 +496,24 @@ const renderLinkLandingPage = (
         display: flex;
         flex-direction: column;
         justify-content: center;
-        padding: 2rem;
+        padding: 2rem 1.8rem;
       }
 
       h1 {
-        margin: 1.2rem 0 0.9rem;
-        font-size: clamp(2.2rem, 4.8vw, 4rem);
-        line-height: 0.94;
-        letter-spacing: -0.05em;
+        margin: 0 0 1rem;
+        font-size: clamp(1.9rem, 3.6vw, 3.3rem);
+        line-height: 0.98;
+        letter-spacing: -0.04em;
+        max-width: 10ch;
+        text-wrap: balance;
       }
 
       p {
         margin: 0;
         color: var(--muted);
         font-size: 1rem;
-        line-height: 1.8;
-      }
-
-      .link-line {
-        margin-top: 1.25rem;
-        display: inline-flex;
-        align-items: center;
-        width: fit-content;
-        max-width: 100%;
-        padding: 0.8rem 1rem;
-        border-radius: 1rem;
-        background: rgba(255, 255, 255, 0.05);
-        border: 1px solid rgba(255, 255, 255, 0.08);
-        color: rgba(191, 219, 254, 0.92);
-        font-size: 0.88rem;
-        font-weight: 700;
-        line-height: 1.5;
-        word-break: break-all;
+        line-height: 1.7;
+        max-width: 32rem;
       }
 
       .overlay {
@@ -430,12 +560,23 @@ const renderLinkLandingPage = (
         }
 
         .content-panel {
-          padding: 1.4rem;
+          min-height: auto;
+          padding: 1.5rem 1.25rem 1.75rem;
         }
 
         .media-panel,
         .content-panel {
           min-height: auto;
+        }
+
+        .hero-media,
+        .hero-placeholder {
+          min-height: min(70vh, 34rem);
+        }
+
+        h1 {
+          max-width: none;
+          font-size: clamp(1.8rem, 8vw, 2.7rem);
         }
       }
     </style>
@@ -454,7 +595,6 @@ const renderLinkLandingPage = (
         <div class="content-panel">
           <h1>${escapeHtml(title)}</h1>
           <p>${escapeHtml(description)}</p>
-          <div class="link-line">${escapeHtml(canonicalUrl)}</div>
         </div>
       </section>
     </main>
@@ -860,6 +1000,7 @@ app.post(
       const userId = req.authUser?.id;
       const {
         url,
+        customShortCode,
         customTitle,
         customDescription,
         usageContext,
@@ -867,7 +1008,32 @@ app.post(
         videoUrl,
       } = req.body;
       if (!userId) return res.status(401).json({ error: "Unauthorized" });
-      const shortCode = nanoid(8);
+      const requestedShortCode = normalizeShortCode(customShortCode);
+      if (
+        requestedShortCode &&
+        requestedShortCode.length > MAX_SHORT_CODE_LENGTH
+      ) {
+        throw new Error(
+          `Mã rút gọn không được vượt quá ${MAX_SHORT_CODE_LENGTH} ký tự.`,
+        );
+      }
+      const shortCode = requestedShortCode || nanoid(8);
+
+      if (requestedShortCode) {
+        const { data: existingLink, error: existingError } = await supabase
+          .from("links")
+          .select("id")
+          .eq("short_code", requestedShortCode)
+          .maybeSingle();
+
+        if (existingError) throw existingError;
+        if (existingLink) {
+          return res
+            .status(409)
+            .json({ error: "Mã rút gọn này đã tồn tại. Vui lòng chọn mã khác." });
+        }
+      }
+
       const { data, error } = await supabase
         .from("links")
         .insert({
@@ -892,7 +1058,13 @@ app.post(
         video_url: data.video_url,
       });
     } catch (e: any) {
-      res.status(400).json({ error: e.message });
+      const message = e?.message || "Convert failed";
+      if (message.includes("value too long for type character varying(50)")) {
+        return res.status(400).json({
+          error: `Mã rút gọn không được vượt quá ${MAX_SHORT_CODE_LENGTH} ký tự.`,
+        });
+      }
+      res.status(400).json({ error: message });
     }
   },
 );
@@ -911,7 +1083,11 @@ app.get(
         .eq("user_id", userId)
         .order("created_at", { ascending: false });
       if (error) throw error;
-      res.json(data);
+      const linksWithSources = await attachTrackedSourcesToLinks(
+        supabase,
+        data || [],
+      );
+      res.json(linksWithSources);
     } catch (e: any) {
       res.status(500).json({ error: e.message });
     }
@@ -1421,16 +1597,20 @@ app.get("/s/:shortCode", async (req, res) => {
       .single();
     if (!link) return res.status(404).send("Not found");
 
-    supabase
-      .from("clicks")
-      .insert({
-        link_id: link.id,
-        user_agent: req.headers["user-agent"],
-        ip: req.ip,
-      })
-      .then();
+    const trafficSource = getTrafficSourceFromRequest(req);
+    insertClickWithTracking(supabase, {
+      link_id: link.id,
+      user_agent: req.headers["user-agent"],
+      ip: req.ip,
+      source: trafficSource.source,
+      source_detail: trafficSource.source_detail,
+      referer: trafficSource.referer,
+    }).catch((error) => {
+      console.warn("[Clicks] insert failed:", error?.message || error);
+    });
 
-    const publicBaseUrl = getPublicBaseUrl(req) || `${req.protocol}://${req.get("host")}`;
+    const publicBaseUrl =
+      getPublicBaseUrl(req) || `${req.protocol}://${req.get("host")}`;
     const canonicalUrl = `${publicBaseUrl}/s/${encodeURIComponent(shortCode)}`;
     const html = renderLinkLandingPage(link as PublicLinkRecord, canonicalUrl);
 

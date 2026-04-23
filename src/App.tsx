@@ -59,6 +59,8 @@ const TabLoading = () => (
   </div>
 );
 
+const MAX_SHORT_CODE_LENGTH = 50;
+
 export default function App() {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
@@ -76,6 +78,7 @@ export default function App() {
   const [url, setUrl] = useState("");
   const [customTitle, setCustomTitle] = useState("");
   const [customDescription, setCustomDescription] = useState("");
+  const [customShortCode, setCustomShortCode] = useState("");
   const [usageContext, setUsageContext] = useState("");
   const [customImageUrl, setCustomImageUrl] = useState("");
   const [videoUrl, setVideoUrl] = useState("");
@@ -702,6 +705,13 @@ export default function App() {
     console.log("🚀 Attempting POST to:", uploadUrl);
 
     try {
+      let pendingThumbUrl: string | null = null;
+      try {
+        pendingThumbUrl = await captureVideoThumbnail(file);
+      } catch (thumbError) {
+        console.error("Local thumbnail capture failed", thumbError);
+      }
+
       const response = await fetchWithAuth(uploadUrl, {
         method: "POST",
         headers: { Accept: "application/json" },
@@ -730,12 +740,8 @@ export default function App() {
         setTimeout(() => setVideoUploadSuccess(false), 5000); // Hide success after 5s
         setError(null);
 
-        // Auto-generate thumbnail if not present
-        try {
-          const thumbUrl = await captureVideoThumbnail(data.secure_url);
-          setCustomImageUrl(thumbUrl);
-        } catch (e) {
-          console.error("Auto-thumb capture failed", e);
+        if (pendingThumbUrl) {
+          setCustomImageUrl(pendingThumbUrl);
         }
       } else if (data.error) {
         setError(`Lỗi Cloudinary: ${data.error.message}`);
@@ -798,17 +804,26 @@ export default function App() {
     }
   };
 
-  const captureVideoThumbnail = async (vUrl: string): Promise<string> => {
+  const captureVideoThumbnail = async (file: File): Promise<string> => {
     return new Promise((resolve, reject) => {
       const video = document.createElement("video");
-      video.src = vUrl;
-      video.crossOrigin = "anonymous";
+      const objectUrl = URL.createObjectURL(file);
+      video.src = objectUrl;
       video.muted = true;
       video.playsInline = true;
-      video.playbackRate = 16; // Skip forward faster
+      video.preload = "metadata";
 
-      video.onloadeddata = () => {
-        video.currentTime = 1.5; // Capture at 1.5s
+      const cleanup = () => {
+        URL.revokeObjectURL(objectUrl);
+        video.removeAttribute("src");
+        video.load();
+      };
+
+      video.onloadedmetadata = () => {
+        const duration = Number.isFinite(video.duration) ? video.duration : 0;
+        const targetTime =
+          duration > 0 ? Math.min(Math.max(duration * 0.2, 0.2), 2) : 0.2;
+        video.currentTime = targetTime;
       };
 
       video.onseeked = () => {
@@ -816,12 +831,18 @@ export default function App() {
         canvas.width = video.videoWidth;
         canvas.height = video.videoHeight;
         const ctx = canvas.getContext("2d");
-        if (!ctx) return reject("No context");
+        if (!ctx) {
+          cleanup();
+          return reject("No context");
+        }
         ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
         canvas.toBlob(
           async (blob) => {
-            if (!blob) return reject("Blob failed");
+            if (!blob) {
+              cleanup();
+              return reject("Blob failed");
+            }
             const thumbFormData = new FormData();
             thumbFormData.append("file", blob, "thumb.jpg");
 
@@ -839,8 +860,10 @@ export default function App() {
               }
 
               const data = await res.json();
+              cleanup();
               resolve(data.secure_url);
             } catch (e) {
+              cleanup();
               reject(e);
             }
           },
@@ -849,7 +872,10 @@ export default function App() {
         );
       };
 
-      video.onerror = (e) => reject(e);
+      video.onerror = (e) => {
+        cleanup();
+        reject(e);
+      };
       video.load();
     });
   };
@@ -868,10 +894,26 @@ export default function App() {
     setResult(null);
 
     try {
+      const normalizedShortCode = customShortCode
+        .trim()
+        .toLowerCase()
+        .normalize("NFC")
+        .replace(/\s+/g, "-")
+        .replace(/[^\p{L}\p{N}-]+/gu, "-")
+        .replace(/-+/g, "-")
+        .replace(/^-|-$/g, "");
+
+      if (normalizedShortCode.length > MAX_SHORT_CODE_LENGTH) {
+        throw new Error(
+          `Mã rút gọn không được vượt quá ${MAX_SHORT_CODE_LENGTH} ký tự.`,
+        );
+      }
+
       const response = await fetchWithAuth("/api/v1/convert", {
         method: "POST",
         body: JSON.stringify({
           url: url.trim(),
+          customShortCode,
           customTitle,
           customDescription,
           usageContext,
@@ -883,10 +925,15 @@ export default function App() {
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "Conversion failed");
 
-      setResult({
+      const nextResult = {
         ...data,
         short_code: data.short_code ?? data.shortCode,
-      });
+      };
+
+      setResult(nextResult);
+      toast.success(
+        `Rút gọn link thành công: https://hotsnew.click/s/${nextResult.short_code}`,
+      );
       setLinksDirty(true);
       if (activeTab === "dashboard") fetchStats();
       // Clear inputs
@@ -1217,6 +1264,8 @@ export default function App() {
                 setCustomTitle={setCustomTitle}
                 customDescription={customDescription}
                 setCustomDescription={setCustomDescription}
+                customShortCode={customShortCode}
+                setCustomShortCode={setCustomShortCode}
                 usageContext={usageContext}
                 setUsageContext={setUsageContext}
                 customImageUrl={customImageUrl}

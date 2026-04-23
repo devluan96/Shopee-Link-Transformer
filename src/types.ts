@@ -10,6 +10,10 @@ export interface ConvertedLink {
   created_at: string;
   user_id: string;
   clicks?: number;
+  tracked_sources?: Array<{
+    label: string;
+    count: number;
+  }>;
 }
 
 export interface UserProfile {
