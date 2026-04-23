@@ -547,6 +547,22 @@ export default function App() {
     }
   }, [user, profile, activeTab, linksDirty, links.length]);
 
+  useEffect(() => {
+    const isAdminRole =
+      profile?.role === "admin" || user?.email === "devluan1996@gmail.com";
+    const isApproved = profile?.status === "approved" || isAdminRole;
+
+    if (!(user && isApproved && activeTab === "list")) {
+      return;
+    }
+
+    const intervalId = window.setInterval(() => {
+      fetchLinks();
+    }, 15000);
+
+    return () => window.clearInterval(intervalId);
+  }, [user, profile, activeTab]);
+
   const fetchStats = async () => {
     if (!user) return;
     try {

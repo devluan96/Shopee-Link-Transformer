@@ -23,6 +23,7 @@ export interface UserProfile {
   avatar_url?: string;
   status?: string;
   role?: string;
+  created_at?: string;
   subscription_plan?: "free" | "monthly" | "yearly";
   subscription_expiry?: string;
 }

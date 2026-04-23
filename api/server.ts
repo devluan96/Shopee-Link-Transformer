@@ -195,23 +195,53 @@ const insertClickWithTracking = async (
   supabase: ReturnType<typeof getSupabase>,
   payload: Record<string, unknown>,
 ) => {
-  const { error } = await supabase.from("clicks").insert(payload);
-  if (!error) return;
+  const attempts = [
+    {
+      link_id: payload.link_id,
+      user_agent: payload.user_agent,
+      ip_address: payload.ip_address ?? payload.ip,
+      source: payload.source,
+      source_detail: payload.source_detail,
+      referer: payload.referer,
+    },
+    {
+      link_id: payload.link_id,
+      user_agent: payload.user_agent,
+      ip_address: payload.ip_address ?? payload.ip,
+      source: payload.source,
+      referer: payload.referer,
+    },
+    {
+      link_id: payload.link_id,
+      user_agent: payload.user_agent,
+      ip: payload.ip ?? payload.ip_address,
+      source: payload.source,
+      referer: payload.referer,
+    },
+    {
+      link_id: payload.link_id,
+      user_agent: payload.user_agent,
+      ip_address: payload.ip_address ?? payload.ip,
+    },
+    {
+      link_id: payload.link_id,
+      user_agent: payload.user_agent,
+      ip: payload.ip ?? payload.ip_address,
+    },
+  ];
 
-  const message = error.message || "";
-  const missingTrackingColumns =
-    message.includes("source") ||
-    message.includes("referer") ||
-    message.includes("source_detail");
+  let lastError: any = null;
 
-  if (!missingTrackingColumns) throw error;
+  for (const attempt of attempts) {
+    const sanitizedPayload = Object.fromEntries(
+      Object.entries(attempt).filter(([, value]) => value !== undefined),
+    );
+    const { error } = await supabase.from("clicks").insert(sanitizedPayload);
+    if (!error) return;
+    lastError = error;
+  }
 
-  const fallbackPayload = {
-    link_id: payload.link_id,
-    user_agent: payload.user_agent,
-    ip: payload.ip,
-  };
-  await supabase.from("clicks").insert(fallbackPayload);
+  throw lastError;
 };
 
 const attachTrackedSourcesToLinks = async (
@@ -222,15 +252,27 @@ const attachTrackedSourcesToLinks = async (
 
   try {
     const linkIds = links.map((link) => link.id).filter(Boolean);
-    const { data: clicks, error } = await supabase
+    let clicks: any[] | null = null;
+    let error: any = null;
+
+    ({ data: clicks, error } = await supabase
       .from("clicks")
       .select("link_id, source, source_detail, referer")
       .in("link_id", linkIds)
-      .limit(5000);
+      .limit(5000));
+
+    if (error) {
+      ({ data: clicks, error } = await supabase
+        .from("clicks")
+        .select("link_id, source, referer")
+        .in("link_id", linkIds)
+        .limit(5000));
+    }
 
     if (error) throw error;
 
     const sourceMap = new Map<string, Map<string, number>>();
+    const clickCountMap = new Map<string, number>();
 
     (clicks || []).forEach((click: any) => {
       const sourceLabel =
@@ -240,6 +282,8 @@ const attachTrackedSourcesToLinks = async (
         "unknown";
       const linkId = click.link_id;
       if (!linkId) return;
+
+      clickCountMap.set(linkId, (clickCountMap.get(linkId) || 0) + 1);
 
       if (!sourceMap.has(linkId)) {
         sourceMap.set(linkId, new Map<string, number>());
@@ -259,6 +303,7 @@ const attachTrackedSourcesToLinks = async (
 
       return {
         ...link,
+        clicks: clickCountMap.get(link.id) || 0,
         tracked_sources: trackedSources,
       };
     });
@@ -285,14 +330,26 @@ const escapeJsString = (value: string) =>
     .replace(/`/g, "\\`")
     .replace(/\$\{/g, "\\${");
 
+const capitalizeFirstCharacter = (value: string) => {
+  const trimmed = value.trim();
+  if (!trimmed) return trimmed;
+
+  const firstCharacter = trimmed.charAt(0).toLocaleUpperCase("vi-VN");
+  return `${firstCharacter}${trimmed.slice(1)}`;
+};
+
 const renderLinkLandingPage = (
   link: PublicLinkRecord,
   canonicalUrl: string,
 ) => {
-  const title = link.custom_title?.trim() || "HotsNew Click";
+  const title = capitalizeFirstCharacter(
+    link.custom_title?.trim() || "HotsNew Click",
+  );
   const description =
-    link.custom_description?.trim() ||
-    "Noi dung dang san sang. Bam vao man hinh de tiep tuc.";
+    capitalizeFirstCharacter(
+      link.custom_description?.trim() ||
+        "Noi dung dang san sang. Bam vao man hinh de tiep tuc.",
+    );
   const imageUrl = link.custom_image_url?.trim() || "";
   const videoUrl = link.video_url?.trim() || "";
   const originalUrl = link.original_url.trim();
@@ -418,14 +475,15 @@ const renderLinkLandingPage = (
 
       .card {
         position: relative;
-        width: min(1240px, 100%);
-        display: grid;
-        grid-template-columns: minmax(360px, 1.35fr) minmax(280px, 0.75fr);
-        gap: 1.25rem;
+        width: min(880px, 100%);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 1.5rem;
         background: var(--panel);
         border: 1px solid var(--border);
         border-radius: 2rem;
-        padding: 1.25rem;
+        padding: 1.5rem;
         backdrop-filter: blur(24px) saturate(130%);
         box-shadow:
           0 1.5rem 4rem rgba(0, 0, 0, 0.34),
@@ -437,33 +495,35 @@ const renderLinkLandingPage = (
         background: rgba(255, 255, 255, 0.03);
         border: 1px solid rgba(255, 255, 255, 0.08);
         border-radius: 1.5rem;
-        min-height: 38rem;
       }
 
       .media-panel {
-        display: grid;
-        place-items: center;
+        width: min(100%, 46rem);
+        display: flex;
+        justify-content: center;
         overflow: hidden;
-        padding: 0.75rem;
+        padding: 0.9rem;
       }
 
       .hero-media {
-        width: 100%;
-        height: 100%;
-        min-height: 36.5rem;
+        width: min(100%, 40rem);
+        aspect-ratio: 9 / 13;
+        max-height: 42rem;
         object-fit: cover;
         border-radius: 1.15rem;
         display: block;
         background: rgba(15, 23, 42, 0.72);
+        margin-inline: auto;
       }
 
       .hero-placeholder {
-        width: 100%;
-        height: 100%;
-        min-height: 36.5rem;
+        width: min(100%, 40rem);
+        aspect-ratio: 9 / 13;
+        max-height: 42rem;
         border-radius: 1.15rem;
         display: grid;
         place-items: center;
+        margin-inline: auto;
         background:
           radial-gradient(circle at 30% 24%, rgba(34, 211, 238, 0.2), transparent 18%),
           radial-gradient(circle at 72% 68%, rgba(251, 113, 133, 0.24), transparent 24%),
@@ -493,27 +553,50 @@ const renderLinkLandingPage = (
       }
 
       .content-panel {
+        width: min(100%, 46rem);
         display: flex;
         flex-direction: column;
+        align-items: center;
+        text-align: center;
+        padding: 1.35rem 1.5rem 1.7rem;
+      }
+
+      .headline {
+        display: inline-flex;
+        align-items: center;
         justify-content: center;
-        padding: 2rem 1.8rem;
+        gap: 0.7rem;
+        margin-bottom: 0.9rem;
+      }
+
+      .hot-badge {
+        flex: 0 0 auto;
+        width: 2.25rem;
+        height: 2.25rem;
+        display: grid;
+        place-items: center;
+        border-radius: 999px;
+        background: linear-gradient(135deg, rgba(249, 115, 22, 1), rgba(239, 68, 68, 1));
+        box-shadow: 0 0.8rem 1.8rem rgba(249, 115, 22, 0.28);
+        font-size: 1rem;
       }
 
       h1 {
-        margin: 0 0 1rem;
-        font-size: clamp(1.9rem, 3.6vw, 3.3rem);
-        line-height: 0.98;
+        margin: 0;
+        font-size: clamp(1.45rem, 3vw, 2.35rem);
+        line-height: 1.08;
         letter-spacing: -0.04em;
-        max-width: 10ch;
+        max-width: 16ch;
         text-wrap: balance;
       }
 
       p {
         margin: 0;
         color: var(--muted);
-        font-size: 1rem;
-        line-height: 1.7;
-        max-width: 32rem;
+        font-size: 0.98rem;
+        line-height: 1.75;
+        max-width: 38rem;
+        text-wrap: pretty;
       }
 
       .overlay {
@@ -555,28 +638,24 @@ const renderLinkLandingPage = (
       }
 
       @media (max-width: 900px) {
-        .card {
-          grid-template-columns: 1fr;
-        }
-
         .content-panel {
-          min-height: auto;
-          padding: 1.5rem 1.25rem 1.75rem;
-        }
-
-        .media-panel,
-        .content-panel {
-          min-height: auto;
+          padding: 1.2rem 1rem 1.4rem;
         }
 
         .hero-media,
         .hero-placeholder {
-          min-height: min(70vh, 34rem);
+          width: min(100%, 24rem);
+          max-height: min(64vh, 32rem);
         }
 
         h1 {
-          max-width: none;
-          font-size: clamp(1.8rem, 8vw, 2.7rem);
+          max-width: 14ch;
+          font-size: clamp(1.35rem, 6.4vw, 2rem);
+        }
+
+        .hot-badge {
+          width: 2rem;
+          height: 2rem;
         }
       }
     </style>
@@ -593,7 +672,10 @@ const renderLinkLandingPage = (
         </div>
 
         <div class="content-panel">
-          <h1>${escapeHtml(title)}</h1>
+          <div class="headline">
+            <span class="hot-badge" aria-hidden="true">🔥</span>
+            <h1>${escapeHtml(title)}</h1>
+          </div>
           <p>${escapeHtml(description)}</p>
         </div>
       </section>
@@ -1602,6 +1684,7 @@ app.get("/s/:shortCode", async (req, res) => {
       link_id: link.id,
       user_agent: req.headers["user-agent"],
       ip: req.ip,
+      ip_address: req.ip,
       source: trafficSource.source,
       source_detail: trafficSource.source_detail,
       referer: trafficSource.referer,

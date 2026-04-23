@@ -3,7 +3,6 @@ import {
   Search,
   Image as ImageIcon,
   Video as VideoIcon,
-  ExternalLink,
   MousePointer2,
   Trash2,
   Pencil,
@@ -15,9 +14,18 @@ import {
 } from "lucide-react";
 import { ConvertedLink } from "@/src/types";
 import { formatDistanceToNow } from "date-fns";
-import { cn } from "@/src/lib/utils";
-import { toast } from "sonner";
 import { QRCodeCanvas } from "qrcode.react";
+
+const usageOptions = [
+  { value: "", label: "Chọn vị trí sử dụng" },
+  { value: "Bài viết Facebook", label: "Bài viết Facebook" },
+  { value: "Reel Facebook", label: "Reel Facebook" },
+  { value: "Bio TikTok", label: "Bio TikTok" },
+  { value: "Video TikTok", label: "Video TikTok" },
+  { value: "Zalo OA", label: "Zalo OA" },
+  { value: "Nhóm seeding", label: "Nhóm seeding" },
+  { value: "Livestream", label: "Livestream" },
+];
 
 interface LinkListProps {
   links: ConvertedLink[];
@@ -81,8 +89,6 @@ export const LinkList = ({
         original_url: editForm.original,
       });
       setEditingLink(null);
-    } catch (e) {
-      // toast already handled in app
     } finally {
       setIsUpdating(false);
     }
@@ -94,8 +100,6 @@ export const LinkList = ({
     try {
       await onDeleteLink(deletingLink.id);
       setDeletingLink(null);
-    } catch (e) {
-      // toast already handled in app
     } finally {
       setIsDeleting(false);
     }
@@ -103,16 +107,16 @@ export const LinkList = ({
 
   return (
     <div key="list">
-      <header className="mb-12 flex flex-col md:flex-row md:items-center justify-between gap-6">
+      <header className="mb-12 flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
         <div>
-          <h2 className="text-3xl font-black text-gray-900 mb-2">
+          <h2 className="mb-2 text-3xl font-black text-gray-900">
             Kho Lưu Trữ Link
           </h2>
-          <p className="text-gray-500 font-medium italic">
+          <p className="font-medium italic text-gray-500">
             Tổng cộng {links.length} tài nguyên liên kết.
           </p>
         </div>
-        <div className="relative group">
+        <div className="group relative">
           <Search
             className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"
             size={18}
@@ -122,7 +126,7 @@ export const LinkList = ({
             placeholder="Tìm kiếm tài nguyên..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-12 pr-6 py-4 bg-white border border-gray-200 rounded-2xl focus:outline-none focus:ring-4 focus:ring-orange-500/5 focus:border-orange-500 min-w-[300px] font-medium"
+            className="min-w-[300px] rounded-2xl border border-gray-200 bg-white py-4 pl-12 pr-6 font-medium focus:border-orange-500 focus:outline-none focus:ring-4 focus:ring-orange-500/5"
           />
         </div>
       </header>
@@ -132,27 +136,28 @@ export const LinkList = ({
           Array.from({ length: 4 }).map((_, i) => (
             <div
               key={i}
-              className="h-28 bg-white border border-gray-100 rounded-[2.5rem] animate-pulse"
+              className="h-28 animate-pulse rounded-[2.5rem] border border-gray-100 bg-white"
             />
           ))
         ) : links.length === 0 ? (
-          <div className="py-20 text-center text-gray-400 font-medium italic bg-white rounded-[2.5rem] border border-gray-100 shadow-sm">
+          <div className="rounded-[2.5rem] border border-gray-100 bg-white py-20 text-center font-medium italic text-gray-400 shadow-sm">
             Chưa có link nào được tạo.
           </div>
         ) : (
           links.map((l) => (
             <div
               key={l.id}
-              className="bg-white p-6 rounded-[2.5rem] border border-gray-100 shadow-sm flex flex-col sm:flex-row items-center gap-6 group hover:shadow-xl transition-all"
+              className="group flex flex-col items-center gap-6 rounded-[2.5rem] border border-gray-100 bg-white p-6 shadow-sm transition-all hover:shadow-xl sm:flex-row"
             >
-              <div className="w-16 h-16 bg-gray-50 rounded-2xl overflow-hidden shrink-0 flex items-center justify-center relative">
+              <div className="relative flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-gray-50">
                 {l.custom_image_url ? (
                   <img
                     src={l.custom_image_url}
-                    className="w-full h-full object-cover"
+                    alt={l.custom_title || l.short_code}
+                    className="h-full w-full object-cover"
                   />
                 ) : l.video_url ? (
-                  <div className="w-full h-full bg-gray-900 flex items-center justify-center text-white">
+                  <div className="flex h-full w-full items-center justify-center bg-gray-900 text-white">
                     <VideoIcon size={24} />
                   </div>
                 ) : (
@@ -160,7 +165,7 @@ export const LinkList = ({
                 )}
 
                 {l.video_url && l.custom_image_url && (
-                  <div className="absolute inset-0 bg-black/20 flex items-center justify-center pointer-events-none">
+                  <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-black/20">
                     <VideoIcon
                       size={16}
                       className="text-white drop-shadow-md"
@@ -168,45 +173,49 @@ export const LinkList = ({
                   </div>
                 )}
               </div>
-              <div className="flex-1 min-w-0 pr-4">
-                <h4 className="font-bold text-gray-900 truncate mb-1">
+
+              <div className="min-w-0 flex-1 pr-4">
+                <h4 className="mb-1 truncate font-bold text-gray-900">
                   {l.custom_title || "Untitled link"}
                 </h4>
-                <p className="text-xs text-gray-400 font-medium truncate mb-2">
+                <p className="mb-2 truncate text-xs font-medium text-gray-400">
                   {l.custom_description || "No description provided"}
                 </p>
                 {l.usage_context && (
-                  <p className="text-[11px] text-orange-600 font-bold truncate mb-2">
+                  <p className="mb-2 truncate text-[11px] font-bold text-orange-600">
                     Được dùng ở: {l.usage_context}
                   </p>
                 )}
+
                 <div className="flex items-center gap-4">
-                  <div className="flex items-center gap-1.5 text-[10px] font-black text-blue-600 bg-blue-50 px-2 py-0.5 rounded-lg">
+                  <div className="flex items-center gap-1.5 rounded-lg bg-blue-50 px-2 py-0.5 text-[10px] font-black text-blue-600">
                     <MousePointer2 size={10} />
                     <span>{l.clicks || 0} CLICKS</span>
                   </div>
-                  <span className="text-[10px] font-black text-gray-400 bg-gray-50 px-2 py-0.5 rounded-lg border border-gray-100 uppercase tracking-tighter">
+                  <span className="rounded-lg border border-gray-100 bg-gray-50 px-2 py-0.5 text-[10px] font-black uppercase tracking-tighter text-gray-400">
                     {l.short_code}
                   </span>
-                  <span className="text-[10px] font-medium text-gray-400 uppercase tracking-tighter">
+                  <span className="text-[10px] font-medium uppercase tracking-tighter text-gray-400">
                     {l.created_at &&
                       formatDistanceToNow(new Date(l.created_at))}{" "}
                     ago
                   </span>
                 </div>
+
                 {l.tracked_sources && l.tracked_sources.length > 0 && (
-                  <div className="flex flex-wrap items-center gap-2 mt-3">
+                  <div className="mt-3 flex flex-wrap items-center gap-2">
                     {l.tracked_sources.map((source) => (
                       <span
                         key={`${l.id}-${source.label}`}
-                        className="text-[10px] font-black text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-100 uppercase tracking-wider"
+                        className="rounded-full border border-emerald-100 bg-emerald-50 px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-emerald-700"
                       >
                         {source.label} · {source.count}
                       </span>
                     ))}
                   </div>
                 )}
-                <div className="flex flex-wrap items-center gap-2 mt-3">
+
+                <div className="mt-3 flex flex-wrap items-center gap-2">
                   <button
                     onClick={() =>
                       copyToClipboard(
@@ -214,7 +223,7 @@ export const LinkList = ({
                         `${l.id}-facebook`,
                       )
                     }
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 text-blue-700 rounded-full text-[10px] font-black uppercase tracking-wider border border-blue-100 hover:bg-blue-100 transition-all"
+                    className="inline-flex items-center gap-1.5 rounded-full border border-blue-100 bg-blue-50 px-3 py-1.5 text-[10px] font-black uppercase tracking-wider text-blue-700 transition-all hover:bg-blue-100"
                   >
                     <Link2 size={11} /> Facebook
                   </button>
@@ -225,7 +234,7 @@ export const LinkList = ({
                         `${l.id}-tiktok`,
                       )
                     }
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 text-slate-700 rounded-full text-[10px] font-black uppercase tracking-wider border border-slate-200 hover:bg-slate-200 transition-all"
+                    className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-100 px-3 py-1.5 text-[10px] font-black uppercase tracking-wider text-slate-700 transition-all hover:bg-slate-200"
                   >
                     <Link2 size={11} /> TikTok
                   </button>
@@ -236,33 +245,27 @@ export const LinkList = ({
                         `${l.id}-zalo`,
                       )
                     }
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-cyan-50 text-cyan-700 rounded-full text-[10px] font-black uppercase tracking-wider border border-cyan-100 hover:bg-cyan-100 transition-all"
+                    className="inline-flex items-center gap-1.5 rounded-full border border-cyan-100 bg-cyan-50 px-3 py-1.5 text-[10px] font-black uppercase tracking-wider text-cyan-700 transition-all hover:bg-cyan-100"
                   >
                     <Link2 size={11} /> Zalo
                   </button>
                 </div>
               </div>
+
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => startEdit(l)}
-                  className="p-3 bg-gray-50 text-gray-400 rounded-xl hover:text-blue-600 hover:bg-blue-50 transition-all"
+                  className="rounded-xl bg-gray-50 p-3 text-gray-400 transition-all hover:bg-blue-50 hover:text-blue-600"
                   title="Chỉnh sửa"
                 >
                   <Pencil size={18} />
                 </button>
                 <button
                   onClick={() => setDeletingLink(l)}
-                  className="p-3 bg-gray-50 text-gray-400 rounded-xl hover:text-red-600 hover:bg-red-50 transition-all"
+                  className="rounded-xl bg-gray-50 p-3 text-gray-400 transition-all hover:bg-red-50 hover:text-red-600"
                   title="Xóa link"
                 >
                   <Trash2 size={18} />
-                </button>
-                <button
-                  onClick={() => setQrLink(l)}
-                  className="p-3 bg-gray-50 text-gray-400 rounded-xl hover:text-purple-600 hover:bg-purple-50 transition-all"
-                  title="Mã QR"
-                >
-                  <QrCode size={18} />
                 </button>
                 <button
                   onClick={() =>
@@ -271,43 +274,45 @@ export const LinkList = ({
                       l.id || "",
                     )
                   }
-                  className="px-6 py-3 bg-gray-900 text-white rounded-xl font-black text-xs uppercase tracking-widest hover:scale-105 active:scale-95 transition-all mx-1 shrink-0"
+                  className="mx-1 shrink-0 rounded-xl bg-gray-900 px-6 py-3 text-xs font-black uppercase tracking-widest text-white transition-all hover:scale-105 active:scale-95"
                 >
                   {copiedId === l.id ? "DONE" : "COPY"}
                 </button>
-                <a
-                  href={l.original_url}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="p-3 bg-gray-50 text-gray-400 rounded-xl hover:text-orange-600 hover:bg-orange-50 transition-all"
+                <button
+                  onClick={() => setQrLink(l)}
+                  className="shrink-0 rounded-xl border border-purple-100 bg-white px-6 py-3 text-xs font-black uppercase tracking-widest text-purple-600 transition-all hover:bg-purple-50 active:scale-95"
+                  title="Mã QR"
                 >
-                  <ExternalLink size={18} />
-                </a>
+                  <span className="flex items-center justify-center gap-2">
+                    <QrCode size={18} />
+                    QR CODE
+                  </span>
+                </button>
               </div>
             </div>
           ))
         )}
       </div>
 
-      {/* Edit Modal */}
       {editingLink && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-6">
-          <div className="bg-white w-full max-w-xl rounded-[3rem] shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-300">
-            <div className="p-8 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-6 backdrop-blur-sm">
+          <div className="w-full max-w-xl overflow-hidden rounded-[3rem] bg-white shadow-2xl animate-in fade-in zoom-in duration-300">
+            <div className="flex items-center justify-between border-b border-gray-100 bg-gray-50/50 p-8">
               <h3 className="text-xl font-black text-gray-900">
                 Người dùng Chỉnh sửa Link
               </h3>
               <button
                 onClick={() => setEditingLink(null)}
-                className="p-2 hover:bg-white rounded-full transition-colors"
+                className="rounded-full p-2 transition-colors hover:bg-white"
               >
                 <X size={20} />
               </button>
             </div>
-            <div className="p-8 space-y-6">
+
+            <div className="space-y-6 p-8">
               <div className="space-y-1">
-                <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-1">
-                  Link Shopee / TikTok ( Đầu vào )
+                <label className="ml-1 text-[10px] font-black uppercase tracking-widest text-gray-400">
+                  Link Shopee / TikTok ( đầu vào )
                 </label>
                 <input
                   type="url"
@@ -316,14 +321,15 @@ export const LinkList = ({
                     setEditForm({ ...editForm, original: e.target.value })
                   }
                   placeholder="https://shopee.vn/..."
-                  className="w-full px-6 py-4 bg-orange-50/50 border-2 border-orange-100 focus:border-orange-500 rounded-2xl outline-none transition-all font-bold text-sm text-orange-900"
+                  className="w-full rounded-2xl border-2 border-orange-100 bg-orange-50/50 px-6 py-4 text-sm font-bold text-orange-900 outline-none transition-all focus:border-orange-500"
                 />
-                <p className="text-[9px] text-gray-400 font-medium px-1">
+                <p className="px-1 text-[9px] font-medium text-gray-400">
                   Link thực tế mà người dùng sẽ được chuyển tới.
                 </p>
               </div>
+
               <div className="space-y-1">
-                <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-1">
+                <label className="ml-1 text-[10px] font-black uppercase tracking-widest text-gray-400">
                   Tiêu đề ( Facebook )
                 </label>
                 <input
@@ -333,11 +339,12 @@ export const LinkList = ({
                     setEditForm({ ...editForm, title: e.target.value })
                   }
                   placeholder="Tiêu đề hiển thị..."
-                  className="w-full px-6 py-4 bg-gray-50 border-2 border-transparent focus:border-orange-500 rounded-2xl outline-none transition-all font-bold text-sm"
+                  className="w-full rounded-2xl border-2 border-transparent bg-gray-50 px-6 py-4 text-sm font-bold outline-none transition-all focus:border-orange-500"
                 />
               </div>
+
               <div className="space-y-1">
-                <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-1">
+                <label className="ml-1 text-[10px] font-black uppercase tracking-widest text-gray-400">
                   Mô tả ( Facebook )
                 </label>
                 <textarea
@@ -347,25 +354,31 @@ export const LinkList = ({
                   }
                   placeholder="Mô tả nội dung..."
                   rows={3}
-                  className="w-full px-6 py-4 bg-gray-50 border-2 border-transparent focus:border-orange-500 rounded-2xl outline-none transition-all font-medium text-sm resize-none"
+                  className="w-full resize-none rounded-2xl border-2 border-transparent bg-gray-50 px-6 py-4 text-sm font-medium outline-none transition-all focus:border-orange-500"
                 />
               </div>
+
               <div className="space-y-1">
-                <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-1">
+                <label className="ml-1 text-[10px] font-black uppercase tracking-widest text-gray-400">
                   Dùng ở đâu
                 </label>
-                <input
-                  type="text"
+                <select
                   value={editForm.usage}
                   onChange={(e) =>
                     setEditForm({ ...editForm, usage: e.target.value })
                   }
-                  placeholder="Ví dụ: Bài viết Facebook, bio TikTok..."
-                  className="w-full px-6 py-4 bg-gray-50 border-2 border-transparent focus:border-orange-500 rounded-2xl outline-none transition-all font-medium text-sm"
-                />
+                  className="w-full rounded-2xl border-2 border-transparent bg-gray-50 px-6 py-4 text-sm font-medium text-gray-900 outline-none transition-all focus:border-orange-500"
+                >
+                  {usageOptions.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
               </div>
+
               <div className="space-y-1">
-                <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-1">
+                <label className="ml-1 text-[10px] font-black uppercase tracking-widest text-gray-400">
                   Thumbnail URL
                 </label>
                 <input
@@ -375,48 +388,48 @@ export const LinkList = ({
                     setEditForm({ ...editForm, img: e.target.value })
                   }
                   placeholder="https://..."
-                  className="w-full px-6 py-4 bg-gray-50 border-2 border-transparent focus:border-orange-500 rounded-2xl outline-none transition-all font-medium text-sm"
+                  className="w-full rounded-2xl border-2 border-transparent bg-gray-50 px-6 py-4 text-sm font-medium outline-none transition-all focus:border-orange-500"
                 />
               </div>
             </div>
-            <div className="p-8 bg-gray-50 border-t border-gray-100 flex gap-4">
+
+            <div className="flex gap-4 border-t border-gray-100 bg-gray-50 p-8">
               <button
                 onClick={() => setEditingLink(null)}
-                className="flex-1 py-4 bg-white border border-gray-200 text-gray-600 rounded-2xl font-black uppercase tracking-widest text-[10px] hover:bg-gray-100 transition-all"
+                className="flex-1 rounded-2xl border border-gray-200 bg-white py-4 text-[10px] font-black uppercase tracking-widest text-gray-600 transition-all hover:bg-gray-100"
               >
                 Hủy bỏ
               </button>
               <button
                 onClick={handleUpdate}
                 disabled={isUpdating}
-                className="flex-1 py-4 bg-orange-600 text-white rounded-2xl font-black uppercase tracking-widest text-[10px] hover:bg-orange-700 transition-all shadow-lg shadow-orange-100 disabled:opacity-50 flex items-center justify-center gap-2"
+                className="flex flex-1 items-center justify-center gap-2 rounded-2xl bg-orange-600 py-4 text-[10px] font-black uppercase tracking-widest text-white shadow-lg shadow-orange-100 transition-all hover:bg-orange-700 disabled:opacity-50"
               >
                 {isUpdating ? (
-                  <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  <div className="h-3 w-3 animate-spin rounded-full border-2 border-white/30 border-t-white" />
                 ) : (
                   <Save size={14} />
                 )}
-                Lưu Thay Đổi
+                Lưu thay đổi
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Delete Confirmation Modal */}
       {deletingLink && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-6">
-          <div className="bg-white w-full max-w-md rounded-[3rem] shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-300">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-6 backdrop-blur-sm">
+          <div className="w-full max-w-md overflow-hidden rounded-[3rem] bg-white shadow-2xl animate-in fade-in zoom-in duration-300">
             <div className="p-10 text-center">
-              <div className="w-20 h-20 bg-red-50 text-red-600 rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-sm shadow-red-100">
+              <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-3xl bg-red-50 text-red-600 shadow-sm shadow-red-100">
                 <AlertTriangle size={40} />
               </div>
-              <h3 className="text-2xl font-black text-gray-900 mb-4 tracking-tight">
+              <h3 className="mb-4 text-2xl font-black tracking-tight text-gray-900">
                 Xác nhận xóa link?
               </h3>
-              <p className="text-gray-500 font-medium mb-10 leading-relaxed px-4">
+              <p className="mb-10 px-4 font-medium leading-relaxed text-gray-500">
                 Hành động này sẽ xóa vĩnh viễn link{" "}
-                <span className="font-bold text-gray-900 tracking-tight">
+                <span className="font-bold tracking-tight text-gray-900">
                   {deletingLink.short_code}
                 </span>{" "}
                 và mọi dữ liệu thống kê. Không thể khôi phục sau khi xóa.
@@ -425,10 +438,10 @@ export const LinkList = ({
                 <button
                   onClick={confirmDelete}
                   disabled={isDeleting}
-                  className="w-full py-5 bg-red-600 text-white rounded-2xl font-black uppercase tracking-widest text-[11px] hover:bg-red-700 transition-all flex items-center justify-center gap-3 disabled:opacity-50 shadow-xl shadow-red-100 active:scale-95"
+                  className="flex w-full items-center justify-center gap-3 rounded-2xl bg-red-600 py-5 text-[11px] font-black uppercase tracking-widest text-white shadow-xl shadow-red-100 transition-all hover:bg-red-700 active:scale-95 disabled:opacity-50"
                 >
                   {isDeleting ? (
-                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    <div className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
                   ) : (
                     <Trash2 size={18} />
                   )}
@@ -437,7 +450,7 @@ export const LinkList = ({
                 <button
                   onClick={() => setDeletingLink(null)}
                   disabled={isDeleting}
-                  className="w-full py-5 bg-gray-100 text-gray-600 rounded-2xl font-black uppercase tracking-widest text-[11px] hover:bg-gray-200 transition-all active:scale-95"
+                  className="w-full rounded-2xl bg-gray-100 py-5 text-[11px] font-black uppercase tracking-widest text-gray-600 transition-all hover:bg-gray-200 active:scale-95"
                 >
                   Hủy bỏ
                 </button>
@@ -447,23 +460,22 @@ export const LinkList = ({
         </div>
       )}
 
-      {/* QR Code Modal */}
       {qrLink && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-6">
-          <div className="bg-white w-full max-w-sm rounded-[3rem] shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-300">
-            <div className="p-8 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
-              <h3 className="text-xl font-black text-gray-900 tracking-tight">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-6 backdrop-blur-sm">
+          <div className="w-full max-w-sm overflow-hidden rounded-[3rem] bg-white shadow-2xl animate-in fade-in zoom-in duration-300">
+            <div className="flex items-center justify-between border-b border-gray-100 bg-gray-50/50 p-8">
+              <h3 className="text-xl font-black tracking-tight text-gray-900">
                 Mã QR của bạn
               </h3>
               <button
                 onClick={() => setQrLink(null)}
-                className="p-2 hover:bg-white rounded-full transition-colors"
+                className="rounded-full p-2 transition-colors hover:bg-white"
               >
                 <X size={20} />
               </button>
             </div>
-            <div className="p-10 flex flex-col items-center">
-              <div className="p-6 bg-white rounded-[2.5rem] shadow-xl border border-gray-100 mb-8 ring-4 ring-gray-50">
+            <div className="flex flex-col items-center p-10">
+              <div className="mb-8 rounded-[2.5rem] border border-gray-100 bg-white p-6 shadow-xl ring-4 ring-gray-50">
                 <QRCodeCanvas
                   value={`https://hotsnew.click/s/${qrLink.short_code}`}
                   size={200}
@@ -471,11 +483,11 @@ export const LinkList = ({
                   includeMargin={false}
                 />
               </div>
-              <div className="text-center mb-10">
-                <p className="font-black text-gray-900 text-lg mb-1 tracking-tight">
+              <div className="mb-10 text-center">
+                <p className="mb-1 text-lg font-black tracking-tight text-gray-900">
                   {qrLink.short_code}
                 </p>
-                <p className="text-[10px] font-black text-purple-600 uppercase tracking-widest bg-purple-50 px-3 py-1 rounded-full border border-purple-100 inline-block">
+                <p className="inline-block rounded-full border border-purple-100 bg-purple-50 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-purple-600">
                   Quét để truy cập link
                 </p>
               </div>
@@ -490,7 +502,7 @@ export const LinkList = ({
                     link.click();
                   }
                 }}
-                className="w-full py-5 bg-purple-600 text-white rounded-2xl font-black uppercase tracking-widest text-[11px] hover:bg-purple-700 transition-all flex items-center justify-center gap-3 shadow-xl shadow-purple-100 active:scale-95"
+                className="flex w-full items-center justify-center gap-3 rounded-2xl bg-purple-600 py-5 text-[11px] font-black uppercase tracking-widest text-white shadow-xl shadow-purple-100 transition-all hover:bg-purple-700 active:scale-95"
               >
                 <Save size={18} /> Tải mã QR (.png)
               </button>
