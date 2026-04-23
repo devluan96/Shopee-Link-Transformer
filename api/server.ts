@@ -431,84 +431,22 @@ const renderLinkLandingPage = (
         pointer-events: none;
       }
 
-      .overlay-card {
-        width: min(32rem, 100%);
-        position: relative;
-        border-radius: 2rem;
-        padding: 2rem;
-        text-align: center;
-        background:
-          linear-gradient(180deg, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0.08)),
-          rgba(15, 23, 42, 0.58);
-        border: 1px solid rgba(255, 255, 255, 0.2);
-        box-shadow: 0 1.8rem 3.8rem rgba(0, 0, 0, 0.35);
-      }
-
       .overlay-close {
-        position: absolute;
-        top: 1rem;
-        right: 1rem;
-        width: 2.6rem;
-        height: 2.6rem;
+        position: fixed;
+        top: 1.25rem;
+        right: 1.25rem;
+        width: 3.1rem;
+        height: 3.1rem;
         border-radius: 999px;
-        border: 1px solid rgba(255, 255, 255, 0.18);
-        background: rgba(255, 255, 255, 0.08);
+        border: 1px solid rgba(255, 255, 255, 0.22);
+        background: rgba(15, 23, 42, 0.34);
         color: var(--text);
-        font-size: 1.2rem;
-        cursor: pointer;
-      }
-
-      .overlay-kicker {
-        display: inline-block;
-        padding: 0.55rem 0.9rem;
-        border-radius: 999px;
-        background: rgba(255, 255, 255, 0.09);
-        border: 1px solid rgba(255, 255, 255, 0.14);
-        font-size: 0.72rem;
+        font-size: 1.35rem;
         font-weight: 900;
-        letter-spacing: 0.18em;
-        text-transform: uppercase;
-        color: #7dd3fc;
-      }
-
-      .overlay-title {
-        margin: 1rem 0 0.8rem;
-        font-size: clamp(2rem, 6vw, 3.6rem);
-        line-height: 0.95;
-        font-weight: 950;
-        letter-spacing: -0.06em;
-      }
-
-      .overlay-copy {
-        color: rgba(226, 232, 240, 0.86);
-        font-size: 1rem;
-        line-height: 1.75;
-      }
-
-      .overlay-cta {
-        margin-top: 1.4rem;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        gap: 0.8rem;
-        width: 100%;
-        padding: 1rem 1.2rem;
-        border-radius: 1.25rem;
-        border: 0;
-        background: linear-gradient(135deg, #f97316, #fb7185);
-        color: white;
-        font-size: 0.82rem;
-        font-weight: 900;
-        letter-spacing: 0.16em;
-        text-transform: uppercase;
         cursor: pointer;
-        box-shadow: 0 1rem 2rem rgba(249, 115, 22, 0.28);
-      }
-
-      .footer-note {
-        margin-top: 1rem;
-        font-size: 0.78rem;
-        color: rgba(226, 232, 240, 0.56);
+        backdrop-filter: blur(16px);
+        box-shadow: 0 0.8rem 2rem rgba(0, 0, 0, 0.22);
+        z-index: 21;
       }
 
       @media (max-width: 900px) {
@@ -555,25 +493,14 @@ const renderLinkLandingPage = (
       </section>
     </main>
 
-    <div id="overlay" class="overlay" role="button" tabindex="0" aria-label="Mo link dich">
-      <div class="overlay-card">
-        <button class="overlay-close" id="overlayClose" aria-label="Dong">×</button>
-        <span class="overlay-kicker">Da san sang</span>
-        <div class="overlay-title">Mo tab moi<br />trong 1 cham</div>
-        <p class="overlay-copy">
-          Bam vao bat ky vi tri nao hoac nut ben duoi. He thong se mo link dich trong tab moi,
-          dong thoi tiep tuc chuyen huong tab hien tai sau 0.5 giay de giu tracking on dinh.
-        </p>
-        <button class="overlay-cta" id="overlayCta">Mo ngay</button>
-        <div class="footer-note">Neu trinh duyet chan pop-up, tab hien tai van se chuyen huong.</div>
-      </div>
+    <div id="overlay" class="overlay" role="button" tabindex="0" aria-label="Mở link đích">
+      <button class="overlay-close" id="overlayClose" aria-label="Đóng lớp mờ">×</button>
     </div>
 
     <script>
       (() => {
         const overlay = document.getElementById("overlay");
         const overlayClose = document.getElementById("overlayClose");
-        const overlayCta = document.getElementById("overlayCta");
         const targetUrl = \`${escapeJsString(originalUrl)}\`;
         let opened = false;
 
@@ -588,17 +515,9 @@ const renderLinkLandingPage = (
           }
 
           overlay?.classList.add("hidden");
-
-          window.setTimeout(() => {
-            window.location.replace(targetUrl);
-          }, 500);
         };
 
         overlay?.addEventListener("click", beginRedirectFlow);
-        overlayCta?.addEventListener("click", (event) => {
-          event.stopPropagation();
-          beginRedirectFlow();
-        });
         overlayClose?.addEventListener("click", (event) => {
           event.stopPropagation();
           beginRedirectFlow();
