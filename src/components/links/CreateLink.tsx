@@ -13,7 +13,7 @@ import {
   Video as VideoIcon,
   X,
 } from "lucide-react";
-import { cn } from "@/src/lib/utils";
+import { cn, normalizeVietnameseSlug } from "@/src/lib/utils";
 
 const MAX_SHORT_CODE_LENGTH = 50;
 
@@ -84,13 +84,8 @@ export const CreateLink = ({
   copiedId,
 }: CreateLinkProps) => {
   const normalizedShortCodePreview = customShortCode
-    .trim()
-    .toLowerCase()
-    .normalize("NFC")
-    .replace(/\s+/g, "-")
-    .replace(/[^\p{L}\p{N}-]+/gu, "-")
-    .replace(/-+/g, "-")
-    .replace(/^-|-$/g, "");
+    ? normalizeVietnameseSlug(customShortCode)
+    : "";
 
   return (
     <div key="create">

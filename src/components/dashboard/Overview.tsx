@@ -26,114 +26,147 @@ export const Overview = ({
   setActiveTab,
   canAccessCreate,
 }: OverviewProps) => {
+  const recentClicks = stats?.recentClicks || [];
+  const totalLinks = stats?.totalLinks || 0;
+  const totalClicks = stats?.totalClicks || 0;
+
+  const midpoint = Math.ceil(recentClicks.length / 2);
+  const previousPeriod = recentClicks
+    .slice(0, midpoint)
+    .reduce((sum, item) => sum + item.clicks, 0);
+  const currentPeriod = recentClicks
+    .slice(midpoint)
+    .reduce((sum, item) => sum + item.clicks, 0);
+
+  let growthPercentage = 0;
+  if (previousPeriod === 0 && currentPeriod > 0) {
+    growthPercentage = 100;
+  } else if (previousPeriod > 0) {
+    growthPercentage = ((currentPeriod - previousPeriod) / previousPeriod) * 100;
+  }
+
+  const avgClicksPerLink = totalLinks > 0 ? totalClicks / totalLinks : 0;
+  const efficiencyLabel =
+    avgClicksPerLink >= 10
+      ? "Rất cao"
+      : avgClicksPerLink >= 5
+        ? "Cao"
+        : avgClicksPerLink >= 2
+          ? "Trung bình"
+          : totalClicks > 0
+            ? "Đang tăng"
+            : "Chưa có";
+
+  const cards = [
+    {
+      label: "Tổng Link",
+      value: totalLinks,
+      icon: List,
+      color: "text-orange-600",
+      bg: "bg-orange-50",
+      border: "border-orange-100",
+    },
+    {
+      label: "Tổng lượt click",
+      value: totalClicks,
+      icon: MousePointer2,
+      color: "text-blue-600",
+      bg: "bg-blue-50",
+      border: "border-blue-100",
+    },
+    {
+      label: "Tăng trưởng %",
+      value: `${growthPercentage >= 0 ? "+" : ""}${growthPercentage.toFixed(1)}`,
+      icon: TrendingUp,
+      color: growthPercentage >= 0 ? "text-green-600" : "text-red-600",
+      bg: growthPercentage >= 0 ? "bg-green-50" : "bg-red-50",
+      border: growthPercentage >= 0 ? "border-green-100" : "border-red-100",
+    },
+    {
+      label: "Độ hiệu quả",
+      value: efficiencyLabel,
+      icon: Activity,
+      color: "text-purple-600",
+      bg: "bg-purple-50",
+      border: "border-purple-100",
+    },
+  ];
+
   return (
     <div key="dashboard">
       <header className="mb-12">
-        <h2 className="text-4xl font-black text-gray-900 mb-2 tracking-tight">
+        <h2 className="mb-2 text-4xl font-black tracking-tight text-gray-900">
           Chào buổi sáng!
         </h2>
-        <p className="text-gray-500 font-medium italic">
+        <p className="font-medium italic text-gray-500">
           Đây là tóm tắt chiến dịch hotsnew của bạn trong 24h qua.
         </p>
       </header>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
-        {[
-          {
-            label: "Tổng Link",
-            value: stats?.totalLinks || 0,
-            icon: List,
-            color: "text-orange-600",
-            bg: "bg-orange-50",
-            border: "border-orange-100",
-          },
-          {
-            label: "Tổng Lượt Click",
-            value: stats?.totalClicks || 0,
-            icon: MousePointer2,
-            color: "text-blue-600",
-            bg: "bg-blue-50",
-            border: "border-blue-100",
-          },
-          {
-            label: "Tăng Trưởng %",
-            value: "+12.5",
-            icon: TrendingUp,
-            color: "text-green-600",
-            bg: "bg-green-50",
-            border: "border-green-100",
-          },
-          {
-            label: "Độ Hiệu Quả",
-            value: "Cao",
-            icon: Activity,
-            color: "text-purple-600",
-            bg: "bg-purple-50",
-            border: "border-purple-100",
-          },
-        ].map((s, i) => (
+      <div className="mb-12 grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
+        {cards.map((card, i) => (
           <div
             key={i}
-            className={`bg-white p-8 rounded-[2.5rem] border ${s.border} shadow-sm hover:shadow-xl transition-all group relative overflow-hidden backdrop-blur-sm bg-white/90`}
+            className={`group relative overflow-hidden rounded-[2.5rem] border bg-white/90 p-8 shadow-sm backdrop-blur-sm transition-all hover:shadow-xl ${card.border}`}
           >
             <div
-              className={`w-14 h-14 ${s.bg} ${s.color} rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform relative z-10 shadow-sm`}
+              className={`relative z-10 mb-6 flex h-14 w-14 items-center justify-center rounded-2xl shadow-sm transition-transform group-hover:scale-110 ${card.bg} ${card.color}`}
             >
-              <s.icon size={28} />
+              <card.icon size={28} />
             </div>
-            <div className="text-3xl font-black text-gray-900 mb-1 font-mono relative z-10">
-              {s.value}
+            <div className="relative z-10 mb-1 font-mono text-3xl font-black text-gray-900">
+              {card.value}
             </div>
-            <div className="text-[11px] font-black uppercase tracking-widest text-gray-400 relative z-10">
-              {s.label}
+            <div className="relative z-10 text-[11px] font-black uppercase tracking-widest text-gray-400">
+              {card.label}
             </div>
             <div
-              className={`absolute -right-4 -bottom-4 opacity-[0.03] group-hover:opacity-10 transition-opacity ${s.color}`}
+              className={`absolute -bottom-4 -right-4 opacity-[0.03] transition-opacity group-hover:opacity-10 ${card.color}`}
             >
-              <s.icon size={120} />
+              <card.icon size={120} />
             </div>
           </div>
         ))}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <div className="lg:col-span-2 bg-gradient-to-br from-gray-900 via-gray-800 to-gray-950 rounded-[3rem] p-12 text-white relative overflow-hidden shadow-2xl ring-1 ring-white/10">
+      <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
+        <div className="relative overflow-hidden rounded-[3rem] bg-gradient-to-br from-gray-900 via-gray-800 to-gray-950 p-8 text-white shadow-2xl ring-1 ring-white/10 lg:col-span-2 lg:p-12">
           <div className="relative z-10">
-            <div className="inline-flex items-center gap-2 px-3 py-1 bg-orange-600/20 text-orange-400 border border-orange-500/30 rounded-full text-[10px] font-black uppercase tracking-widest mb-6">
+            <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-orange-500/30 bg-orange-600/20 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-orange-400">
               <Zap size={12} className="fill-current" /> Premium Business
             </div>
-            <h3 className="text-4xl font-black mb-6 leading-tight max-w-lg">
+            <h3 className="mb-6 max-w-lg text-3xl font-black leading-tight lg:text-4xl">
               Sẵn sàng bùng nổ doanh số của bạn?
             </h3>
-            <p className="text-gray-400 font-medium mb-10 max-w-md leading-relaxed">
+            <p className="mb-10 max-w-md font-medium leading-relaxed text-gray-400">
               Sử dụng công cụ chuyển đổi landing page chuyên nghiệp để tăng tỷ
               lệ click-through lên đến 300% trên Facebook.
             </p>
             {canAccessCreate ? (
               <button
                 onClick={() => setActiveTab("create")}
-                className="px-10 py-5 bg-gradient-to-r from-orange-600 to-amber-500 rounded-2xl font-black uppercase tracking-widest text-xs flex items-center gap-3 hover:shadow-2xl hover:shadow-orange-600/40 hover:-translate-y-0.5 transition-all active:scale-95 shadow-xl shadow-orange-900/40"
+                className="flex items-center gap-3 rounded-2xl bg-gradient-to-r from-orange-600 to-amber-500 px-10 py-5 text-xs font-black uppercase tracking-widest shadow-xl shadow-orange-900/40 transition-all hover:-translate-y-0.5 hover:shadow-2xl hover:shadow-orange-600/40 active:scale-95"
               >
                 <PlusCircle size={20} /> Tạo Link Ngay
               </button>
             ) : (
               <button
                 onClick={() => setActiveTab("pricing")}
-                className="px-10 py-5 bg-gradient-to-r from-orange-600 to-amber-500 rounded-2xl font-black uppercase tracking-widest text-xs flex items-center gap-3 hover:shadow-2xl hover:shadow-orange-600/40 hover:-translate-y-0.5 transition-all active:scale-95 shadow-xl shadow-orange-900/40"
+                className="flex items-center gap-3 rounded-2xl bg-gradient-to-r from-orange-600 to-amber-500 px-10 py-5 text-xs font-black uppercase tracking-widest shadow-xl shadow-orange-900/40 transition-all hover:-translate-y-0.5 hover:shadow-2xl hover:shadow-orange-600/40 active:scale-95"
               >
                 <Zap size={20} /> Nâng cấp Premium Ngay
               </button>
             )}
           </div>
-          <div className="absolute top-0 right-0 w-1/2 h-full bg-gradient-to-l from-orange-600/10 to-transparent pointer-events-none" />
+          <div className="pointer-events-none absolute right-0 top-0 h-full w-1/2 bg-gradient-to-l from-orange-600/10 to-transparent" />
           <Zap
             size={300}
-            className="absolute -bottom-16 -right-16 text-white opacity-[0.03] fill-current pointer-events-none"
+            className="pointer-events-none absolute -bottom-16 -right-16 fill-current text-white opacity-[0.03]"
           />
         </div>
 
-        <div className="bg-white rounded-[3rem] border border-gray-200 p-8 shadow-sm">
-          <h3 className="text-sm font-black uppercase tracking-[0.2em] text-gray-400 mb-8 px-2 flex items-center gap-2">
+        <div className="rounded-[3rem] border border-gray-200 bg-white p-8 shadow-sm">
+          <h3 className="mb-8 flex items-center gap-2 px-2 text-sm font-black uppercase tracking-[0.2em] text-gray-400">
             <BarChart3 size={16} /> Link Hiệu Quả Nhất
           </h3>
           <div className="space-y-4">
@@ -141,23 +174,23 @@ export const Overview = ({
               stats.topLinks.map((tl, idx) => (
                 <div
                   key={idx}
-                  className="flex items-center gap-4 p-4 hover:bg-gray-50 rounded-2xl transition-all cursor-pointer group"
+                  className="group flex cursor-pointer items-center gap-4 rounded-2xl p-4 transition-all hover:bg-gray-50"
                 >
-                  <div className="w-10 h-10 bg-gray-100 rounded-xl flex items-center justify-center font-black text-gray-400 group-hover:bg-orange-600 group-hover:text-white transition-all font-mono">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gray-100 font-mono font-black text-gray-400 transition-all group-hover:bg-orange-600 group-hover:text-white">
                     {idx + 1}
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-bold text-gray-900 truncate mb-0.5">
+                  <div className="min-w-0 flex-1">
+                    <p className="mb-0.5 truncate font-bold text-gray-900">
                       {tl.title}
                     </p>
-                    <p className="text-[10px] font-black text-orange-500 uppercase tracking-widest">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-orange-500">
                       {tl.clicks} Clicks
                     </p>
                   </div>
                 </div>
               ))
             ) : (
-              <div className="py-20 text-center text-gray-400 font-medium italic">
+              <div className="py-20 text-center font-medium italic text-gray-400">
                 Chưa có dữ liệu.
               </div>
             )}

@@ -1,165 +1,257 @@
-import React from 'react';
-import { 
-  MousePointer2, 
-  Activity, 
-  TrendingUp, 
-  PieChart as PieChartIcon 
-} from 'lucide-react';
-import { 
-  ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, 
-  BarChart, Bar, Cell
-} from 'recharts';
+import React from "react";
+import {
+  MousePointer2,
+  Activity,
+  TrendingUp,
+  PieChart as PieChartIcon,
+} from "lucide-react";
+import {
+  ResponsiveContainer,
+  AreaChart,
+  Area,
+  XAxis,
+  YAxis,
+  Tooltip,
+  BarChart,
+  Bar,
+  Cell,
+} from "recharts";
+import { AnalyticsData } from "@/src/types";
 
 interface AnalyticsProps {
-  analyticsData: {
-    history: Array<{ date: string; clicks: number }>;
-    topLinks: Array<{ title: string; clicks: number }>;
-  };
+  analyticsData: AnalyticsData;
   linksCount: number;
 }
 
+const TRAFFIC_COLORS = ["#3b82f6", "#ef4444", "#10b981", "#f59e0b", "#8b5cf6"];
+
 export const Analytics = ({ analyticsData, linksCount }: AnalyticsProps) => {
-  // Defensive checks to prevent "Cannot read properties of undefined (reading 'reduce')"
   const history = analyticsData?.history || [];
   const topLinks = analyticsData?.topLinks || [];
-  
+  const trafficSources = analyticsData?.trafficSources || [];
+  const growthPercentage = Number.isFinite(analyticsData?.growthPercentage)
+    ? analyticsData.growthPercentage
+    : 0;
+
   const totalClicks = history.reduce((a, b) => a + (b.clicks || 0), 0);
+  const growthDisplay = `${growthPercentage >= 0 ? "+" : ""}${growthPercentage.toFixed(1)}%`;
 
   return (
     <div className="space-y-8 pb-12">
-       {/* Stats Overview */}
-       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {[
-            { label: 'Tổng Lượt Click', value: totalClicks.toLocaleString(), icon: MousePointer2, color: 'text-orange-500', bg: 'bg-orange-50' },
-            { label: 'Link Hoạt Động', value: linksCount || 0, icon: Activity, color: 'text-blue-500', bg: 'bg-blue-50' },
-            { label: 'Tăng Trưởng (30d)', value: '+0%', icon: TrendingUp, color: 'text-green-500', bg: 'bg-green-50' },
-          ].map((stat, idx) => (
-            <div key={idx} className="bg-white p-8 rounded-[2.5rem] border border-gray-100 shadow-sm">
-               <div className={`w-12 h-12 ${stat.bg} ${stat.color} rounded-2xl flex items-center justify-center mb-6`}>
-                  <stat.icon size={24} />
-               </div>
-               <div className="text-3xl font-black text-gray-900 mb-1 font-mono">{stat.value}</div>
-               <div className="text-[11px] font-black uppercase tracking-widest text-gray-400">{stat.label}</div>
+      <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+        {[
+          {
+            label: "Tổng lượt click",
+            value: totalClicks.toLocaleString(),
+            icon: MousePointer2,
+            color: "text-orange-500",
+            bg: "bg-orange-50",
+          },
+          {
+            label: "Link hoạt động",
+            value: linksCount || 0,
+            icon: Activity,
+            color: "text-blue-500",
+            bg: "bg-blue-50",
+          },
+          {
+            label: "Tăng trưởng (30d)",
+            value: growthDisplay,
+            icon: TrendingUp,
+            color: growthPercentage >= 0 ? "text-green-500" : "text-red-500",
+            bg: growthPercentage >= 0 ? "bg-green-50" : "bg-red-50",
+          },
+        ].map((stat, idx) => (
+          <div
+            key={idx}
+            className="rounded-[2.5rem] border border-gray-100 bg-white p-8 shadow-sm"
+          >
+            <div
+              className={`mb-6 flex h-12 w-12 items-center justify-center rounded-2xl ${stat.bg} ${stat.color}`}
+            >
+              <stat.icon size={24} />
             </div>
-          ))}
-       </div>
-
-       {/* Main Chart */}
-       <div className="bg-white p-8 rounded-[2.5rem] border border-gray-100 shadow-sm">
-          <div className="flex items-center justify-between mb-10">
-             <div>
-                <h3 className="text-xl font-black text-gray-900">Biểu đồ lượt click</h3>
-                <p className="text-xs text-gray-400 font-medium">Thống kê dữ liệu trong 30 ngày gần nhất</p>
-             </div>
-             <div className="flex gap-2">
-                <span className="flex items-center gap-2 text-[10px] font-black text-orange-500 bg-orange-50 px-3 py-1.5 rounded-full uppercase tracking-widest">
-                   <div className="w-1.5 h-1.5 rounded-full bg-orange-500 animate-pulse" /> Live Data
-                </span>
-             </div>
+            <div className="mb-1 font-mono text-3xl font-black text-gray-900">
+              {stat.value}
+            </div>
+            <div className="text-[11px] font-black uppercase tracking-widest text-gray-400">
+              {stat.label}
+            </div>
           </div>
-          
-          <div className="h-[350px] w-full min-h-[350px]">
-            {history.length > 0 ? (
-              <ResponsiveContainer width="100%" height="100%" minHeight={350}>
-                <AreaChart data={history}>
-                  <defs>
-                    <linearGradient id="colorClicks" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#FB923C" stopOpacity={0.3}/>
-                      <stop offset="95%" stopColor="#FB923C" stopOpacity={0}/>
-                    </linearGradient>
-                  </defs>
-                  <XAxis 
-                    dataKey="date" 
-                    axisLine={false} 
-                    tickLine={false} 
-                    tick={{fontSize: 10, fontWeight: 700, fill: '#9CA3AF'}}
-                    dy={10}
-                  />
-                  <YAxis 
-                    axisLine={false} 
-                    tickLine={false} 
-                    tick={{fontSize: 10, fontWeight: 700, fill: '#9CA3AF'}}
-                  />
-                  <Tooltip 
-                    contentStyle={{ borderRadius: '1rem', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
-                    labelStyle={{ fontWeight: 900, marginBottom: '4px' }}
-                  />
-                  <Area type="monotone" dataKey="clicks" stroke="#FB923C" strokeWidth={4} fillOpacity={1} fill="url(#colorClicks)" />
-                </AreaChart>
-              </ResponsiveContainer>
+        ))}
+      </div>
+
+      <div className="rounded-[2.5rem] border border-gray-100 bg-white p-8 shadow-sm">
+        <div className="mb-10 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h3 className="text-xl font-black text-gray-900">
+              Biểu đồ lượt click
+            </h3>
+            <p className="text-xs font-medium text-gray-400">
+              Thống kê dữ liệu trong 30 ngày gần nhất
+            </p>
+          </div>
+          <div className="flex gap-2">
+            <span className="flex items-center gap-2 rounded-full bg-orange-50 px-3 py-1.5 text-[10px] font-black uppercase tracking-widest text-orange-500">
+              <div className="h-1.5 w-1.5 rounded-full bg-orange-500 animate-pulse" />
+              Live Data
+            </span>
+          </div>
+        </div>
+
+        <div className="h-[350px] min-h-[350px] w-full">
+          {history.length > 0 ? (
+            <ResponsiveContainer width="100%" height="100%" minHeight={350}>
+              <AreaChart data={history}>
+                <defs>
+                  <linearGradient id="colorClicks" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#FB923C" stopOpacity={0.3} />
+                    <stop offset="95%" stopColor="#FB923C" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <XAxis
+                  dataKey="date"
+                  axisLine={false}
+                  tickLine={false}
+                  tick={{ fontSize: 10, fontWeight: 700, fill: "#9CA3AF" }}
+                  dy={10}
+                />
+                <YAxis
+                  axisLine={false}
+                  tickLine={false}
+                  tick={{ fontSize: 10, fontWeight: 700, fill: "#9CA3AF" }}
+                />
+                <Tooltip
+                  contentStyle={{
+                    borderRadius: "1rem",
+                    border: "none",
+                    boxShadow: "0 10px 15px -3px rgb(0 0 0 / 0.1)",
+                  }}
+                  labelStyle={{ fontWeight: 900, marginBottom: "4px" }}
+                />
+                <Area
+                  type="monotone"
+                  dataKey="clicks"
+                  stroke="#FB923C"
+                  strokeWidth={4}
+                  fillOpacity={1}
+                  fill="url(#colorClicks)"
+                />
+              </AreaChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="flex h-full w-full flex-col items-center justify-center py-20 text-gray-300">
+              <Activity size={48} className="mb-4 opacity-20" />
+              <p className="text-sm font-bold italic">
+                Không có dữ liệu click nào trong 30 ngày qua.
+              </p>
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
+        <div className="rounded-[2.5rem] border border-gray-100 bg-white p-8 shadow-sm">
+          <div className="mb-8 flex items-center gap-3">
+            <TrendingUp size={20} className="text-orange-500" />
+            <h3 className="text-xl font-black text-gray-900">
+              Top Link Hiệu Quả
+            </h3>
+          </div>
+          <div className="space-y-4">
+            {topLinks.length > 0 ? (
+              topLinks.map((item, idx) => (
+                <div
+                  key={idx}
+                  className="group flex items-center gap-4 rounded-2xl p-4 transition-all hover:bg-gray-50"
+                >
+                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gray-100 font-mono font-black text-gray-400 transition-all group-hover:bg-orange-500 group-hover:text-white">
+                    0{idx + 1}
+                  </div>
+                  <div className="min-w-0 flex-1 pr-4">
+                    <div className="truncate font-bold text-gray-900">
+                      {item.title}
+                    </div>
+                    <div className="text-[10px] font-black uppercase tracking-widest text-orange-500">
+                      {item.clicks} CLICKS
+                    </div>
+                  </div>
+                  <div className="h-1.5 w-24 overflow-hidden rounded-full bg-gray-100">
+                    <div
+                      className="h-full bg-orange-500"
+                      style={{
+                        width: `${(item.clicks / Math.max(1, ...topLinks.map((link) => link.clicks || 0))) * 100}%`,
+                      }}
+                    />
+                  </div>
+                </div>
+              ))
             ) : (
-              <div className="w-full h-full flex flex-col items-center justify-center text-gray-300 py-20">
-                 <Activity size={48} className="mb-4 opacity-20" />
-                 <p className="font-bold text-sm italic">Không có dữ liệu click nào trong 30 ngày qua.</p>
+              <div className="py-12 text-center text-sm font-medium italic text-gray-400">
+                Chưa có dữ liệu thống kê link
               </div>
             )}
           </div>
-       </div>
+        </div>
 
-       {/* Bottom Grid */}
-       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          {/* Top Links */}
-          <div className="bg-white p-8 rounded-[2.5rem] border border-gray-100 shadow-sm">
-             <div className="flex items-center gap-3 mb-8">
-                <TrendingUp size={20} className="text-orange-500" />
-                <h3 className="text-xl font-black text-gray-900">Top Link Hiệu Quả</h3>
-             </div>
-             <div className="space-y-4">
-                {topLinks.length > 0 ? topLinks.map((item, idx) => (
-                   <div key={idx} className="flex items-center gap-4 p-4 hover:bg-gray-50 rounded-2xl transition-all group">
-                      <div className="w-10 h-10 bg-gray-100 rounded-xl flex items-center justify-center font-black text-gray-400 group-hover:bg-orange-500 group-hover:text-white transition-all font-mono">
-                         0{idx + 1}
-                      </div>
-                      <div className="flex-1 min-w-0 pr-4">
-                         <div className="font-bold text-gray-900 truncate">{item.title}</div>
-                         <div className="text-[10px] font-black text-orange-500 uppercase tracking-widest">{item.clicks} CLICKS</div>
-                      </div>
-                      {topLinks.length > 0 && (
-                        <div className="w-24 bg-gray-100 h-1.5 rounded-full overflow-hidden">
-                          <div 
-                              className="h-full bg-orange-500" 
-                              style={{ width: `${(item.clicks / Math.max(1, ...topLinks.map(l => l.clicks || 0))) * 100}%` }}
-                          />
-                        </div>
-                      )}
-                   </div>
-                )) : (
-                  <div className="py-12 text-center text-gray-400 text-sm font-medium italic">
-                     Chưa có dữ liệu thống kê link
-                  </div>
-                )}
-             </div>
+        <div className="rounded-[2.5rem] border border-gray-100 bg-white p-8 shadow-sm">
+          <div className="mb-8 flex items-center gap-3">
+            <PieChartIcon size={20} className="text-blue-500" />
+            <h3 className="text-xl font-black text-gray-900">
+              Nguồn Lưu Lượng
+            </h3>
           </div>
-
-          <div className="bg-white p-8 rounded-[2.5rem] border border-gray-100 shadow-sm">
-             <div className="flex items-center gap-3 mb-8">
-                <PieChartIcon size={20} className="text-blue-500" />
-                <h3 className="text-xl font-black text-gray-900">Nguồn Lưu Lượng</h3>
-             </div>
-             <div className="h-[200px] mb-6 min-h-[200px]">
-                <ResponsiveContainer width="100%" height="100%" minHeight={200}>
-                   <BarChart data={[
-                      { name: 'Direct', value: 0 },
-                      { name: 'Social', value: 0 },
-                      { name: 'Search', value: 0 },
-                      { name: 'Refer', value: 0 },
-                   ]}>
-                      <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fontSize: 10, fontWeight: 700}} />
-                      <Tooltip />
-                      <Bar dataKey="value" radius={[10, 10, 0, 0]}>
-                         {[
-                            <Cell key={0} fill="#3b82f6" />,
-                            <Cell key={1} fill="#ef4444" />,
-                            <Cell key={2} fill="#10b981" />,
-                            <Cell key={3} fill="#9ca3af" />,
-                         ]}
-                      </Bar>
-                   </BarChart>
-                </ResponsiveContainer>
-             </div>
-             <p className="text-center text-xs text-gray-400 font-medium italic">Dữ liệu phân tích dựa trên HTTP Referrer</p>
+          <div className="mb-6 h-[220px] min-h-[220px]">
+            {trafficSources.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%" minHeight={220}>
+                <BarChart data={trafficSources}>
+                  <XAxis
+                    dataKey="name"
+                    axisLine={false}
+                    tickLine={false}
+                    tick={{ fontSize: 10, fontWeight: 700 }}
+                  />
+                  <YAxis
+                    axisLine={false}
+                    tickLine={false}
+                    tick={{ fontSize: 10, fontWeight: 700, fill: "#9CA3AF" }}
+                  />
+                  <Tooltip />
+                  <Bar dataKey="value" radius={[10, 10, 0, 0]}>
+                    {trafficSources.map((source, index) => (
+                      <Cell
+                        key={source.name}
+                        fill={TRAFFIC_COLORS[index % TRAFFIC_COLORS.length]}
+                      />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="flex h-full items-center justify-center rounded-3xl border border-dashed border-gray-100 bg-gray-50 text-center text-sm font-medium italic text-gray-400">
+                Chưa có dữ liệu nguồn lưu lượng.
+              </div>
+            )}
           </div>
-       </div>
+          <div className="flex flex-wrap gap-2">
+            {trafficSources.map((source, index) => (
+              <span
+                key={source.name}
+                className="inline-flex items-center gap-2 rounded-full border border-gray-100 px-3 py-1.5 text-[10px] font-black uppercase tracking-widest text-gray-600"
+              >
+                <span
+                  className="h-2.5 w-2.5 rounded-full"
+                  style={{
+                    backgroundColor:
+                      TRAFFIC_COLORS[index % TRAFFIC_COLORS.length],
+                  }}
+                />
+                {source.name}: {source.value}
+              </span>
+            ))}
+          </div>
+        </div>
+      </div>
     </div>
   );
 };

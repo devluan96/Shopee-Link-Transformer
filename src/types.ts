@@ -43,3 +43,10 @@ export interface LinkStats {
   recentClicks: Array<{ date: string; clicks: number }>;
   topLinks: Array<{ short_code: string; title: string; clicks: number }>;
 }
+
+export interface AnalyticsData {
+  history: Array<{ date: string; clicks: number }>;
+  topLinks: Array<{ title: string; clicks: number }>;
+  trafficSources: Array<{ name: string; value: number }>;
+  growthPercentage: number;
+}

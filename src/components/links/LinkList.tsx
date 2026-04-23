@@ -116,7 +116,7 @@ export const LinkList = ({
             Tổng cộng {links.length} tài nguyên liên kết.
           </p>
         </div>
-        <div className="group relative">
+        <div className="group relative w-full md:w-auto">
           <Search
             className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"
             size={18}
@@ -126,7 +126,7 @@ export const LinkList = ({
             placeholder="Tìm kiếm tài nguyên..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="min-w-[300px] rounded-2xl border border-gray-200 bg-white py-4 pl-12 pr-6 font-medium focus:border-orange-500 focus:outline-none focus:ring-4 focus:ring-orange-500/5"
+            className="w-full min-w-0 rounded-2xl border border-gray-200 bg-white py-4 pl-12 pr-6 font-medium focus:border-orange-500 focus:outline-none focus:ring-4 focus:ring-orange-500/5 md:min-w-[300px]"
           />
         </div>
       </header>
@@ -147,9 +147,9 @@ export const LinkList = ({
           links.map((l) => (
             <div
               key={l.id}
-              className="group flex flex-col items-center gap-6 rounded-[2.5rem] border border-gray-100 bg-white p-6 shadow-sm transition-all hover:shadow-xl sm:flex-row"
+              className="group flex flex-col gap-5 rounded-[2.5rem] border border-gray-100 bg-white p-5 shadow-sm transition-all hover:shadow-xl sm:flex-row sm:items-start sm:p-6"
             >
-              <div className="relative flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-gray-50">
+              <div className="relative mx-auto flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-gray-50 sm:mx-0">
                 {l.custom_image_url ? (
                   <img
                     src={l.custom_image_url}
@@ -174,25 +174,25 @@ export const LinkList = ({
                 )}
               </div>
 
-              <div className="min-w-0 flex-1 pr-4">
-                <h4 className="mb-1 truncate font-bold text-gray-900">
+              <div className="min-w-0 flex-1 sm:pr-4">
+                <h4 className="mb-1 line-clamp-2 text-center font-bold text-gray-900 sm:text-left">
                   {l.custom_title || "Untitled link"}
                 </h4>
-                <p className="mb-2 truncate text-xs font-medium text-gray-400">
+                <p className="mb-2 line-clamp-2 text-center text-xs font-medium text-gray-400 sm:text-left">
                   {l.custom_description || "No description provided"}
                 </p>
                 {l.usage_context && (
-                  <p className="mb-2 truncate text-[11px] font-bold text-orange-600">
+                  <p className="mb-2 text-center text-[11px] font-bold text-orange-600 sm:text-left">
                     Được dùng ở: {l.usage_context}
                   </p>
                 )}
 
-                <div className="flex items-center gap-4">
+                <div className="flex flex-wrap items-center justify-center gap-2 sm:justify-start sm:gap-4">
                   <div className="flex items-center gap-1.5 rounded-lg bg-blue-50 px-2 py-0.5 text-[10px] font-black text-blue-600">
                     <MousePointer2 size={10} />
                     <span>{l.clicks || 0} CLICKS</span>
                   </div>
-                  <span className="rounded-lg border border-gray-100 bg-gray-50 px-2 py-0.5 text-[10px] font-black uppercase tracking-tighter text-gray-400">
+                  <span className="max-w-full truncate rounded-lg border border-gray-100 bg-gray-50 px-2 py-0.5 text-[10px] font-black uppercase tracking-tighter text-gray-400">
                     {l.short_code}
                   </span>
                   <span className="text-[10px] font-medium uppercase tracking-tighter text-gray-400">
@@ -252,7 +252,7 @@ export const LinkList = ({
                 </div>
               </div>
 
-              <div className="flex items-center gap-2">
+              <div className="flex w-full flex-wrap items-center justify-center gap-2 sm:w-auto sm:justify-end">
                 <button
                   onClick={() => startEdit(l)}
                   className="rounded-xl bg-gray-50 p-3 text-gray-400 transition-all hover:bg-blue-50 hover:text-blue-600"
@@ -274,13 +274,13 @@ export const LinkList = ({
                       l.id || "",
                     )
                   }
-                  className="mx-1 shrink-0 rounded-xl bg-gray-900 px-6 py-3 text-xs font-black uppercase tracking-widest text-white transition-all hover:scale-105 active:scale-95"
+                  className="min-w-[110px] flex-1 shrink-0 rounded-xl bg-gray-900 px-6 py-3 text-xs font-black uppercase tracking-widest text-white transition-all hover:scale-105 active:scale-95 sm:mx-1 sm:flex-none"
                 >
                   {copiedId === l.id ? "DONE" : "COPY"}
                 </button>
                 <button
                   onClick={() => setQrLink(l)}
-                  className="shrink-0 rounded-xl border border-purple-100 bg-white px-6 py-3 text-xs font-black uppercase tracking-widest text-purple-600 transition-all hover:bg-purple-50 active:scale-95"
+                  className="min-w-[130px] flex-1 shrink-0 rounded-xl border border-purple-100 bg-white px-6 py-3 text-xs font-black uppercase tracking-widest text-purple-600 transition-all hover:bg-purple-50 active:scale-95 sm:flex-none"
                   title="Mã QR"
                 >
                   <span className="flex items-center justify-center gap-2">

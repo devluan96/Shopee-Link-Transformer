@@ -11,7 +11,14 @@ import { Session, User } from "@supabase/supabase-js";
 
 // --- Types ---
 import { Toaster, toast } from "sonner";
-import { ConvertedLink, UserProfile, Tab, LinkStats } from "./types";
+import {
+  AnalyticsData,
+  ConvertedLink,
+  UserProfile,
+  Tab,
+  LinkStats,
+} from "./types";
+import { normalizeVietnameseSlug } from "./lib/utils";
 
 // --- Static Components ---
 import { Sidebar } from "./components/layout/Sidebar";
@@ -98,10 +105,12 @@ export default function App() {
 
   // List State
   const [links, setLinks] = useState<ConvertedLink[]>([]);
-  const [analyticsData, setAnalyticsData] = useState<{
-    history: any[];
-    topLinks: any[];
-  }>({ history: [], topLinks: [] });
+  const [analyticsData, setAnalyticsData] = useState<AnalyticsData>({
+    history: [],
+    topLinks: [],
+    trafficSources: [],
+    growthPercentage: 0,
+  });
   const [listLoading, setListLoading] = useState(false);
   const [linksDirty, setLinksDirty] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
@@ -815,7 +824,12 @@ export default function App() {
       recentClicks: [],
       topLinks: [],
     });
-    setAnalyticsData({ history: [], topLinks: [] });
+    setAnalyticsData({
+      history: [],
+      topLinks: [],
+      trafficSources: [],
+      growthPercentage: 0,
+    });
     setListLoading(false);
     setLinksDirty(true);
     setAdminLoading(false);
@@ -928,13 +942,8 @@ export default function App() {
 
     try {
       const normalizedShortCode = customShortCode
-        .trim()
-        .toLowerCase()
-        .normalize("NFC")
-        .replace(/\s+/g, "-")
-        .replace(/[^\p{L}\p{N}-]+/gu, "-")
-        .replace(/-+/g, "-")
-        .replace(/^-|-$/g, "");
+        ? normalizeVietnameseSlug(customShortCode)
+        : "";
 
       if (normalizedShortCode.length > MAX_SHORT_CODE_LENGTH) {
         throw new Error(

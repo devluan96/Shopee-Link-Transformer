@@ -158,9 +158,11 @@ const normalizeShortCode = (value?: string | null) => {
   const normalized = value
     .trim()
     .toLowerCase()
-    .normalize("NFC")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/đ/g, "d")
+    .replace(/[^a-z0-9\s-]+/g, "-")
     .replace(/\s+/g, "-")
-    .replace(/[^\p{L}\p{N}-]+/gu, "-")
     .replace(/-+/g, "-")
     .replace(/^-|-$/g, "");
 
@@ -168,8 +170,10 @@ const normalizeShortCode = (value?: string | null) => {
   if (normalized.length < 3) {
     throw new Error("Mã rút gọn phải có ít nhất 3 ký tự.");
   }
-  if (normalized.length > 80) {
-    throw new Error("Mã rút gọn không được vượt quá 80 ký tự.");
+  if (normalized.length > MAX_SHORT_CODE_LENGTH) {
+    throw new Error(
+      `Mã rút gọn không được vượt quá ${MAX_SHORT_CODE_LENGTH} ký tự.`,
+    );
   }
 
   return normalized;
@@ -558,17 +562,17 @@ const renderLinkLandingPage = (
         width: min(100%, 46rem);
         display: flex;
         flex-direction: column;
-        align-items: center;
-        text-align: center;
-        padding: 1.35rem 1.5rem 1.7rem;
+        align-items: flex-start;
+        text-align: left;
+        padding: 1.2rem 1.35rem 1.45rem;
       }
 
       .headline {
         display: inline-flex;
         align-items: center;
-        justify-content: center;
+        justify-content: flex-start;
         gap: 0.7rem;
-        margin-bottom: 0.9rem;
+        margin-bottom: 0.65rem;
       }
 
       .hot-badge {
@@ -585,19 +589,19 @@ const renderLinkLandingPage = (
 
       h1 {
         margin: 0;
-        font-size: clamp(1.45rem, 3vw, 2.35rem);
-        line-height: 1.08;
+        font-size: clamp(1.05rem, 2vw, 1.5rem);
+        line-height: 1.22;
         letter-spacing: -0.04em;
-        max-width: 16ch;
-        text-wrap: balance;
+        max-width: 34rem;
+        text-wrap: pretty;
       }
 
       p {
         margin: 0;
         color: var(--muted);
-        font-size: 0.98rem;
-        line-height: 1.75;
-        max-width: 38rem;
+        font-size: 0.84rem;
+        line-height: 1.6;
+        max-width: 34rem;
         text-wrap: pretty;
       }
 
@@ -651,8 +655,8 @@ const renderLinkLandingPage = (
         }
 
         h1 {
-          max-width: 14ch;
-          font-size: clamp(1.35rem, 6.4vw, 2rem);
+          max-width: 100%;
+          font-size: clamp(0.98rem, 4.6vw, 1.3rem);
         }
 
         .hot-badge {
@@ -694,23 +698,35 @@ const renderLinkLandingPage = (
         const targetUrl = \`${escapeJsString(originalUrl)}\`;
         let opened = false;
 
+        const hideOverlay = () => {
+          overlay?.classList.add("hidden");
+        };
+
         const beginRedirectFlow = () => {
           if (opened) return;
+
+          const popup = window.open("", "_blank", "noopener,noreferrer");
+          if (!popup) return;
+
           opened = true;
 
           try {
-            window.open(targetUrl, "_blank", "noopener,noreferrer");
+            popup.opener = null;
+            popup.location.replace(targetUrl);
           } catch (error) {
             console.error("Popup open failed", error);
           }
 
-          overlay?.classList.add("hidden");
+          hideOverlay();
         };
 
-        overlay?.addEventListener("click", beginRedirectFlow);
+        overlay?.addEventListener("click", (event) => {
+          if (event.target !== overlay) return;
+          beginRedirectFlow();
+        });
         overlayClose?.addEventListener("click", (event) => {
           event.stopPropagation();
-          beginRedirectFlow();
+          hideOverlay();
         });
         overlay?.addEventListener("keydown", (event) => {
           if (event.key === "Enter" || event.key === " ") {
@@ -1298,11 +1314,85 @@ app.get(
         .select("*", { count: "exact", head: true })
         .eq("user_id", userId);
       if (error) throw error;
+
+      const { data: links, error: linksError } = await supabase
+        .from("links")
+        .select("id, short_code, custom_title")
+        .eq("user_id", userId);
+      if (linksError) throw linksError;
+
+      if (!links || links.length === 0) {
+        return res.json({
+          totalLinks: count || 0,
+          totalClicks: 0,
+          recentClicks: [],
+          topLinks: [],
+        });
+      }
+
+      const linkIds = links.map((link: any) => link.id).filter(Boolean);
+      const linkMetaMap = new Map(
+        links.map((link: any) => [
+          link.id,
+          {
+            short_code: link.short_code,
+            title: link.custom_title || link.short_code,
+          },
+        ]),
+      );
+
+      const { data: clicks, error: clicksError } = await supabase
+        .from("clicks")
+        .select("link_id, created_at")
+        .in("link_id", linkIds)
+        .limit(5000);
+      if (clicksError) throw clicksError;
+
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+      const historyMap: Record<string, number> = {};
+      const linkClickMap = new Map<string, number>();
+
+      (clicks || []).forEach((click: any) => {
+        if (!click?.link_id) return;
+
+        linkClickMap.set(
+          click.link_id,
+          (linkClickMap.get(click.link_id) || 0) + 1,
+        );
+
+        if (!click.created_at) return;
+        const createdAt = new Date(click.created_at);
+        if (Number.isNaN(createdAt.getTime()) || createdAt < thirtyDaysAgo) {
+          return;
+        }
+
+        const date = click.created_at.split("T")[0];
+        historyMap[date] = (historyMap[date] || 0) + 1;
+      });
+
+      const totalClicks = Array.from(linkClickMap.values()).reduce(
+        (sum, value) => sum + value,
+        0,
+      );
+      const recentClicks = Object.entries(historyMap)
+        .map(([date, total]) => ({ date, clicks: total }))
+        .sort((a, b) => a.date.localeCompare(b.date));
+      const topLinks = Array.from(linkClickMap.entries())
+        .map(([id, total]) => ({
+          short_code: linkMetaMap.get(id)?.short_code || "",
+          title: linkMetaMap.get(id)?.title || "",
+          clicks: total,
+        }))
+        .sort((a, b) => b.clicks - a.clicks)
+        .slice(0, 5);
+
       res.json({
         totalLinks: count || 0,
-        totalClicks: 0,
-        recentClicks: [],
-        topLinks: [],
+        totalClicks,
+        recentClicks,
+        topLinks,
       });
     } catch (e: any) {
       res.status(500).json({ error: e.message });
@@ -1337,7 +1427,12 @@ app.get(
 
       if (!links || links.length === 0) {
         console.log("ℹ️ [Analytics] No links found for user");
-        return res.json({ history: [], topLinks: [] });
+        return res.json({
+          history: [],
+          topLinks: [],
+          trafficSources: [],
+          growthPercentage: 0,
+        });
       }
 
       const linkIds = links.map((d: any) => d.id);
@@ -1346,6 +1441,8 @@ app.get(
       );
       const thirtyDaysAgo = new Date();
       thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+      const sixtyDaysAgo = new Date();
+      sixtyDaysAgo.setDate(sixtyDaysAgo.getDate() - 60);
 
       console.log(
         `📊 [Analytics] Fetching clicks for ${linkIds.length} links since ${thirtyDaysAgo.toISOString()}`,
@@ -1353,23 +1450,47 @@ app.get(
 
       const { data: clicks, error: clicksError } = await supabase
         .from("clicks")
-        .select("link_id, created_at")
+        .select("link_id, created_at, source, source_detail, referer")
         .in("link_id", linkIds.slice(0, 100)) // Increased slice to 100
-        .gte("created_at", thirtyDaysAgo.toISOString());
+        .gte("created_at", sixtyDaysAgo.toISOString());
 
       if (clicksError) {
         console.error("❌ [Analytics] Clicks query error:", clicksError);
         // Don't throw here, just return empty clicks but log it
-        return res.json({ history: [], topLinks: [] });
+        return res.json({
+          history: [],
+          topLinks: [],
+          trafficSources: [],
+          growthPercentage: 0,
+        });
       }
 
       const historyMap: any = {};
       const linksStats: any = {};
+      const trafficSourceStats: Record<string, number> = {};
+      let previousWindowClicks = 0;
+      let currentWindowClicks = 0;
       if (clicks) {
         clicks.forEach((c: any) => {
-          const date = c.created_at.split("T")[0];
-          historyMap[date] = (historyMap[date] || 0) + 1;
-          linksStats[c.link_id] = (linksStats[c.link_id] || 0) + 1;
+          const createdAt = new Date(c.created_at);
+          if (Number.isNaN(createdAt.getTime())) return;
+
+          if (createdAt >= thirtyDaysAgo) {
+            const date = c.created_at.split("T")[0];
+            historyMap[date] = (historyMap[date] || 0) + 1;
+            linksStats[c.link_id] = (linksStats[c.link_id] || 0) + 1;
+
+            const sourceLabel =
+              normalizeTrafficSource(c.source_detail) ||
+              normalizeTrafficSource(c.source) ||
+              normalizeTrafficSource(c.referer) ||
+              "unknown";
+            trafficSourceStats[sourceLabel] =
+              (trafficSourceStats[sourceLabel] || 0) + 1;
+            currentWindowClicks += 1;
+          } else if (createdAt >= sixtyDaysAgo) {
+            previousWindowClicks += 1;
+          }
         });
       }
 
@@ -1380,14 +1501,35 @@ app.get(
         .map(([id, clicks]) => ({ id, clicks, title: linkMap[id] }))
         .sort((a: any, b: any) => b.clicks - a.clicks)
         .slice(0, 5);
+      const trafficSources = Object.entries(trafficSourceStats)
+        .map(([name, value]) => ({ name, value }))
+        .sort((a: any, b: any) => b.value - a.value)
+        .slice(0, 5);
+      const growthPercentage =
+        previousWindowClicks <= 0
+          ? currentWindowClicks > 0
+            ? 100
+            : 0
+          : Number(
+              (
+                ((currentWindowClicks - previousWindowClicks) /
+                  previousWindowClicks) *
+                100
+              ).toFixed(1),
+            );
 
       console.log(
         `✅ [Analytics] Success: ${history.length} history points, ${topLinks.length} top links`,
       );
-      res.json({ history, topLinks });
+      res.json({ history, topLinks, trafficSources, growthPercentage });
     } catch (e: any) {
       console.error("💥 [Analytics] Final catch block error:", e.message);
-      res.json({ history: [], topLinks: [] });
+      res.json({
+        history: [],
+        topLinks: [],
+        trafficSources: [],
+        growthPercentage: 0,
+      });
     }
   },
 );
