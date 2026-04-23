@@ -61,6 +61,14 @@ const TabLoading = () => (
 
 const MAX_SHORT_CODE_LENGTH = 50;
 
+interface CloudinarySignedUpload {
+  cloudName: string;
+  apiKey: string;
+  folder: string;
+  timestamp: number;
+  signature: string;
+}
+
 export default function App() {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
@@ -603,6 +611,49 @@ export default function App() {
     }
   };
 
+  const getCloudinarySignedUpload = async (): Promise<CloudinarySignedUpload> => {
+    const response = await fetchWithAuth("/api/v1/cloudinary/sign-upload", {
+      method: "POST",
+      body: JSON.stringify({}),
+    });
+
+    return response.json();
+  };
+
+  const uploadAssetToCloudinary = async (
+    file: Blob | File,
+    resourceType: "image" | "video" | "auto" = "auto",
+    fileName?: string,
+  ) => {
+    const signedUpload = await getCloudinarySignedUpload();
+    const uploadFormData = new FormData();
+
+    uploadFormData.append("file", file, fileName);
+    uploadFormData.append("api_key", signedUpload.apiKey);
+    uploadFormData.append("timestamp", String(signedUpload.timestamp));
+    uploadFormData.append("signature", signedUpload.signature);
+    uploadFormData.append("folder", signedUpload.folder);
+
+    const response = await fetch(
+      `https://api.cloudinary.com/v1_1/${signedUpload.cloudName}/${resourceType}/upload`,
+      {
+        method: "POST",
+        body: uploadFormData,
+      },
+    );
+
+    const data = await response.json().catch(() => null);
+    if (!response.ok || !data?.secure_url) {
+      throw new Error(
+        data?.error?.message ||
+          data?.message ||
+          `Cloudinary upload failed (${response.status})`,
+      );
+    }
+
+    return data.secure_url as string;
+  };
+
   const refreshCurrentProfile = async () => {
     if (!user) return null;
 
@@ -714,11 +765,6 @@ export default function App() {
 
     setUploadingVideo(true);
     setError(null);
-    const formData = new FormData();
-    formData.append("file", file);
-
-    const uploadUrl = "/api/v1/upload-video";
-    console.log("🚀 Attempting POST to:", uploadUrl);
 
     try {
       let pendingThumbUrl: string | null = null;
@@ -728,39 +774,21 @@ export default function App() {
         console.error("Local thumbnail capture failed", thumbError);
       }
 
-      const response = await fetchWithAuth(uploadUrl, {
-        method: "POST",
-        headers: { Accept: "application/json" },
-        body: formData,
-      });
-
-      console.log(
-        "📡 Response received:",
-        response.status,
-        response.statusText,
+      const secureUrl = await uploadAssetToCloudinary(
+        file,
+        "video",
+        file.name,
       );
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error("❌ Server returned error:", errorText);
-        throw new Error(
-          `Server error (${response.status}): ${errorText.substring(0, 100)}`,
-        );
-      }
-
-      const data = await response.json();
-      console.log("✅ Upload Success Data:", data);
-      if (data.secure_url) {
-        setVideoUrl(data.secure_url);
+      console.log("✅ Upload Success Data:", secureUrl);
+      if (secureUrl) {
+        setVideoUrl(secureUrl);
         setVideoUploadSuccess(true);
-        setTimeout(() => setVideoUploadSuccess(false), 5000); // Hide success after 5s
+        setTimeout(() => setVideoUploadSuccess(false), 5000);
         setError(null);
 
         if (pendingThumbUrl) {
           setCustomImageUrl(pendingThumbUrl);
         }
-      } else if (data.error) {
-        setError(`Lỗi Cloudinary: ${data.error.message}`);
       }
     } catch (err: any) {
       console.error("Video upload failed", err);
@@ -859,25 +887,14 @@ export default function App() {
               cleanup();
               return reject("Blob failed");
             }
-            const thumbFormData = new FormData();
-            thumbFormData.append("file", blob, "thumb.jpg");
-
             try {
-              const res = await fetchWithAuth("/api/v1/upload-video", {
-                method: "POST",
-                body: thumbFormData,
-              });
-
-              if (!res.ok) {
-                const text = await res.text();
-                throw new Error(
-                  `Thumbnail upload failed (${res.status}): ${text.substring(0, 50)}`,
-                );
-              }
-
-              const data = await res.json();
+              const data = await uploadAssetToCloudinary(
+                blob,
+                "image",
+                "thumb.jpg",
+              );
               cleanup();
-              resolve(data.secure_url);
+              resolve(data);
             } catch (e) {
               cleanup();
               reject(e);

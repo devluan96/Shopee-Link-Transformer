@@ -73,6 +73,8 @@ const upload = multer({
 });
 
 const app = express();
+const CLOUDINARY_UPLOAD_FOLDER =
+  process.env.CLOUDINARY_SHORTLINK_FOLDER || "hotsnew";
 
 type SubscriptionPlan = "free" | "monthly" | "yearly";
 type PaidSubscriptionPlan = Exclude<SubscriptionPlan, "free">;
@@ -957,6 +959,40 @@ app.get("/api/health", (req, res) => {
 });
 
 app.post(
+  "/api/v1/cloudinary/sign-upload",
+  authenticate,
+  checkPremium,
+  async (req: AuthenticatedRequest, res) => {
+    try {
+      if (!process.env.CLOUDINARY_API_SECRET || !process.env.CLOUDINARY_API_KEY) {
+        return res
+          .status(500)
+          .json({ error: "Cloudinary signing is not configured" });
+      }
+
+      const timestamp = Math.floor(Date.now() / 1000);
+      const signature = cloudinary.utils.api_sign_request(
+        {
+          folder: CLOUDINARY_UPLOAD_FOLDER,
+          timestamp,
+        },
+        process.env.CLOUDINARY_API_SECRET,
+      );
+
+      res.json({
+        cloudName: process.env.CLOUDINARY_CLOUD_NAME,
+        apiKey: process.env.CLOUDINARY_API_KEY,
+        folder: CLOUDINARY_UPLOAD_FOLDER,
+        timestamp,
+        signature,
+      });
+    } catch (e: any) {
+      res.status(500).json({ error: e.message || "Cannot sign upload" });
+    }
+  },
+);
+
+app.post(
   "/api/v1/upload-video",
   authenticate,
   checkPremium,
@@ -965,7 +1001,7 @@ app.post(
     try {
       if (!req.file) return res.status(400).json({ error: "No file provided" });
       const stream = cloudinary.uploader.upload_stream(
-        { resource_type: "auto", folder: "hotsnew" },
+        { resource_type: "auto", folder: CLOUDINARY_UPLOAD_FOLDER },
         (error, result) => {
           if (error) return res.status(500).json({ error: error.message });
           res.json({ secure_url: result?.secure_url });
