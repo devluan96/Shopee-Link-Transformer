@@ -364,9 +364,10 @@ const renderLinkLandingPage = (
   const imageUrl = link.custom_image_url?.trim() || "";
   const videoUrl = link.video_url?.trim() || "";
   const originalUrl = link.original_url.trim();
-  const fallbackFavicon =
-    "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop stop-color='%23f97316'/%3E%3Cstop offset='1' stop-color='%23ef4444'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='64' height='64' rx='16' fill='url(%23g)'/%3E%3Cpath d='M36 10c-1.5 6.5-6 13-13 18h9l-4 26c11-12 15-22 14-30h-8l2-14z' fill='white'/%3E%3C/svg%3E";
+  const defaultOgImage = `${canonicalUrl.replace(/\/s\/[^/]+$/, "")}/og-image.png`;
+  const fallbackFavicon = `${canonicalUrl.replace(/\/s\/[^/]+$/, "")}/logo-app.png`;
   const faviconUrl = imageUrl || fallbackFavicon;
+  const socialImageUrl = imageUrl || defaultOgImage;
   const hasVideo = Boolean(videoUrl);
   const previewMedia = hasVideo
     ? `
@@ -389,10 +390,23 @@ const renderLinkLandingPage = (
   `
     : "";
 
-  const metaImage = imageUrl
-    ? `<meta property="og:image" content="${escapeHtml(imageUrl)}" />
-       <meta name="twitter:image" content="${escapeHtml(imageUrl)}" />`
-    : "";
+  const metaImage = `<meta property="og:image" content="${escapeHtml(socialImageUrl)}" />
+       <meta property="og:image:alt" content="${escapeHtml(title)}" />
+       <meta name="twitter:image" content="${escapeHtml(socialImageUrl)}" />`;
+  const structuredData = {
+    "@context": "https://schema.org",
+    "@type": "WebPage",
+    name: title,
+    description,
+    url: canonicalUrl,
+    image: socialImageUrl,
+    inLanguage: "vi-VN",
+    isPartOf: {
+      "@type": "WebSite",
+      name: "HotsNew Click",
+      url: canonicalUrl.replace(/\/s\/[^/]+$/, "/"),
+    },
+  };
 
   return `<!DOCTYPE html>
 <html lang="vi">
@@ -401,10 +415,12 @@ const renderLinkLandingPage = (
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>${escapeHtml(title)}</title>
     <meta name="description" content="${escapeHtml(description)}" />
+    <meta name="robots" content="index, follow, max-image-preview:large" />
     <link rel="icon" href="${escapeHtml(faviconUrl)}" />
     <link rel="shortcut icon" href="${escapeHtml(faviconUrl)}" />
     <link rel="apple-touch-icon" href="${escapeHtml(faviconUrl)}" />
     <link rel="canonical" href="${escapeHtml(canonicalUrl)}" />
+    <meta property="og:locale" content="vi_VN" />
     <meta property="og:type" content="website" />
     <meta property="og:title" content="${escapeHtml(title)}" />
     <meta property="og:description" content="${escapeHtml(description)}" />
@@ -415,6 +431,7 @@ const renderLinkLandingPage = (
     <meta name="twitter:description" content="${escapeHtml(description)}" />
     ${metaImage}
     ${metaVideo}
+    <script type="application/ld+json">${JSON.stringify(structuredData)}</script>
     <style>
       :root {
         color-scheme: dark;
@@ -1878,6 +1895,54 @@ app.delete(
     }
   },
 );
+
+app.get("/sitemap.xml", async (req, res) => {
+  try {
+    const supabase = getSupabase();
+    const publicBaseUrl =
+      getPublicBaseUrl(req) || `${req.protocol}://${req.get("host")}`;
+    const { data: links, error } = await supabase
+      .from("links")
+      .select("short_code, created_at, updated_at")
+      .order("created_at", { ascending: false })
+      .limit(5000);
+
+    if (error) throw error;
+
+    const urls = [
+      `  <url>
+    <loc>${escapeHtml(`${publicBaseUrl}/`)}</loc>
+    <changefreq>daily</changefreq>
+    <priority>1.0</priority>
+  </url>`,
+      ...(links || [])
+        .filter((link: any) => link?.short_code)
+        .map((link: any) => {
+          const lastModified = link.updated_at || link.created_at;
+          const lastmod = lastModified
+            ? `\n    <lastmod>${new Date(lastModified).toISOString()}</lastmod>`
+            : "";
+
+          return `  <url>
+    <loc>${escapeHtml(`${publicBaseUrl}/s/${encodeURIComponent(link.short_code)}`)}</loc>${lastmod}
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>`;
+        }),
+    ];
+
+    const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+${urls.join("\n")}
+</urlset>`;
+
+    res.setHeader("Content-Type", "application/xml; charset=utf-8");
+    res.status(200).send(xml);
+  } catch (error: any) {
+    console.error("[SEO] sitemap generation failed:", error?.message || error);
+    res.status(500).send("Failed to generate sitemap");
+  }
+});
 
 app.get("/s/:shortCode", async (req, res) => {
   try {

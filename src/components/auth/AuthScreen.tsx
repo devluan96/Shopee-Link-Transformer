@@ -48,93 +48,197 @@ export const AuthScreen = ({
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-8 font-sans overflow-hidden">
-      {/* Decorative background elements for depth */}
-      <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-orange-100 rounded-full blur-[120px] opacity-50 select-none pointer-events-none" />
-      <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-blue-100 rounded-full blur-[120px] opacity-30 select-none pointer-events-none" />
+    <div className="h-screen w-screen bg-[#FDFDFD] flex font-sans overflow-hidden">
+      {/* LEFT SIDE: Marketing / Hero (Desktop Only) */}
+      <div className="hidden lg:flex lg:w-1/2 bg-orange-50 relative items-center justify-center p-8 xl:p-16 overflow-hidden">
+        {/* Decorative Circles */}
+        <div className="absolute top-[-20%] left-[-20%] w-[80%] h-[80%] bg-orange-100 rounded-full blur-[140px] opacity-60" />
+        <div className="absolute bottom-[-10%] right-[-10%] w-[60%] h-[60%] bg-white rounded-full blur-[100px] opacity-40" />
 
-      <div className="max-w-md w-full relative z-10">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="text-center mb-10"
-        >
-          <div className="w-16 h-16 bg-orange-600 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-2xl shadow-orange-200">
-            <Zap className="text-white w-8 h-8 fill-current" />
-          </div>
-          <h1 className="text-4xl font-black tracking-tight text-gray-900 mb-2">
-            HotsNew{" "}
-            <span className="text-orange-600 uppercase italic">click</span>
-          </h1>
-          <p className="text-gray-400 font-bold uppercase tracking-widest text-[10px]">
-            Tiếp thị liên kết thông minh
-          </p>
-        </motion.div>
-
-        <div className="perspective-1000">
+        <div className="relative z-10 max-w-xl w-full flex flex-col justify-center h-full">
           <motion.div
-            initial={false}
-            animate={{ rotateY: isRegistering ? 180 : 0 }}
-            transition={{
-              duration: 0.6,
-              type: "spring",
-              stiffness: 260,
-              damping: 20,
-            }}
-            style={{ transformStyle: "preserve-3d" }}
-            className="relative h-145 w-full"
+            initial={{ opacity: 0, x: -50 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.8, ease: "easeOut" }}
+            className="flex flex-col"
           >
-            {/* Front side (LOGIN) */}
-            <div
-              style={{ backfaceVisibility: "hidden" }}
-              className="absolute inset-0 w-full h-full bg-white p-8 rounded-[3rem] shadow-2xl border border-white/20 backdrop-blur-sm shadow-orange-900/5 flex flex-col"
-            >
-              <AuthForm
-                title="Đăng nhập"
-                subtitle="Mừng bạn quay trở lại"
-                isRegistering={false}
-                setIsRegistering={toggleMode}
-                email={email}
-                setEmail={setEmail}
-                password={password}
-                setPassword={setPassword}
-                loading={loading}
-                authError={authError}
-                handleEmailAuth={handleEmailAuth}
-                resetLoading={resetLoading}
-              />
+            <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-orange-600/10 text-orange-600 rounded-full mb-6 w-fit">
+              <Zap size={14} className="fill-current" />
+              <span className="text-[9px] font-black uppercase tracking-widest leading-none">
+                CÔNG CỤ TỐI ƯU SHOPEE
+              </span>
             </div>
 
-            {/* Back side (REGISTER) */}
-            <div
-              style={{
-                backfaceVisibility: "hidden",
-                transform: "rotateY(180deg)",
-              }}
-              className="absolute inset-0 w-full h-full bg-slate-900 p-8 rounded-[3rem] shadow-2xl border border-slate-800/50 shadow-slate-900/20 flex flex-col"
-            >
-              <AuthForm
-                title="Đăng ký"
-                subtitle="Bắt đầu hành trình mới"
-                isRegistering={true}
-                setIsRegistering={toggleMode}
-                email={email}
-                setEmail={setEmail}
-                password={password}
-                setPassword={setPassword}
-                loading={loading}
-                authError={authError}
-                handleEmailAuth={handleEmailAuth}
-                resetLoading={resetLoading}
-                dark
-              />
+            <h1 className="text-4xl xl:text-5xl font-black text-slate-900 leading-[1.1] mb-4">
+              Rút gọn{" "}
+              <span className="text-orange-600 uppercase">link Shopee</span>{" "}
+              <br />& quản lý dễ dàng
+            </h1>
+
+            <p className="text-slate-500 text-base font-medium mb-8 max-w-md leading-relaxed opacity-80">
+              Tạo link rút gọn chuyên nghiệp, chuyên trang giới thiệu sản phẩm
+              cực đẹp chỉ trong 5 giây. Gia tăng tỷ lệ mua hàng ngay hôm nay.
+            </p>
+
+            {/* Feature Cards Grid - More Compact */}
+            <div className="grid grid-cols-2 gap-3 mb-10">
+              {[
+                {
+                  label: "Rút gọn nhanh",
+                  info: "Tiết kiệm thời gian",
+                  icon: <Zap size={18} />,
+                },
+                {
+                  label: "Thống kê chi tiết",
+                  info: "Lượt click Real-time",
+                  icon: <ArrowRight size={18} />,
+                },
+                {
+                  label: "Quản lý dễ dàng",
+                  info: "Lắp ráp link chuyên nghiệp",
+                  icon: <Mail size={18} />,
+                },
+                {
+                  label: "Bảo mật tuyệt đối",
+                  info: "An toàn dữ liệu",
+                  icon: <ShieldCheck size={18} />,
+                },
+              ].map((f, i) => (
+                <motion.div
+                  key={f.label}
+                  initial={{ opacity: 0, y: 15 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.2 + i * 0.1 }}
+                  className="bg-white/70 backdrop-blur-md p-4 rounded-2xl border border-white shadow-sm flex items-center gap-4 hover:shadow-lg hover:shadow-orange-200/40 transition-all duration-300 group"
+                >
+                  <div className="w-9 h-9 shrink-0 bg-orange-50 rounded-xl flex items-center justify-center text-orange-600 group-hover:bg-orange-600 group-hover:text-white transition-colors">
+                    {f.icon}
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-black text-slate-900 leading-tight">
+                      {f.label}
+                    </h4>
+                    <p className="text-[9px] text-slate-400 font-bold uppercase tracking-tighter mt-0.5">
+                      {f.info}
+                    </p>
+                  </div>
+                </motion.div>
+              ))}
             </div>
+
+            {/* Main Preview Image Container - Scaled Down */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ delay: 0.6, duration: 1 }}
+              className="relative rounded-[2.5rem] overflow-hidden shadow-2xl border-4 border-white isolate"
+            >
+              <img
+                src="./og-image.png"
+                alt="App Preview"
+                className="w-full h-auto aspect-video object-cover"
+                referrerPolicy="no-referrer"
+              />
+              <div className="absolute inset-0 bg-linear-to-t from-black/20 to-transparent" />
+            </motion.div>
           </motion.div>
         </div>
+      </div>
 
-        <p className="text-center mt-12 text-xs text-gray-400 font-medium italic">
-          Bằng cách tiếp tục, bạn đồng ý với các Điều khoản dịch vụ của Hotsnew.
-        </p>
+      {/* RIGHT SIDE: Auth Form */}
+      <div className="w-full lg:w-1/2 flex items-center justify-center p-6 lg:p-12 relative bg-white lg:bg-transparent">
+        {/* Mobile background decors */}
+        <div className="lg:hidden absolute top-[-10%] right-[-10%] w-[50%] h-[50%] bg-orange-100 rounded-full blur-[100px] opacity-40" />
+
+        <div className="max-w-md w-full relative z-10">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="text-center mb-8"
+          >
+            <div className="flex items-center justify-center ">
+              <img
+                src="/logo-app.png"
+                alt="HotsNew Click logo"
+                className="h-16 w-16 rounded-2xl object-cover"
+              />
+            </div>
+            <h1 className="text-3xl font-black tracking-tight text-gray-900 mb-1.5">
+              HotsNew{" "}
+              <span className="text-orange-600 uppercase italic text-2xl">
+                click
+              </span>
+            </h1>
+            <p className="text-gray-400 font-bold uppercase tracking-widest text-[9px]">
+              Đăng nhập để bắt đầu chuyển đổi
+            </p>
+          </motion.div>
+
+          <div className="perspective-1000">
+            <motion.div
+              initial={false}
+              animate={{ rotateY: isRegistering ? 180 : 0 }}
+              transition={{
+                duration: 0.6,
+                type: "spring",
+                stiffness: 260,
+                damping: 20,
+              }}
+              style={{ transformStyle: "preserve-3d" }}
+              className="w-full relative h-130"
+            >
+              {/* Front side (LOGIN) */}
+              <div
+                style={{ backfaceVisibility: "hidden" }}
+                className="absolute inset-0 w-full h-full bg-white p-8 lg:p-10 rounded-[2.5rem] shadow-2xl shadow-orange-900/10 border border-gray-100 flex flex-col"
+              >
+                <AuthForm
+                  title="Đăng nhập"
+                  subtitle="MỪNG BẠN QUAY TRỞ LẠI"
+                  isRegistering={false}
+                  setIsRegistering={toggleMode}
+                  email={email}
+                  setEmail={setEmail}
+                  password={password}
+                  setPassword={setPassword}
+                  loading={loading}
+                  authError={authError}
+                  handleEmailAuth={handleEmailAuth}
+                  resetLoading={resetLoading}
+                />
+              </div>
+
+              {/* Back side (REGISTER) */}
+              <div
+                style={{
+                  backfaceVisibility: "hidden",
+                  transform: "rotateY(180deg)",
+                }}
+                className="absolute inset-0 w-full h-full bg-slate-900 p-8 lg:p-10 rounded-[2.5rem] shadow-2xl border border-slate-800 shadow-slate-900/20 flex flex-col"
+              >
+                <AuthForm
+                  title="Đăng ký"
+                  subtitle="TẠO TÀI KHOẢN MIỄN PHÍ"
+                  isRegistering={true}
+                  setIsRegistering={toggleMode}
+                  email={email}
+                  setEmail={setEmail}
+                  password={password}
+                  setPassword={setPassword}
+                  loading={loading}
+                  authError={authError}
+                  handleEmailAuth={handleEmailAuth}
+                  resetLoading={resetLoading}
+                  dark
+                />
+              </div>
+            </motion.div>
+          </div>
+
+          <p className="text-center mt-8 text-[9px] text-gray-400 font-bold tracking-widest uppercase">
+            HotsNew Click © 2026 • Bảo mật bởi hệ thống hotsshop.click
+          </p>
+        </div>
       </div>
     </div>
   );

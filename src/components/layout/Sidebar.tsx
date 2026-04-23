@@ -1,6 +1,5 @@
 import React from 'react';
 import { 
-  Zap, 
   List, 
   LayoutDashboard, 
   BarChart3, 
@@ -70,9 +69,11 @@ export const Sidebar = ({
       )}>
         <div className="flex items-center justify-between mb-12">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-orange-600 rounded-xl flex items-center justify-center shadow-lg shadow-orange-100">
-              <Zap className="text-white w-6 h-6 fill-current" />
-            </div>
+            <img
+              src="/logo-app.png"
+              alt="HotsNew Click logo"
+              className="h-10 w-10 rounded-xl object-cover shadow-lg shadow-orange-100"
+            />
             <div>
               <h1 className="text-xl font-black text-gray-900 tracking-tight leading-none">HotsNew</h1>
               <p className="text-[10px] font-black text-orange-500 uppercase tracking-[0.2em] mt-1">click <span className="italic opacity-50">&alpha;</span></p>

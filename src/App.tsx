@@ -76,6 +76,36 @@ interface CloudinarySignedUpload {
   signature: string;
 }
 
+const SITE_URL = "https://hotsnew.click";
+const DEFAULT_APP_TITLE = "HotsNew Click - Tạo Landing Page Rút Gọn Link Shopee";
+const DEFAULT_APP_DESCRIPTION =
+  "HotsNew Click giúp tạo landing page trung gian cho link Shopee với tiêu đề, mô tả, ảnh, video và thống kê click tối ưu cho chia sẻ mạng xã hội.";
+
+const upsertMetaTag = (
+  selector: string,
+  attributeName: "name" | "property",
+  attributeValue: string,
+  content: string,
+) => {
+  let tag = document.head.querySelector<HTMLMetaElement>(selector);
+  if (!tag) {
+    tag = document.createElement("meta");
+    tag.setAttribute(attributeName, attributeValue);
+    document.head.appendChild(tag);
+  }
+  tag.setAttribute("content", content);
+};
+
+const upsertCanonicalLink = (href: string) => {
+  let link = document.head.querySelector<HTMLLinkElement>('link[rel="canonical"]');
+  if (!link) {
+    link = document.createElement("link");
+    link.setAttribute("rel", "canonical");
+    document.head.appendChild(link);
+  }
+  link.setAttribute("href", href);
+};
+
 export default function App() {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
@@ -163,6 +193,62 @@ export default function App() {
       );
     }
   }, []);
+
+  useEffect(() => {
+    if (authLoading) return;
+
+    const isAuthenticatedArea = Boolean(user);
+    const titleMap: Record<Tab, string> = {
+      dashboard: "Bảng điều khiển - HotsNew Click",
+      pricing: "Bảng giá - HotsNew Click",
+      create: "Tạo link Shopee - HotsNew Click",
+      list: "Danh sách link - HotsNew Click",
+      analytics: "Phân tích dữ liệu - HotsNew Click",
+      admin: "Quản lý user - HotsNew Click",
+      profile: "Hồ sơ cá nhân - HotsNew Click",
+    };
+    const descriptionMap: Record<Tab, string> = {
+      dashboard: "Theo dõi nhanh hiệu suất link, lượt click và tăng trưởng chiến dịch trên HotsNew Click.",
+      pricing: "Xem bảng giá và nâng cấp gói dịch vụ để tạo landing page Shopee chuyên nghiệp hơn.",
+      create: "Tạo landing page rút gọn cho link Shopee với tiêu đề, mô tả, ảnh và video tùy chỉnh.",
+      list: "Quản lý toàn bộ link Shopee đã tạo, chỉnh sửa nội dung và theo dõi hiệu quả.",
+      analytics: "Phân tích lượt click, tăng trưởng và nguồn lưu lượng cho các link Shopee của bạn.",
+      admin: "Trang quản trị người dùng và gói dịch vụ trên HotsNew Click.",
+      profile: "Cập nhật thông tin hồ sơ và trạng thái tài khoản HotsNew Click.",
+    };
+
+    const nextTitle = isAuthenticatedArea
+      ? titleMap[activeTab]
+      : DEFAULT_APP_TITLE;
+    const nextDescription = isAuthenticatedArea
+      ? descriptionMap[activeTab]
+      : DEFAULT_APP_DESCRIPTION;
+    const canonicalHref = isAuthenticatedArea
+      ? `${SITE_URL}/?tab=${activeTab}`
+      : `${SITE_URL}/`;
+    const robotsContent = isAuthenticatedArea ? "noindex, nofollow" : "index, follow";
+
+    document.title = nextTitle;
+    upsertMetaTag('meta[name="description"]', "name", "description", nextDescription);
+    upsertMetaTag('meta[property="og:title"]', "property", "og:title", nextTitle);
+    upsertMetaTag(
+      'meta[property="og:description"]',
+      "property",
+      "og:description",
+      nextDescription,
+    );
+    upsertMetaTag('meta[property="og:url"]', "property", "og:url", canonicalHref);
+    upsertMetaTag('meta[name="twitter:title"]', "name", "twitter:title", nextTitle);
+    upsertMetaTag(
+      'meta[name="twitter:description"]',
+      "name",
+      "twitter:description",
+      nextDescription,
+    );
+    upsertMetaTag('meta[name="robots"]', "name", "robots", robotsContent);
+    upsertMetaTag('meta[name="googlebot"]', "name", "googlebot", robotsContent);
+    upsertCanonicalLink(canonicalHref);
+  }, [authLoading, user, activeTab]);
 
   // Check API Accessibility
   useEffect(() => {
@@ -1276,7 +1362,11 @@ export default function App() {
       {/* Mobile Header */}
       <div className="lg:hidden bg-white border-b border-gray-100 px-6 py-4 flex items-center justify-between sticky top-0 z-30">
         <div className="flex items-center gap-2">
-          <Zap className="text-orange-600 w-5 h-5 fill-current" />
+          <img
+            src="/logo-app.png"
+            alt="HotsNew Click logo"
+            className="h-7 w-7 rounded-lg object-cover"
+          />
           <span className="font-black text-gray-900 tracking-tight">
             HotsNew
           </span>

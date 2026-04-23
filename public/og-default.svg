@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" role="img" aria-labelledby="title desc">
+  <title id="title">HotsNew Click</title>
+  <desc id="desc">Tạo landing page rút gọn link Shopee với theo dõi click và tối ưu chia sẻ.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#030712" />
+      <stop offset="100%" stop-color="#1f2937" />
+    </linearGradient>
+    <linearGradient id="accent" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#f97316" />
+      <stop offset="100%" stop-color="#fb7185" />
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="630" fill="url(#bg)" />
+  <circle cx="150" cy="135" r="88" fill="#22d3ee" fill-opacity="0.18" />
+  <circle cx="1000" cy="500" r="120" fill="#fb7185" fill-opacity="0.16" />
+  <rect x="108" y="150" width="984" height="330" rx="40" fill="#ffffff" fill-opacity="0.05" stroke="#ffffff" stroke-opacity="0.12" />
+  <rect x="150" y="206" width="94" height="94" rx="24" fill="url(#accent)" />
+  <path d="M205 228c-4.5 20-18 39-39 54h28l-12 80c33-36 45-67 42-92h-24l5-42z" fill="#fff" />
+  <text x="275" y="258" fill="#fff" font-size="56" font-family="Arial, sans-serif" font-weight="700">HotsNew Click</text>
+  <text x="275" y="330" fill="#cbd5e1" font-size="31" font-family="Arial, sans-serif">Tạo landing page rút gọn link Shopee</text>
+  <text x="275" y="374" fill="#cbd5e1" font-size="31" font-family="Arial, sans-serif">với theo dõi click và tối ưu chia sẻ</text>
+</svg>
