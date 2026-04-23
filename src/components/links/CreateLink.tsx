@@ -118,7 +118,7 @@ export const CreateLink = ({
 
           <form
             onSubmit={handleConvert}
-            className="bg-white p-10 rounded-[3rem] border border-gray-100 shadow-2xl space-y-8 relative overflow-hidden backdrop-blur-xl bg-white/95"
+            className="relative space-y-8 overflow-hidden rounded-[3rem] border border-gray-100 bg-white/95 p-10 shadow-2xl backdrop-blur-xl"
           >
             <div className="absolute top-0 right-0 w-32 h-32 bg-orange-600/5 rounded-full -mr-16 -mt-16 blur-3xl pointer-events-none" />
 
@@ -134,7 +134,7 @@ export const CreateLink = ({
               <button
                 type="submit"
                 disabled={loading || !url || uploadingVideo}
-                className="shrink-0 px-7 py-4 bg-gradient-to-r from-orange-600 to-amber-500 text-white rounded-[1.25rem] font-black uppercase tracking-[0.18em] shadow-xl shadow-orange-600/30 hover:shadow-2xl hover:shadow-orange-600/40 hover:-translate-y-0.5 active:scale-[0.98] transition-all flex items-center justify-center gap-3 disabled:grayscale disabled:opacity-50"
+                className="shrink-0 px-7 py-4 bg-linear-to-r from-orange-600 to-amber-500 text-white rounded-[1.25rem] font-black uppercase tracking-[0.18em] shadow-xl shadow-orange-600/30 hover:shadow-2xl hover:shadow-orange-600/40 hover:-translate-y-0.5 active:scale-[0.98] transition-all flex items-center justify-center gap-3 disabled:grayscale disabled:opacity-50"
               >
                 {loading ? (
                   <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
@@ -157,7 +157,7 @@ export const CreateLink = ({
                   value={url}
                   onChange={(e) => setUrl(e.target.value)}
                   placeholder="Dán link sản phẩm Shopee..."
-                  className="w-full px-6 py-5 bg-gray-50 border-2 border-transparent rounded-[1.5rem] transition-all focus:border-orange-500/30 focus:bg-white focus:ring-4 focus:ring-orange-500/10 outline-none font-medium text-gray-900 placeholder:text-gray-300"
+                  className="w-full px-6 py-5 bg-gray-50 border-2 border-transparent rounded-3xl transition-all focus:border-orange-500/30 focus:bg-white focus:ring-4 focus:ring-orange-500/10 outline-none font-medium text-gray-900 placeholder:text-gray-300"
                 />
                 <div className="absolute right-4 top-1/2 -translate-y-1/2 opacity-0 group-focus-within:opacity-100 transition-opacity">
                   <ArrowRight size={18} className="text-orange-600" />
@@ -256,7 +256,7 @@ export const CreateLink = ({
                   <button
                     type="button"
                     onClick={() => videoInputRef?.current?.click()}
-                    className="w-full min-h-[84px] flex items-center justify-between px-6 py-5 bg-orange-50/30 border-2 border-dashed border-orange-100 rounded-2xl hover:border-orange-300 hover:bg-orange-50/50 transition-all group"
+                    className="w-full min-h-21 flex items-center justify-between px-6 py-5 bg-orange-50/30 border-2 border-dashed border-orange-100 rounded-2xl hover:border-orange-300 hover:bg-orange-50/50 transition-all group"
                   >
                     <div className="flex items-center gap-3 text-orange-400 font-bold group-hover:text-orange-600">
                       <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-sm">
@@ -312,7 +312,7 @@ export const CreateLink = ({
                     value={customImageUrl}
                     onChange={(e) => setCustomImageUrl(e.target.value)}
                     placeholder="Link ảnh cover..."
-                    className="w-full min-h-[84px] px-6 py-4 bg-gray-50 border-2 border-transparent rounded-2xl transition-all outline-none font-medium focus:bg-white focus:border-orange-500/20"
+                    className="w-full min-h-21 px-6 py-4 bg-gray-50 border-2 border-transparent rounded-2xl transition-all outline-none font-medium focus:bg-white focus:border-orange-500/20"
                   />
 
                   {customImageUrl && (

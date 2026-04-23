@@ -126,7 +126,7 @@ export const LinkList = ({
             placeholder="Tìm kiếm tài nguyên..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full min-w-0 rounded-2xl border border-gray-200 bg-white py-4 pl-12 pr-6 font-medium focus:border-orange-500 focus:outline-none focus:ring-4 focus:ring-orange-500/5 md:min-w-[300px]"
+            className="w-full min-w-0 rounded-2xl border border-gray-200 bg-white py-4 pl-12 pr-6 font-medium focus:border-orange-500 focus:outline-none focus:ring-4 focus:ring-orange-500/5 md:min-w-75"
           />
         </div>
       </header>
@@ -274,13 +274,13 @@ export const LinkList = ({
                       l.id || "",
                     )
                   }
-                  className="min-w-[110px] flex-1 shrink-0 rounded-xl bg-gray-900 px-6 py-3 text-xs font-black uppercase tracking-widest text-white transition-all hover:scale-105 active:scale-95 sm:mx-1 sm:flex-none"
+                  className="min-w-27.5 flex-1 shrink-0 rounded-xl bg-gray-900 px-6 py-3 text-xs font-black uppercase tracking-widest text-white transition-all hover:scale-105 active:scale-95 sm:mx-1 sm:flex-none"
                 >
                   {copiedId === l.id ? "DONE" : "COPY"}
                 </button>
                 <button
                   onClick={() => setQrLink(l)}
-                  className="min-w-[130px] flex-1 shrink-0 rounded-xl border border-purple-100 bg-white px-6 py-3 text-xs font-black uppercase tracking-widest text-purple-600 transition-all hover:bg-purple-50 active:scale-95 sm:flex-none"
+                  className="min-w-32.5 flex-1 shrink-0 rounded-xl border border-purple-100 bg-white px-6 py-3 text-xs font-black uppercase tracking-widest text-purple-600 transition-all hover:bg-purple-50 active:scale-95 sm:flex-none"
                   title="Mã QR"
                 >
                   <span className="flex items-center justify-center gap-2">

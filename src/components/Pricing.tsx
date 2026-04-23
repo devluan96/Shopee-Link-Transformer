@@ -142,7 +142,6 @@ export const Pricing = ({
     const disableRenew = isCurrentPlan && !canRenewCurrentPlan;
     const disabled =
       checkoutLoadingPlan !== null || disableByActiveYearly || disableRenew;
-    const hidden = disableByActiveYearly;
 
     let buttonText = "THANH TOÁN NGAY";
     if (isCurrentPlan) {
@@ -156,7 +155,7 @@ export const Pricing = ({
       helperText = "Gia hạn chỉ mở khi gói còn 7 ngày hoặc ít hơn.";
     }
 
-    return { disabled, hidden, buttonText, helperText };
+    return { disabled, buttonText, helperText };
   };
 
   return (
@@ -255,7 +254,7 @@ export const Pricing = ({
               <div className="mb-10 flex-1 space-y-4">
                 {plan.features.map((feature, idx) => (
                   <div key={idx} className="flex items-start gap-3">
-                    <div className="mt-1 flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full border border-green-100 bg-green-50">
+                    <div className="mt-1 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-green-100 bg-green-50">
                       <Check size={12} className="text-green-600" />
                     </div>
                     <span className="text-sm font-bold leading-tight text-gray-600">
@@ -265,30 +264,28 @@ export const Pricing = ({
                 ))}
               </div>
 
-              {!buttonState.hidden && (
-                <button
-                  onClick={() => handleCheckout(plan.id)}
-                  disabled={buttonState.disabled}
-                  className={cn(
-                    "flex w-full items-center justify-center gap-2 rounded-3xl py-5 text-xs font-black uppercase tracking-widest transition-all active:scale-95 disabled:cursor-not-allowed disabled:opacity-60",
-                    plan.highlight
-                      ? "bg-orange-600 text-white shadow-lg shadow-orange-200 hover:bg-orange-700"
-                      : "bg-gray-900 text-white hover:bg-black",
-                  )}
-                >
-                  {checkoutLoadingPlan === plan.id ? (
-                    <>
-                      <LoaderCircle size={16} className="animate-spin" />
-                      ĐANG CHUYỂN ĐẾN ZALOPAY
-                    </>
-                  ) : (
-                    <>
-                      {buttonState.buttonText}
-                      <span>{"->"}</span>
-                    </>
-                  )}
-                </button>
-              )}
+              <button
+                onClick={() => handleCheckout(plan.id)}
+                disabled={buttonState.disabled}
+                className={cn(
+                  "flex w-full items-center justify-center gap-2 rounded-3xl py-5 text-xs font-black uppercase tracking-widest transition-all active:scale-95 disabled:cursor-not-allowed disabled:opacity-60",
+                  plan.highlight
+                    ? "bg-orange-600 text-white shadow-lg shadow-orange-200 hover:bg-orange-700"
+                    : "bg-gray-900 text-white hover:bg-black",
+                )}
+              >
+                {checkoutLoadingPlan === plan.id ? (
+                  <>
+                    <LoaderCircle size={16} className="animate-spin" />
+                    ĐANG CHUYỂN ĐẾN ZALOPAY
+                  </>
+                ) : (
+                  <>
+                    {buttonState.buttonText}
+                    <span>{"->"}</span>
+                  </>
+                )}
+              </button>
 
               {buttonState.helperText && (
                 <p className="mt-3 text-center text-[11px] font-medium text-gray-400">

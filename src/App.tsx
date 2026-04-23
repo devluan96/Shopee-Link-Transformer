@@ -61,7 +61,7 @@ const ProfileSettings = lazy(() =>
 
 // Loading Component for Lazy Loading
 const TabLoading = () => (
-  <div className="flex items-center justify-center min-h-[400px]">
+  <div className="flex items-center justify-center min-h-100">
     <div className="w-12 h-12 border-4 border-orange-500/20 border-t-orange-500 rounded-full animate-spin" />
   </div>
 );
@@ -118,6 +118,7 @@ export default function App() {
   // Admin State
   const [allUsers, setAllUsers] = useState<UserProfile[]>([]);
   const [adminLoading, setAdminLoading] = useState(false);
+  const [adminDirty, setAdminDirty] = useState(true);
 
   // Global Copied State
   const [profileLoading, setProfileLoading] = useState(false);
@@ -131,6 +132,7 @@ export default function App() {
     totalClicks: 0,
     recentClicks: [],
     topLinks: [],
+    growthPercentage: 0,
   });
   const videoInputRef = useRef<HTMLInputElement>(null);
   const isLoggingOutRef = useRef(false);
@@ -394,6 +396,8 @@ export default function App() {
         setProfile(null);
         setLinks([]);
         setLinksDirty(true);
+        setAllUsers([]);
+        setAdminDirty(true);
         setActiveTab("dashboard");
         setIsSidebarOpen(false);
         setAuthLoading(false);
@@ -511,6 +515,8 @@ export default function App() {
         setProfile(null);
         setLinks([]);
         setLinksDirty(true);
+        setAllUsers([]);
+        setAdminDirty(true);
         if (profileChannel) {
           supabase.removeChannel(profileChannel);
           profileChannel = null;
@@ -560,9 +566,11 @@ export default function App() {
         fetchLinks();
       }
       if (activeTab === "dashboard") fetchStats();
-      if (activeTab === "admin" && isAdminRole) fetchAllUsers();
+      if (activeTab === "admin" && isAdminRole && (adminDirty || allUsers.length === 0)) {
+        fetchAllUsers();
+      }
     }
-  }, [user, profile, activeTab, linksDirty, links.length]);
+  }, [user, profile, activeTab, linksDirty, links.length, adminDirty, allUsers.length]);
 
   useEffect(() => {
     const isAdminRole =
@@ -613,6 +621,7 @@ export default function App() {
       const response = await fetchWithAuth("/api/v1/admin/users");
       const data = await response.json();
       setAllUsers(data);
+      setAdminDirty(false);
     } catch (e) {
       console.error(e);
     } finally {
@@ -823,6 +832,7 @@ export default function App() {
       totalClicks: 0,
       recentClicks: [],
       topLinks: [],
+      growthPercentage: 0,
     });
     setAnalyticsData({
       history: [],
@@ -832,6 +842,7 @@ export default function App() {
     });
     setListLoading(false);
     setLinksDirty(true);
+    setAdminDirty(true);
     setAdminLoading(false);
     setProfileLoading(false);
 

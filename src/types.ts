@@ -42,6 +42,7 @@ export interface LinkStats {
   totalClicks: number;
   recentClicks: Array<{ date: string; clicks: number }>;
   topLinks: Array<{ short_code: string; title: string; clicks: number }>;
+  growthPercentage: number;
 }
 
 export interface AnalyticsData {

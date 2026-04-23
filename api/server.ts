@@ -123,6 +123,11 @@ interface PublicLinkRecord {
   video_url?: string | null;
 }
 
+interface LinkMetaRecord {
+  short_code: string;
+  title: string;
+}
+
 interface TrackedSourceSummary {
   label: string;
   count: number;
@@ -704,20 +709,25 @@ const renderLinkLandingPage = (
 
         const beginRedirectFlow = () => {
           if (opened) return;
-
-          const popup = window.open("", "_blank", "noopener,noreferrer");
-          if (!popup) return;
-
           opened = true;
 
+          hideOverlay();
+
+          const link = document.createElement("a");
+          link.href = targetUrl;
+          link.target = "_blank";
+          link.rel = "noopener noreferrer";
+          link.style.display = "none";
+          document.body.appendChild(link);
+
           try {
-            popup.opener = null;
-            popup.location.replace(targetUrl);
+            link.click();
           } catch (error) {
             console.error("Popup open failed", error);
+            window.location.href = targetUrl;
+          } finally {
+            link.remove();
           }
-
-          hideOverlay();
         };
 
         overlay?.addEventListener("click", (event) => {
@@ -726,7 +736,7 @@ const renderLinkLandingPage = (
         });
         overlayClose?.addEventListener("click", (event) => {
           event.stopPropagation();
-          hideOverlay();
+          beginRedirectFlow();
         });
         overlay?.addEventListener("keydown", (event) => {
           if (event.key === "Enter" || event.key === " ") {
@@ -1327,11 +1337,12 @@ app.get(
           totalClicks: 0,
           recentClicks: [],
           topLinks: [],
+          growthPercentage: 0,
         });
       }
 
       const linkIds = links.map((link: any) => link.id).filter(Boolean);
-      const linkMetaMap = new Map(
+      const linkMetaMap = new Map<string, LinkMetaRecord>(
         links.map((link: any) => [
           link.id,
           {
@@ -1350,9 +1361,13 @@ app.get(
 
       const thirtyDaysAgo = new Date();
       thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+      const sixtyDaysAgo = new Date();
+      sixtyDaysAgo.setDate(sixtyDaysAgo.getDate() - 60);
 
       const historyMap: Record<string, number> = {};
       const linkClickMap = new Map<string, number>();
+      let previousWindowClicks = 0;
+      let currentWindowClicks = 0;
 
       (clicks || []).forEach((click: any) => {
         if (!click?.link_id) return;
@@ -1364,12 +1379,17 @@ app.get(
 
         if (!click.created_at) return;
         const createdAt = new Date(click.created_at);
-        if (Number.isNaN(createdAt.getTime()) || createdAt < thirtyDaysAgo) {
+        if (Number.isNaN(createdAt.getTime()) || createdAt < sixtyDaysAgo) {
           return;
         }
 
-        const date = click.created_at.split("T")[0];
-        historyMap[date] = (historyMap[date] || 0) + 1;
+        if (createdAt >= thirtyDaysAgo) {
+          const date = click.created_at.split("T")[0];
+          historyMap[date] = (historyMap[date] || 0) + 1;
+          currentWindowClicks += 1;
+        } else {
+          previousWindowClicks += 1;
+        }
       });
 
       const totalClicks = Array.from(linkClickMap.values()).reduce(
@@ -1387,12 +1407,25 @@ app.get(
         }))
         .sort((a, b) => b.clicks - a.clicks)
         .slice(0, 5);
+      const growthPercentage =
+        previousWindowClicks <= 0
+          ? currentWindowClicks > 0
+            ? 100
+            : 0
+          : Number(
+              (
+                ((currentWindowClicks - previousWindowClicks) /
+                  previousWindowClicks) *
+                100
+              ).toFixed(1),
+            );
 
       res.json({
         totalLinks: count || 0,
         totalClicks,
         recentClicks,
         topLinks,
+        growthPercentage,
       });
     } catch (e: any) {
       res.status(500).json({ error: e.message });

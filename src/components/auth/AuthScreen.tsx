@@ -82,7 +82,7 @@ export const AuthScreen = ({
               damping: 20,
             }}
             style={{ transformStyle: "preserve-3d" }}
-            className="w-full relative h-[580px]"
+            className="relative h-145 w-full"
           >
             {/* Front side (LOGIN) */}
             <div

@@ -16,6 +16,7 @@ interface OverviewProps {
     totalClicks: number;
     recentClicks: Array<{ date: string; clicks: number }>;
     topLinks: Array<{ short_code: string; title: string; clicks: number }>;
+    growthPercentage: number;
   } | null;
   setActiveTab: (tab: Tab) => void;
   canAccessCreate: boolean;
@@ -26,24 +27,11 @@ export const Overview = ({
   setActiveTab,
   canAccessCreate,
 }: OverviewProps) => {
-  const recentClicks = stats?.recentClicks || [];
   const totalLinks = stats?.totalLinks || 0;
   const totalClicks = stats?.totalClicks || 0;
-
-  const midpoint = Math.ceil(recentClicks.length / 2);
-  const previousPeriod = recentClicks
-    .slice(0, midpoint)
-    .reduce((sum, item) => sum + item.clicks, 0);
-  const currentPeriod = recentClicks
-    .slice(midpoint)
-    .reduce((sum, item) => sum + item.clicks, 0);
-
-  let growthPercentage = 0;
-  if (previousPeriod === 0 && currentPeriod > 0) {
-    growthPercentage = 100;
-  } else if (previousPeriod > 0) {
-    growthPercentage = ((currentPeriod - previousPeriod) / previousPeriod) * 100;
-  }
+  const growthPercentage = Number.isFinite(stats?.growthPercentage)
+    ? stats?.growthPercentage || 0
+    : 0;
 
   const avgClicksPerLink = totalLinks > 0 ? totalClicks / totalLinks : 0;
   const efficiencyLabel =
@@ -75,7 +63,7 @@ export const Overview = ({
       border: "border-blue-100",
     },
     {
-      label: "Tăng trưởng %",
+      label: "Tăng trưởng (30d)",
       value: `${growthPercentage >= 0 ? "+" : ""}${growthPercentage.toFixed(1)}`,
       icon: TrendingUp,
       color: growthPercentage >= 0 ? "text-green-600" : "text-red-600",
@@ -99,7 +87,7 @@ export const Overview = ({
           Chào buổi sáng!
         </h2>
         <p className="font-medium italic text-gray-500">
-          Đây là tóm tắt chiến dịch hotsnew của bạn trong 24h qua.
+          Đây là tóm tắt nhanh hiệu suất chiến dịch hotsnew của bạn.
         </p>
       </header>
 
@@ -130,7 +118,7 @@ export const Overview = ({
       </div>
 
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
-        <div className="relative overflow-hidden rounded-[3rem] bg-gradient-to-br from-gray-900 via-gray-800 to-gray-950 p-8 text-white shadow-2xl ring-1 ring-white/10 lg:col-span-2 lg:p-12">
+        <div className="relative overflow-hidden rounded-[3rem] bg-linear-to-br from-gray-900 via-gray-800 to-gray-950 p-8 text-white shadow-2xl ring-1 ring-white/10 lg:col-span-2 lg:p-12">
           <div className="relative z-10">
             <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-orange-500/30 bg-orange-600/20 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-orange-400">
               <Zap size={12} className="fill-current" /> Premium Business
@@ -145,20 +133,20 @@ export const Overview = ({
             {canAccessCreate ? (
               <button
                 onClick={() => setActiveTab("create")}
-                className="flex items-center gap-3 rounded-2xl bg-gradient-to-r from-orange-600 to-amber-500 px-10 py-5 text-xs font-black uppercase tracking-widest shadow-xl shadow-orange-900/40 transition-all hover:-translate-y-0.5 hover:shadow-2xl hover:shadow-orange-600/40 active:scale-95"
+                className="flex items-center gap-3 rounded-2xl bg-linear-to-r from-orange-600 to-amber-500 px-10 py-5 text-xs font-black uppercase tracking-widest shadow-xl shadow-orange-900/40 transition-all hover:-translate-y-0.5 hover:shadow-2xl hover:shadow-orange-600/40 active:scale-95"
               >
                 <PlusCircle size={20} /> Tạo Link Ngay
               </button>
             ) : (
               <button
                 onClick={() => setActiveTab("pricing")}
-                className="flex items-center gap-3 rounded-2xl bg-gradient-to-r from-orange-600 to-amber-500 px-10 py-5 text-xs font-black uppercase tracking-widest shadow-xl shadow-orange-900/40 transition-all hover:-translate-y-0.5 hover:shadow-2xl hover:shadow-orange-600/40 active:scale-95"
+                className="flex items-center gap-3 rounded-2xl bg-linear-to-r from-orange-600 to-amber-500 px-10 py-5 text-xs font-black uppercase tracking-widest shadow-xl shadow-orange-900/40 transition-all hover:-translate-y-0.5 hover:shadow-2xl hover:shadow-orange-600/40 active:scale-95"
               >
                 <Zap size={20} /> Nâng cấp Premium Ngay
               </button>
             )}
           </div>
-          <div className="pointer-events-none absolute right-0 top-0 h-full w-1/2 bg-gradient-to-l from-orange-600/10 to-transparent" />
+          <div className="pointer-events-none absolute right-0 top-0 h-full w-1/2 bg-linear-to-l from-orange-600/10 to-transparent" />
           <Zap
             size={300}
             className="pointer-events-none absolute -bottom-16 -right-16 fill-current text-white opacity-[0.03]"

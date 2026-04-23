@@ -83,7 +83,7 @@ export const ProfileSettings = ({
         </div>
 
         {isPremium && (
-          <div className="flex items-center gap-3 px-6 py-3 bg-gradient-to-r from-amber-400 to-orange-500 rounded-2xl shadow-xl shadow-orange-100 text-white animate-pulse">
+          <div className="flex items-center gap-3 px-6 py-3 bg-linear-to-r from-amber-400 to-orange-500 rounded-2xl shadow-xl shadow-orange-100 text-white animate-pulse">
             <Crown size={20} className="fill-current" />
             <span className="font-black uppercase tracking-widest text-xs">
               Thành viên Premium
@@ -96,7 +96,7 @@ export const ProfileSettings = ({
         {/* Left Column: Avatar & Quick Info */}
         <div className="space-y-8">
           <div className="bg-white rounded-[2.5rem] border border-gray-100 shadow-sm p-10 flex flex-col items-center relative overflow-hidden group">
-            <div className="absolute top-0 left-0 w-full h-24 bg-gradient-to-br from-orange-500 to-amber-400 opacity-10 group-hover:opacity-20 transition-opacity" />
+            <div className="absolute top-0 left-0 w-full h-24 bg-linear-to-br from-orange-500 to-amber-400 opacity-10 group-hover:opacity-20 transition-opacity" />
 
             <div className="relative mt-4">
               <div className="w-36 h-36 rounded-[2.5rem] overflow-hidden bg-white shadow-2xl ring-8 ring-white relative z-10 transition-transform duration-500 group-hover:scale-105">
@@ -200,7 +200,7 @@ export const ProfileSettings = ({
                     type="text"
                     readOnly
                     value={profile?.email || ""}
-                    className="w-full px-6 py-4.5 bg-gray-100/50 border-2 border-gray-100 rounded-[1.5rem] text-gray-400 font-bold text-sm cursor-not-allowed"
+                    className="w-full px-6 py-4.5 bg-gray-100/50 border-2 border-gray-100 rounded-3xl text-gray-400 font-bold text-sm cursor-not-allowed"
                   />
                   <div className="absolute right-4 top-1/2 -translate-y-1/2">
                     <ShieldCheck size={16} className="text-gray-300" />
@@ -221,12 +221,12 @@ export const ProfileSettings = ({
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
                   placeholder="Họ tên hiển thị của bạn..."
-                  className="w-full px-6 py-4.5 bg-gray-50 border-2 border-transparent rounded-[1.5rem] transition-all focus:border-orange-500/20 focus:bg-white outline-none font-bold text-gray-900 placeholder:text-gray-300"
+                  className="w-full px-6 py-4.5 bg-gray-50 border-2 border-transparent rounded-3xl transition-all focus:border-orange-500/20 focus:bg-white outline-none font-bold text-gray-900 placeholder:text-gray-300"
                 />
               </div>
             </div>
 
-            <div className="p-6 bg-blue-50/50 rounded-[1.5rem] border border-blue-100/50 flex items-start gap-4">
+            <div className="p-6 bg-blue-50/50 rounded-3xl border border-blue-100/50 flex items-start gap-4">
               <div className="p-3 bg-white rounded-xl shadow-sm text-blue-500">
                 <ShieldCheck size={20} />
               </div>
@@ -245,7 +245,7 @@ export const ProfileSettings = ({
               <button
                 type="submit"
                 disabled={updating || uploading}
-                className="w-full sm:w-auto px-12 py-5 bg-gradient-to-r from-orange-600 to-amber-500 text-white rounded-2xl font-black uppercase tracking-[0.2em] text-xs shadow-xl shadow-orange-600/20 hover:shadow-orange-600/30 hover:-translate-y-0.5 active:scale-[0.98] transition-all flex items-center justify-center gap-3 disabled:opacity-50"
+                className="w-full sm:w-auto px-12 py-5 bg-linear-to-r from-orange-600 to-amber-500 text-white rounded-2xl font-black uppercase tracking-[0.2em] text-xs shadow-xl shadow-orange-600/20 hover:shadow-orange-600/30 hover:-translate-y-0.5 active:scale-[0.98] transition-all flex items-center justify-center gap-3 disabled:opacity-50"
               >
                 {updating ? (
                   <div className="w-5 h-5 border-3 border-white/30 border-t-white rounded-full animate-spin" />
