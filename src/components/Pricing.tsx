@@ -55,35 +55,35 @@ export const Pricing = ({
   const plans = [
     {
       id: "monthly" as const,
-      name: "Goi thang",
-      price: "299.000d",
-      period: "/ THANG",
-      description: "Phu hop de chay thu hoac van hanh ngan han.",
+      name: "Gói tháng",
+      price: "299.000đ",
+      period: "/ THÁNG",
+      description: "Phù hợp để chạy thử hoặc vận hành ngắn hạn.",
       features: [
-        "Tao landing page khong gioi han",
-        "Upload video va thumbnail",
-        "Quan ly link va theo doi thong ke",
-        "Thanh toan qua ZaloPay Gateway va VietQR",
+        "Tạo landing page không giới hạn",
+        "Upload video và thumbnail",
+        "Quản lý link và theo dõi thống kê",
+        "Thanh toán qua ZaloPay Gateway và VietQR",
       ],
       highlight: true,
-      buttonText: "THANH TOAN NGAY",
-      badge: "LINH HOAT",
+      buttonText: "THANH TOÁN NGAY",
+      badge: "LINH HOẠT",
     },
     {
       id: "yearly" as const,
-      name: "Goi nam",
-      price: "2.490.000d",
-      period: "/ NAM",
-      description: "Toi uu chi phi va phu hop cho tai khoan van hanh lau dai.",
+      name: "Gói năm",
+      price: "2.490.000đ",
+      period: "/ NĂM",
+      description: "Tối ưu chi phí và phù hợp cho tài khoản vận hành lâu dài.",
       features: [
-        "Tao landing page khong gioi han",
-        "Upload video va thumbnail",
-        "Quan ly link va theo doi thong ke",
-        "Thanh toan qua ZaloPay Gateway va VietQR",
+        "Tạo landing page không giới hạn",
+        "Upload video và thumbnail",
+        "Quản lý link và theo dõi thống kê",
+        "Thanh toán qua ZaloPay Gateway và VietQR",
       ],
       highlight: false,
-      buttonText: "THANH TOAN NGAY",
-      badge: "TIET KIEM HON",
+      buttonText: "THANH TOÁN NGAY",
+      badge: "TIẾT KIỆM HƠN",
     },
   ];
 
@@ -91,7 +91,9 @@ export const Pricing = ({
     try {
       await onCheckout(plan);
     } catch (error: any) {
-      toast.error(error?.message || "Khong the chuyen sang cong thanh toan.");
+      toast.error(
+        error?.message || "Không thể chuyển sang cổng thanh toán.",
+      );
     }
   };
 
@@ -99,10 +101,10 @@ export const Pricing = ({
     <div className="max-w-6xl mx-auto">
       <header className="mb-12">
         <h2 className="text-3xl font-black text-gray-900 mb-2">
-          Bang gia dich vu
+          Bảng giá dịch vụ
         </h2>
         <p className="text-gray-500 font-medium italic">
-          Nang cap tai khoan de mo khoa toan bo tinh nang chuyen doi link.
+          Nâng cấp tài khoản để mở khóa toàn bộ tính năng chuyển đổi link.
         </p>
       </header>
 
@@ -113,24 +115,24 @@ export const Pricing = ({
           </div>
           <div>
             <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">
-              TRANG THAI HIEN TAI
+              TRẠNG THÁI HIỆN TẠI
             </p>
             <h3 className="text-2xl font-black text-gray-900">
               {currentPlan === "free"
-                ? "Goi mien phi"
+                ? "Gói miễn phí"
                 : currentPlan === "monthly"
-                  ? "Goi thang"
-                  : "Goi nam"}
+                  ? "Gói tháng"
+                  : "Gói năm"}
             </h3>
             {expiryDate && (
               <p className="text-sm text-gray-500 font-medium">
-                Goi dang hoat dong den {expiryDate}.
+                Gói đang hoạt động đến {expiryDate}.
               </p>
             )}
           </div>
         </div>
         <div className="bg-green-50 text-green-600 px-6 py-2 rounded-full font-black text-xs uppercase tracking-widest border border-green-100">
-          Dang hoat dong
+          Đang hoạt động
         </div>
       </div>
 
@@ -199,11 +201,11 @@ export const Pricing = ({
               {checkoutLoadingPlan === plan.id ? (
                 <>
                   <LoaderCircle size={16} className="animate-spin" />
-                  DANG CHUYEN DEN ZALOPAY
+                  ĐANG CHUYỂN ĐẾN ZALOPAY
                 </>
               ) : (
                 <>
-                  {currentPlan === plan.id ? "GIA HAN NGAY" : plan.buttonText}
+                  {currentPlan === plan.id ? "GIA HẠN NGAY" : plan.buttonText}
                   <span>{"->"}</span>
                 </>
               )}
