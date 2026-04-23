@@ -76,6 +76,7 @@ export default function App() {
   const [url, setUrl] = useState("");
   const [customTitle, setCustomTitle] = useState("");
   const [customDescription, setCustomDescription] = useState("");
+  const [usageContext, setUsageContext] = useState("");
   const [customImageUrl, setCustomImageUrl] = useState("");
   const [videoUrl, setVideoUrl] = useState("");
   const [uploadingVideo, setUploadingVideo] = useState(false);
@@ -873,6 +874,7 @@ export default function App() {
           url: url.trim(),
           customTitle,
           customDescription,
+          usageContext,
           customImageUrl,
           videoUrl,
         }),
@@ -1215,6 +1217,8 @@ export default function App() {
                 setCustomTitle={setCustomTitle}
                 customDescription={customDescription}
                 setCustomDescription={setCustomDescription}
+                usageContext={usageContext}
+                setUsageContext={setUsageContext}
                 customImageUrl={customImageUrl}
                 setCustomImageUrl={setCustomImageUrl}
                 videoUrl={videoUrl}

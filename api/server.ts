@@ -152,6 +152,9 @@ const renderLinkLandingPage = (
   const imageUrl = link.custom_image_url?.trim() || "";
   const videoUrl = link.video_url?.trim() || "";
   const originalUrl = link.original_url.trim();
+  const fallbackFavicon =
+    "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop stop-color='%23f97316'/%3E%3Cstop offset='1' stop-color='%23ef4444'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='64' height='64' rx='16' fill='url(%23g)'/%3E%3Cpath d='M36 10c-1.5 6.5-6 13-13 18h9l-4 26c11-12 15-22 14-30h-8l2-14z' fill='white'/%3E%3C/svg%3E";
+  const faviconUrl = imageUrl || fallbackFavicon;
   const hasVideo = Boolean(videoUrl);
   const previewMedia = hasVideo
     ? `
@@ -186,6 +189,9 @@ const renderLinkLandingPage = (
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>${escapeHtml(title)}</title>
     <meta name="description" content="${escapeHtml(description)}" />
+    <link rel="icon" href="${escapeHtml(faviconUrl)}" />
+    <link rel="shortcut icon" href="${escapeHtml(faviconUrl)}" />
+    <link rel="apple-touch-icon" href="${escapeHtml(faviconUrl)}" />
     <link rel="canonical" href="${escapeHtml(canonicalUrl)}" />
     <meta property="og:type" content="website" />
     <meta property="og:title" content="${escapeHtml(title)}" />
@@ -342,29 +348,6 @@ const renderLinkLandingPage = (
         box-shadow: 0 1rem 2rem rgba(249, 115, 22, 0.26);
       }
 
-      .badge {
-        display: inline-flex;
-        align-items: center;
-        gap: 0.55rem;
-        padding: 0.6rem 0.95rem;
-        border-radius: 999px;
-        background: rgba(255, 255, 255, 0.08);
-        border: 1px solid rgba(255, 255, 255, 0.12);
-        font-size: 0.72rem;
-        font-weight: 800;
-        text-transform: uppercase;
-        letter-spacing: 0.16em;
-        color: #fbbf24;
-      }
-
-      .badge-dot {
-        width: 0.55rem;
-        height: 0.55rem;
-        border-radius: 999px;
-        background: linear-gradient(135deg, var(--accent2), #38bdf8);
-        box-shadow: 0 0 1rem rgba(34, 211, 238, 0.9);
-      }
-
       .content-panel {
         display: flex;
         flex-direction: column;
@@ -386,29 +369,21 @@ const renderLinkLandingPage = (
         line-height: 1.8;
       }
 
-      .meta {
-        margin-top: 1.6rem;
-        display: flex;
-        flex-wrap: wrap;
-        gap: 0.75rem;
-      }
-
-      .meta-pill {
-        padding: 0.7rem 1rem;
+      .link-line {
+        margin-top: 1.25rem;
+        display: inline-flex;
+        align-items: center;
+        width: fit-content;
+        max-width: 100%;
+        padding: 0.8rem 1rem;
         border-radius: 1rem;
         background: rgba(255, 255, 255, 0.05);
         border: 1px solid rgba(255, 255, 255, 0.08);
-        font-size: 0.76rem;
-        letter-spacing: 0.12em;
-        text-transform: uppercase;
-        color: rgba(248, 250, 252, 0.72);
-        font-weight: 800;
-      }
-
-      .cta-note {
-        margin-top: 1.2rem;
-        color: rgba(191, 219, 254, 0.9);
+        color: rgba(191, 219, 254, 0.92);
+        font-size: 0.88rem;
         font-weight: 700;
+        line-height: 1.5;
+        word-break: break-all;
       }
 
       .overlay {
@@ -418,8 +393,8 @@ const renderLinkLandingPage = (
         align-items: center;
         justify-content: center;
         padding: 1.5rem;
-        background: rgba(2, 6, 23, 0.46);
-        backdrop-filter: blur(24px);
+        background: rgba(2, 6, 23, 0.1);
+        backdrop-filter: blur(4px);
         z-index: 20;
         cursor: pointer;
         transition: opacity 220ms ease, visibility 220ms ease;
@@ -477,18 +452,9 @@ const renderLinkLandingPage = (
         </div>
 
         <div class="content-panel">
-          <div class="badge">
-            <span class="badge-dot"></span>
-            HotsNew Smart Landing
-          </div>
           <h1>${escapeHtml(title)}</h1>
           <p>${escapeHtml(description)}</p>
-          <div class="meta">
-            <span class="meta-pill">${escapeHtml(link.short_code)}</span>
-            <span class="meta-pill">${hasVideo ? "Video Preview" : imageUrl ? "Image Preview" : "Ready"}</span>
-            <span class="meta-pill">Glass Landing</span>
-          </div>
-          <p class="cta-note">Cham vao man hinh de mo link trong tab moi va tiep tuc den trang dich.</p>
+          <div class="link-line">${escapeHtml(canonicalUrl)}</div>
         </div>
       </section>
     </main>
@@ -892,8 +858,14 @@ app.post(
     try {
       const supabase = getSupabase();
       const userId = req.authUser?.id;
-      const { url, customTitle, customDescription, customImageUrl, videoUrl } =
-        req.body;
+      const {
+        url,
+        customTitle,
+        customDescription,
+        usageContext,
+        customImageUrl,
+        videoUrl,
+      } = req.body;
       if (!userId) return res.status(401).json({ error: "Unauthorized" });
       const shortCode = nanoid(8);
       const { data, error } = await supabase
@@ -904,6 +876,7 @@ app.post(
           user_id: userId,
           custom_title: customTitle,
           custom_description: customDescription,
+          usage_context: usageContext,
           custom_image_url: customImageUrl,
           video_url: videoUrl,
         })
@@ -955,6 +928,7 @@ app.patch(
       const {
         custom_title,
         custom_description,
+        usage_context,
         custom_image_url,
         original_url,
       } = req.body;
@@ -969,6 +943,7 @@ app.patch(
         .update({
           custom_title,
           custom_description,
+          usage_context,
           custom_image_url,
           original_url,
           updated_at: new Date().toISOString(),

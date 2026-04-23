@@ -22,6 +22,8 @@ interface CreateLinkProps {
   setCustomTitle: (v: string) => void;
   customDescription: string;
   setCustomDescription: (v: string) => void;
+  usageContext: string;
+  setUsageContext: (v: string) => void;
   customImageUrl: string;
   setCustomImageUrl: (v: string) => void;
   videoUrl: string;
@@ -46,6 +48,8 @@ export const CreateLink = ({
   setCustomTitle,
   customDescription,
   setCustomDescription,
+  usageContext,
+  setUsageContext,
   customImageUrl,
   setCustomImageUrl,
   videoUrl,
@@ -143,6 +147,19 @@ export const CreateLink = ({
                     className="w-full px-6 py-4 bg-gray-50 border-2 border-transparent rounded-2xl transition-all outline-none font-medium focus:bg-white focus:border-orange-500/20"
                   />
                 </div>
+              </div>
+
+              <div>
+                <label className="flex items-center gap-2 text-[11px] font-black uppercase tracking-widest text-gray-400 mb-3 px-1">
+                  <Type size={14} className="text-orange-500" /> Dùng ở đâu
+                </label>
+                <input
+                  type="text"
+                  value={usageContext}
+                  onChange={(e) => setUsageContext(e.target.value)}
+                  placeholder="Ví dụ: Bài viết Facebook, bio TikTok, group seeding..."
+                  className="w-full px-6 py-4 bg-gray-50 border-2 border-transparent rounded-2xl transition-all outline-none font-medium focus:bg-white focus:border-orange-500/20"
+                />
               </div>
 
               <div>

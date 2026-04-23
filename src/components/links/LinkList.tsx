@@ -45,6 +45,7 @@ export const LinkList = ({
   const [editForm, setEditForm] = useState({
     title: "",
     desc: "",
+    usage: "",
     img: "",
     original: "",
   });
@@ -56,6 +57,7 @@ export const LinkList = ({
     setEditForm({
       title: link.custom_title || "",
       desc: link.custom_description || "",
+      usage: link.usage_context || "",
       img: link.custom_image_url || "",
       original: link.original_url || "",
     });
@@ -68,6 +70,7 @@ export const LinkList = ({
       await onUpdateLink(editingLink.id, {
         custom_title: editForm.title,
         custom_description: editForm.desc,
+        usage_context: editForm.usage,
         custom_image_url: editForm.img,
         original_url: editForm.original,
       });
@@ -166,6 +169,11 @@ export const LinkList = ({
                 <p className="text-xs text-gray-400 font-medium truncate mb-2">
                   {l.custom_description || "No description provided"}
                 </p>
+                {l.usage_context && (
+                  <p className="text-[11px] text-orange-600 font-bold truncate mb-2">
+                    Được dùng ở: {l.usage_context}
+                  </p>
+                )}
                 <div className="flex items-center gap-4">
                   <div className="flex items-center gap-1.5 text-[10px] font-black text-blue-600 bg-blue-50 px-2 py-0.5 rounded-lg">
                     <MousePointer2 size={10} />
@@ -287,6 +295,20 @@ export const LinkList = ({
                   placeholder="Mô tả nội dung..."
                   rows={3}
                   className="w-full px-6 py-4 bg-gray-50 border-2 border-transparent focus:border-orange-500 rounded-2xl outline-none transition-all font-medium text-sm resize-none"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-1">
+                  Dùng ở đâu
+                </label>
+                <input
+                  type="text"
+                  value={editForm.usage}
+                  onChange={(e) =>
+                    setEditForm({ ...editForm, usage: e.target.value })
+                  }
+                  placeholder="Ví dụ: Bài viết Facebook, bio TikTok..."
+                  className="w-full px-6 py-4 bg-gray-50 border-2 border-transparent focus:border-orange-500 rounded-2xl outline-none transition-all font-medium text-sm"
                 />
               </div>
               <div className="space-y-1">

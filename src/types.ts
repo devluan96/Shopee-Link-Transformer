@@ -4,6 +4,7 @@ export interface ConvertedLink {
   original_url: string;
   custom_title?: string;
   custom_description?: string;
+  usage_context?: string;
   custom_image_url?: string;
   video_url?: string;
   created_at: string;
