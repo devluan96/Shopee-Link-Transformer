@@ -111,10 +111,508 @@ interface AuthenticatedRequest extends Request {
   } | null;
 }
 
+interface PublicLinkRecord {
+  id: string;
+  short_code: string;
+  original_url: string;
+  custom_title?: string | null;
+  custom_description?: string | null;
+  custom_image_url?: string | null;
+  video_url?: string | null;
+}
+
 const getBearerToken = (req: Request) => {
   const authHeader = req.headers.authorization;
   if (!authHeader?.startsWith("Bearer ")) return null;
   return authHeader.slice("Bearer ".length).trim();
+};
+
+const escapeHtml = (value: string) =>
+  value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+
+const escapeJsString = (value: string) =>
+  value
+    .replace(/\\/g, "\\\\")
+    .replace(/`/g, "\\`")
+    .replace(/\$\{/g, "\\${");
+
+const renderLinkLandingPage = (
+  link: PublicLinkRecord,
+  canonicalUrl: string,
+) => {
+  const title = link.custom_title?.trim() || "HotsNew Click";
+  const description =
+    link.custom_description?.trim() ||
+    "Noi dung dang san sang. Bam vao man hinh de tiep tuc.";
+  const imageUrl = link.custom_image_url?.trim() || "";
+  const videoUrl = link.video_url?.trim() || "";
+  const originalUrl = link.original_url.trim();
+  const hasVideo = Boolean(videoUrl);
+  const previewMedia = hasVideo
+    ? `
+      <video class="hero-media" src="${escapeHtml(videoUrl)}" autoplay muted loop playsinline controls></video>
+    `
+    : imageUrl
+      ? `<img class="hero-media" src="${escapeHtml(imageUrl)}" alt="${escapeHtml(title)}" />`
+      : `
+        <div class="hero-placeholder">
+          <div class="hero-placeholder-ring"></div>
+          <div class="hero-placeholder-core">HN</div>
+        </div>
+      `;
+
+  const metaVideo = hasVideo
+    ? `
+    <meta property="og:video" content="${escapeHtml(videoUrl)}" />
+    <meta property="og:video:type" content="video/mp4" />
+    <meta property="og:video:secure_url" content="${escapeHtml(videoUrl)}" />
+  `
+    : "";
+
+  const metaImage = imageUrl
+    ? `<meta property="og:image" content="${escapeHtml(imageUrl)}" />
+       <meta name="twitter:image" content="${escapeHtml(imageUrl)}" />`
+    : "";
+
+  return `<!DOCTYPE html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>${escapeHtml(title)}</title>
+    <meta name="description" content="${escapeHtml(description)}" />
+    <link rel="canonical" href="${escapeHtml(canonicalUrl)}" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="${escapeHtml(title)}" />
+    <meta property="og:description" content="${escapeHtml(description)}" />
+    <meta property="og:url" content="${escapeHtml(canonicalUrl)}" />
+    <meta property="og:site_name" content="HotsNew Click" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="${escapeHtml(title)}" />
+    <meta name="twitter:description" content="${escapeHtml(description)}" />
+    ${metaImage}
+    ${metaVideo}
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #07111f;
+        --panel: rgba(9, 18, 32, 0.58);
+        --border: rgba(255, 255, 255, 0.14);
+        --text: #f8fafc;
+        --muted: rgba(226, 232, 240, 0.78);
+        --accent: #fb7185;
+        --accent2: #22d3ee;
+        --accent3: #f59e0b;
+      }
+
+      * { box-sizing: border-box; }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+        color: var(--text);
+        background:
+          radial-gradient(circle at 14% 18%, rgba(34, 211, 238, 0.28), transparent 22%),
+          radial-gradient(circle at 82% 20%, rgba(251, 113, 133, 0.22), transparent 24%),
+          radial-gradient(circle at 76% 72%, rgba(245, 158, 11, 0.18), transparent 20%),
+          linear-gradient(135deg, #030712 0%, #07111f 42%, #111827 100%);
+        overflow-x: hidden;
+      }
+
+      .orb {
+        position: fixed;
+        border-radius: 999px;
+        filter: blur(12px);
+        opacity: 0.9;
+        transform: translateZ(0);
+        pointer-events: none;
+      }
+
+      .orb-1 {
+        inset: 6% auto auto 8%;
+        width: 17rem;
+        height: 17rem;
+        background: linear-gradient(135deg, rgba(34, 211, 238, 0.95), rgba(59, 130, 246, 0.25));
+        box-shadow: 1.6rem 1.8rem 0 rgba(8, 47, 73, 0.34);
+      }
+
+      .orb-2 {
+        inset: auto 12% 10% auto;
+        width: 15rem;
+        height: 15rem;
+        background: linear-gradient(135deg, rgba(251, 113, 133, 0.96), rgba(168, 85, 247, 0.24));
+        box-shadow: -1.4rem 1.3rem 0 rgba(76, 29, 149, 0.24);
+      }
+
+      .orb-3 {
+        inset: 34% auto auto 68%;
+        width: 8rem;
+        height: 8rem;
+        background: linear-gradient(135deg, rgba(245, 158, 11, 0.95), rgba(251, 191, 36, 0.26));
+        box-shadow: 0.8rem 1rem 0 rgba(120, 53, 15, 0.25);
+      }
+
+      .shell {
+        min-height: 100vh;
+        display: grid;
+        place-items: center;
+        padding: 2rem;
+        position: relative;
+      }
+
+      .card {
+        position: relative;
+        width: min(1080px, 100%);
+        display: grid;
+        grid-template-columns: minmax(280px, 1.1fr) minmax(280px, 0.9fr);
+        gap: 1.5rem;
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 2rem;
+        padding: 1.5rem;
+        backdrop-filter: blur(24px) saturate(130%);
+        box-shadow:
+          0 1.5rem 4rem rgba(0, 0, 0, 0.34),
+          inset 0 1px 0 rgba(255, 255, 255, 0.08);
+      }
+
+      .media-panel,
+      .content-panel {
+        background: rgba(255, 255, 255, 0.03);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 1.5rem;
+        padding: 1rem;
+        min-height: 24rem;
+      }
+
+      .media-panel {
+        display: grid;
+        place-items: center;
+        overflow: hidden;
+      }
+
+      .hero-media {
+        width: 100%;
+        height: 100%;
+        max-height: 34rem;
+        object-fit: cover;
+        border-radius: 1.15rem;
+        display: block;
+        background: rgba(15, 23, 42, 0.72);
+      }
+
+      .hero-placeholder {
+        width: 100%;
+        height: 100%;
+        min-height: 22rem;
+        border-radius: 1.15rem;
+        display: grid;
+        place-items: center;
+        background:
+          radial-gradient(circle at 30% 24%, rgba(34, 211, 238, 0.2), transparent 18%),
+          radial-gradient(circle at 72% 68%, rgba(251, 113, 133, 0.24), transparent 24%),
+          linear-gradient(135deg, rgba(15, 23, 42, 0.95), rgba(17, 24, 39, 0.7));
+      }
+
+      .hero-placeholder-ring {
+        position: absolute;
+        width: 10rem;
+        height: 10rem;
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        border-radius: 999px;
+      }
+
+      .hero-placeholder-core {
+        position: relative;
+        width: 6rem;
+        height: 6rem;
+        display: grid;
+        place-items: center;
+        border-radius: 1.5rem;
+        background: linear-gradient(135deg, rgba(249, 115, 22, 1), rgba(239, 68, 68, 1));
+        font-size: 1.6rem;
+        font-weight: 900;
+        letter-spacing: 0.06em;
+        box-shadow: 0 1rem 2rem rgba(249, 115, 22, 0.26);
+      }
+
+      .badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.55rem;
+        padding: 0.6rem 0.95rem;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.08);
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        font-size: 0.72rem;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 0.16em;
+        color: #fbbf24;
+      }
+
+      .badge-dot {
+        width: 0.55rem;
+        height: 0.55rem;
+        border-radius: 999px;
+        background: linear-gradient(135deg, var(--accent2), #38bdf8);
+        box-shadow: 0 0 1rem rgba(34, 211, 238, 0.9);
+      }
+
+      .content-panel {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        padding: 2rem;
+      }
+
+      h1 {
+        margin: 1.2rem 0 0.9rem;
+        font-size: clamp(2.2rem, 4.8vw, 4rem);
+        line-height: 0.94;
+        letter-spacing: -0.05em;
+      }
+
+      p {
+        margin: 0;
+        color: var(--muted);
+        font-size: 1rem;
+        line-height: 1.8;
+      }
+
+      .meta {
+        margin-top: 1.6rem;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.75rem;
+      }
+
+      .meta-pill {
+        padding: 0.7rem 1rem;
+        border-radius: 1rem;
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        font-size: 0.76rem;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: rgba(248, 250, 252, 0.72);
+        font-weight: 800;
+      }
+
+      .cta-note {
+        margin-top: 1.2rem;
+        color: rgba(191, 219, 254, 0.9);
+        font-weight: 700;
+      }
+
+      .overlay {
+        position: fixed;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 1.5rem;
+        background: rgba(2, 6, 23, 0.46);
+        backdrop-filter: blur(24px);
+        z-index: 20;
+        cursor: pointer;
+        transition: opacity 220ms ease, visibility 220ms ease;
+      }
+
+      .overlay.hidden {
+        opacity: 0;
+        visibility: hidden;
+        pointer-events: none;
+      }
+
+      .overlay-card {
+        width: min(32rem, 100%);
+        position: relative;
+        border-radius: 2rem;
+        padding: 2rem;
+        text-align: center;
+        background:
+          linear-gradient(180deg, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0.08)),
+          rgba(15, 23, 42, 0.58);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        box-shadow: 0 1.8rem 3.8rem rgba(0, 0, 0, 0.35);
+      }
+
+      .overlay-close {
+        position: absolute;
+        top: 1rem;
+        right: 1rem;
+        width: 2.6rem;
+        height: 2.6rem;
+        border-radius: 999px;
+        border: 1px solid rgba(255, 255, 255, 0.18);
+        background: rgba(255, 255, 255, 0.08);
+        color: var(--text);
+        font-size: 1.2rem;
+        cursor: pointer;
+      }
+
+      .overlay-kicker {
+        display: inline-block;
+        padding: 0.55rem 0.9rem;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.09);
+        border: 1px solid rgba(255, 255, 255, 0.14);
+        font-size: 0.72rem;
+        font-weight: 900;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+        color: #7dd3fc;
+      }
+
+      .overlay-title {
+        margin: 1rem 0 0.8rem;
+        font-size: clamp(2rem, 6vw, 3.6rem);
+        line-height: 0.95;
+        font-weight: 950;
+        letter-spacing: -0.06em;
+      }
+
+      .overlay-copy {
+        color: rgba(226, 232, 240, 0.86);
+        font-size: 1rem;
+        line-height: 1.75;
+      }
+
+      .overlay-cta {
+        margin-top: 1.4rem;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.8rem;
+        width: 100%;
+        padding: 1rem 1.2rem;
+        border-radius: 1.25rem;
+        border: 0;
+        background: linear-gradient(135deg, #f97316, #fb7185);
+        color: white;
+        font-size: 0.82rem;
+        font-weight: 900;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+        cursor: pointer;
+        box-shadow: 0 1rem 2rem rgba(249, 115, 22, 0.28);
+      }
+
+      .footer-note {
+        margin-top: 1rem;
+        font-size: 0.78rem;
+        color: rgba(226, 232, 240, 0.56);
+      }
+
+      @media (max-width: 900px) {
+        .card {
+          grid-template-columns: 1fr;
+        }
+
+        .content-panel {
+          padding: 1.4rem;
+        }
+
+        .media-panel,
+        .content-panel {
+          min-height: auto;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
+    <div class="orb orb-3"></div>
+
+    <main class="shell">
+      <section class="card">
+        <div class="media-panel">
+          ${previewMedia}
+        </div>
+
+        <div class="content-panel">
+          <div class="badge">
+            <span class="badge-dot"></span>
+            HotsNew Smart Landing
+          </div>
+          <h1>${escapeHtml(title)}</h1>
+          <p>${escapeHtml(description)}</p>
+          <div class="meta">
+            <span class="meta-pill">${escapeHtml(link.short_code)}</span>
+            <span class="meta-pill">${hasVideo ? "Video Preview" : imageUrl ? "Image Preview" : "Ready"}</span>
+            <span class="meta-pill">Glass Landing</span>
+          </div>
+          <p class="cta-note">Cham vao man hinh de mo link trong tab moi va tiep tuc den trang dich.</p>
+        </div>
+      </section>
+    </main>
+
+    <div id="overlay" class="overlay" role="button" tabindex="0" aria-label="Mo link dich">
+      <div class="overlay-card">
+        <button class="overlay-close" id="overlayClose" aria-label="Dong">×</button>
+        <span class="overlay-kicker">Da san sang</span>
+        <div class="overlay-title">Mo tab moi<br />trong 1 cham</div>
+        <p class="overlay-copy">
+          Bam vao bat ky vi tri nao hoac nut ben duoi. He thong se mo link dich trong tab moi,
+          dong thoi tiep tuc chuyen huong tab hien tai sau 0.5 giay de giu tracking on dinh.
+        </p>
+        <button class="overlay-cta" id="overlayCta">Mo ngay</button>
+        <div class="footer-note">Neu trinh duyet chan pop-up, tab hien tai van se chuyen huong.</div>
+      </div>
+    </div>
+
+    <script>
+      (() => {
+        const overlay = document.getElementById("overlay");
+        const overlayClose = document.getElementById("overlayClose");
+        const overlayCta = document.getElementById("overlayCta");
+        const targetUrl = \`${escapeJsString(originalUrl)}\`;
+        let opened = false;
+
+        const beginRedirectFlow = () => {
+          if (opened) return;
+          opened = true;
+
+          try {
+            window.open(targetUrl, "_blank", "noopener,noreferrer");
+          } catch (error) {
+            console.error("Popup open failed", error);
+          }
+
+          overlay?.classList.add("hidden");
+
+          window.setTimeout(() => {
+            window.location.replace(targetUrl);
+          }, 500);
+        };
+
+        overlay?.addEventListener("click", beginRedirectFlow);
+        overlayCta?.addEventListener("click", (event) => {
+          event.stopPropagation();
+          beginRedirectFlow();
+        });
+        overlayClose?.addEventListener("click", (event) => {
+          event.stopPropagation();
+          beginRedirectFlow();
+        });
+        overlay?.addEventListener("keydown", (event) => {
+          if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            beginRedirectFlow();
+          }
+        });
+      })();
+    </script>
+  </body>
+</html>`;
 };
 
 const hmacSha256 = (input: string, key: string) =>
@@ -212,19 +710,17 @@ const syncSubscriptionForUser = async (
     plan,
   );
 
-  const { error: updateError } = await supabase
-    .from("profiles")
-    .upsert({
-      id: userId,
-      email: existingProfile?.email,
-      full_name: existingProfile?.full_name,
-      avatar_url: existingProfile?.avatar_url,
-      role: existingProfile?.role || "user",
-      status: existingProfile?.status || "approved",
-      subscription_plan: plan,
-      subscription_expiry: nextExpiry,
-      updated_at: new Date().toISOString(),
-    });
+  const { error: updateError } = await supabase.from("profiles").upsert({
+    id: userId,
+    email: existingProfile?.email,
+    full_name: existingProfile?.full_name,
+    avatar_url: existingProfile?.avatar_url,
+    role: existingProfile?.role || "user",
+    status: existingProfile?.status || "approved",
+    subscription_plan: plan,
+    subscription_expiry: nextExpiry,
+    updated_at: new Date().toISOString(),
+  });
 
   if (updateError) throw updateError;
 
@@ -729,7 +1225,8 @@ app.post(
       const publicBaseUrl = getPublicBaseUrl(req);
       if (!publicBaseUrl) {
         return res.status(500).json({
-          error: "Missing APP_BASE_URL or PUBLIC_BASE_URL for ZaloPay redirect/callback",
+          error:
+            "Missing APP_BASE_URL or PUBLIC_BASE_URL for ZaloPay redirect/callback",
         });
       }
 
@@ -777,13 +1274,16 @@ app.post(
         mac: hmacSha256(macInput, key1),
       });
 
-      const response = await fetch(`${apiBaseUrl}${ZALOPAY_CREATE_ORDER_PATH}`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/x-www-form-urlencoded",
+      const response = await fetch(
+        `${apiBaseUrl}${ZALOPAY_CREATE_ORDER_PATH}`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/x-www-form-urlencoded",
+          },
+          body: requestBody.toString(),
         },
-        body: requestBody.toString(),
-      });
+      );
 
       const data = await response.json().catch(() => null);
 
@@ -848,9 +1348,7 @@ app.post("/api/v1/billing/zalopay/callback", async (req, res) => {
       await syncSubscriptionForUser(userId, plan);
     }
 
-    return res
-      .status(200)
-      .json({ return_code: 1, return_message: "success" });
+    return res.status(200).json({ return_code: 1, return_message: "success" });
   } catch (e: any) {
     return res
       .status(200)
@@ -1028,6 +1526,7 @@ app.get("/s/:shortCode", async (req, res) => {
       .eq("short_code", shortCode)
       .single();
     if (!link) return res.status(404).send("Not found");
+
     supabase
       .from("clicks")
       .insert({
@@ -1036,7 +1535,13 @@ app.get("/s/:shortCode", async (req, res) => {
         ip: req.ip,
       })
       .then();
-    res.redirect(link.original_url);
+
+    const publicBaseUrl = getPublicBaseUrl(req) || `${req.protocol}://${req.get("host")}`;
+    const canonicalUrl = `${publicBaseUrl}/s/${encodeURIComponent(shortCode)}`;
+    const html = renderLinkLandingPage(link as PublicLinkRecord, canonicalUrl);
+
+    res.setHeader("Content-Type", "text/html; charset=utf-8");
+    res.status(200).send(html);
   } catch (e) {
     res.status(500).send("Error");
   }

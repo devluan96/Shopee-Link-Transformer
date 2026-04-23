@@ -91,6 +91,7 @@ export default function App() {
     topLinks: any[];
   }>({ history: [], topLinks: [] });
   const [listLoading, setListLoading] = useState(false);
+  const [linksDirty, setLinksDirty] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
 
   // Admin State
@@ -370,6 +371,8 @@ export default function App() {
         sessionRef.current = null;
         setUser(null);
         setProfile(null);
+        setLinks([]);
+        setLinksDirty(true);
         setActiveTab("dashboard");
         setIsSidebarOpen(false);
         setAuthLoading(false);
@@ -485,6 +488,8 @@ export default function App() {
       } else {
         isLoggingOutRef.current = false;
         setProfile(null);
+        setLinks([]);
+        setLinksDirty(true);
         if (profileChannel) {
           supabase.removeChannel(profileChannel);
           profileChannel = null;
@@ -530,11 +535,13 @@ export default function App() {
     const isApproved = profile?.status === "approved" || isAdminRole;
 
     if (user && isApproved) {
-      if (activeTab === "list") fetchLinks();
+      if (activeTab === "list" && (linksDirty || links.length === 0)) {
+        fetchLinks();
+      }
       if (activeTab === "dashboard") fetchStats();
       if (activeTab === "admin" && isAdminRole) fetchAllUsers();
     }
-  }, [user, profile, activeTab]);
+  }, [user, profile, activeTab, linksDirty, links.length]);
 
   const fetchStats = async () => {
     if (!user) return;
@@ -554,6 +561,7 @@ export default function App() {
       const response = await fetchWithAuth("/api/v1/user/links");
       const data = await response.json();
       setLinks(data);
+      setLinksDirty(false);
     } catch (e) {
       console.error(e);
     } finally {
@@ -758,6 +766,7 @@ export default function App() {
     });
     setAnalyticsData({ history: [], topLinks: [] });
     setListLoading(false);
+    setLinksDirty(true);
     setAdminLoading(false);
     setProfileLoading(false);
 
@@ -876,6 +885,7 @@ export default function App() {
         ...data,
         short_code: data.short_code ?? data.shortCode,
       });
+      setLinksDirty(true);
       if (activeTab === "dashboard") fetchStats();
       // Clear inputs
       // setUrl(''); setCustomTitle(''); setCustomDescription(''); setCustomImageUrl(''); setVideoUrl('');
@@ -904,6 +914,7 @@ export default function App() {
       });
       if (!res.ok) throw new Error("Delete failed");
       setLinks((prev) => prev.filter((l) => l.id !== id));
+      setLinksDirty(false);
       toast.success("Đã xóa link thành công!");
     } catch (e: any) {
       toast.error("Lỗi khi xóa link: " + e.message);
@@ -923,6 +934,7 @@ export default function App() {
       setLinks((prev) =>
         prev.map((l) => (l.id === id ? { ...l, ...updated } : l)),
       );
+      setLinksDirty(false);
       toast.success("Đã cập nhật link thành công!");
     } catch (e: any) {
       toast.error("Lỗi khi cập nhật link: " + e.message);
