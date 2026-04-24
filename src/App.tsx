@@ -500,10 +500,27 @@ export default function App() {
         !!session?.user,
       );
 
+      if (session?.access_token) {
+        const { data: validatedUser, error: validateError } =
+          await supabase.auth.getUser(session.access_token);
+
+        if (validateError || !validatedUser.user) {
+          console.error("[Auth] Invalid cached session detected:", validateError);
+          clearStoredSession();
+          sessionRef.current = null;
+          setUser(null);
+          setProfile(null);
+          setProfileBootstrapLoading(false);
+          setAuthLoading(false);
+          return;
+        }
+      }
+
       sessionRef.current = session ?? null;
       if (event === "INITIAL_SESSION" && !session) {
         setUser(null);
         setProfile(null);
+        setProfileBootstrapLoading(false);
         setAuthLoading(false);
         return;
         console.log("ℹ️ [Listener] No initial session found.");

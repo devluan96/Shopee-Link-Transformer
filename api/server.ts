@@ -969,6 +969,10 @@ const authenticate = async (
     const { data: userData, error: userError } =
       await supabase.auth.getUser(token);
     if (userError || !userData.user) {
+      console.error("[Auth] getUser failed:", {
+        message: userError?.message,
+        status: userError?.status,
+      });
       return res.status(401).json({ error: "Invalid or expired token" });
     }
 
@@ -1189,7 +1193,7 @@ app.post(
       // 1. Get existing profile to preserve sensitive fields (role, subscription)
       const { data: existing } = await supabase
         .from("profiles")
-        .select("subscription_plan, subscription_expiry, role")
+        .select("subscription_plan, subscription_expiry, role, status")
         .eq("id", userId)
         .maybeSingle();
 
