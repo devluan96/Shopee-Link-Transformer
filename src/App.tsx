@@ -77,7 +77,8 @@ interface CloudinarySignedUpload {
 }
 
 const SITE_URL = "https://hotsnew.click";
-const DEFAULT_APP_TITLE = "HotsNew Click - Tạo Landing Page Rút Gọn Link Shopee";
+const DEFAULT_APP_TITLE =
+  "HotsNew Click - Tạo Landing Page Rút Gọn Link Shopee";
 const DEFAULT_APP_DESCRIPTION =
   "HotsNew Click giúp tạo landing page trung gian cho link Shopee với tiêu đề, mô tả, ảnh, video và thống kê click tối ưu cho chia sẻ mạng xã hội.";
 
@@ -97,7 +98,9 @@ const upsertMetaTag = (
 };
 
 const upsertCanonicalLink = (href: string) => {
-  let link = document.head.querySelector<HTMLLinkElement>('link[rel="canonical"]');
+  let link = document.head.querySelector<HTMLLinkElement>(
+    'link[rel="canonical"]',
+  );
   if (!link) {
     link = document.createElement("link");
     link.setAttribute("rel", "canonical");
@@ -118,6 +121,7 @@ export default function App() {
   const [password, setPassword] = useState("");
   const [isRegistering, setIsRegistering] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
+  const [authNotice, setAuthNotice] = useState<string | null>(null);
 
   // Create Link State
   const [url, setUrl] = useState("");
@@ -208,13 +212,18 @@ export default function App() {
       profile: "Hồ sơ cá nhân - HotsNew Click",
     };
     const descriptionMap: Record<Tab, string> = {
-      dashboard: "Theo dõi nhanh hiệu suất link, lượt click và tăng trưởng chiến dịch trên HotsNew Click.",
-      pricing: "Xem bảng giá và nâng cấp gói dịch vụ để tạo landing page Shopee chuyên nghiệp hơn.",
-      create: "Tạo landing page rút gọn cho link Shopee với tiêu đề, mô tả, ảnh và video tùy chỉnh.",
+      dashboard:
+        "Theo dõi nhanh hiệu suất link, lượt click và tăng trưởng chiến dịch trên HotsNew Click.",
+      pricing:
+        "Xem bảng giá và nâng cấp gói dịch vụ để tạo landing page Shopee chuyên nghiệp hơn.",
+      create:
+        "Tạo landing page rút gọn cho link Shopee với tiêu đề, mô tả, ảnh và video tùy chỉnh.",
       list: "Quản lý toàn bộ link Shopee đã tạo, chỉnh sửa nội dung và theo dõi hiệu quả.",
-      analytics: "Phân tích lượt click, tăng trưởng và nguồn lưu lượng cho các link Shopee của bạn.",
+      analytics:
+        "Phân tích lượt click, tăng trưởng và nguồn lưu lượng cho các link Shopee của bạn.",
       admin: "Trang quản trị người dùng và gói dịch vụ trên HotsNew Click.",
-      profile: "Cập nhật thông tin hồ sơ và trạng thái tài khoản HotsNew Click.",
+      profile:
+        "Cập nhật thông tin hồ sơ và trạng thái tài khoản HotsNew Click.",
     };
 
     const nextTitle = isAuthenticatedArea
@@ -226,19 +235,41 @@ export default function App() {
     const canonicalHref = isAuthenticatedArea
       ? `${SITE_URL}/?tab=${activeTab}`
       : `${SITE_URL}/`;
-    const robotsContent = isAuthenticatedArea ? "noindex, nofollow" : "index, follow";
+    const robotsContent = isAuthenticatedArea
+      ? "noindex, nofollow"
+      : "index, follow";
 
     document.title = nextTitle;
-    upsertMetaTag('meta[name="description"]', "name", "description", nextDescription);
-    upsertMetaTag('meta[property="og:title"]', "property", "og:title", nextTitle);
+    upsertMetaTag(
+      'meta[name="description"]',
+      "name",
+      "description",
+      nextDescription,
+    );
+    upsertMetaTag(
+      'meta[property="og:title"]',
+      "property",
+      "og:title",
+      nextTitle,
+    );
     upsertMetaTag(
       'meta[property="og:description"]',
       "property",
       "og:description",
       nextDescription,
     );
-    upsertMetaTag('meta[property="og:url"]', "property", "og:url", canonicalHref);
-    upsertMetaTag('meta[name="twitter:title"]', "name", "twitter:title", nextTitle);
+    upsertMetaTag(
+      'meta[property="og:url"]',
+      "property",
+      "og:url",
+      canonicalHref,
+    );
+    upsertMetaTag(
+      'meta[name="twitter:title"]',
+      "name",
+      "twitter:title",
+      nextTitle,
+    );
     upsertMetaTag(
       'meta[name="twitter:description"]',
       "name",
@@ -652,11 +683,23 @@ export default function App() {
         fetchLinks();
       }
       if (activeTab === "dashboard") fetchStats();
-      if (activeTab === "admin" && isAdminRole && (adminDirty || allUsers.length === 0)) {
+      if (
+        activeTab === "admin" &&
+        isAdminRole &&
+        (adminDirty || allUsers.length === 0)
+      ) {
         fetchAllUsers();
       }
     }
-  }, [user, profile, activeTab, linksDirty, links.length, adminDirty, allUsers.length]);
+  }, [
+    user,
+    profile,
+    activeTab,
+    linksDirty,
+    links.length,
+    adminDirty,
+    allUsers.length,
+  ]);
 
   useEffect(() => {
     const isAdminRole =
@@ -715,14 +758,15 @@ export default function App() {
     }
   };
 
-  const getCloudinarySignedUpload = async (): Promise<CloudinarySignedUpload> => {
-    const response = await fetchWithAuth("/api/v1/cloudinary/sign-upload", {
-      method: "POST",
-      body: JSON.stringify({}),
-    });
+  const getCloudinarySignedUpload =
+    async (): Promise<CloudinarySignedUpload> => {
+      const response = await fetchWithAuth("/api/v1/cloudinary/sign-upload", {
+        method: "POST",
+        body: JSON.stringify({}),
+      });
 
-    return response.json();
-  };
+      return response.json();
+    };
 
   const uploadAssetToCloudinary = async (
     file: Blob | File,
@@ -878,11 +922,7 @@ export default function App() {
         console.error("Local thumbnail capture failed", thumbError);
       }
 
-      const secureUrl = await uploadAssetToCloudinary(
-        file,
-        "video",
-        file.name,
-      );
+      const secureUrl = await uploadAssetToCloudinary(file, "video", file.name);
       console.log("✅ Upload Success Data:", secureUrl);
       if (secureUrl) {
         setVideoUrl(secureUrl);
@@ -1283,6 +1323,7 @@ export default function App() {
 
       console.log("🚀 [Auth] Starting login attempt for:", email);
       setAuthError(null);
+      setAuthNotice(null);
       setLoading(true);
 
       // Safety timeout for the spinner
@@ -1298,13 +1339,31 @@ export default function App() {
 
       try {
         if (isRegistering) {
-          console.log("📝 [Auth] Calling registerWithEmail...");
+          console.log("[Auth] Calling registerWithEmail...");
           const user = await registerWithEmail(email, password);
-          console.log("✅ [Auth] Register success:", user?.id);
+          console.log("[Auth] Register success:", user?.id);
+          const existingAccount = user?.identities?.length === 0;
+          if (existingAccount) {
+            toast.error(
+              "Tài khoản đã tồn tại. Vui lòng đăng nhập hoặc dùng email khác.",
+            );
+            setAuthError(
+              "Email này đã được sử dụng. Hãy đăng nhập hoặc đổi email khác.",
+            );
+            return;
+          }
+
+          const notice =
+            "Đăng ký thành công. Supabase đã gửi email xác nhận. Vui lòng mở hộp thư và bấm vào liên kết xác nhận trước khi đăng nhập.";
+          toast.success(notice);
+          setAuthNotice(notice);
+          setIsRegistering(false);
+          setPassword("");
         } else {
-          console.log("🔑 [Auth] Calling loginWithEmail...");
+          console.log("[Auth] Calling loginWithEmail...");
           const user = await loginWithEmail(email, password);
-          console.log("✅ [Auth] Login success:", user?.id);
+          console.log("[Auth] Login success:", user?.id);
+          setAuthNotice(null);
         }
       } catch (err: any) {
         console.error("❌ [Auth] Email auth error:", err);
@@ -1326,6 +1385,7 @@ export default function App() {
         setPassword={setPassword}
         loading={loading}
         authError={authError}
+        authNotice={authNotice}
         handleEmailAuth={handleEmailAuth}
         resetLoading={() => setLoading(false)}
       />

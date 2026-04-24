@@ -21,6 +21,7 @@ interface AuthScreenProps {
   setPassword: (val: string) => void;
   loading: boolean;
   authError: string | null;
+  authNotice: string | null;
   handleEmailAuth: (e: React.FormEvent) => void;
   resetLoading?: () => void;
 }
@@ -34,6 +35,7 @@ export const AuthScreen = ({
   setPassword,
   loading,
   authError,
+  authNotice,
   handleEmailAuth,
   resetLoading,
 }: AuthScreenProps) => {
@@ -203,6 +205,7 @@ export const AuthScreen = ({
                   setPassword={setPassword}
                   loading={loading}
                   authError={authError}
+                  authNotice={authNotice}
                   handleEmailAuth={handleEmailAuth}
                   resetLoading={resetLoading}
                 />
@@ -227,6 +230,7 @@ export const AuthScreen = ({
                   setPassword={setPassword}
                   loading={loading}
                   authError={authError}
+                  authNotice={authNotice}
                   handleEmailAuth={handleEmailAuth}
                   resetLoading={resetLoading}
                   dark
@@ -255,6 +259,7 @@ const AuthForm = ({
   setPassword,
   loading,
   authError,
+  authNotice,
   handleEmailAuth,
   resetLoading,
   dark = false,
@@ -400,6 +405,22 @@ const AuthForm = ({
             className="text-xs font-bold text-red-500 bg-red-500/10 p-4 rounded-2xl border border-red-500/20 flex items-center gap-2"
           >
             <AlertCircle size={14} className="shrink-0" /> {authError}
+          </motion.div>
+        )}
+
+        {authNotice && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className={cn(
+              "text-xs font-bold p-4 rounded-2xl border flex items-start gap-2 leading-relaxed",
+              dark
+                ? "text-emerald-100 bg-emerald-500/10 border-emerald-400/20"
+                : "text-emerald-700 bg-emerald-50 border-emerald-200",
+            )}
+          >
+            <Mail size={14} className="shrink-0 mt-0.5" />
+            <span>{authNotice}</span>
           </motion.div>
         )}
 
