@@ -156,6 +156,8 @@ export default function App() {
 
   // Global Copied State
   const [profileLoading, setProfileLoading] = useState(false);
+  const [profileBootstrapLoading, setProfileBootstrapLoading] =
+    useState(false);
   const [checkoutLoadingPlan, setCheckoutLoadingPlan] = useState<
     "monthly" | "yearly" | null
   >(null);
@@ -418,6 +420,7 @@ export default function App() {
         sessionRef.current = null;
         setUser(null);
         setProfile(null);
+        setProfileBootstrapLoading(false);
         setAuthLoading(false);
       }
 
@@ -511,6 +514,7 @@ export default function App() {
         sessionRef.current = null;
         setUser(null);
         setProfile(null);
+        setProfileBootstrapLoading(false);
         setLinks([]);
         setLinksDirty(true);
         setAllUsers([]);
@@ -525,6 +529,8 @@ export default function App() {
       setUser(currentUser);
 
       if (currentUser) {
+        setProfileBootstrapLoading(true);
+        setProfile(null);
         try {
           // 🔍 Fetch existing profile carefully via proxy with retries
           let existingProfile = null;
@@ -569,7 +575,7 @@ export default function App() {
             }
           }
 
-          if (!existingProfile) {
+          if (!existingProfile || existingProfile.is_new) {
             console.log(
               "📝 Profile not found in DB. Creating initial record...",
             );
@@ -625,11 +631,13 @@ export default function App() {
         } catch (e) {
           console.error("Profile sync error:", e);
         } finally {
+          setProfileBootstrapLoading(false);
           setAuthLoading(false);
         }
       } else {
         isLoggingOutRef.current = false;
         setProfile(null);
+        setProfileBootstrapLoading(false);
         setLinks([]);
         setLinksDirty(true);
         setAllUsers([]);
@@ -1305,7 +1313,9 @@ export default function App() {
     }
   };
 
-  if (authLoading) {
+  const bootstrappingAccess = authLoading || (!!user && profileBootstrapLoading);
+
+  if (bootstrappingAccess) {
     return (
       <div className="min-h-screen bg-slate-900 flex flex-col items-center justify-center gap-4">
         <div className="w-16 h-16 border-4 border-orange-500/20 border-t-orange-500 rounded-full animate-spin" />

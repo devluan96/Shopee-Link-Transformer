@@ -1137,6 +1137,7 @@ app.post(
           full_name,
           avatar_url,
           role: existing?.role || "user",
+          status: existing?.status || "pending",
           subscription_plan: existing?.subscription_plan || "free",
           subscription_expiry: existing?.subscription_expiry || null,
           updated_at: new Date().toISOString(),
