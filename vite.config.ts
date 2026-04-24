@@ -18,6 +18,12 @@ export default defineConfig(({ mode }) => {
     },
     server: {
       hmr: false,
+      proxy: {
+        "/api": {
+          target: "http://localhost:3000",
+          changeOrigin: true,
+        },
+      },
     },
     build: {
       chunkSizeWarningLimit: 1000,

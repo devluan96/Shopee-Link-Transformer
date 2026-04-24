@@ -1377,7 +1377,14 @@ export default function App() {
         }
       } catch (err: any) {
         console.error("❌ [Auth] Email auth error:", err);
-        setAuthError(err.message || "Authentication failed");
+        const rawMessage = String(err?.message || "");
+        if (rawMessage.toLowerCase().includes("email rate limit exceeded")) {
+          setAuthError(
+            "Supabase đang chạm giới hạn gửi email xác nhận. Email này chưa chắc đã tồn tại. Hãy đợi vài phút rồi thử đăng ký lại.",
+          );
+        } else {
+          setAuthError(err.message || "Authentication failed");
+        }
       } finally {
         clearTimeout(safetyTimer);
         console.log("🏁 [Auth] Email auth finished, resetting loading");

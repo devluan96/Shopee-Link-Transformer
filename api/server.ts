@@ -879,6 +879,70 @@ const syncSubscriptionForUser = async (
   return nextExpiry;
 };
 
+const listAllAuthUsers = async () => {
+  const supabase = getSupabase();
+  const users: Array<any> = [];
+  let page = 1;
+  const perPage = 200;
+
+  while (true) {
+    const { data, error } = await supabase.auth.admin.listUsers({
+      page,
+      perPage,
+    });
+
+    if (error) throw error;
+
+    const batch = data?.users ?? [];
+    users.push(...batch);
+
+    if (batch.length < perPage) break;
+    page += 1;
+  }
+
+  return users;
+};
+
+const syncProfilesFromAuthUsers = async () => {
+  const supabase = getSupabase();
+  const authUsers = await listAllAuthUsers();
+
+  const { data: profiles, error: profilesError } = await supabase
+    .from("profiles")
+    .select(
+      "id, email, full_name, avatar_url, role, status, subscription_plan, subscription_expiry",
+    );
+
+  if (profilesError) throw profilesError;
+
+  const existingProfileIds = new Set((profiles ?? []).map((profile) => profile.id));
+  const missingProfiles = authUsers
+    .filter((authUser) => !existingProfileIds.has(authUser.id))
+    .map((authUser) => ({
+      id: authUser.id,
+      email: authUser.email ?? "",
+      full_name:
+        authUser.user_metadata?.full_name ||
+        authUser.user_metadata?.name ||
+        authUser.email?.split("@")[0] ||
+        "User",
+      avatar_url: authUser.user_metadata?.avatar_url || null,
+      role: "user",
+      status: "pending",
+      subscription_plan: "free",
+      subscription_expiry: null,
+      updated_at: new Date().toISOString(),
+    }));
+
+  if (missingProfiles.length > 0) {
+    const { error: upsertError } = await supabase
+      .from("profiles")
+      .upsert(missingProfiles);
+
+    if (upsertError) throw upsertError;
+  }
+};
+
 const isPremiumProfile = (profile: AuthenticatedRequest["authProfile"]) => {
   if (!profile) return false;
   if (profile.role === "admin") return true;
@@ -1802,6 +1866,7 @@ app.get(
 app.get("/api/v1/admin/users", authenticate, checkAdmin, async (req, res) => {
   try {
     const supabase = getSupabase();
+    await syncProfilesFromAuthUsers();
     const { data, error } = await supabase
       .from("profiles")
       .select("*")
