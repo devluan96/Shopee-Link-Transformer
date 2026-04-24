@@ -33,6 +33,7 @@ interface CreateLinkProps {
   videoUrl: string;
   setVideoUrl: (v: string) => void;
   uploadingVideo: boolean;
+  videoUploadProgress: number;
   videoUploadSuccess: boolean;
   videoInputRef: React.RefObject<HTMLInputElement | null>;
   handleVideoUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
@@ -72,6 +73,7 @@ export const CreateLink = ({
   videoUrl,
   setVideoUrl,
   uploadingVideo,
+  videoUploadProgress,
   videoUploadSuccess,
   videoInputRef,
   handleVideoUpload,
@@ -86,6 +88,7 @@ export const CreateLink = ({
   const normalizedShortCodePreview = customShortCode
     ? normalizeVietnameseSlug(customShortCode)
     : "";
+  const uploadProgressOffset = 87.96 - (87.96 * videoUploadProgress) / 100;
 
   return (
     <div key="create">
@@ -94,8 +97,7 @@ export const CreateLink = ({
           Tạo Landing Page Mới
         </h2>
         <p className="text-gray-500 font-medium italic">
-          Chúng tôi sẽ tự động lấy dữ liệu và tối ưu hóa hiển thị trên
-          Facebook.
+          Chúng tôi sẽ tự động lấy dữ liệu và tối ưu hóa hiển thị trên Facebook.
         </p>
       </header>
 
@@ -259,12 +261,50 @@ export const CreateLink = ({
                     className="w-full min-h-21 flex items-center justify-between px-6 py-5 bg-orange-50/30 border-2 border-dashed border-orange-100 rounded-2xl hover:border-orange-300 hover:bg-orange-50/50 transition-all group"
                   >
                     <div className="flex items-center gap-3 text-orange-400 font-bold group-hover:text-orange-600">
-                      <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-sm">
-                        <UploadCloud size={20} />
+                      <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-sm relative">
+                        {uploadingVideo ? (
+                          <svg
+                            className="w-10 h-10 -rotate-90"
+                            viewBox="0 0 36 36"
+                            aria-hidden="true"
+                          >
+                            <circle
+                              cx="18"
+                              cy="18"
+                              r="14"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeOpacity="0.15"
+                              strokeWidth="3"
+                            />
+                            <circle
+                              cx="18"
+                              cy="18"
+                              r="14"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="3"
+                              strokeLinecap="round"
+                              strokeDasharray="87.96"
+                              strokeDashoffset={uploadProgressOffset}
+                            />
+                          </svg>
+                        ) : (
+                          <UploadCloud size={20} />
+                        )}
+                        {uploadingVideo && (
+                          <span className="absolute inset-0 flex items-center justify-center text-[9px] font-black text-orange-600">
+                            {videoUploadProgress > 0
+                              ? `${videoUploadProgress}%`
+                              : "..."}
+                          </span>
+                        )}
                       </div>
                       <span className="text-xs uppercase tracking-wider">
                         {uploadingVideo
-                          ? "Đang mã hóa video..."
+                          ? videoUploadProgress > 0
+                            ? "Đang tải video lên..."
+                            : "Đang chuẩn bị video..."
                           : videoUrl
                             ? "Thay đổi video"
                             : "Tải video lên Cloudinary"}
@@ -327,7 +367,6 @@ export const CreateLink = ({
                 </div>
               </div>
             </div>
-
           </form>
         </div>
 

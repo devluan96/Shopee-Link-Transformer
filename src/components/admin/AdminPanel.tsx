@@ -6,12 +6,13 @@ import { UserProfile } from '@/src/types';
 interface AdminPanelProps {
   allUsers: UserProfile[];
   adminLoading: boolean;
+  onlineUserIds: string[];
   handleApproveUser: (userId: string) => void;
   handleUpdateSubscription: (userId: string, plan: 'free' | 'monthly' | 'yearly') => void;
   handleDeleteUser: (userId: string) => void;
 }
 
-export const AdminPanel = ({ allUsers, adminLoading, handleApproveUser, handleUpdateSubscription, handleDeleteUser }: AdminPanelProps) => {
+export const AdminPanel = ({ allUsers, adminLoading, onlineUserIds, handleApproveUser, handleUpdateSubscription, handleDeleteUser }: AdminPanelProps) => {
   const [deleteId, setDeleteId] = React.useState<string | null>(null);
 
   const confirmDelete = () => {
@@ -93,6 +94,12 @@ export const AdminPanel = ({ allUsers, adminLoading, handleApproveUser, handleUp
                     )}>
                       <User size={24} />
                     </div>
+                    <span
+                      className={cn(
+                        "absolute right-0 bottom-0 w-3.5 h-3.5 rounded-full border-2 border-white shadow-sm",
+                        onlineUserIds.includes(u.id) ? "bg-green-500" : "bg-gray-300",
+                      )}
+                    />
                   </div>
                   <div>
                      <p className="font-bold text-gray-900">{u.full_name || 'Unnamed User'}</p>

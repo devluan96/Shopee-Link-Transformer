@@ -132,6 +132,7 @@ export default function App() {
   const [customImageUrl, setCustomImageUrl] = useState("");
   const [videoUrl, setVideoUrl] = useState("");
   const [uploadingVideo, setUploadingVideo] = useState(false);
+  const [videoUploadProgress, setVideoUploadProgress] = useState(0);
   const [videoUploadSuccess, setVideoUploadSuccess] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -153,6 +154,7 @@ export default function App() {
   const [allUsers, setAllUsers] = useState<UserProfile[]>([]);
   const [adminLoading, setAdminLoading] = useState(false);
   const [adminDirty, setAdminDirty] = useState(true);
+  const [onlineUserIds, setOnlineUserIds] = useState<string[]>([]);
 
   // Global Copied State
   const [profileLoading, setProfileLoading] = useState(false);
@@ -688,6 +690,40 @@ export default function App() {
     }
   }, [authLoading]);
 
+  useEffect(() => {
+    if (!user?.id) {
+      setOnlineUserIds([]);
+      return;
+    }
+
+    const presenceChannel = supabase.channel("online-users", {
+      config: { presence: { key: user.id } },
+    });
+
+    const syncOnlineUsers = () => {
+      const state = presenceChannel.presenceState();
+      setOnlineUserIds(Object.keys(state));
+    };
+
+    presenceChannel
+      .on("presence", { event: "sync" }, syncOnlineUsers)
+      .on("presence", { event: "join" }, syncOnlineUsers)
+      .on("presence", { event: "leave" }, syncOnlineUsers)
+      .subscribe(async (status) => {
+        if (status === "SUBSCRIBED") {
+          await presenceChannel.track({
+            user_id: user.id,
+            online_at: new Date().toISOString(),
+          });
+        }
+      });
+
+    return () => {
+      setOnlineUserIds((current) => current.filter((id) => id !== user.id));
+      supabase.removeChannel(presenceChannel);
+    };
+  }, [user?.id]);
+
   // Sync Tabs based on Admin
   useEffect(() => {
     const isAdminRole =
@@ -797,6 +833,7 @@ export default function App() {
     file: Blob | File,
     resourceType: "image" | "video" | "auto" = "auto",
     fileName?: string,
+    onProgress?: (progress: number) => void,
   ) => {
     const signedUpload = await getCloudinarySignedUpload();
     const uploadFormData = new FormData();
@@ -807,24 +844,38 @@ export default function App() {
     uploadFormData.append("signature", signedUpload.signature);
     uploadFormData.append("folder", signedUpload.folder);
 
-    const response = await fetch(
-      `https://api.cloudinary.com/v1_1/${signedUpload.cloudName}/${resourceType}/upload`,
-      {
-        method: "POST",
-        body: uploadFormData,
-      },
-    );
-
-    const data = await response.json().catch(() => null);
-    if (!response.ok || !data?.secure_url) {
-      throw new Error(
-        data?.error?.message ||
-          data?.message ||
-          `Cloudinary upload failed (${response.status})`,
+    return await new Promise<string>((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open(
+        "POST",
+        `https://api.cloudinary.com/v1_1/${signedUpload.cloudName}/${resourceType}/upload`,
       );
-    }
 
-    return data.secure_url as string;
+      xhr.upload.onprogress = (event) => {
+        if (!onProgress || !event.lengthComputable) return;
+        onProgress(Math.min(100, Math.round((event.loaded / event.total) * 100)));
+      };
+
+      xhr.onload = () => {
+        const data = JSON.parse(xhr.responseText || "null");
+        if (xhr.status >= 200 && xhr.status < 300 && data?.secure_url) {
+          if (onProgress) onProgress(100);
+          resolve(data.secure_url as string);
+          return;
+        }
+
+        reject(
+          new Error(
+            data?.error?.message ||
+              data?.message ||
+              `Cloudinary upload failed (${xhr.status})`,
+          ),
+        );
+      };
+
+      xhr.onerror = () => reject(new Error("Cloudinary upload failed"));
+      xhr.send(uploadFormData);
+    });
   };
 
   const refreshCurrentProfile = async () => {
@@ -937,6 +988,8 @@ export default function App() {
     }
 
     setUploadingVideo(true);
+    setVideoUploadProgress(0);
+    setVideoUploadSuccess(false);
     setError(null);
 
     try {
@@ -947,7 +1000,12 @@ export default function App() {
         console.error("Local thumbnail capture failed", thumbError);
       }
 
-      const secureUrl = await uploadAssetToCloudinary(file, "video", file.name);
+      const secureUrl = await uploadAssetToCloudinary(
+        file,
+        "video",
+        file.name,
+        setVideoUploadProgress,
+      );
       console.log("✅ Upload Success Data:", secureUrl);
       if (secureUrl) {
         setVideoUrl(secureUrl);
@@ -964,6 +1022,7 @@ export default function App() {
       setError(`Lỗi tải video: ${err.message || "Không xác định"}`);
     } finally {
       setUploadingVideo(false);
+      setTimeout(() => setVideoUploadProgress(0), 600);
     }
   };
 
@@ -1510,6 +1569,7 @@ export default function App() {
                 videoUrl={videoUrl}
                 setVideoUrl={setVideoUrl}
                 uploadingVideo={uploadingVideo}
+                videoUploadProgress={videoUploadProgress}
                 videoUploadSuccess={videoUploadSuccess}
                 videoInputRef={videoInputRef}
                 handleVideoUpload={handleVideoUpload}
@@ -1548,6 +1608,7 @@ export default function App() {
                 (u) => u.id !== user?.id && u.role !== "admin",
               )}
               adminLoading={adminLoading}
+              onlineUserIds={onlineUserIds}
               handleApproveUser={handleApproveUser}
               handleUpdateSubscription={handleUpdateSubscription}
               handleDeleteUser={handleDeleteUser}
