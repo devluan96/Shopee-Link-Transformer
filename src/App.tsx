@@ -148,6 +148,8 @@ export default function App() {
   });
   const [listLoading, setListLoading] = useState(false);
   const [linksDirty, setLinksDirty] = useState(true);
+  const [statsDirty, setStatsDirty] = useState(true);
+  const [analyticsDirty, setAnalyticsDirty] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
 
   // Admin State
@@ -175,6 +177,7 @@ export default function App() {
   const videoInputRef = useRef<HTMLInputElement>(null);
   const isLoggingOutRef = useRef(false);
   const sessionRef = useRef<Session | null>(null);
+  const bootstrappedUserIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     const currentUrl = new URL(window.location.href);
@@ -442,6 +445,7 @@ export default function App() {
       const data = await res.json();
       console.log("📊 Analytics data received:", data);
       setAnalyticsData(data);
+      setAnalyticsDirty(false);
     } catch (e: any) {
       console.error("Fetch analytics fail:", e?.message || e);
       toast.error("Không thể tải dữ liệu phân tích. Vui lòng thử lại sau.");
@@ -449,11 +453,11 @@ export default function App() {
   };
 
   useEffect(() => {
-    if (activeTab === "analytics") {
+    if (activeTab === "analytics" && analyticsDirty) {
       console.log("📊 Active tab changed to analytics, fetching...");
       fetchAnalytics();
     }
-  }, [activeTab, user]);
+  }, [activeTab, analyticsDirty, user?.id]);
 
   useEffect(() => {
     let profileChannel: any = null;
@@ -502,7 +506,14 @@ export default function App() {
         !!session?.user,
       );
 
-      if (session?.access_token) {
+      const currentSessionUserId = session?.user?.id ?? null;
+      const isRepeatedAuthEventForCurrentUser = Boolean(
+        currentSessionUserId &&
+          currentSessionUserId === sessionRef.current?.user?.id &&
+          bootstrappedUserIdRef.current === currentSessionUserId,
+      );
+
+      if (session?.access_token && !isRepeatedAuthEventForCurrentUser) {
         const { data: validatedUser, error: validateError } =
           await supabase.auth.getUser(session.access_token);
 
@@ -518,8 +529,10 @@ export default function App() {
         }
       }
 
+      const previousUserId = sessionRef.current?.user?.id ?? null;
       sessionRef.current = session ?? null;
       if (event === "INITIAL_SESSION" && !session) {
+        bootstrappedUserIdRef.current = null;
         setUser(null);
         setProfile(null);
         setProfileBootstrapLoading(false);
@@ -531,11 +544,14 @@ export default function App() {
       if (event === "SIGNED_OUT") {
         isLoggingOutRef.current = false;
         sessionRef.current = null;
+        bootstrappedUserIdRef.current = null;
         setUser(null);
         setProfile(null);
         setProfileBootstrapLoading(false);
         setLinks([]);
         setLinksDirty(true);
+        setStatsDirty(true);
+        setAnalyticsDirty(true);
         setAllUsers([]);
         setAdminDirty(true);
         setActiveTab("dashboard");
@@ -548,6 +564,16 @@ export default function App() {
       setUser(currentUser);
 
       if (currentUser) {
+        const shouldBootstrapProfile =
+          event === "USER_UPDATED" ||
+          previousUserId !== currentUser.id ||
+          bootstrappedUserIdRef.current !== currentUser.id;
+
+        if (!shouldBootstrapProfile) {
+          setAuthLoading(false);
+          return;
+        }
+
         setProfileBootstrapLoading(true);
         setProfile(null);
         try {
@@ -629,6 +655,8 @@ export default function App() {
             setProfile(existingProfile as UserProfile);
           }
 
+          bootstrappedUserIdRef.current = currentUser.id;
+
           // Realtime Listener
           if (profileChannel) supabase.removeChannel(profileChannel);
           profileChannel = supabase
@@ -659,6 +687,8 @@ export default function App() {
         setProfileBootstrapLoading(false);
         setLinks([]);
         setLinksDirty(true);
+        setStatsDirty(true);
+        setAnalyticsDirty(true);
         setAllUsers([]);
         setAdminDirty(true);
         if (profileChannel) {
@@ -743,7 +773,9 @@ export default function App() {
       if (activeTab === "list" && (linksDirty || links.length === 0)) {
         fetchLinks();
       }
-      if (activeTab === "dashboard") fetchStats();
+      if (activeTab === "dashboard" && statsDirty) {
+        fetchStats();
+      }
       if (
         activeTab === "admin" &&
         isAdminRole &&
@@ -757,26 +789,11 @@ export default function App() {
     profile,
     activeTab,
     linksDirty,
+    statsDirty,
     links.length,
     adminDirty,
     allUsers.length,
   ]);
-
-  useEffect(() => {
-    const isAdminRole =
-      profile?.role === "admin" || user?.email === "devluan1996@gmail.com";
-    const isApproved = profile?.status === "approved" || isAdminRole;
-
-    if (!(user && isApproved && activeTab === "list")) {
-      return;
-    }
-
-    const intervalId = window.setInterval(() => {
-      fetchLinks();
-    }, 15000);
-
-    return () => window.clearInterval(intervalId);
-  }, [user, profile, activeTab]);
 
   const fetchStats = async () => {
     if (!user) return;
@@ -784,6 +801,7 @@ export default function App() {
       const response = await fetchWithAuth("/api/v1/user/stats");
       const data = await response.json();
       setStats(data);
+      setStatsDirty(false);
     } catch (e) {
       console.error(e);
     }
@@ -1052,6 +1070,8 @@ export default function App() {
     });
     setListLoading(false);
     setLinksDirty(true);
+    setStatsDirty(true);
+    setAnalyticsDirty(true);
     setAdminDirty(true);
     setAdminLoading(false);
     setProfileLoading(false);
@@ -1198,7 +1218,8 @@ export default function App() {
         `Rút gọn link thành công: https://hotsnew.click/s/${nextResult.short_code}`,
       );
       setLinksDirty(true);
-      if (activeTab === "dashboard") fetchStats();
+      setStatsDirty(true);
+      setAnalyticsDirty(true);
       // Clear inputs
       // setUrl(''); setCustomTitle(''); setCustomDescription(''); setCustomImageUrl(''); setVideoUrl('');
     } catch (err: any) {
@@ -1227,6 +1248,8 @@ export default function App() {
       if (!res.ok) throw new Error("Delete failed");
       setLinks((prev) => prev.filter((l) => l.id !== id));
       setLinksDirty(false);
+      setStatsDirty(true);
+      setAnalyticsDirty(true);
       toast.success("Đã xóa link thành công!");
     } catch (e: any) {
       toast.error("Lỗi khi xóa link: " + e.message);
@@ -1247,6 +1270,8 @@ export default function App() {
         prev.map((l) => (l.id === id ? { ...l, ...updated } : l)),
       );
       setLinksDirty(false);
+      setStatsDirty(true);
+      setAnalyticsDirty(true);
       toast.success("Đã cập nhật link thành công!");
     } catch (e: any) {
       toast.error("Lỗi khi cập nhật link: " + e.message);
