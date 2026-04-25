@@ -92,25 +92,26 @@ export const CreateLink = ({
 
   return (
     <div key="create">
-      <header className="mb-12">
-        <h2 className="text-4xl font-black text-gray-900 mb-2 tracking-tight">
+      <header className="mb-8 md:mb-12">
+        <h2 className="mb-2 text-3xl font-black tracking-tight text-gray-900 md:text-4xl">
           Tạo Landing Page Mới
         </h2>
-        <p className="text-gray-500 font-medium italic">
-          Chúng tôi sẽ tự động lấy dữ liệu và tối ưu hóa hiển thị trên Facebook.
+        <p className="font-medium italic text-gray-500">
+          Chúng tôi sẽ tự động lấy dữ liệu và tối ưu hóa hiển thị trên
+          Facebook.
         </p>
       </header>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+      <div className="grid grid-cols-1 gap-8 lg:grid-cols-2 lg:gap-12">
         <div className="space-y-8">
           {error && (
-            <div className="bg-red-50 border-2 border-red-100 p-4 rounded-2xl flex items-start gap-3 text-red-600 mb-4">
-              <AlertCircle className="shrink-0 mt-0.5" size={18} />
+            <div className="mb-4 flex items-start gap-3 rounded-2xl border-2 border-red-100 bg-red-50 p-4 text-red-600">
+              <AlertCircle className="mt-0.5 shrink-0" size={18} />
               <div className="text-sm font-bold">
                 {error}
                 <button
                   onClick={() => setError(null)}
-                  className="block mt-1 text-[10px] uppercase underline"
+                  className="mt-1 block text-[10px] uppercase underline"
                 >
                   Đóng thông báo
                 </button>
@@ -120,26 +121,26 @@ export const CreateLink = ({
 
           <form
             onSubmit={handleConvert}
-            className="relative space-y-8 overflow-hidden rounded-[3rem] border border-gray-100 bg-white/95 p-10 shadow-2xl backdrop-blur-xl"
+            className="relative space-y-6 overflow-hidden rounded-[2rem] border border-gray-100 bg-white/95 p-5 shadow-2xl backdrop-blur-xl sm:space-y-8 sm:rounded-[3rem] sm:p-8 lg:p-10"
           >
-            <div className="absolute top-0 right-0 w-32 h-32 bg-orange-600/5 rounded-full -mr-16 -mt-16 blur-3xl pointer-events-none" />
+            <div className="pointer-events-none absolute right-0 top-0 -mr-16 -mt-16 h-32 w-32 rounded-full bg-orange-600/5 blur-3xl" />
 
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <p className="text-[11px] font-black uppercase tracking-widest text-gray-400 px-1 mb-2">
+            <div className="flex flex-col gap-4 sm:gap-5 lg:flex-row lg:items-start lg:justify-between">
+              <div className="min-w-0">
+                <p className="mb-2 px-1 text-[11px] font-black uppercase tracking-widest text-gray-400">
                   Thiết lập link
                 </p>
-                <h3 className="text-2xl font-black text-gray-900 tracking-tight">
+                <h3 className="max-w-[12rem] text-3xl font-black leading-none tracking-tight text-gray-900 sm:max-w-none sm:text-2xl sm:leading-tight">
                   Rút gọn link Shopee
                 </h3>
               </div>
               <button
                 type="submit"
                 disabled={loading || !url || uploadingVideo}
-                className="shrink-0 px-7 py-4 bg-linear-to-r from-orange-600 to-amber-500 text-white rounded-[1.25rem] font-black uppercase tracking-[0.18em] shadow-xl shadow-orange-600/30 hover:shadow-2xl hover:shadow-orange-600/40 hover:-translate-y-0.5 active:scale-[0.98] transition-all flex items-center justify-center gap-3 disabled:grayscale disabled:opacity-50"
+                className="flex w-full items-center justify-center gap-3 rounded-[1.25rem] bg-linear-to-r from-orange-600 to-amber-500 px-5 py-4 text-center text-[11px] font-black uppercase tracking-[0.16em] text-white shadow-xl shadow-orange-600/30 transition-all hover:-translate-y-0.5 hover:shadow-2xl hover:shadow-orange-600/40 active:scale-[0.98] disabled:grayscale disabled:opacity-50 sm:w-auto sm:shrink-0 sm:px-7 sm:text-xs"
               >
                 {loading ? (
-                  <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  <div className="h-5 w-5 animate-spin rounded-full border-2 border-white/30 border-t-white" />
                 ) : (
                   <>
                     Rút gọn link <ArrowRight size={18} />
@@ -149,28 +150,28 @@ export const CreateLink = ({
             </div>
 
             <div>
-              <label className="flex items-center gap-2 text-[11px] font-black uppercase tracking-widest text-gray-400 mb-3 px-1">
-                <Globe size={14} className="text-orange-500" /> Link Shopee Gốc
+              <label className="mb-3 flex items-center gap-2 px-1 text-[11px] font-black uppercase tracking-widest text-gray-400">
+                <Globe size={14} className="text-orange-500" /> Link Shopee gốc
               </label>
-              <div className="relative group">
+              <div className="group relative">
                 <input
                   type="url"
                   required
                   value={url}
                   onChange={(e) => setUrl(e.target.value)}
                   placeholder="Dán link sản phẩm Shopee..."
-                  className="w-full px-6 py-5 bg-gray-50 border-2 border-transparent rounded-3xl transition-all focus:border-orange-500/30 focus:bg-white focus:ring-4 focus:ring-orange-500/10 outline-none font-medium text-gray-900 placeholder:text-gray-300"
+                  className="w-full rounded-3xl border-2 border-transparent bg-gray-50 px-6 py-5 font-medium text-gray-900 outline-none transition-all placeholder:text-gray-300 focus:border-orange-500/30 focus:bg-white focus:ring-4 focus:ring-orange-500/10"
                 />
-                <div className="absolute right-4 top-1/2 -translate-y-1/2 opacity-0 group-focus-within:opacity-100 transition-opacity">
+                <div className="absolute right-4 top-1/2 -translate-y-1/2 opacity-0 transition-opacity group-focus-within:opacity-100">
                   <ArrowRight size={18} className="text-orange-600" />
                 </div>
               </div>
             </div>
 
             <div className="grid grid-cols-1 gap-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
                 <div>
-                  <label className="flex items-center gap-2 text-[11px] font-black uppercase tracking-widest text-gray-400 mb-3 px-1">
+                  <label className="mb-3 flex items-center gap-2 px-1 text-[11px] font-black uppercase tracking-widest text-gray-400">
                     <Type size={14} className="text-orange-500" /> Tiêu đề tùy
                     chỉnh
                   </label>
@@ -179,11 +180,11 @@ export const CreateLink = ({
                     value={customTitle}
                     onChange={(e) => setCustomTitle(e.target.value)}
                     placeholder="Tiêu đề hiển thị..."
-                    className="w-full px-6 py-4 bg-gray-50 border-2 border-transparent rounded-2xl transition-all outline-none font-medium focus:bg-white focus:border-orange-500/20"
+                    className="w-full rounded-2xl border-2 border-transparent bg-gray-50 px-6 py-4 font-medium outline-none transition-all focus:border-orange-500/20 focus:bg-white"
                   />
                 </div>
                 <div>
-                  <label className="flex items-center gap-2 text-[11px] font-black uppercase tracking-widest text-gray-400 mb-3 px-1">
+                  <label className="mb-3 flex items-center gap-2 px-1 text-[11px] font-black uppercase tracking-widest text-gray-400">
                     <Type size={14} className="text-orange-500" /> Mô tả bài
                     viết
                   </label>
@@ -192,13 +193,13 @@ export const CreateLink = ({
                     value={customDescription}
                     onChange={(e) => setCustomDescription(e.target.value)}
                     placeholder="Mô tả thu hút lượt click..."
-                    className="w-full px-6 py-4 bg-gray-50 border-2 border-transparent rounded-2xl transition-all outline-none font-medium focus:bg-white focus:border-orange-500/20"
+                    className="w-full rounded-2xl border-2 border-transparent bg-gray-50 px-6 py-4 font-medium outline-none transition-all focus:border-orange-500/20 focus:bg-white"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="flex items-center gap-2 text-[11px] font-black uppercase tracking-widest text-gray-400 mb-3 px-1">
+                <label className="mb-3 flex items-center gap-2 px-1 text-[11px] font-black uppercase tracking-widest text-gray-400">
                   <Type size={14} className="text-orange-500" /> Mã rút gọn tùy
                   chỉnh
                 </label>
@@ -207,10 +208,10 @@ export const CreateLink = ({
                   value={customShortCode}
                   onChange={(e) => setCustomShortCode(e.target.value)}
                   maxLength={MAX_SHORT_CODE_LENGTH}
-                  placeholder="Ví dụ: tôi yêu em"
-                  className="w-full px-6 py-4 bg-gray-50 border-2 border-transparent rounded-2xl transition-all outline-none font-medium focus:bg-white focus:border-orange-500/20"
+                  placeholder="Ví dụ: toi-yeu-em"
+                  className="w-full rounded-2xl border-2 border-transparent bg-gray-50 px-6 py-4 font-medium outline-none transition-all focus:border-orange-500/20 focus:bg-white"
                 />
-                <p className="text-[11px] text-gray-400 font-medium mt-2 px-1">
+                <p className="mt-2 px-1 text-[11px] font-medium text-gray-400">
                   Link sẽ thành:{" "}
                   <span className="font-black text-orange-600">
                     {normalizedShortCodePreview
@@ -218,19 +219,19 @@ export const CreateLink = ({
                       : "https://hotsnew.click/s/ma-rut-gon-cua-ban"}
                   </span>
                 </p>
-                <p className="text-[11px] text-gray-400 font-medium mt-1 px-1">
+                <p className="mt-1 px-1 text-[11px] font-medium text-gray-400">
                   Tối đa {MAX_SHORT_CODE_LENGTH} ký tự.
                 </p>
               </div>
 
               <div>
-                <label className="flex items-center gap-2 text-[11px] font-black uppercase tracking-widest text-gray-400 mb-3 px-1">
+                <label className="mb-3 flex items-center gap-2 px-1 text-[11px] font-black uppercase tracking-widest text-gray-400">
                   <Type size={14} className="text-orange-500" /> Dùng ở đâu
                 </label>
                 <select
                   value={usageContext}
                   onChange={(e) => setUsageContext(e.target.value)}
-                  className="w-full px-6 py-4 bg-gray-50 border-2 border-transparent rounded-2xl transition-all outline-none font-medium focus:bg-white focus:border-orange-500/20 text-gray-900"
+                  className="w-full rounded-2xl border-2 border-transparent bg-gray-50 px-6 py-4 font-medium text-gray-900 outline-none transition-all focus:border-orange-500/20 focus:bg-white"
                 >
                   {usageOptions.map((option) => (
                     <option key={option.value} value={option.value}>
@@ -240,11 +241,11 @@ export const CreateLink = ({
                 </select>
               </div>
 
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch">
-                <div className="space-y-4 flex flex-col">
-                  <label className="flex items-center gap-2 text-[11px] font-black uppercase tracking-widest text-gray-400 px-1">
+              <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 lg:items-stretch">
+                <div className="flex flex-col space-y-4">
+                  <label className="flex items-center gap-2 px-1 text-[11px] font-black uppercase tracking-widest text-gray-400">
                     <VideoIcon size={14} className="text-orange-500" /> Đính kèm
-                    Video (Tùy chọn)
+                    video (tùy chọn)
                   </label>
                   <input
                     type="file"
@@ -258,13 +259,13 @@ export const CreateLink = ({
                   <button
                     type="button"
                     onClick={() => videoInputRef?.current?.click()}
-                    className="w-full min-h-21 flex items-center justify-between px-6 py-5 bg-orange-50/30 border-2 border-dashed border-orange-100 rounded-2xl hover:border-orange-300 hover:bg-orange-50/50 transition-all group"
+                    className="group flex min-h-21 w-full flex-col items-start gap-4 rounded-2xl border-2 border-dashed border-orange-100 bg-orange-50/30 px-5 py-5 text-left transition-all hover:border-orange-300 hover:bg-orange-50/50 sm:flex-row sm:items-center sm:justify-between sm:px-6"
                   >
-                    <div className="flex items-center gap-3 text-orange-400 font-bold group-hover:text-orange-600">
-                      <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-sm relative">
+                    <div className="flex items-center gap-3 font-bold text-orange-400 group-hover:text-orange-600">
+                      <div className="relative flex h-10 w-10 items-center justify-center rounded-xl bg-white shadow-sm">
                         {uploadingVideo ? (
                           <svg
-                            className="w-10 h-10 -rotate-90"
+                            className="h-10 w-10 -rotate-90"
                             viewBox="0 0 36 36"
                             aria-hidden="true"
                           >
@@ -300,7 +301,7 @@ export const CreateLink = ({
                           </span>
                         )}
                       </div>
-                      <span className="text-xs uppercase tracking-wider">
+                      <span className="text-[11px] uppercase tracking-wider sm:text-xs">
                         {uploadingVideo
                           ? videoUploadProgress > 0
                             ? "Đang tải video lên..."
@@ -311,30 +312,30 @@ export const CreateLink = ({
                       </span>
                     </div>
                     {videoUrl && (
-                      <div className="bg-green-100 p-1 rounded-full">
+                      <div className="rounded-full bg-green-100 p-1">
                         <Check className="text-green-600" size={14} />
                       </div>
                     )}
                   </button>
 
                   {videoUploadSuccess && (
-                    <div className="flex items-center gap-2 text-[10px] font-black text-green-600 bg-green-50 px-4 py-2 rounded-xl uppercase tracking-widest border border-green-100">
+                    <div className="flex items-center gap-2 rounded-xl border border-green-100 bg-green-50 px-4 py-2 text-[10px] font-black uppercase tracking-widest text-green-600">
                       <ShieldCheck size={14} /> Tải dữ liệu lên đám mây thành
                       công!
                     </div>
                   )}
 
                   {videoUrl && (
-                    <div className="relative aspect-video rounded-3xl overflow-hidden bg-black shadow-2xl ring-4 ring-white mt-auto">
+                    <div className="relative mt-auto aspect-video overflow-hidden rounded-3xl bg-black shadow-2xl ring-4 ring-white">
                       <video
                         src={videoUrl}
                         controls
-                        className="w-full h-full object-cover"
+                        className="h-full w-full object-cover"
                       />
                       <button
                         type="button"
                         onClick={() => setVideoUrl("")}
-                        className="absolute top-4 right-4 p-2 bg-black/50 text-white rounded-full hover:bg-red-600 transition-all shadow-lg backdrop-blur-sm"
+                        className="absolute right-4 top-4 rounded-full bg-black/50 p-2 text-white shadow-lg backdrop-blur-sm transition-all hover:bg-red-600"
                       >
                         <X size={16} />
                       </button>
@@ -342,9 +343,9 @@ export const CreateLink = ({
                   )}
                 </div>
 
-                <div className="space-y-4 flex flex-col">
-                  <label className="flex items-center gap-2 text-[11px] font-black uppercase tracking-widest text-gray-400 px-1">
-                    <ImageIcon size={14} className="text-orange-500" />{" "}
+                <div className="flex flex-col space-y-4">
+                  <label className="flex items-center gap-2 px-1 text-[11px] font-black uppercase tracking-widest text-gray-400">
+                    <ImageIcon size={14} className="text-orange-500" />
                     Thumbnail URL
                   </label>
                   <input
@@ -352,15 +353,15 @@ export const CreateLink = ({
                     value={customImageUrl}
                     onChange={(e) => setCustomImageUrl(e.target.value)}
                     placeholder="Link ảnh cover..."
-                    className="w-full min-h-21 px-6 py-4 bg-gray-50 border-2 border-transparent rounded-2xl transition-all outline-none font-medium focus:bg-white focus:border-orange-500/20"
+                    className="min-h-21 w-full rounded-2xl border-2 border-transparent bg-gray-50 px-6 py-4 font-medium outline-none transition-all focus:border-orange-500/20 focus:bg-white"
                   />
 
                   {customImageUrl && (
-                    <div className="relative aspect-video rounded-3xl overflow-hidden bg-gray-100 shadow-xl ring-4 ring-white mt-auto">
+                    <div className="relative mt-auto aspect-video overflow-hidden rounded-3xl bg-gray-100 shadow-xl ring-4 ring-white">
                       <img
                         src={customImageUrl}
                         alt="Thumbnail preview"
-                        className="w-full h-full object-cover"
+                        className="h-full w-full object-cover"
                       />
                     </div>
                   )}
@@ -370,20 +371,21 @@ export const CreateLink = ({
           </form>
         </div>
 
-        <div className="space-y-5 max-w-xl">
-          <div className="bg-white rounded-[2.25rem] border border-gray-200 overflow-hidden shadow-xl relative">
+        <div className="max-w-xl space-y-5">
+          <div className="relative overflow-hidden rounded-[1.75rem] border border-gray-200 bg-white shadow-xl sm:rounded-[2.25rem]">
             {!result && (
-              <div className="absolute inset-0 bg-white/40 backdrop-blur-[2px] z-10 flex items-center justify-center p-6 text-center">
-                <p className="bg-gray-900 text-white px-4 py-2 rounded-full font-bold text-[10px] uppercase">
+              <div className="absolute inset-0 z-10 flex items-center justify-center bg-white/40 p-6 text-center backdrop-blur-[2px]">
+                <p className="rounded-full bg-gray-900 px-4 py-2 text-[10px] font-bold uppercase text-white">
                   Review Mode
                 </p>
               </div>
             )}
-            <div className="aspect-[12/5.4] bg-gray-100 flex items-center justify-center relative">
+            <div className="relative flex aspect-[12/5.4] items-center justify-center bg-gray-100">
               {customImageUrl ? (
                 <img
                   src={customImageUrl}
-                  className="w-full h-full object-cover"
+                  className="h-full w-full object-cover"
+                  alt="Preview cover"
                 />
               ) : (
                 <div className="flex flex-col items-center gap-2 opacity-20">
@@ -394,34 +396,34 @@ export const CreateLink = ({
                 </div>
               )}
             </div>
-            <div className="p-6 bg-[#F2F3F5]">
-              <p className="text-[10px] text-gray-400 uppercase font-bold mb-2 flex items-center gap-2">
+            <div className="bg-[#F2F3F5] p-5 sm:p-6">
+              <p className="mb-2 flex items-center gap-2 text-[10px] font-bold uppercase text-gray-400">
                 <Globe size={10} /> HOTSNEW.CLICK
               </p>
-              <h4 className="text-lg font-black text-gray-900 leading-tight mb-2 line-clamp-2">
+              <h4 className="mb-2 line-clamp-2 text-lg font-black leading-tight text-gray-900">
                 {customTitle || "Tiêu đề của bạn sẽ xuất hiện tại đây..."}
               </h4>
-              <p className="text-[13px] text-gray-600 line-clamp-2 leading-relaxed opacity-70 font-medium">
+              <p className="line-clamp-2 text-[13px] font-medium leading-relaxed text-gray-600 opacity-70">
                 {customDescription ||
-                  "Hệ thống sẽ tự động tạo Landing Page chứa video và tiêu đề chuyên nghiệp như một trang tin tức thực thụ."}
+                  "Hệ thống sẽ tự động tạo landing page chứa video và tiêu đề chuyên nghiệp như một trang tin tức thực thụ."}
               </p>
             </div>
           </div>
 
           <div
             className={cn(
-              "p-8 rounded-[2.25rem] border-2 transition-all duration-500 relative overflow-hidden",
+              "relative overflow-hidden rounded-[1.75rem] border-2 p-5 transition-all duration-500 sm:rounded-[2.25rem] sm:p-8",
               result
-                ? "bg-white border-orange-100 shadow-2xl scale-100"
-                : "bg-gray-50 border-gray-100 opacity-50 pointer-events-none grayscale scale-[0.98]",
+                ? "scale-100 border-orange-100 bg-white shadow-2xl"
+                : "pointer-events-none scale-[0.98] border-gray-100 bg-gray-50 opacity-50 grayscale",
             )}
           >
             {result && (
-              <div className="absolute top-0 right-0 w-32 h-32 bg-green-500/5 rounded-full -mr-16 -mt-16 blur-2xl" />
+              <div className="absolute right-0 top-0 -mr-16 -mt-16 h-32 w-32 rounded-full bg-green-500/5 blur-2xl" />
             )}
 
-            <div className="flex items-center justify-between mb-8 relative z-10">
-              <span className="text-[10px] font-black uppercase tracking-[0.2em] text-orange-600 bg-orange-50 px-3 py-1 rounded-full">
+            <div className="relative z-10 mb-6 flex items-center justify-between gap-3 sm:mb-8">
+              <span className="rounded-full bg-orange-50 px-3 py-1 text-[10px] font-black uppercase tracking-[0.2em] text-orange-600">
                 Link ID: {result?.short_code || "########"}
               </span>
               <button
@@ -433,19 +435,19 @@ export const CreateLink = ({
                     "res",
                   )
                 }
-                className="p-3 hover:bg-orange-50 rounded-2xl text-orange-600 transition-all shadow-sm bg-white border border-gray-100"
+                className="rounded-2xl border border-gray-100 bg-white p-3 text-orange-600 shadow-sm transition-all hover:bg-orange-50"
               >
                 {copiedId === "res" ? <Check size={20} /> : <Copy size={20} />}
               </button>
             </div>
 
-            <div className="bg-gray-50/50 p-6 rounded-2xl font-black text-xs truncate mb-10 text-gray-400 border border-gray-100 font-mono relative z-10">
+            <div className="relative z-10 mb-6 truncate rounded-2xl border border-gray-100 bg-gray-50/50 p-4 font-mono text-[11px] font-black text-gray-400 sm:mb-10 sm:p-6 sm:text-xs">
               {result
                 ? `https://hotsnew.click/s/${result.short_code}`
                 : "https://hotsnew.click/s/########"}
             </div>
 
-            <div className="grid grid-cols-2 gap-4 relative z-10">
+            <div className="relative z-10 grid grid-cols-1 gap-4 sm:grid-cols-2">
               <button
                 onClick={() =>
                   copyToClipboard(
@@ -456,13 +458,13 @@ export const CreateLink = ({
                   )
                 }
                 disabled={!result}
-                className="py-5 bg-gray-900 text-white rounded-2xl font-black uppercase text-[10px] tracking-widest flex items-center justify-center gap-2 hover:bg-black transition-all shadow-lg active:scale-95"
+                className="flex items-center justify-center gap-2 rounded-2xl bg-gray-900 py-4 text-[10px] font-black uppercase tracking-widest text-white shadow-lg transition-all hover:bg-black active:scale-95 sm:py-5"
               >
                 <Copy size={16} /> Sao chép Link
               </button>
               <button
                 disabled={!result}
-                className="py-5 bg-white border-2 border-gray-100 text-gray-900 rounded-2xl font-black uppercase text-[10px] tracking-widest flex items-center justify-center gap-2 hover:bg-gray-50 transition-all shadow-sm active:scale-95"
+                className="flex items-center justify-center gap-2 rounded-2xl border-2 border-gray-100 bg-white py-4 text-[10px] font-black uppercase tracking-widest text-gray-900 shadow-sm transition-all hover:bg-gray-50 active:scale-95 sm:py-5"
               >
                 <QrCode size={16} /> QR Code
               </button>

@@ -79,7 +79,7 @@ export const Pricing = ({
     {
       id: "monthly" as const,
       name: "Gói tháng",
-      price: "299.000đ",
+      price: "79.000đ",
       period: "/ THÁNG",
       description: "Phù hợp để chạy thử hoặc vận hành ngắn hạn.",
       features: [
@@ -94,7 +94,7 @@ export const Pricing = ({
     {
       id: "yearly" as const,
       name: "Gói năm",
-      price: "2.490.000đ",
+      price: "749.000đ",
       period: "/ NĂM",
       description: "Tối ưu chi phí và phù hợp cho tài khoản vận hành lâu dài.",
       features: [
@@ -110,7 +110,9 @@ export const Pricing = ({
 
   const remainingDays = Math.ceil(remainingMs / (1000 * 60 * 60 * 24));
   const hasValidExpiry =
-    expiryTimestamp !== null && Number.isFinite(expiryTimestamp) && remainingMs > 0;
+    expiryTimestamp !== null &&
+    Number.isFinite(expiryTimestamp) &&
+    remainingMs > 0;
   const canRenewCurrentPlan =
     currentPlan !== "free" && hasValidExpiry && remainingDays <= 7;
   const hasYearlyPlan = currentPlan === "yearly";
@@ -130,9 +132,7 @@ export const Pricing = ({
     try {
       await onCheckout(plan);
     } catch (error: any) {
-      toast.error(
-        error?.message || "Không thể chuyển sang cổng thanh toán.",
-      );
+      toast.error(error?.message || "Không thể chuyển sang cổng thanh toán.");
     }
   };
 
