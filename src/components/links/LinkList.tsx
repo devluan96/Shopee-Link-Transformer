@@ -214,13 +214,11 @@ export const LinkList = ({
                   </span>
                 </div>
 
-                {(l.secondary_url || l.redirect_delay_ms) && (
+                {l.secondary_url && (
                   <div className="mt-3 flex flex-wrap items-center gap-2">
-                    {l.secondary_url && (
-                  <span className="rounded-full border border-amber-100 bg-amber-50 px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-amber-700">
-                        2 bước · {Math.max(1, Math.round((l.redirect_delay_ms || 3000) / 1000))}s
-                      </span>
-                    )}
+                    <span className="rounded-full border border-amber-100 bg-amber-50 px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-amber-700">
+                      2 bước
+                    </span>
                   </div>
                 )}
 
@@ -426,30 +424,6 @@ export const LinkList = ({
                       setEditForm({ ...editForm, secondary: e.target.value })
                     }
                     placeholder="https://shopee.vn/..."
-                    className="w-full rounded-2xl border-2 border-transparent bg-gray-50 px-6 py-4 text-sm font-medium outline-none transition-all focus:border-orange-500"
-                  />
-                </div>
-
-                <div className="space-y-1">
-                  <label className="ml-1 text-[10px] font-black uppercase tracking-widest text-gray-400">
-                    Delay chuyển tiếp (giây)
-                  </label>
-                  <input
-                    type="number"
-                    min={1}
-                    max={10}
-                    step={1}
-                    value={Math.max(1, Math.round(editForm.redirectDelayMs / 1000))}
-                    onChange={(e) =>
-                      setEditForm({
-                        ...editForm,
-                        redirectDelayMs: Number.isFinite(
-                          e.target.valueAsNumber,
-                        )
-                          ? e.target.valueAsNumber * 1000
-                          : 3000,
-                      })
-                    }
                     className="w-full rounded-2xl border-2 border-transparent bg-gray-50 px-6 py-4 text-sm font-medium outline-none transition-all focus:border-orange-500"
                   />
                 </div>

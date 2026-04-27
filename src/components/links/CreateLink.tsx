@@ -111,11 +111,6 @@ export const CreateLink = ({
   const [videoPreviewOrientation, setVideoPreviewOrientation] = React.useState<
     "landscape" | "portrait" | "square"
   >("landscape");
-  const redirectDelaySeconds = Math.max(
-    1,
-    Math.min(10, Math.round(redirectDelayMs / 1000)),
-  );
-
   const normalizedShortCodePreview = customShortCode
     ? normalizeVietnameseSlug(customShortCode)
     : "";
@@ -463,20 +458,20 @@ export const CreateLink = ({
                     Bọc bảo vệ 2 bước
                   </p>
                   <p className="text-xs font-medium leading-relaxed text-amber-900/70">
-                    Mở link Shopee chính trước, sau đó chuyển tiếp sang link
-                    Shopee phụ sau vài giây trên cùng flow bảo vệ.
+                    Mở link Shopee chính trước. Sau đó người dùng bấm thêm một
+                    lần nữa trên landing để mở link Shopee phụ trên cùng flow
+                    bảo vệ.
                   </p>
                   <p className="mt-2 text-xs font-bold leading-relaxed text-amber-800">
                     Chỉ nên dùng khi link gốc và link phụ cùng một nguồn
                     affiliate, và link phụ phải cùng domain Shopee với link gốc.
                   </p>
                 </div>
-
-                <div className="grid grid-cols-1 gap-6 md:grid-cols-[minmax(0,1fr)_11rem]">
+                <div className="grid grid-cols-1 gap-6">
                   <div>
                     <label className="mb-3 flex items-center gap-2 px-1 text-[11px] font-black uppercase tracking-widest text-gray-500">
                       <Globe size={14} className="text-orange-500" /> Link
-                      Shopee phụ
+                      Shopee ph?
                     </label>
                     <input
                       data-field="secondaryUrl"
@@ -496,37 +491,6 @@ export const CreateLink = ({
                     <p className="mt-2 px-1 text-[11px] font-medium text-gray-500">
                       Bỏ trống nếu chỉ muốn đi 1 link như bình thường. Chỉ hỗ
                       trợ domain Shopee.
-                    </p>
-                  </div>
-
-                  <div>
-                    <label className="mb-3 flex items-center gap-2 px-1 text-[11px] font-black uppercase tracking-widest text-gray-500">
-                      <Type size={14} className="text-orange-500" /> Delay
-                      (giây)
-                    </label>
-                    <input
-                      data-field="redirectDelayMs"
-                      type="number"
-                      min={1}
-                      max={10}
-                      step={1}
-                      value={redirectDelaySeconds}
-                      onChange={(e) => {
-                        setRedirectDelayMs(
-                          Number.isFinite(e.target.valueAsNumber)
-                            ? e.target.valueAsNumber * 1000
-                            : 3000,
-                        );
-                        clearFieldError("redirectDelayMs");
-                      }}
-                      className={inputClass(
-                        "redirectDelayMs",
-                        "w-full rounded-2xl bg-white px-6 py-4 font-medium",
-                      )}
-                    />
-                    {renderFieldError("redirectDelayMs")}
-                    <p className="mt-2 px-1 text-[11px] font-medium text-gray-500">
-                      Khuyên dùng 3 giây.
                     </p>
                   </div>
                 </div>
