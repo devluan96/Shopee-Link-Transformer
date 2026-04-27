@@ -2,6 +2,8 @@ export interface ConvertedLink {
   id?: string;
   short_code: string;
   original_url: string;
+  secondary_url?: string;
+  redirect_delay_ms?: number;
   custom_title?: string;
   custom_description?: string;
   usage_context?: string;

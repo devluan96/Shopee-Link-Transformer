@@ -16,6 +16,18 @@ import {
 import { cn, normalizeVietnameseSlug } from "@/src/lib/utils";
 
 const MAX_SHORT_CODE_LENGTH = 50;
+const SHOPEE_HOST_REGEX = /(^|\.)shopee\.[a-z.]+$/i;
+
+type FormField =
+  | "url"
+  | "customTitle"
+  | "customDescription"
+  | "customShortCode"
+  | "usageContext"
+  | "customImageUrl"
+  | "videoUrl"
+  | "secondaryUrl"
+  | "redirectDelayMs";
 
 interface CreateLinkProps {
   url: string;
@@ -30,6 +42,10 @@ interface CreateLinkProps {
   setUsageContext: (v: string) => void;
   customImageUrl: string;
   setCustomImageUrl: (v: string) => void;
+  secondaryUrl: string;
+  setSecondaryUrl: (v: string) => void;
+  redirectDelayMs: number;
+  setRedirectDelayMs: (v: number) => void;
   videoUrl: string;
   setVideoUrl: (v: string) => void;
   uploadingVideo: boolean;
@@ -70,6 +86,10 @@ export const CreateLink = ({
   setUsageContext,
   customImageUrl,
   setCustomImageUrl,
+  secondaryUrl,
+  setSecondaryUrl,
+  redirectDelayMs,
+  setRedirectDelayMs,
   videoUrl,
   setVideoUrl,
   uploadingVideo,
@@ -85,10 +105,164 @@ export const CreateLink = ({
   copyToClipboard,
   copiedId,
 }: CreateLinkProps) => {
+  const [fieldErrors, setFieldErrors] = React.useState<
+    Partial<Record<FormField, string>>
+  >({});
+  const [videoPreviewOrientation, setVideoPreviewOrientation] =
+    React.useState<"landscape" | "portrait" | "square">("landscape");
+  const redirectDelaySeconds = Math.max(
+    1,
+    Math.min(10, Math.round(redirectDelayMs / 1000)),
+  );
+
   const normalizedShortCodePreview = customShortCode
     ? normalizeVietnameseSlug(customShortCode)
     : "";
   const uploadProgressOffset = 87.96 - (87.96 * videoUploadProgress) / 100;
+
+  React.useEffect(() => {
+    if (customImageUrl.trim() || videoUrl.trim()) {
+      clearFieldError("customImageUrl");
+      clearFieldError("videoUrl");
+    }
+  }, [customImageUrl, videoUrl]);
+
+  const clearFieldError = (field: FormField) => {
+    setFieldErrors((prev) => {
+      if (!prev[field]) return prev;
+      const next = { ...prev };
+      delete next[field];
+      return next;
+    });
+  };
+
+  const isValidShopeeUrl = (value: string) => {
+    try {
+      const parsed = new URL(value.trim());
+      if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+        return false;
+      }
+      return SHOPEE_HOST_REGEX.test(parsed.hostname.trim().toLowerCase());
+    } catch {
+      return false;
+    }
+  };
+
+  const getShopeeHostname = (value: string) => {
+    try {
+      return new URL(value.trim()).hostname.trim().toLowerCase();
+    } catch {
+      return null;
+    }
+  };
+
+  const validateForm = () => {
+    const nextErrors: Partial<Record<FormField, string>> = {};
+
+    if (!url.trim()) {
+      nextErrors.url = "Vui lòng nhập link Shopee gốc.";
+    } else if (!isValidShopeeUrl(url)) {
+      nextErrors.url = "Link Shopee gốc phải là domain Shopee hợp lệ.";
+    }
+
+    if (!customTitle.trim()) {
+      nextErrors.customTitle = "Vui lòng nhập tiêu đề hiển thị.";
+    }
+
+    if (!customDescription.trim()) {
+      nextErrors.customDescription = "Vui lòng nhập mô tả bài viết.";
+    }
+
+    if (!usageContext.trim()) {
+      nextErrors.usageContext = "Vui lòng chọn vị trí sử dụng.";
+    }
+
+    if (!customImageUrl.trim() && !videoUrl.trim()) {
+      nextErrors.customImageUrl =
+        "Vui lòng nhập Thumbnail URL hoặc tải lên video.";
+      nextErrors.videoUrl = "Vui lòng tải lên video hoặc nhập Thumbnail URL.";
+    }
+
+    if (customShortCode.trim()) {
+      const normalizedShortCode = normalizeVietnameseSlug(customShortCode);
+      if (normalizedShortCode.length < 3) {
+        nextErrors.customShortCode = "Mã rút gọn phải có ít nhất 3 ký tự.";
+      } else if (normalizedShortCode.length > MAX_SHORT_CODE_LENGTH) {
+        nextErrors.customShortCode =
+          `Mã rút gọn không được vượt quá ${MAX_SHORT_CODE_LENGTH} ký tự.`;
+      }
+    }
+
+    if (secondaryUrl.trim() && !isValidShopeeUrl(secondaryUrl)) {
+      nextErrors.secondaryUrl = "Link Shopee phụ phải là domain Shopee hợp lệ.";
+    } else if (
+      secondaryUrl.trim() &&
+      url.trim() &&
+      isValidShopeeUrl(url) &&
+      getShopeeHostname(url) !== getShopeeHostname(secondaryUrl)
+    ) {
+      nextErrors.secondaryUrl =
+        "Link Shopee phụ phải cùng domain Shopee với link Shopee gốc để bật flow 2 bước.";
+    }
+
+    if (
+      !Number.isFinite(redirectDelayMs) ||
+      redirectDelayMs < 1000 ||
+      redirectDelayMs > 10000
+    ) {
+      nextErrors.redirectDelayMs = "Delay phải nằm trong khoảng 1 đến 10 giây.";
+    }
+
+    return nextErrors;
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    const nextErrors = validateForm();
+    setFieldErrors(nextErrors);
+
+    if (Object.keys(nextErrors).length > 0) {
+      e.preventDefault();
+      const firstErrorField = Object.keys(nextErrors)[0];
+      const element = document.querySelector<HTMLElement>(
+        `[data-field="${firstErrorField}"]`,
+      );
+      element?.focus();
+      return;
+    }
+
+    handleConvert(e);
+  };
+
+  const inputClass = (field?: FormField, base = "") =>
+    cn(
+      base,
+      "border-2 outline-none transition-all",
+      field && fieldErrors[field]
+        ? "border-red-400 focus:border-red-400"
+        : "border-transparent focus:border-orange-500/20",
+    );
+
+  const renderFieldError = (field: FormField) =>
+    fieldErrors[field] ? (
+      <p className="mt-2 px-1 text-[11px] font-bold text-red-500">
+        {fieldErrors[field]}
+      </p>
+    ) : null;
+
+  const handleVideoPreviewMetadata = (
+    event: React.SyntheticEvent<HTMLVideoElement>,
+  ) => {
+    const { videoWidth, videoHeight } = event.currentTarget;
+    if (!videoWidth || !videoHeight) return;
+
+    setVideoPreviewOrientation(
+      videoWidth > videoHeight
+        ? "landscape"
+        : videoHeight > videoWidth
+          ? "portrait"
+          : "square",
+    );
+  };
 
   return (
     <div key="create">
@@ -120,7 +294,8 @@ export const CreateLink = ({
           )}
 
           <form
-            onSubmit={handleConvert}
+            onSubmit={handleSubmit}
+            noValidate
             className="relative space-y-6 overflow-hidden rounded-[2rem] border border-gray-100 bg-white/95 p-5 shadow-2xl backdrop-blur-xl sm:space-y-8 sm:rounded-[3rem] sm:p-8 lg:p-10"
           >
             <div className="pointer-events-none absolute right-0 top-0 -mr-16 -mt-16 h-32 w-32 rounded-full bg-orange-600/5 blur-3xl" />
@@ -136,7 +311,7 @@ export const CreateLink = ({
               </div>
               <button
                 type="submit"
-                disabled={loading || !url || uploadingVideo}
+                disabled={loading || uploadingVideo}
                 className="flex w-full items-center justify-center gap-3 rounded-[1.25rem] bg-linear-to-r from-orange-600 to-amber-500 px-5 py-4 text-center text-[11px] font-black uppercase tracking-[0.16em] text-white shadow-xl shadow-orange-600/30 transition-all hover:-translate-y-0.5 hover:shadow-2xl hover:shadow-orange-600/40 active:scale-[0.98] disabled:grayscale disabled:opacity-50 sm:w-auto sm:shrink-0 sm:px-7 sm:text-xs"
               >
                 {loading ? (
@@ -155,17 +330,27 @@ export const CreateLink = ({
               </label>
               <div className="group relative">
                 <input
+                  data-field="url"
                   type="url"
-                  required
                   value={url}
-                  onChange={(e) => setUrl(e.target.value)}
+                  onChange={(e) => {
+                    setUrl(e.target.value);
+                    clearFieldError("url");
+                  }}
                   placeholder="Dán link sản phẩm Shopee..."
-                  className="w-full rounded-3xl border-2 border-transparent bg-gray-50 px-6 py-5 font-medium text-gray-900 outline-none transition-all placeholder:text-gray-300 focus:border-orange-500/30 focus:bg-white focus:ring-4 focus:ring-orange-500/10"
+                  className={inputClass(
+                    "url",
+                    "w-full rounded-3xl bg-gray-50 px-6 py-5 font-medium text-gray-900 placeholder:text-gray-300 focus:bg-white focus:ring-4 focus:ring-orange-500/10",
+                  )}
                 />
                 <div className="absolute right-4 top-1/2 -translate-y-1/2 opacity-0 transition-opacity group-focus-within:opacity-100">
                   <ArrowRight size={18} className="text-orange-600" />
                 </div>
               </div>
+              {renderFieldError("url")}
+              <p className="mt-2 px-1 text-[11px] font-medium text-gray-500">
+                Chỉ nhận link domain Shopee để giữ flow bọc bảo vệ ổn định.
+              </p>
             </div>
 
             <div className="grid grid-cols-1 gap-6">
@@ -176,12 +361,20 @@ export const CreateLink = ({
                     chỉnh
                   </label>
                   <input
+                    data-field="customTitle"
                     type="text"
                     value={customTitle}
-                    onChange={(e) => setCustomTitle(e.target.value)}
+                    onChange={(e) => {
+                      setCustomTitle(e.target.value);
+                      clearFieldError("customTitle");
+                    }}
                     placeholder="Tiêu đề hiển thị..."
-                    className="w-full rounded-2xl border-2 border-transparent bg-gray-50 px-6 py-4 font-medium outline-none transition-all focus:border-orange-500/20 focus:bg-white"
+                    className={inputClass(
+                      "customTitle",
+                      "w-full rounded-2xl bg-gray-50 px-6 py-4 font-medium focus:bg-white",
+                    )}
                   />
+                  {renderFieldError("customTitle")}
                 </div>
                 <div>
                   <label className="mb-3 flex items-center gap-2 px-1 text-[11px] font-black uppercase tracking-widest text-gray-400">
@@ -189,12 +382,20 @@ export const CreateLink = ({
                     viết
                   </label>
                   <input
+                    data-field="customDescription"
                     type="text"
                     value={customDescription}
-                    onChange={(e) => setCustomDescription(e.target.value)}
+                    onChange={(e) => {
+                      setCustomDescription(e.target.value);
+                      clearFieldError("customDescription");
+                    }}
                     placeholder="Mô tả thu hút lượt click..."
-                    className="w-full rounded-2xl border-2 border-transparent bg-gray-50 px-6 py-4 font-medium outline-none transition-all focus:border-orange-500/20 focus:bg-white"
+                    className={inputClass(
+                      "customDescription",
+                      "w-full rounded-2xl bg-gray-50 px-6 py-4 font-medium focus:bg-white",
+                    )}
                   />
+                  {renderFieldError("customDescription")}
                 </div>
               </div>
 
@@ -204,13 +405,21 @@ export const CreateLink = ({
                   chỉnh
                 </label>
                 <input
+                  data-field="customShortCode"
                   type="text"
                   value={customShortCode}
-                  onChange={(e) => setCustomShortCode(e.target.value)}
+                  onChange={(e) => {
+                    setCustomShortCode(e.target.value);
+                    clearFieldError("customShortCode");
+                  }}
                   maxLength={MAX_SHORT_CODE_LENGTH}
                   placeholder="Ví dụ: toi-yeu-em"
-                  className="w-full rounded-2xl border-2 border-transparent bg-gray-50 px-6 py-4 font-medium outline-none transition-all focus:border-orange-500/20 focus:bg-white"
+                  className={inputClass(
+                    "customShortCode",
+                    "w-full rounded-2xl bg-gray-50 px-6 py-4 font-medium focus:bg-white",
+                  )}
                 />
+                {renderFieldError("customShortCode")}
                 <p className="mt-2 px-1 text-[11px] font-medium text-gray-400">
                   Link sẽ thành:{" "}
                   <span className="font-black text-orange-600">
@@ -229,9 +438,16 @@ export const CreateLink = ({
                   <Type size={14} className="text-orange-500" /> Dùng ở đâu
                 </label>
                 <select
+                  data-field="usageContext"
                   value={usageContext}
-                  onChange={(e) => setUsageContext(e.target.value)}
-                  className="w-full rounded-2xl border-2 border-transparent bg-gray-50 px-6 py-4 font-medium text-gray-900 outline-none transition-all focus:border-orange-500/20 focus:bg-white"
+                  onChange={(e) => {
+                    setUsageContext(e.target.value);
+                    clearFieldError("usageContext");
+                  }}
+                  className={inputClass(
+                    "usageContext",
+                    "w-full rounded-2xl bg-gray-50 px-6 py-4 font-medium text-gray-900 focus:bg-white",
+                  )}
                 >
                   {usageOptions.map((option) => (
                     <option key={option.value} value={option.value}>
@@ -239,6 +455,82 @@ export const CreateLink = ({
                     </option>
                   ))}
                 </select>
+                {renderFieldError("usageContext")}
+              </div>
+
+              <div className="grid grid-cols-1 gap-6 rounded-[1.75rem] border border-amber-100 bg-amber-50/60 p-4 sm:p-5">
+                <div>
+                  <p className="mb-1 text-[11px] font-black uppercase tracking-widest text-amber-700">
+                    Bọc bảo vệ 2 bước
+                  </p>
+                  <p className="text-xs font-medium leading-relaxed text-amber-900/70">
+                    Mở link Shopee chính trước, sau đó chuyển tiếp sang link
+                    Shopee phụ sau vài giây trên cùng flow bảo vệ.
+                  </p>
+                  <p className="mt-2 text-xs font-bold leading-relaxed text-amber-800">
+                    Chỉ nên dùng khi link gốc và link phụ cùng một nguồn
+                    affiliate, và link phụ phải cùng domain Shopee với link gốc.
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-1 gap-6 md:grid-cols-[minmax(0,1fr)_11rem]">
+                  <div>
+                    <label className="mb-3 flex items-center gap-2 px-1 text-[11px] font-black uppercase tracking-widest text-gray-500">
+                      <Globe size={14} className="text-orange-500" /> Link
+                      Shopee phụ
+                    </label>
+                    <input
+                      data-field="secondaryUrl"
+                      type="url"
+                      value={secondaryUrl}
+                      onChange={(e) => {
+                        setSecondaryUrl(e.target.value);
+                        clearFieldError("secondaryUrl");
+                      }}
+                      placeholder="https://shopee.vn/...."
+                      className={inputClass(
+                        "secondaryUrl",
+                        "w-full rounded-2xl bg-white px-6 py-4 font-medium",
+                      )}
+                    />
+                    {renderFieldError("secondaryUrl")}
+                    <p className="mt-2 px-1 text-[11px] font-medium text-gray-500">
+                      Bỏ trống nếu chỉ muốn đi 1 link như bình thường. Chỉ hỗ
+                      trợ domain Shopee.
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className="mb-3 flex items-center gap-2 px-1 text-[11px] font-black uppercase tracking-widest text-gray-500">
+                      <Type size={14} className="text-orange-500" /> Delay
+                      (giây)
+                    </label>
+                    <input
+                      data-field="redirectDelayMs"
+                      type="number"
+                      min={1}
+                      max={10}
+                      step={1}
+                      value={redirectDelaySeconds}
+                      onChange={(e) => {
+                        setRedirectDelayMs(
+                          Number.isFinite(e.target.valueAsNumber)
+                            ? e.target.valueAsNumber * 1000
+                            : 3000,
+                        );
+                        clearFieldError("redirectDelayMs");
+                      }}
+                      className={inputClass(
+                        "redirectDelayMs",
+                        "w-full rounded-2xl bg-white px-6 py-4 font-medium",
+                      )}
+                    />
+                    {renderFieldError("redirectDelayMs")}
+                    <p className="mt-2 px-1 text-[11px] font-medium text-gray-500">
+                      Khuyên dùng 3 giây.
+                    </p>
+                  </div>
+                </div>
               </div>
 
               <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 lg:items-stretch">
@@ -259,6 +551,7 @@ export const CreateLink = ({
                   <button
                     type="button"
                     onClick={() => videoInputRef?.current?.click()}
+                    data-field="videoUrl"
                     className="group flex min-h-21 w-full flex-col items-start gap-4 rounded-2xl border-2 border-dashed border-orange-100 bg-orange-50/30 px-5 py-5 text-left transition-all hover:border-orange-300 hover:bg-orange-50/50 sm:flex-row sm:items-center sm:justify-between sm:px-6"
                   >
                     <div className="flex items-center gap-3 font-bold text-orange-400 group-hover:text-orange-600">
@@ -317,6 +610,7 @@ export const CreateLink = ({
                       </div>
                     )}
                   </button>
+                  {renderFieldError("videoUrl")}
 
                   {videoUploadSuccess && (
                     <div className="flex items-center gap-2 rounded-xl border border-green-100 bg-green-50 px-4 py-2 text-[10px] font-black uppercase tracking-widest text-green-600">
@@ -326,15 +620,30 @@ export const CreateLink = ({
                   )}
 
                   {videoUrl && (
-                    <div className="relative mt-auto aspect-video overflow-hidden rounded-3xl bg-black shadow-2xl ring-4 ring-white">
+                    <div
+                      className={cn(
+                        "relative mt-auto overflow-hidden rounded-3xl bg-black shadow-2xl ring-4 ring-white",
+                        videoPreviewOrientation === "portrait"
+                          ? "mx-auto aspect-[9/16] w-full max-w-[18rem]"
+                          : videoPreviewOrientation === "square"
+                            ? "mx-auto aspect-square w-full max-w-[24rem]"
+                            : "aspect-video w-full",
+                      )}
+                    >
                       <video
                         src={videoUrl}
                         controls
-                        className="h-full w-full object-cover"
+                        playsInline
+                        preload="metadata"
+                        onLoadedMetadata={handleVideoPreviewMetadata}
+                        className="h-full w-full bg-black object-contain"
                       />
                       <button
                         type="button"
-                        onClick={() => setVideoUrl("")}
+                        onClick={() => {
+                          setVideoUrl("");
+                          setVideoPreviewOrientation("landscape");
+                        }}
                         className="absolute right-4 top-4 rounded-full bg-black/50 p-2 text-white shadow-lg backdrop-blur-sm transition-all hover:bg-red-600"
                       >
                         <X size={16} />
@@ -349,12 +658,21 @@ export const CreateLink = ({
                     Thumbnail URL
                   </label>
                   <input
+                    data-field="customImageUrl"
                     type="url"
                     value={customImageUrl}
-                    onChange={(e) => setCustomImageUrl(e.target.value)}
+                    onChange={(e) => {
+                      setCustomImageUrl(e.target.value);
+                      clearFieldError("customImageUrl");
+                      clearFieldError("videoUrl");
+                    }}
                     placeholder="Link ảnh cover..."
-                    className="min-h-21 w-full rounded-2xl border-2 border-transparent bg-gray-50 px-6 py-4 font-medium outline-none transition-all focus:border-orange-500/20 focus:bg-white"
+                    className={inputClass(
+                      "customImageUrl",
+                      "min-h-21 w-full rounded-2xl bg-gray-50 px-6 py-4 font-medium focus:bg-white",
+                    )}
                   />
+                  {renderFieldError("customImageUrl")}
 
                   {customImageUrl && (
                     <div className="relative mt-auto aspect-video overflow-hidden rounded-3xl bg-gray-100 shadow-xl ring-4 ring-white">

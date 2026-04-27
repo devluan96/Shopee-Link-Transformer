@@ -57,6 +57,8 @@ export const LinkList = ({
     usage: "",
     img: "",
     original: "",
+    secondary: "",
+    redirectDelayMs: 3000,
   });
   const [isUpdating, setIsUpdating] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -74,6 +76,8 @@ export const LinkList = ({
       usage: link.usage_context || "",
       img: link.custom_image_url || "",
       original: link.original_url || "",
+      secondary: link.secondary_url || "",
+      redirectDelayMs: link.redirect_delay_ms || 3000,
     });
   };
 
@@ -87,6 +91,8 @@ export const LinkList = ({
         usage_context: editForm.usage,
         custom_image_url: editForm.img,
         original_url: editForm.original,
+        secondary_url: editForm.secondary,
+        redirect_delay_ms: editForm.redirectDelayMs,
       });
       setEditingLink(null);
     } finally {
@@ -201,6 +207,22 @@ export const LinkList = ({
                     ago
                   </span>
                 </div>
+
+                <div className="mt-3 flex flex-wrap items-center gap-2">
+                  <span className="rounded-full border border-orange-100 bg-orange-50 px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-orange-700">
+                    Shopee Protected
+                  </span>
+                </div>
+
+                {(l.secondary_url || l.redirect_delay_ms) && (
+                  <div className="mt-3 flex flex-wrap items-center gap-2">
+                    {l.secondary_url && (
+                  <span className="rounded-full border border-amber-100 bg-amber-50 px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-amber-700">
+                        2 bước · {Math.max(1, Math.round((l.redirect_delay_ms || 3000) / 1000))}s
+                      </span>
+                    )}
+                  </div>
+                )}
 
                 {l.tracked_sources && l.tracked_sources.length > 0 && (
                   <div className="mt-3 flex flex-wrap items-center gap-2">
@@ -390,6 +412,47 @@ export const LinkList = ({
                   placeholder="https://..."
                   className="w-full rounded-2xl border-2 border-transparent bg-gray-50 px-6 py-4 text-sm font-medium outline-none transition-all focus:border-orange-500"
                 />
+              </div>
+
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <div className="space-y-1">
+                  <label className="ml-1 text-[10px] font-black uppercase tracking-widest text-gray-400">
+                    Link Shopee phụ
+                  </label>
+                  <input
+                    type="url"
+                    value={editForm.secondary}
+                    onChange={(e) =>
+                      setEditForm({ ...editForm, secondary: e.target.value })
+                    }
+                    placeholder="https://shopee.vn/..."
+                    className="w-full rounded-2xl border-2 border-transparent bg-gray-50 px-6 py-4 text-sm font-medium outline-none transition-all focus:border-orange-500"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="ml-1 text-[10px] font-black uppercase tracking-widest text-gray-400">
+                    Delay chuyển tiếp (giây)
+                  </label>
+                  <input
+                    type="number"
+                    min={1}
+                    max={10}
+                    step={1}
+                    value={Math.max(1, Math.round(editForm.redirectDelayMs / 1000))}
+                    onChange={(e) =>
+                      setEditForm({
+                        ...editForm,
+                        redirectDelayMs: Number.isFinite(
+                          e.target.valueAsNumber,
+                        )
+                          ? e.target.valueAsNumber * 1000
+                          : 3000,
+                      })
+                    }
+                    className="w-full rounded-2xl border-2 border-transparent bg-gray-50 px-6 py-4 text-sm font-medium outline-none transition-all focus:border-orange-500"
+                  />
+                </div>
               </div>
             </div>
 

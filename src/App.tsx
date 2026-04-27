@@ -130,6 +130,8 @@ export default function App() {
   const [customShortCode, setCustomShortCode] = useState("");
   const [usageContext, setUsageContext] = useState("");
   const [customImageUrl, setCustomImageUrl] = useState("");
+  const [secondaryUrl, setSecondaryUrl] = useState("");
+  const [redirectDelayMs, setRedirectDelayMs] = useState(3000);
   const [videoUrl, setVideoUrl] = useState("");
   const [uploadingVideo, setUploadingVideo] = useState(false);
   const [videoUploadProgress, setVideoUploadProgress] = useState(0);
@@ -1201,6 +1203,8 @@ export default function App() {
           customDescription,
           usageContext,
           customImageUrl,
+          secondaryUrl: secondaryUrl.trim(),
+          redirectDelayMs,
           videoUrl,
         }),
       });
@@ -1591,6 +1595,10 @@ export default function App() {
                 setUsageContext={setUsageContext}
                 customImageUrl={customImageUrl}
                 setCustomImageUrl={setCustomImageUrl}
+                secondaryUrl={secondaryUrl}
+                setSecondaryUrl={setSecondaryUrl}
+                redirectDelayMs={redirectDelayMs}
+                setRedirectDelayMs={setRedirectDelayMs}
                 videoUrl={videoUrl}
                 setVideoUrl={setVideoUrl}
                 uploadingVideo={uploadingVideo}

@@ -117,6 +117,8 @@ interface PublicLinkRecord {
   id: string;
   short_code: string;
   original_url: string;
+  secondary_url?: string | null;
+  redirect_delay_ms?: number | null;
   custom_title?: string | null;
   custom_description?: string | null;
   custom_image_url?: string | null;
@@ -134,6 +136,10 @@ interface TrackedSourceSummary {
 }
 
 const MAX_SHORT_CODE_LENGTH = 50;
+const DEFAULT_REDIRECT_DELAY_MS = 3000;
+const MIN_REDIRECT_DELAY_MS = 1000;
+const MAX_REDIRECT_DELAY_MS = 10000;
+const SHOPEE_HOST_REGEX = /(^|\.)shopee\.[a-z.]+$/i;
 
 const getBearerToken = (req: Request) => {
   const authHeader = req.headers.authorization;
@@ -184,6 +190,65 @@ const normalizeShortCode = (value?: string | null) => {
   return normalized;
 };
 
+const normalizeHttpUrl = (value?: string | null) => {
+  if (!value) return null;
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+
+  let parsedUrl: URL;
+  try {
+    parsedUrl = new URL(trimmed);
+  } catch {
+    throw new Error("Link đích không hợp lệ.");
+  }
+
+  if (parsedUrl.protocol !== "http:" && parsedUrl.protocol !== "https:") {
+    throw new Error("Chỉ hỗ trợ link http hoặc https.");
+  }
+
+  return parsedUrl.toString();
+};
+
+const normalizeRedirectDelayMs = (value: unknown) => {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) return DEFAULT_REDIRECT_DELAY_MS;
+  return Math.min(
+    MAX_REDIRECT_DELAY_MS,
+    Math.max(MIN_REDIRECT_DELAY_MS, Math.round(parsed)),
+  );
+};
+
+const normalizeProtectedShopeeUrl = (
+  value?: string | null,
+  label = "Link Shopee",
+) => {
+  const normalizedUrl = normalizeHttpUrl(value);
+  if (!normalizedUrl) return null;
+
+  const parsedUrl = new URL(normalizedUrl);
+  if (!SHOPEE_HOST_REGEX.test(parsedUrl.hostname.trim().toLowerCase())) {
+    throw new Error(`${label} chá»‰ há»— trá»£ domain Shopee há»£p lá»‡.`);
+  }
+
+  return normalizedUrl;
+};
+
+const ensureSameShopeeHostname = (
+  primaryUrl?: string | null,
+  secondaryUrl?: string | null,
+) => {
+  if (!primaryUrl || !secondaryUrl) return;
+
+  const primaryHostname = new URL(primaryUrl).hostname.trim().toLowerCase();
+  const secondaryHostname = new URL(secondaryUrl).hostname.trim().toLowerCase();
+
+  if (primaryHostname !== secondaryHostname) {
+    throw new Error(
+      "Link Shopee phụ phải cùng domain Shopee với link Shopee gốc để bật flow 2 bước.",
+    );
+  }
+};
+
 const getTrafficSourceFromRequest = (req: Request) => {
   const srcParam =
     (typeof req.query.src === "string" && req.query.src) ||
@@ -193,13 +258,248 @@ const getTrafficSourceFromRequest = (req: Request) => {
   const referer =
     typeof req.headers.referer === "string" ? req.headers.referer : null;
   const inferredFromReferer = normalizeTrafficSource(referer);
-  const source = normalizeTrafficSource(srcParam) || inferredFromReferer;
+  const source = normalizeTrafficSource(srcParam) || inferredFromReferer || "direct";
 
   return {
     source,
     source_detail: srcParam?.trim() || null,
     referer,
   };
+};
+
+const CLICK_SELECT_ATTEMPTS = [
+  "id, link_id, created_at, source, source_detail, referer, user_agent, ip_address, ip",
+  "id, link_id, created_at, source, source_detail, referer, user_agent, ip_address",
+  "id, link_id, created_at, source, source_detail, referer, user_agent, ip",
+  "id, link_id, created_at, source, source_detail, referer, user_agent",
+  "id, link_id, created_at, source, referer, user_agent, ip_address",
+  "id, link_id, created_at, source, referer, user_agent, ip",
+  "id, link_id, created_at, source, referer, user_agent",
+  "id, link_id, created_at, source, source_detail, referer",
+  "id, link_id, created_at, source, referer",
+] as const;
+
+const chunkArray = <T>(items: T[], chunkSize: number) => {
+  const chunks: T[][] = [];
+  for (let index = 0; index < items.length; index += chunkSize) {
+    chunks.push(items.slice(index, index + chunkSize));
+  }
+  return chunks;
+};
+
+const fetchClicksForLinkIds = async (
+  supabase: ReturnType<typeof getSupabase>,
+  linkIds: string[],
+  options?: { since?: string },
+) => {
+  if (!linkIds.length) return [];
+
+  const allClicks: any[] = [];
+  let lastError: any = null;
+
+  for (const selectColumns of CLICK_SELECT_ATTEMPTS) {
+    try {
+      for (const linkIdChunk of chunkArray(linkIds, 100)) {
+        let from = 0;
+        let hasMore = true;
+
+        while (hasMore) {
+          let query = supabase
+            .from("clicks")
+            .select(selectColumns)
+            .in("link_id", linkIdChunk)
+            .order("created_at", { ascending: false })
+            .range(from, from + 999);
+
+          if (options?.since) {
+            query = query.gte("created_at", options.since);
+          }
+
+          const { data, error } = await query;
+          if (error) throw error;
+
+          const page = data || [];
+          allClicks.push(...page);
+          hasMore = page.length === 1000;
+          from += 1000;
+        }
+      }
+
+      return allClicks;
+    } catch (error: any) {
+      lastError = error;
+      allClicks.length = 0;
+    }
+  }
+
+  throw lastError;
+};
+
+const normalizeClientIp = (value: unknown) => {
+  if (typeof value !== "string") return "unknown-ip";
+  const normalized = value.trim().replace(/^::ffff:/, "");
+  return normalized || "unknown-ip";
+};
+
+const normalizeUserAgent = (value: unknown) => {
+  if (typeof value !== "string") return "";
+  return value.trim().toLowerCase();
+};
+
+const isBotUserAgent = (userAgent: string) => {
+  if (!userAgent) return true;
+
+  const botPatterns = [
+    "bot",
+    "spider",
+    "crawler",
+    "preview",
+    "facebookexternalhit",
+    "facebot",
+    "slackbot",
+    "discordbot",
+    "telegrambot",
+    "twitterbot",
+    "linkedinbot",
+    "skypeuripreview",
+    "googlebot",
+    "bingbot",
+    "yandex",
+    "bytespider",
+    "headless",
+    "phantomjs",
+    "curl/",
+    "wget/",
+    "python-requests",
+    "node-fetch",
+    "axios",
+    "go-http-client",
+  ];
+
+  return botPatterns.some((pattern) => userAgent.includes(pattern));
+};
+
+const filterRealClicks = (clicks: any[]) => {
+  const sortedClicks = [...clicks].sort((a, b) => {
+    const left = new Date(a?.created_at || 0).getTime();
+    const right = new Date(b?.created_at || 0).getTime();
+    return left - right;
+  });
+
+  const recentVisitorMap = new Map<string, number>();
+  const uniqueClicks: any[] = [];
+
+  for (const click of sortedClicks) {
+    if (!click?.link_id) continue;
+
+    const userAgent = normalizeUserAgent(click.user_agent);
+    if (isBotUserAgent(userAgent)) continue;
+
+    const createdAt = new Date(click.created_at || 0).getTime();
+    if (!Number.isFinite(createdAt) || createdAt <= 0) continue;
+
+    const ipAddress = normalizeClientIp(click.ip_address ?? click.ip);
+    const dedupeKey = [
+      click.link_id,
+      ipAddress,
+      userAgent || "unknown-ua",
+      normalizeTrafficSource(click.source_detail) ||
+        normalizeTrafficSource(click.source) ||
+        "unknown-source",
+    ].join("|");
+
+    const previousTimestamp = recentVisitorMap.get(dedupeKey);
+    if (
+      typeof previousTimestamp === "number" &&
+      createdAt - previousTimestamp < 30_000
+    ) {
+      continue;
+    }
+
+    recentVisitorMap.set(dedupeKey, createdAt);
+    uniqueClicks.push(click);
+  }
+
+  return uniqueClicks;
+};
+
+const buildLinkWritePayloadVariants = (payload: Record<string, unknown>) => {
+  const { secondary_url, redirect_delay_ms, ...basePayload } = payload;
+
+  return [
+    payload,
+    {
+      ...basePayload,
+      secondary_url,
+    },
+    basePayload,
+  ];
+};
+
+const insertLinkRecord = async (
+  supabase: ReturnType<typeof getSupabase>,
+  payload: Record<string, unknown>,
+) => {
+  let lastError: any = null;
+
+  for (const candidate of buildLinkWritePayloadVariants(payload)) {
+    const { data, error } = await supabase
+      .from("links")
+      .insert(candidate)
+      .select()
+      .single();
+
+    if (!error) return data;
+    lastError = error;
+  }
+
+  throw lastError;
+};
+
+const updateLinkRecord = async (
+  supabase: ReturnType<typeof getSupabase>,
+  linkId: string,
+  userId: string,
+  payload: Record<string, unknown>,
+) => {
+  let lastError: any = null;
+
+  for (const candidate of buildLinkWritePayloadVariants(payload)) {
+    const { data, error } = await supabase
+      .from("links")
+      .update(candidate)
+      .eq("id", linkId)
+      .eq("user_id", userId)
+      .select()
+      .single();
+
+    if (!error) return data;
+    lastError = error;
+  }
+
+  throw lastError;
+};
+
+const insertOutboundEvent = async (
+  supabase: ReturnType<typeof getSupabase>,
+  payload: {
+    link_id: string;
+    short_code: string;
+    stage: "primary" | "secondary";
+    destination_url: string;
+    source?: string | null;
+    source_detail?: string | null;
+    referer?: string | null;
+    user_agent?: unknown;
+    ip_address?: string | null;
+  },
+) => {
+  const { error } = await supabase.from("link_outbound_events").insert({
+    ...payload,
+    user_agent:
+      typeof payload.user_agent === "string" ? payload.user_agent : null,
+  });
+  if (error) throw error;
 };
 
 const insertClickWithTracking = async (
@@ -263,24 +563,8 @@ const attachTrackedSourcesToLinks = async (
 
   try {
     const linkIds = links.map((link) => link.id).filter(Boolean);
-    let clicks: any[] | null = null;
-    let error: any = null;
-
-    ({ data: clicks, error } = await supabase
-      .from("clicks")
-      .select("link_id, source, source_detail, referer")
-      .in("link_id", linkIds)
-      .limit(5000));
-
-    if (error) {
-      ({ data: clicks, error } = await supabase
-        .from("clicks")
-        .select("link_id, source, referer")
-        .in("link_id", linkIds)
-        .limit(5000));
-    }
-
-    if (error) throw error;
+    const rawClicks = await fetchClicksForLinkIds(supabase, linkIds);
+    const clicks = filterRealClicks(rawClicks);
 
     const sourceMap = new Map<string, Map<string, number>>();
     const clickCountMap = new Map<string, number>();
@@ -290,7 +574,7 @@ const attachTrackedSourcesToLinks = async (
         normalizeTrafficSource(click.source_detail) ||
         normalizeTrafficSource(click.source) ||
         normalizeTrafficSource(click.referer) ||
-        "unknown";
+        "direct";
       const linkId = click.link_id;
       if (!linkId) return;
 
@@ -305,9 +589,7 @@ const attachTrackedSourcesToLinks = async (
     });
 
     return links.map((link) => {
-      const trackedSources = Array.from(
-        sourceMap.get(link.id)?.entries() || [],
-      )
+      const trackedSources = Array.from(sourceMap.get(link.id)?.entries() || [])
         .sort((a, b) => b[1] - a[1])
         .slice(0, 4)
         .map(([label, count]) => ({ label, count })) as TrackedSourceSummary[];
@@ -336,10 +618,7 @@ const escapeHtml = (value: string) =>
     .replace(/'/g, "&#39;");
 
 const escapeJsString = (value: string) =>
-  value
-    .replace(/\\/g, "\\\\")
-    .replace(/`/g, "\\`")
-    .replace(/\$\{/g, "\\${");
+  value.replace(/\\/g, "\\\\").replace(/`/g, "\\`").replace(/\$\{/g, "\\${");
 
 const capitalizeFirstCharacter = (value: string) => {
   const trimmed = value.trim();
@@ -352,18 +631,21 @@ const capitalizeFirstCharacter = (value: string) => {
 const renderLinkLandingPage = (
   link: PublicLinkRecord,
   canonicalUrl: string,
+  clickTrackingUrl: string,
 ) => {
   const title = capitalizeFirstCharacter(
     link.custom_title?.trim() || "HotsNew Click",
   );
-  const description =
-    capitalizeFirstCharacter(
-      link.custom_description?.trim() ||
-        "Noi dung dang san sang. Bam vao man hinh de tiep tuc.",
-    );
+  const description = capitalizeFirstCharacter(
+    link.custom_description?.trim() ||
+      "Noi dung dang san sang. Bam vao man hinh de tiep tuc.",
+  );
   const imageUrl = link.custom_image_url?.trim() || "";
   const videoUrl = link.video_url?.trim() || "";
   const originalUrl = link.original_url.trim();
+  const secondaryUrl = link.secondary_url?.trim() || "";
+  const redirectDelayMs = normalizeRedirectDelayMs(link.redirect_delay_ms);
+  const hasSecondaryRedirect = Boolean(secondaryUrl);
   const defaultOgImage = `${canonicalUrl.replace(/\/s\/[^/]+$/, "")}/og-image.png`;
   const fallbackFavicon = `${canonicalUrl.replace(/\/s\/[^/]+$/, "")}/logo-app.png`;
   const faviconUrl = imageUrl || fallbackFavicon;
@@ -371,10 +653,10 @@ const renderLinkLandingPage = (
   const hasVideo = Boolean(videoUrl);
   const previewMedia = hasVideo
     ? `
-      <video class="hero-media" src="${escapeHtml(videoUrl)}" autoplay muted loop playsinline controls></video>
+      <video class="hero-media hero-video" src="${escapeHtml(videoUrl)}" autoplay muted loop playsinline controls preload="metadata"></video>
     `
     : imageUrl
-      ? `<img class="hero-media" src="${escapeHtml(imageUrl)}" alt="${escapeHtml(title)}" />`
+      ? `<img class="hero-media hero-image" src="${escapeHtml(imageUrl)}" alt="${escapeHtml(title)}" />`
       : `
         <div class="hero-placeholder">
           <div class="hero-placeholder-ring"></div>
@@ -526,22 +808,50 @@ const renderLinkLandingPage = (
       }
 
       .media-panel {
-        width: min(100%, 46rem);
+        width: min(100%, 72rem);
         display: flex;
         justify-content: center;
+        align-items: center;
         overflow: hidden;
         padding: 0.9rem;
       }
 
       .hero-media {
-        width: min(100%, 40rem);
-        aspect-ratio: 9 / 13;
-        max-height: 42rem;
-        object-fit: cover;
         border-radius: 1.15rem;
         display: block;
         background: rgba(15, 23, 42, 0.72);
         margin-inline: auto;
+      }
+
+      .hero-video {
+        width: min(100%, 34rem);
+        max-width: min(100%, 34rem);
+        height: auto;
+        max-height: min(78vh, 56rem);
+        object-fit: contain;
+        transition: max-width 180ms ease, width 180ms ease;
+      }
+
+      .hero-video.is-landscape {
+        width: min(100%, 56rem);
+        max-width: min(100%, 56rem);
+      }
+
+      .hero-video.is-portrait {
+        width: min(100%, 34rem);
+        max-width: min(100%, 34rem);
+      }
+
+      .hero-video.is-square {
+        width: min(100%, 40rem);
+        max-width: min(100%, 40rem);
+      }
+
+      .hero-image {
+        width: min(100%, 40rem);
+        aspect-ratio: 9 / 13;
+        max-height: 42rem;
+        object-fit: cover;
       }
 
       .hero-placeholder {
@@ -631,10 +941,12 @@ const renderLinkLandingPage = (
         position: fixed;
         inset: 0;
         display: flex;
+        flex-direction: column;
         align-items: center;
         justify-content: center;
+        gap: 1rem;
         padding: 1.5rem;
-        background: rgba(2, 6, 23, 0.1);
+        background: rgba(2, 6, 23, 0.9);
         backdrop-filter: blur(4px);
         z-index: 20;
         cursor: pointer;
@@ -665,6 +977,32 @@ const renderLinkLandingPage = (
         z-index: 21;
       }
 
+      .overlay-cta {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: min(88vw, 24rem);
+        padding: 1rem 1.4rem;
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        border-radius: 999px;
+        background: rgba(15, 23, 42, 0.72);
+        color: var(--text);
+        font-size: 0.78rem;
+        font-weight: 900;
+        text-transform: uppercase;
+        letter-spacing: 0.18em;
+        box-shadow: 0 1rem 2rem rgba(0, 0, 0, 0.25);
+        backdrop-filter: blur(18px);
+      }
+
+      .overlay-note {
+        max-width: 22rem;
+        text-align: center;
+        font-size: 0.74rem;
+        color: rgba(226, 232, 240, 0.82);
+        line-height: 1.55;
+      }
+
       @media (max-width: 900px) {
         .content-panel {
           padding: 1.2rem 1rem 1.4rem;
@@ -674,6 +1012,18 @@ const renderLinkLandingPage = (
         .hero-placeholder {
           width: min(100%, 24rem);
           max-height: min(64vh, 32rem);
+        }
+
+        .hero-video {
+          max-width: 100%;
+          max-height: min(72vh, 36rem);
+        }
+
+        .hero-video.is-landscape,
+        .hero-video.is-portrait,
+        .hero-video.is-square {
+          width: 100%;
+          max-width: 100%;
         }
 
         h1 {
@@ -717,11 +1067,118 @@ const renderLinkLandingPage = (
       (() => {
         const overlay = document.getElementById("overlay");
         const overlayClose = document.getElementById("overlayClose");
-        const targetUrl = \`${escapeJsString(originalUrl)}\`;
+        const mediaPanel = document.querySelector(".media-panel");
+        const heroVideo = document.querySelector(".hero-video");
+        const primaryTargetUrl = \`${escapeJsString(originalUrl)}\`;
+        const secondaryTargetUrl = \`${escapeJsString(secondaryUrl)}\`;
+        const redirectDelayMs = ${redirectDelayMs};
+        const hasSecondaryRedirect = ${hasSecondaryRedirect ? "true" : "false"};
+        const clickTrackingUrl = \`${escapeJsString(clickTrackingUrl)}\`;
+        const outboundTrackingBaseUrl = \`${escapeJsString(
+          clickTrackingUrl.replace("/track-click/", "/track-outbound/"),
+        )}\`;
         let opened = false;
 
         const hideOverlay = () => {
           overlay?.classList.add("hidden");
+        };
+
+        const syncHeroVideoOrientation = () => {
+          if (!(heroVideo instanceof HTMLVideoElement)) return;
+
+          const videoWidth = heroVideo.videoWidth;
+          const videoHeight = heroVideo.videoHeight;
+          if (!videoWidth || !videoHeight) return;
+
+          const orientation =
+            videoWidth > videoHeight
+              ? "landscape"
+              : videoHeight > videoWidth
+                ? "portrait"
+                : "square";
+
+          heroVideo.classList.remove(
+            "is-landscape",
+            "is-portrait",
+            "is-square",
+          );
+          heroVideo.classList.add("is-" + orientation);
+
+          if (mediaPanel instanceof HTMLElement) {
+            mediaPanel.dataset.videoOrientation = orientation;
+          }
+        };
+
+        const trackRealClick = () => {
+          const trackingUrl = new URL(clickTrackingUrl, window.location.origin);
+          const currentSearchParams = new URLSearchParams(window.location.search);
+          currentSearchParams.forEach((value, key) => {
+            trackingUrl.searchParams.set(key, value);
+          });
+
+          const body = JSON.stringify({
+            ts: Date.now(),
+          });
+
+          try {
+            if (navigator.sendBeacon) {
+              const payload = new Blob([body], {
+                type: "application/json",
+              });
+              navigator.sendBeacon(trackingUrl.toString(), payload);
+              return;
+            }
+          } catch (error) {
+            console.warn("sendBeacon failed", error);
+          }
+
+          fetch(trackingUrl.toString(), {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body,
+            keepalive: true,
+          }).catch((error) => {
+            console.warn("Track click fallback failed", error);
+          });
+        };
+
+        const trackOutbound = (stage, destinationUrl) => {
+          const trackingUrl = new URL(outboundTrackingBaseUrl, window.location.origin);
+          const currentSearchParams = new URLSearchParams(window.location.search);
+          currentSearchParams.forEach((value, key) => {
+            trackingUrl.searchParams.set(key, value);
+          });
+
+          const body = JSON.stringify({
+            stage,
+            destination_url: destinationUrl,
+            ts: Date.now(),
+          });
+
+          try {
+            if (navigator.sendBeacon) {
+              const payload = new Blob([body], {
+                type: "application/json",
+              });
+              navigator.sendBeacon(trackingUrl.toString(), payload);
+              return;
+            }
+          } catch (error) {
+            console.warn("sendBeacon outbound failed", error);
+          }
+
+          fetch(trackingUrl.toString(), {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body,
+            keepalive: true,
+          }).catch((error) => {
+            console.warn("Track outbound fallback failed", error);
+          });
         };
 
         const beginRedirectFlow = () => {
@@ -729,21 +1186,22 @@ const renderLinkLandingPage = (
           opened = true;
 
           hideOverlay();
-
-          const link = document.createElement("a");
-          link.href = targetUrl;
-          link.target = "_blank";
-          link.rel = "noopener noreferrer";
-          link.style.display = "none";
-          document.body.appendChild(link);
+          trackRealClick();
+          trackOutbound("primary", primaryTargetUrl);
 
           try {
-            link.click();
+            if (hasSecondaryRedirect) {
+              window.open(primaryTargetUrl, "_blank", "noopener,noreferrer");
+              window.setTimeout(() => {
+                trackOutbound("secondary", secondaryTargetUrl);
+                window.location.href = secondaryTargetUrl;
+              }, redirectDelayMs);
+            } else {
+              window.location.href = primaryTargetUrl;
+            }
           } catch (error) {
             console.error("Popup open failed", error);
-            window.location.href = targetUrl;
-          } finally {
-            link.remove();
+            window.location.href = primaryTargetUrl;
           }
         };
 
@@ -761,6 +1219,12 @@ const renderLinkLandingPage = (
             beginRedirectFlow();
           }
         });
+
+        if (heroVideo instanceof HTMLVideoElement) {
+          heroVideo.addEventListener("loadedmetadata", syncHeroVideoOrientation);
+          heroVideo.addEventListener("resize", syncHeroVideoOrientation);
+          syncHeroVideoOrientation();
+        }
       })();
     </script>
   </body>
@@ -915,7 +1379,9 @@ const syncProfilesFromAuthUsers = async () => {
 
   if (profilesError) throw profilesError;
 
-  const existingProfileIds = new Set((profiles ?? []).map((profile) => profile.id));
+  const existingProfileIds = new Set(
+    (profiles ?? []).map((profile) => profile.id),
+  );
   const missingProfiles = authUsers
     .filter((authUser) => !existingProfileIds.has(authUser.id))
     .map((authUser) => ({
@@ -1075,7 +1541,10 @@ app.post(
   checkPremium,
   async (req: AuthenticatedRequest, res) => {
     try {
-      if (!process.env.CLOUDINARY_API_SECRET || !process.env.CLOUDINARY_API_KEY) {
+      if (
+        !process.env.CLOUDINARY_API_SECRET ||
+        !process.env.CLOUDINARY_API_KEY
+      ) {
         return res
           .status(500)
           .json({ error: "Cloudinary signing is not configured" });
@@ -1235,6 +1704,8 @@ app.post(
         customDescription,
         usageContext,
         customImageUrl,
+        secondaryUrl,
+        redirectDelayMs,
         videoUrl,
       } = req.body;
       if (!userId) return res.status(401).json({ error: "Unauthorized" });
@@ -1248,6 +1719,20 @@ app.post(
         );
       }
       const shortCode = requestedShortCode || nanoid(8);
+      const normalizedOriginalUrl = normalizeProtectedShopeeUrl(
+        url,
+        "Link Shopee gốc",
+      );
+      const normalizedSecondaryUrl = normalizeProtectedShopeeUrl(
+        secondaryUrl,
+        "Link Shopee phụ",
+      );
+      ensureSameShopeeHostname(
+        normalizedOriginalUrl,
+        normalizedSecondaryUrl,
+      );
+      const normalizedRedirectDelayMs =
+        normalizeRedirectDelayMs(redirectDelayMs);
 
       if (requestedShortCode) {
         const { data: existingLink, error: existingError } = await supabase
@@ -1260,30 +1745,32 @@ app.post(
         if (existingLink) {
           return res
             .status(409)
-            .json({ error: "Mã rút gọn này đã tồn tại. Vui lòng chọn mã khác." });
+            .json({
+              error: "Mã rút gọn này đã tồn tại. Vui lòng chọn mã khác.",
+            });
         }
       }
 
-      const { data, error } = await supabase
-        .from("links")
-        .insert({
-          original_url: url,
-          short_code: shortCode,
-          user_id: userId,
-          custom_title: customTitle,
-          custom_description: customDescription,
-          usage_context: usageContext,
-          custom_image_url: customImageUrl,
-          video_url: videoUrl,
-        })
-        .select()
-        .single();
-      if (error) throw error;
+      const data = await insertLinkRecord(supabase, {
+        original_url: normalizedOriginalUrl,
+        secondary_url: normalizedSecondaryUrl,
+        redirect_delay_ms: normalizedRedirectDelayMs,
+        short_code: shortCode,
+        user_id: userId,
+        custom_title: customTitle,
+        custom_description: customDescription,
+        usage_context: usageContext,
+        custom_image_url: customImageUrl,
+        video_url: videoUrl,
+      });
       res.json({
         id: data.id,
         converted_url: `https://hotsnew.click/s/${shortCode}`,
         short_code: data.short_code,
         shortCode: data.short_code,
+        original_url: data.original_url,
+        secondary_url: data.secondary_url,
+        redirect_delay_ms: data.redirect_delay_ms,
         custom_image_url: data.custom_image_url,
         video_url: data.video_url,
       });
@@ -1337,6 +1824,8 @@ app.patch(
         usage_context,
         custom_image_url,
         original_url,
+        secondary_url,
+        redirect_delay_ms,
       } = req.body;
       const userId = req.authUser?.id;
 
@@ -1344,22 +1833,26 @@ app.patch(
         return res.status(401).json({ error: "Unauthorized" });
       }
 
-      const { data, error } = await supabase
-        .from("links")
-        .update({
-          custom_title,
-          custom_description,
-          usage_context,
-          custom_image_url,
-          original_url,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", id)
-        .eq("user_id", userId)
-        .select()
-        .single();
+      const normalizedOriginalUrl = normalizeProtectedShopeeUrl(
+        original_url,
+        "Link Shopee gốc",
+      );
+      const normalizedSecondaryUrl = normalizeProtectedShopeeUrl(
+        secondary_url,
+        "Link Shopee phụ",
+      );
+      ensureSameShopeeHostname(normalizedOriginalUrl, normalizedSecondaryUrl);
 
-      if (error) throw error;
+      const data = await updateLinkRecord(supabase, id, userId, {
+        custom_title,
+        custom_description,
+        usage_context,
+        custom_image_url,
+        original_url: normalizedOriginalUrl,
+        secondary_url: normalizedSecondaryUrl,
+        redirect_delay_ms: normalizeRedirectDelayMs(redirect_delay_ms),
+        updated_at: new Date().toISOString(),
+      });
       res.json(data);
     } catch (e: any) {
       res.status(500).json({ error: e.message });
@@ -1438,12 +1931,9 @@ app.get(
         ]),
       );
 
-      const { data: clicks, error: clicksError } = await supabase
-        .from("clicks")
-        .select("link_id, created_at")
-        .in("link_id", linkIds)
-        .limit(5000);
-      if (clicksError) throw clicksError;
+      const clicks = filterRealClicks(
+        await fetchClicksForLinkIds(supabase, linkIds),
+      );
 
       const thirtyDaysAgo = new Date();
       thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
@@ -1455,7 +1945,7 @@ app.get(
       let previousWindowClicks = 0;
       let currentWindowClicks = 0;
 
-      (clicks || []).forEach((click: any) => {
+      clicks.forEach((click: any) => {
         if (!click?.link_id) return;
 
         linkClickMap.set(
@@ -1567,15 +2057,15 @@ app.get(
         `📊 [Analytics] Fetching clicks for ${linkIds.length} links since ${thirtyDaysAgo.toISOString()}`,
       );
 
-      const { data: clicks, error: clicksError } = await supabase
-        .from("clicks")
-        .select("link_id, created_at, source, source_detail, referer")
-        .in("link_id", linkIds.slice(0, 100)) // Increased slice to 100
-        .gte("created_at", sixtyDaysAgo.toISOString());
-
-      if (clicksError) {
+      let clicks: any[] = [];
+      try {
+        clicks = filterRealClicks(
+          await fetchClicksForLinkIds(supabase, linkIds, {
+            since: sixtyDaysAgo.toISOString(),
+          }),
+        );
+      } catch (clicksError: any) {
         console.error("❌ [Analytics] Clicks query error:", clicksError);
-        // Don't throw here, just return empty clicks but log it
         return res.json({
           history: [],
           topLinks: [],
@@ -1589,29 +2079,27 @@ app.get(
       const trafficSourceStats: Record<string, number> = {};
       let previousWindowClicks = 0;
       let currentWindowClicks = 0;
-      if (clicks) {
-        clicks.forEach((c: any) => {
-          const createdAt = new Date(c.created_at);
-          if (Number.isNaN(createdAt.getTime())) return;
+      clicks.forEach((c: any) => {
+        const createdAt = new Date(c.created_at);
+        if (Number.isNaN(createdAt.getTime())) return;
 
-          if (createdAt >= thirtyDaysAgo) {
-            const date = c.created_at.split("T")[0];
-            historyMap[date] = (historyMap[date] || 0) + 1;
-            linksStats[c.link_id] = (linksStats[c.link_id] || 0) + 1;
+        if (createdAt >= thirtyDaysAgo) {
+          const date = c.created_at.split("T")[0];
+          historyMap[date] = (historyMap[date] || 0) + 1;
+          linksStats[c.link_id] = (linksStats[c.link_id] || 0) + 1;
 
-            const sourceLabel =
-              normalizeTrafficSource(c.source_detail) ||
-              normalizeTrafficSource(c.source) ||
-              normalizeTrafficSource(c.referer) ||
-              "unknown";
-            trafficSourceStats[sourceLabel] =
-              (trafficSourceStats[sourceLabel] || 0) + 1;
-            currentWindowClicks += 1;
-          } else if (createdAt >= sixtyDaysAgo) {
-            previousWindowClicks += 1;
-          }
-        });
-      }
+          const sourceLabel =
+            normalizeTrafficSource(c.source_detail) ||
+            normalizeTrafficSource(c.source) ||
+            normalizeTrafficSource(c.referer) ||
+            "direct";
+          trafficSourceStats[sourceLabel] =
+            (trafficSourceStats[sourceLabel] || 0) + 1;
+          currentWindowClicks += 1;
+        } else if (createdAt >= sixtyDaysAgo) {
+          previousWindowClicks += 1;
+        }
+      });
 
       const history = Object.entries(historyMap)
         .map(([date, clicks]) => ({ date, clicks }))
@@ -2025,8 +2513,39 @@ app.get("/s/:shortCode", async (req, res) => {
       .single();
     if (!link) return res.status(404).send("Not found");
 
+    const publicBaseUrl =
+      getPublicBaseUrl(req) || `${req.protocol}://${req.get("host")}`;
+    const canonicalUrl = `${publicBaseUrl}/s/${encodeURIComponent(shortCode)}`;
+    const clickTrackingUrl = `${publicBaseUrl}/api/v1/public/track-click/${encodeURIComponent(shortCode)}`;
+    const html = renderLinkLandingPage(
+      link as PublicLinkRecord,
+      canonicalUrl,
+      clickTrackingUrl,
+    );
+
+    res.setHeader("Content-Type", "text/html; charset=utf-8");
+    res.status(200).send(html);
+  } catch (e) {
+    res.status(500).send("Error");
+  }
+});
+
+app.post("/api/v1/public/track-click/:shortCode", async (req, res) => {
+  try {
+    const supabase = getSupabase();
+    const { shortCode } = req.params;
+    const { data: link } = await supabase
+      .from("links")
+      .select("id, short_code")
+      .eq("short_code", shortCode)
+      .maybeSingle();
+
+    if (!link?.id) {
+      return res.status(404).json({ error: "Link not found" });
+    }
+
     const trafficSource = getTrafficSourceFromRequest(req);
-    insertClickWithTracking(supabase, {
+    await insertClickWithTracking(supabase, {
       link_id: link.id,
       user_agent: req.headers["user-agent"],
       ip: req.ip,
@@ -2034,19 +2553,61 @@ app.get("/s/:shortCode", async (req, res) => {
       source: trafficSource.source,
       source_detail: trafficSource.source_detail,
       referer: trafficSource.referer,
-    }).catch((error) => {
-      console.warn("[Clicks] insert failed:", error?.message || error);
     });
 
-    const publicBaseUrl =
-      getPublicBaseUrl(req) || `${req.protocol}://${req.get("host")}`;
-    const canonicalUrl = `${publicBaseUrl}/s/${encodeURIComponent(shortCode)}`;
-    const html = renderLinkLandingPage(link as PublicLinkRecord, canonicalUrl);
+    res.status(204).send();
+  } catch (error: any) {
+    console.warn("[Clicks] public track failed:", error?.message || error);
+    res.status(202).json({ ok: false });
+  }
+});
 
-    res.setHeader("Content-Type", "text/html; charset=utf-8");
-    res.status(200).send(html);
-  } catch (e) {
-    res.status(500).send("Error");
+app.post("/api/v1/public/track-outbound/:shortCode", async (req, res) => {
+  try {
+    const supabase = getSupabase();
+    const { shortCode } = req.params;
+    const stage = req.body?.stage === "secondary" ? "secondary" : "primary";
+    const destinationUrl = normalizeProtectedShopeeUrl(
+      req.body?.destination_url,
+      "Link outbound Shopee",
+    );
+
+    const { data: link } = await supabase
+      .from("links")
+      .select("id, short_code, original_url, secondary_url")
+      .eq("short_code", shortCode)
+      .maybeSingle();
+
+    if (!link?.id || !destinationUrl) {
+      return res.status(404).json({ error: "Link not found" });
+    }
+
+    const expectedDestination =
+      stage === "secondary"
+        ? normalizeProtectedShopeeUrl(link.secondary_url, "Link Shopee phụ")
+        : normalizeProtectedShopeeUrl(link.original_url, "Link Shopee gốc");
+
+    if (!expectedDestination || expectedDestination !== destinationUrl) {
+      return res.status(400).json({ error: "Outbound destination mismatch" });
+    }
+
+    const trafficSource = getTrafficSourceFromRequest(req);
+    await insertOutboundEvent(supabase, {
+      link_id: link.id,
+      short_code: link.short_code,
+      stage,
+      destination_url: destinationUrl,
+      source: trafficSource.source,
+      source_detail: trafficSource.source_detail,
+      referer: trafficSource.referer,
+      user_agent: req.headers["user-agent"],
+      ip_address: req.ip,
+    });
+
+    res.status(204).send();
+  } catch (error: any) {
+    console.warn("[Outbound] track failed:", error?.message || error);
+    res.status(202).json({ ok: false });
   }
 });
 
