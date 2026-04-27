@@ -1077,7 +1077,8 @@ const renderLinkLandingPage = (
         const outboundTrackingBaseUrl = \`${escapeJsString(
           clickTrackingUrl.replace("/track-click/", "/track-outbound/"),
         )}\`;
-        let opened = false;
+        let primaryOpened = false;
+        let secondaryOpened = false;
 
         const hideOverlay = () => {
           overlay?.classList.add("hidden");
@@ -1181,22 +1182,18 @@ const renderLinkLandingPage = (
           });
         };
 
-        const beginRedirectFlow = () => {
-          if (opened) return;
-          opened = true;
+        const openPrimaryStep = () => {
+          if (primaryOpened) return;
+          primaryOpened = true;
 
-          hideOverlay();
           trackRealClick();
           trackOutbound("primary", primaryTargetUrl);
 
           try {
             if (hasSecondaryRedirect) {
               window.open(primaryTargetUrl, "_blank", "noopener,noreferrer");
-              window.setTimeout(() => {
-                trackOutbound("secondary", secondaryTargetUrl);
-                window.location.href = secondaryTargetUrl;
-              }, redirectDelayMs);
             } else {
+              hideOverlay();
               window.location.href = primaryTargetUrl;
             }
           } catch (error) {
@@ -1205,18 +1202,46 @@ const renderLinkLandingPage = (
           }
         };
 
+        const openSecondaryStep = () => {
+          if (!hasSecondaryRedirect || secondaryOpened) return;
+          secondaryOpened = true;
+
+          trackOutbound("secondary", secondaryTargetUrl);
+
+          try {
+            window.open(secondaryTargetUrl, "_blank", "noopener,noreferrer");
+          } catch (error) {
+            console.error("Secondary popup open failed", error);
+            window.location.href = secondaryTargetUrl;
+          } finally {
+            hideOverlay();
+          }
+        };
+
         overlay?.addEventListener("click", (event) => {
           if (event.target !== overlay) return;
-          beginRedirectFlow();
+          if (!primaryOpened) {
+            openPrimaryStep();
+            return;
+          }
+          openSecondaryStep();
         });
         overlayClose?.addEventListener("click", (event) => {
           event.stopPropagation();
-          beginRedirectFlow();
+          if (!primaryOpened) {
+            openPrimaryStep();
+            return;
+          }
+          openSecondaryStep();
         });
         overlay?.addEventListener("keydown", (event) => {
           if (event.key === "Enter" || event.key === " ") {
             event.preventDefault();
-            beginRedirectFlow();
+            if (!primaryOpened) {
+              openPrimaryStep();
+              return;
+            }
+            openSecondaryStep();
           }
         });
 
@@ -1370,6 +1395,9 @@ const listAllAuthUsers = async () => {
 const syncProfilesFromAuthUsers = async () => {
   const supabase = getSupabase();
   const authUsers = await listAllAuthUsers();
+  type ExistingProfileRecord = {
+    id: string;
+  };
 
   const { data: profiles, error: profilesError } = await supabase
     .from("profiles")
@@ -1380,7 +1408,7 @@ const syncProfilesFromAuthUsers = async () => {
   if (profilesError) throw profilesError;
 
   const existingProfileIds = new Set(
-    (profiles ?? []).map((profile) => profile.id),
+    ((profiles ?? []) as ExistingProfileRecord[]).map((profile) => profile.id),
   );
   const missingProfiles = authUsers
     .filter((authUser) => !existingProfileIds.has(authUser.id))

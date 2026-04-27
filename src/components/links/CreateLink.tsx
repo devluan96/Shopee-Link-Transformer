@@ -108,8 +108,9 @@ export const CreateLink = ({
   const [fieldErrors, setFieldErrors] = React.useState<
     Partial<Record<FormField, string>>
   >({});
-  const [videoPreviewOrientation, setVideoPreviewOrientation] =
-    React.useState<"landscape" | "portrait" | "square">("landscape");
+  const [videoPreviewOrientation, setVideoPreviewOrientation] = React.useState<
+    "landscape" | "portrait" | "square"
+  >("landscape");
   const redirectDelaySeconds = Math.max(
     1,
     Math.min(10, Math.round(redirectDelayMs / 1000)),
@@ -188,8 +189,7 @@ export const CreateLink = ({
       if (normalizedShortCode.length < 3) {
         nextErrors.customShortCode = "Mã rút gọn phải có ít nhất 3 ký tự.";
       } else if (normalizedShortCode.length > MAX_SHORT_CODE_LENGTH) {
-        nextErrors.customShortCode =
-          `Mã rút gọn không được vượt quá ${MAX_SHORT_CODE_LENGTH} ký tự.`;
+        nextErrors.customShortCode = `Mã rút gọn không được vượt quá ${MAX_SHORT_CODE_LENGTH} ký tự.`;
       }
     }
 
@@ -271,8 +271,7 @@ export const CreateLink = ({
           Tạo Landing Page Mới
         </h2>
         <p className="font-medium italic text-gray-500">
-          Chúng tôi sẽ tự động lấy dữ liệu và tối ưu hóa hiển thị trên
-          Facebook.
+          Chúng tôi sẽ tự động lấy dữ liệu và tối ưu hóa hiển thị trên Facebook.
         </p>
       </header>
 
