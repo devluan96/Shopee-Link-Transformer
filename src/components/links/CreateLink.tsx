@@ -17,6 +17,7 @@ import { cn, normalizeVietnameseSlug } from "@/src/lib/utils";
 
 const MAX_SHORT_CODE_LENGTH = 50;
 const SHOPEE_HOST_REGEX = /(^|\.)shopee\.[a-z.]+$/i;
+const TIKTOK_HOST_REGEX = /(^|\.)tiktok\.com$|(^|\.)vt\.tiktok\.com$|(^|\.)vm\.tiktok\.com$/i;
 
 type FormField =
   | "url"
@@ -44,6 +45,8 @@ interface CreateLinkProps {
   setCustomImageUrl: (v: string) => void;
   secondaryUrl: string;
   setSecondaryUrl: (v: string) => void;
+  secondaryTargetType: "shopee" | "tiktok";
+  setSecondaryTargetType: (v: "shopee" | "tiktok") => void;
   redirectDelayMs: number;
   setRedirectDelayMs: (v: number) => void;
   videoUrl: string;
@@ -88,6 +91,8 @@ export const CreateLink = ({
   setCustomImageUrl,
   secondaryUrl,
   setSecondaryUrl,
+  secondaryTargetType,
+  setSecondaryTargetType,
   redirectDelayMs,
   setRedirectDelayMs,
   videoUrl,
@@ -144,6 +149,18 @@ export const CreateLink = ({
     }
   };
 
+  const isValidTikTokUrl = (value: string) => {
+    try {
+      const parsed = new URL(value.trim());
+      if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+        return false;
+      }
+      return TIKTOK_HOST_REGEX.test(parsed.hostname.trim().toLowerCase());
+    } catch {
+      return false;
+    }
+  };
+
   const getShopeeHostname = (value: string) => {
     try {
       return new URL(value.trim()).hostname.trim().toLowerCase();
@@ -188,16 +205,27 @@ export const CreateLink = ({
       }
     }
 
-    if (secondaryUrl.trim() && !isValidShopeeUrl(secondaryUrl)) {
-      nextErrors.secondaryUrl = "Link Shopee phụ phải là domain Shopee hợp lệ.";
+    if (
+      secondaryUrl.trim() &&
+      secondaryTargetType === "shopee" &&
+      !isValidShopeeUrl(secondaryUrl)
+    ) {
+      nextErrors.secondaryUrl = "Link bước 2 phải là domain Shopee hợp lệ.";
+    } else if (
+      secondaryUrl.trim() &&
+      secondaryTargetType === "tiktok" &&
+      !isValidTikTokUrl(secondaryUrl)
+    ) {
+      nextErrors.secondaryUrl = "Link bước 2 phải là domain TikTok hợp lệ.";
     } else if (
       secondaryUrl.trim() &&
       url.trim() &&
+      secondaryTargetType === "shopee" &&
       isValidShopeeUrl(url) &&
       getShopeeHostname(url) !== getShopeeHostname(secondaryUrl)
     ) {
       nextErrors.secondaryUrl =
-        "Link Shopee phụ phải cùng domain Shopee với link Shopee gốc để bật flow 2 bước.";
+        "Link bước 2 phải cùng domain Shopee với link Shopee gốc khi chọn mode Shopee.";
     }
 
     if (
@@ -451,27 +479,43 @@ export const CreateLink = ({
                 </select>
                 {renderFieldError("usageContext")}
               </div>
-
               <div className="grid grid-cols-1 gap-6 rounded-[1.75rem] border border-amber-100 bg-amber-50/60 p-4 sm:p-5">
                 <div>
                   <p className="mb-1 text-[11px] font-black uppercase tracking-widest text-amber-700">
-                    Bọc bảo vệ 2 bước
+                    {"Bọc bảo vệ 2 bước"}
                   </p>
                   <p className="text-xs font-medium leading-relaxed text-amber-900/70">
-                    Mở link Shopee chính trước. Sau đó người dùng bấm thêm một
-                    lần nữa trên landing để mở link Shopee phụ trên cùng flow
-                    bảo vệ.
+                    {"Mở link Shopee chính trước. Sau đó người dùng bấm thêm một"}
+                    {"lần nữa trên landing để mở link bước 2 trên cùng flow bảo"}
+                    {"vệ."}
                   </p>
                   <p className="mt-2 text-xs font-bold leading-relaxed text-amber-800">
-                    Chỉ nên dùng khi link gốc và link phụ cùng một nguồn
-                    affiliate, và link phụ phải cùng domain Shopee với link gốc.
+                    {"Chỉ dùng mode Shopee khi link gốc và link bước 2 cùng một"}
+                    {"nguồn affiliate. Nếu chọn TikTok thì bước 2 sẽ mở sang nền"}
+                    {"tảng TikTok ở lần bấm tiếp theo."}
                   </p>
                 </div>
                 <div className="grid grid-cols-1 gap-6">
                   <div>
                     <label className="mb-3 flex items-center gap-2 px-1 text-[11px] font-black uppercase tracking-widest text-gray-500">
-                      <Globe size={14} className="text-orange-500" /> Link
-                      Shopee ph?
+                      <Type size={14} className="text-orange-500" /> {"Bước 2 mở gì"}
+                    </label>
+                    <select
+                      value={secondaryTargetType}
+                      onChange={(e) =>
+                        setSecondaryTargetType(
+                          e.target.value === "tiktok" ? "tiktok" : "shopee",
+                        )
+                      }
+                      className="w-full rounded-2xl bg-white px-6 py-4 font-medium text-gray-900 outline-none transition-all focus:ring-4 focus:ring-orange-500/10"
+                    >
+                      <option value="shopee">Shopee</option>
+                      <option value="tiktok">TikTok</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="mb-3 flex items-center gap-2 px-1 text-[11px] font-black uppercase tracking-widest text-gray-500">
+                      <Globe size={14} className="text-orange-500" /> {"Link bước 2"}
                     </label>
                     <input
                       data-field="secondaryUrl"
@@ -481,7 +525,11 @@ export const CreateLink = ({
                         setSecondaryUrl(e.target.value);
                         clearFieldError("secondaryUrl");
                       }}
-                      placeholder="https://shopee.vn/...."
+                      placeholder={
+                        secondaryTargetType === "tiktok"
+                          ? "https://www.tiktok.com/..."
+                          : "https://shopee.vn/...."
+                      }
                       className={inputClass(
                         "secondaryUrl",
                         "w-full rounded-2xl bg-white px-6 py-4 font-medium",
@@ -489,8 +537,10 @@ export const CreateLink = ({
                     />
                     {renderFieldError("secondaryUrl")}
                     <p className="mt-2 px-1 text-[11px] font-medium text-gray-500">
-                      Bỏ trống nếu chỉ muốn đi 1 link như bình thường. Chỉ hỗ
-                      trợ domain Shopee.
+                      {"Bỏ trống nếu chỉ muốn đi 1 link như bình thường."}
+                      {secondaryTargetType === "tiktok"
+                        ? " Chỉ hỗ trợ domain TikTok."
+                        : " Chỉ hỗ trợ domain Shopee."}
                     </p>
                   </div>
                 </div>

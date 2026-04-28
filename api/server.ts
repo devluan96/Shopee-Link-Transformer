@@ -140,6 +140,9 @@ const DEFAULT_REDIRECT_DELAY_MS = 3000;
 const MIN_REDIRECT_DELAY_MS = 1000;
 const MAX_REDIRECT_DELAY_MS = 10000;
 const SHOPEE_HOST_REGEX = /(^|\.)shopee\.[a-z.]+$/i;
+const TIKTOK_HOST_REGEX =
+  /(^|\.)tiktok\.com$|(^|\.)vt\.tiktok\.com$|(^|\.)vm\.tiktok\.com$/i;
+type SecondaryTargetType = "shopee" | "tiktok";
 
 const getBearerToken = (req: Request) => {
   const authHeader = req.headers.authorization;
@@ -226,11 +229,45 @@ const normalizeProtectedShopeeUrl = (
   if (!normalizedUrl) return null;
 
   const parsedUrl = new URL(normalizedUrl);
-  if (!SHOPEE_HOST_REGEX.test(parsedUrl.hostname.trim().toLowerCase())) {
+  const normalizedHostname = parsedUrl.hostname.trim().toLowerCase();
+  const allowTikTokSecondary =
+    label.toLowerCase().includes("bước 2") ||
+    label.toLowerCase().includes("phụ");
+
+  if (
+    !SHOPEE_HOST_REGEX.test(normalizedHostname) &&
+    !(allowTikTokSecondary && TIKTOK_HOST_REGEX.test(normalizedHostname))
+  ) {
     throw new Error(`${label} chá»‰ há»— trá»£ domain Shopee há»£p lá»‡.`);
   }
 
   return normalizedUrl;
+};
+
+const normalizeProtectedTikTokUrl = (
+  value?: string | null,
+  label = "Link TikTok",
+) => {
+  const normalizedUrl = normalizeHttpUrl(value);
+  if (!normalizedUrl) return null;
+
+  const parsedUrl = new URL(normalizedUrl);
+  if (!TIKTOK_HOST_REGEX.test(parsedUrl.hostname.trim().toLowerCase())) {
+    throw new Error(`${label} chỉ hỗ trợ domain TikTok hợp lệ.`);
+  }
+
+  return normalizedUrl;
+};
+
+const normalizeProtectedSecondaryUrl = (
+  value?: string | null,
+  targetType: SecondaryTargetType = "shopee",
+) => {
+  if (targetType === "tiktok") {
+    return normalizeProtectedTikTokUrl(value, "Link bước 2 TikTok");
+  }
+
+  return normalizeProtectedShopeeUrl(value, "Link bước 2 Shopee");
 };
 
 const ensureSameShopeeHostname = (
@@ -241,6 +278,8 @@ const ensureSameShopeeHostname = (
 
   const primaryHostname = new URL(primaryUrl).hostname.trim().toLowerCase();
   const secondaryHostname = new URL(secondaryUrl).hostname.trim().toLowerCase();
+
+  if (TIKTOK_HOST_REGEX.test(secondaryHostname)) return;
 
   if (primaryHostname !== secondaryHostname) {
     throw new Error(
@@ -2595,10 +2634,7 @@ app.post("/api/v1/public/track-outbound/:shortCode", async (req, res) => {
     const supabase = getSupabase();
     const { shortCode } = req.params;
     const stage = req.body?.stage === "secondary" ? "secondary" : "primary";
-    const destinationUrl = normalizeProtectedShopeeUrl(
-      req.body?.destination_url,
-      "Link outbound Shopee",
-    );
+    const destinationUrl = normalizeHttpUrl(req.body?.destination_url);
 
     const { data: link } = await supabase
       .from("links")

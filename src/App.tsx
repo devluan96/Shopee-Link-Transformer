@@ -78,9 +78,9 @@ interface CloudinarySignedUpload {
 
 const SITE_URL = "https://hotsnew.click";
 const DEFAULT_APP_TITLE =
-  "HotsNew Click - Tạo Landing Page Rút Gọn Link Shopee";
+  "HotsNew Click - Tạo Landing Page Rút Gọn Link Shopee, Tiktok với Thống Kê Click và Phân Tích Hiệu Quả Chiến Dịch";
 const DEFAULT_APP_DESCRIPTION =
-  "HotsNew Click giúp tạo landing page trung gian cho link Shopee với tiêu đề, mô tả, ảnh, video và thống kê click tối ưu cho chia sẻ mạng xã hội.";
+  "HotsNew Click giúp tạo landing page trung gian cho link Shopee, Tiktok với tiêu đề, mô tả, ảnh, video và thống kê click tối ưu cho chia sẻ mạng xã hội.";
 
 const upsertMetaTag = (
   selector: string,
@@ -131,6 +131,9 @@ export default function App() {
   const [usageContext, setUsageContext] = useState("");
   const [customImageUrl, setCustomImageUrl] = useState("");
   const [secondaryUrl, setSecondaryUrl] = useState("");
+  const [secondaryTargetType, setSecondaryTargetType] = useState<
+    "shopee" | "tiktok"
+  >("shopee");
   const [redirectDelayMs, setRedirectDelayMs] = useState(3000);
   const [videoUrl, setVideoUrl] = useState("");
   const [uploadingVideo, setUploadingVideo] = useState(false);
@@ -162,8 +165,7 @@ export default function App() {
 
   // Global Copied State
   const [profileLoading, setProfileLoading] = useState(false);
-  const [profileBootstrapLoading, setProfileBootstrapLoading] =
-    useState(false);
+  const [profileBootstrapLoading, setProfileBootstrapLoading] = useState(false);
   const [checkoutLoadingPlan, setCheckoutLoadingPlan] = useState<
     "monthly" | "yearly" | null
   >(null);
@@ -511,8 +513,8 @@ export default function App() {
       const currentSessionUserId = session?.user?.id ?? null;
       const isRepeatedAuthEventForCurrentUser = Boolean(
         currentSessionUserId &&
-          currentSessionUserId === sessionRef.current?.user?.id &&
-          bootstrappedUserIdRef.current === currentSessionUserId,
+        currentSessionUserId === sessionRef.current?.user?.id &&
+        bootstrappedUserIdRef.current === currentSessionUserId,
       );
 
       if (session?.access_token && !isRepeatedAuthEventForCurrentUser) {
@@ -520,7 +522,10 @@ export default function App() {
           await supabase.auth.getUser(session.access_token);
 
         if (validateError || !validatedUser.user) {
-          console.error("[Auth] Invalid cached session detected:", validateError);
+          console.error(
+            "[Auth] Invalid cached session detected:",
+            validateError,
+          );
           clearStoredSession();
           sessionRef.current = null;
           setUser(null);
@@ -873,7 +878,9 @@ export default function App() {
 
       xhr.upload.onprogress = (event) => {
         if (!onProgress || !event.lengthComputable) return;
-        onProgress(Math.min(100, Math.round((event.loaded / event.total) * 100)));
+        onProgress(
+          Math.min(100, Math.round((event.loaded / event.total) * 100)),
+        );
       };
 
       xhr.onload = () => {
@@ -1204,6 +1211,7 @@ export default function App() {
           usageContext,
           customImageUrl,
           secondaryUrl: secondaryUrl.trim(),
+          secondaryTargetType,
           redirectDelayMs,
           videoUrl,
         }),
@@ -1418,7 +1426,8 @@ export default function App() {
     }
   };
 
-  const bootstrappingAccess = authLoading || (!!user && profileBootstrapLoading);
+  const bootstrappingAccess =
+    authLoading || (!!user && profileBootstrapLoading);
 
   if (bootstrappingAccess) {
     return (
@@ -1597,6 +1606,8 @@ export default function App() {
                 setCustomImageUrl={setCustomImageUrl}
                 secondaryUrl={secondaryUrl}
                 setSecondaryUrl={setSecondaryUrl}
+                secondaryTargetType={secondaryTargetType}
+                setSecondaryTargetType={setSecondaryTargetType}
                 redirectDelayMs={redirectDelayMs}
                 setRedirectDelayMs={setRedirectDelayMs}
                 videoUrl={videoUrl}

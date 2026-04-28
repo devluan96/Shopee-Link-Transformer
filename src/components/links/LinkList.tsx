@@ -16,6 +16,9 @@ import { ConvertedLink } from "@/src/types";
 import { formatDistanceToNow } from "date-fns";
 import { QRCodeCanvas } from "qrcode.react";
 
+const TIKTOK_HOST_REGEX =
+  /(^|\.)tiktok\.com$|(^|\.)vt\.tiktok\.com$|(^|\.)vm\.tiktok\.com$/i;
+
 const usageOptions = [
   { value: "", label: "Chọn vị trí sử dụng" },
   { value: "Bài viết Facebook", label: "Bài viết Facebook" },
@@ -67,6 +70,17 @@ export const LinkList = ({
     shortCode: string,
     source: "facebook" | "tiktok" | "zalo",
   ) => `https://hotsnew.click/s/${shortCode}?src=${source}`;
+
+  const getSecondaryTargetLabel = (value?: string) => {
+    if (!value) return null;
+
+    try {
+      const hostname = new URL(value).hostname.trim().toLowerCase();
+      return TIKTOK_HOST_REGEX.test(hostname) ? "TikTok" : "Shopee";
+    } catch {
+      return "Bước 2";
+    }
+  };
 
   const startEdit = (link: ConvertedLink) => {
     setEditingLink(link);
@@ -217,7 +231,7 @@ export const LinkList = ({
                 {l.secondary_url && (
                   <div className="mt-3 flex flex-wrap items-center gap-2">
                     <span className="rounded-full border border-amber-100 bg-amber-50 px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-amber-700">
-                      2 bước
+                      {"2 bước · "}{getSecondaryTargetLabel(l.secondary_url)}
                     </span>
                   </div>
                 )}
