@@ -1221,12 +1221,14 @@ const renderLinkLandingPage = (
             const deepLinkUrl = convertToDeepLink(primaryTargetUrl);
             if (hasSecondaryRedirect) {
               window.open(deepLinkUrl, "_blank", "noopener,noreferrer");
+              hideOverlay();
             } else {
               hideOverlay();
               window.location.href = deepLinkUrl;
             }
           } catch (error) {
             console.error("Popup open failed", error);
+            hideOverlay();
             window.location.href = convertToDeepLink(primaryTargetUrl);
           }
         };
