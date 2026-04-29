@@ -297,7 +297,8 @@ const getTrafficSourceFromRequest = (req: Request) => {
   const referer =
     typeof req.headers.referer === "string" ? req.headers.referer : null;
   const inferredFromReferer = normalizeTrafficSource(referer);
-  const source = normalizeTrafficSource(srcParam) || inferredFromReferer || "direct";
+  const source =
+    normalizeTrafficSource(srcParam) || inferredFromReferer || "direct";
 
   return {
     source,
@@ -1794,10 +1795,7 @@ app.post(
         secondaryUrl,
         "Link Shopee phụ",
       );
-      ensureSameShopeeHostname(
-        normalizedOriginalUrl,
-        normalizedSecondaryUrl,
-      );
+      ensureSameShopeeHostname(normalizedOriginalUrl, normalizedSecondaryUrl);
       const normalizedRedirectDelayMs =
         normalizeRedirectDelayMs(redirectDelayMs);
 
@@ -1810,11 +1808,9 @@ app.post(
 
         if (existingError) throw existingError;
         if (existingLink) {
-          return res
-            .status(409)
-            .json({
-              error: "Mã rút gọn này đã tồn tại. Vui lòng chọn mã khác.",
-            });
+          return res.status(409).json({
+            error: "Mã rút gọn này đã tồn tại. Vui lòng chọn mã khác.",
+          });
         }
       }
 
