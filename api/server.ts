@@ -1214,25 +1214,27 @@ const renderLinkLandingPage = (
           if (primaryOpened) return;
           primaryOpened = true;
 
-          trackRealClick();
-          trackOutbound("primary", primaryTargetUrl);
+          const deepLinkUrl = convertToDeepLink(primaryTargetUrl);
+          
+          // Track asynchronously without blocking redirect
+          Promise.resolve()
+            .then(() => trackRealClick())
+            .then(() => trackOutbound("primary", primaryTargetUrl))
+            .catch(() => {}); // Silently ignore tracking errors
 
-          try {
-            const deepLinkUrl = convertToDeepLink(primaryTargetUrl);
-            if (hasSecondaryRedirect) {
-              const popup = window.open(deepLinkUrl, "_blank", "noopener,noreferrer");
-              hideOverlay();
-              if (!popup) {
+          hideOverlay();
+
+          if (hasSecondaryRedirect) {
+            const popup = window.open(deepLinkUrl, "_blank", "noopener,noreferrer");
+            if (!popup) {
+              setTimeout(() => {
                 window.location.href = deepLinkUrl;
-              }
-            } else {
-              hideOverlay();
-              window.location.href = deepLinkUrl;
+              }, 100);
             }
-          } catch (error) {
-            console.error("Popup open failed", error);
-            hideOverlay();
-            window.location.href = convertToDeepLink(primaryTargetUrl);
+          } else {
+            setTimeout(() => {
+              window.location.href = deepLinkUrl;
+            }, 100);
           }
         };
 
@@ -1258,6 +1260,7 @@ const renderLinkLandingPage = (
         };
 
         overlay?.addEventListener("click", (event) => {
+          event.preventDefault();
           if (event.target !== overlay) return;
           if (!primaryOpened) {
             openPrimaryStep();
@@ -1266,6 +1269,7 @@ const renderLinkLandingPage = (
           openSecondaryStep();
         });
         overlayClose?.addEventListener("click", (event) => {
+          event.preventDefault();
           event.stopPropagation();
           if (!primaryOpened) {
             openPrimaryStep();
