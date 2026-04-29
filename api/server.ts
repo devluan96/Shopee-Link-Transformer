@@ -10,8 +10,6 @@ import { v2 as cloudinary } from "cloudinary";
 import { createClient } from "@supabase/supabase-js";
 import { nanoid } from "nanoid";
 
-console.log("🏁 SERVER.TS LOADING...");
-
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const PORT = Number(process.env.PORT) || 3000;
@@ -24,7 +22,6 @@ try {
       api_key: process.env.CLOUDINARY_API_KEY,
       api_secret: process.env.CLOUDINARY_API_SECRET,
     });
-    console.log("✅ Cloudinary Configured");
   } else {
     console.warn("⚠️ Cloudinary Config Missing");
   }
@@ -56,7 +53,6 @@ const getSupabase = () => {
           autoRefreshToken: false,
         },
       });
-      console.log("✅ Supabase Client Initialized");
     } catch (err) {
       console.error("❌ Supabase Init Fail:", err);
       throw err;
@@ -142,7 +138,6 @@ const MAX_REDIRECT_DELAY_MS = 10000;
 const SHOPEE_HOST_REGEX = /(^|\.)shopee\.[a-z.]+$/i;
 const TIKTOK_HOST_REGEX =
   /(^|\.)tiktok\.com$|(^|\.)vt\.tiktok\.com$|(^|\.)vm\.tiktok\.com$/i;
-type SecondaryTargetType = "shopee" | "tiktok";
 
 const getBearerToken = (req: Request) => {
   const authHeader = req.headers.authorization;
@@ -242,32 +237,6 @@ const normalizeProtectedShopeeUrl = (
   }
 
   return normalizedUrl;
-};
-
-const normalizeProtectedTikTokUrl = (
-  value?: string | null,
-  label = "Link TikTok",
-) => {
-  const normalizedUrl = normalizeHttpUrl(value);
-  if (!normalizedUrl) return null;
-
-  const parsedUrl = new URL(normalizedUrl);
-  if (!TIKTOK_HOST_REGEX.test(parsedUrl.hostname.trim().toLowerCase())) {
-    throw new Error(`${label} chỉ hỗ trợ domain TikTok hợp lệ.`);
-  }
-
-  return normalizedUrl;
-};
-
-const normalizeProtectedSecondaryUrl = (
-  value?: string | null,
-  targetType: SecondaryTargetType = "shopee",
-) => {
-  if (targetType === "tiktok") {
-    return normalizeProtectedTikTokUrl(value, "Link bước 2 TikTok");
-  }
-
-  return normalizeProtectedShopeeUrl(value, "Link bước 2 Shopee");
 };
 
 const ensureSameShopeeHostname = (
@@ -464,7 +433,7 @@ const filterRealClicks = (clicks: any[]) => {
 };
 
 const buildLinkWritePayloadVariants = (payload: Record<string, unknown>) => {
-  const { secondary_url, redirect_delay_ms, ...basePayload } = payload;
+  const { secondary_url, ...basePayload } = payload;
 
   return [
     payload,
@@ -693,7 +662,7 @@ const renderLinkLandingPage = (
   const hasVideo = Boolean(videoUrl);
   const previewMedia = hasVideo
     ? `
-      <video class="hero-media hero-video" src="${escapeHtml(videoUrl)}" autoplay muted loop playsinline controls preload="metadata"></video>
+      <video class="hero-media hero-video" src="${escapeHtml(videoUrl)}" muted loop playsinline controls preload="metadata"></video>
     `
     : imageUrl
       ? `<img class="hero-media hero-image" src="${escapeHtml(imageUrl)}" alt="${escapeHtml(title)}" />`
@@ -1120,6 +1089,25 @@ const renderLinkLandingPage = (
         let primaryOpened = false;
         let secondaryOpened = false;
 
+        const isMobileDevice = () => {
+          return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+        };
+
+        const convertToDeepLink = (url) => {
+          if (!isMobileDevice()) return url;
+          try {
+            const urlObj = new URL(url);
+            if (urlObj.hostname.includes('shopee')) {
+              return url.replace(/^https?:\/\//, 'shopee://');
+            } else if (urlObj.hostname.includes('tiktok')) {
+              return url.replace(/^https?:\/\//, 'tiktok://');
+            }
+          } catch (e) {
+            // Invalid URL, return as is
+          }
+          return url;
+        };
+
         const hideOverlay = () => {
           overlay?.classList.add("hidden");
         };
@@ -1230,15 +1218,16 @@ const renderLinkLandingPage = (
           trackOutbound("primary", primaryTargetUrl);
 
           try {
+            const deepLinkUrl = convertToDeepLink(primaryTargetUrl);
             if (hasSecondaryRedirect) {
-              window.open(primaryTargetUrl, "_blank", "noopener,noreferrer");
+              window.open(deepLinkUrl, "_blank", "noopener,noreferrer");
             } else {
               hideOverlay();
-              window.location.href = primaryTargetUrl;
+              window.location.href = deepLinkUrl;
             }
           } catch (error) {
             console.error("Popup open failed", error);
-            window.location.href = primaryTargetUrl;
+            window.location.href = convertToDeepLink(primaryTargetUrl);
           }
         };
 
@@ -1248,11 +1237,16 @@ const renderLinkLandingPage = (
 
           trackOutbound("secondary", secondaryTargetUrl);
 
+          // Play video when jumping to secondary link
+          if (heroVideo instanceof HTMLVideoElement) {
+            heroVideo.play().catch(console.error);
+          }
+
           try {
-            window.open(secondaryTargetUrl, "_blank", "noopener,noreferrer");
+            window.location.href = convertToDeepLink(secondaryTargetUrl);
           } catch (error) {
-            console.error("Secondary popup open failed", error);
-            window.location.href = secondaryTargetUrl;
+            console.error("Secondary redirect failed", error);
+            window.location.href = convertToDeepLink(secondaryTargetUrl);
           } finally {
             hideOverlay();
           }
@@ -2080,7 +2074,6 @@ app.get(
     try {
       const supabase = getSupabase();
       const userId = req.authUser?.id;
-      console.log(`📈 [Analytics] Request for userId: ${userId}`);
 
       if (!userId) {
         console.warn("⚠️ [Analytics] Missing userId");
@@ -2098,7 +2091,6 @@ app.get(
       }
 
       if (!links || links.length === 0) {
-        console.log("ℹ️ [Analytics] No links found for user");
         return res.json({
           history: [],
           topLinks: [],
@@ -2115,10 +2107,6 @@ app.get(
       thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
       const sixtyDaysAgo = new Date();
       sixtyDaysAgo.setDate(sixtyDaysAgo.getDate() - 60);
-
-      console.log(
-        `📊 [Analytics] Fetching clicks for ${linkIds.length} links since ${thirtyDaysAgo.toISOString()}`,
-      );
 
       let clicks: any[] = [];
       try {
@@ -2188,9 +2176,6 @@ app.get(
               ).toFixed(1),
             );
 
-      console.log(
-        `✅ [Analytics] Success: ${history.length} history points, ${topLinks.length} top links`,
-      );
       res.json({ history, topLinks, trafficSources, growthPercentage });
     } catch (e: any) {
       console.error("💥 [Analytics] Final catch block error:", e.message);
@@ -2464,8 +2449,6 @@ app.post(
       const { targetUid } = req.params;
       const { plan, expiry } = req.body;
 
-      console.log(`🛠 [Admin] Updating sub for ${targetUid} to ${plan}`);
-
       const { error } = await supabase
         .from("profiles")
         .update({
@@ -2702,9 +2685,7 @@ async function startLocalServer() {
   }
 
   if (!process.env.VERCEL) {
-    app.listen(PORT, "0.0.0.0", () => {
-      console.log(`Server running at http://localhost:${PORT}`);
-    });
+    app.listen(PORT, "0.0.0.0", () => {});
   }
 }
 

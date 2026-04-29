@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, Suspense, lazy } from "react";
-import { Zap, Clock, Menu } from "lucide-react";
+import { Zap, Menu } from "lucide-react";
 import {
   supabase,
   logout,
@@ -297,11 +297,6 @@ export default function App() {
     if (!import.meta.env.DEV) return;
 
     const apiBase = "/api";
-    console.log("🔍 Diagnostic Info:", {
-      href: window.location.href,
-      origin: window.location.origin,
-      pathname: window.location.pathname,
-    });
 
     fetch(`${apiBase}/health`, {
       headers: { Accept: "application/json" },
@@ -309,9 +304,8 @@ export default function App() {
       .then(async (r) => {
         const text = await r.text();
         try {
-          const json = JSON.parse(text);
-          console.log("✅ API Health:", json);
-        } catch (e) {
+          JSON.parse(text);
+        } catch (_e) {
           console.error(
             "❌ API Reachability issue (Not JSON):",
             text.substring(0, 200),
@@ -444,10 +438,8 @@ export default function App() {
   const fetchAnalytics = async () => {
     if (!user) return;
     try {
-      console.log("📡 Fetching analytics for user:", user.id);
       const res = await fetchWithAuth("/api/v1/user/analytics");
       const data = await res.json();
-      console.log("📊 Analytics data received:", data);
       setAnalyticsData(data);
       setAnalyticsDirty(false);
     } catch (e: any) {
@@ -458,7 +450,6 @@ export default function App() {
 
   useEffect(() => {
     if (activeTab === "analytics" && analyticsDirty) {
-      console.log("📊 Active tab changed to analytics, fetching...");
       fetchAnalytics();
     }
   }, [activeTab, analyticsDirty, user?.id]);
@@ -481,17 +472,12 @@ export default function App() {
     };
 
     const checkInitialSession = async () => {
-      console.log("🔍 [Listener] Running explicit session check...");
       try {
         const {
           data: { session },
         } = await supabase.auth.getSession();
         sessionRef.current = session ?? null;
         if (session?.user) {
-          console.log(
-            "✅ [Listener] Initial session found via getSession:",
-            session.user.id,
-          );
           setUser(session.user);
         }
       } catch (err) {
@@ -503,13 +489,6 @@ export default function App() {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log(
-        "🔄 [Listener] Auth State Changed:",
-        event,
-        "User present:",
-        !!session?.user,
-      );
-
       const currentSessionUserId = session?.user?.id ?? null;
       const isRepeatedAuthEventForCurrentUser = Boolean(
         currentSessionUserId &&
@@ -545,7 +524,6 @@ export default function App() {
         setProfileBootstrapLoading(false);
         setAuthLoading(false);
         return;
-        console.log("ℹ️ [Listener] No initial session found.");
       }
 
       if (event === "SIGNED_OUT") {
@@ -609,9 +587,7 @@ export default function App() {
 
           try {
             const profileUrl = `${window.location.origin}/api/v1/user/profile`;
-            console.log("📡 Fetching profile via:", profileUrl);
             existingProfile = await fetchWithRetry(profileUrl);
-            if (existingProfile) console.log("✅ Profile fetch success");
           } catch (fetchError: any) {
             console.error("❌ Error fetching profile via proxy:", fetchError);
             // Fallback to client-side fetch if proxy fails (though RLS might be an issue)
@@ -628,11 +604,8 @@ export default function App() {
           }
 
           if (!existingProfile || existingProfile.is_new) {
-            console.log(
-              "📝 Profile not found in DB. Creating initial record...",
-            );
+            // Profile not found in DB. Creating initial record...
 
-            // Generate standard defaults
             const defaultName =
               currentUser.user_metadata?.full_name ||
               currentUser.email?.split("@")[0] ||
@@ -655,10 +628,6 @@ export default function App() {
             const newProfile = await insertRes.json();
             setProfile(newProfile as UserProfile);
           } else {
-            console.log(
-              "✅ Profile found and loaded:",
-              existingProfile.full_name,
-            );
             setProfile(existingProfile as UserProfile);
           }
 
@@ -677,7 +646,6 @@ export default function App() {
                 filter: `id=eq.${currentUser.id}`,
               },
               (payload) => {
-                console.log("🔔 Profile updated via Realtime:", payload.new);
                 setProfile(payload.new as UserProfile);
               },
             )
@@ -1003,7 +971,6 @@ export default function App() {
 
   const handleVideoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    console.log("🎬 Video input change detected:", file?.name, file?.size);
     if (!file) return;
 
     if (!canAccessCreate) {
@@ -1033,7 +1000,6 @@ export default function App() {
         file.name,
         setVideoUploadProgress,
       );
-      console.log("✅ Upload Success Data:", secureUrl);
       if (secureUrl) {
         setVideoUrl(secureUrl);
         setVideoUploadSuccess(true);
@@ -1087,7 +1053,6 @@ export default function App() {
 
     try {
       setAuthLoading(false);
-      console.log("🚪 [Auth] Logging out...");
 
       // Aggressive logout
       await logout();
@@ -1098,9 +1063,6 @@ export default function App() {
       setProfile(null);
 
       // Clear browser storage to ensure no stale tokens
-
-      console.log("🔄 [Auth] Redirecting after logout...");
-      console.log("[Auth] Logout completed.");
     } catch (e) {
       console.error("Logout error:", e);
       clearStoredSession();
@@ -1355,8 +1317,6 @@ export default function App() {
     }
 
     try {
-      console.log("🚀 Starting Server-side Avatar upload proxy...");
-
       const formData = new FormData();
       formData.append("file", file);
 
@@ -1383,7 +1343,6 @@ export default function App() {
         throw new Error(data.error || "Server upload failed");
       }
 
-      console.log("🔗 Proxy Upload Result:", data.secure_url);
       return data.secure_url;
     } catch (e: any) {
       console.error("❌ Proxy Avatar upload catch:", e);
@@ -1445,7 +1404,6 @@ export default function App() {
       e.preventDefault();
       if (loading) return;
 
-      console.log("🚀 [Auth] Starting login attempt for:", email);
       setAuthError(null);
       setAuthNotice(null);
       setLoading(true);
@@ -1463,9 +1421,7 @@ export default function App() {
 
       try {
         if (isRegistering) {
-          console.log("[Auth] Calling registerWithEmail...");
           const user = await registerWithEmail(email, password);
-          console.log("[Auth] Register success:", user?.id);
           const existingAccount = user?.identities?.length === 0;
           if (existingAccount) {
             toast.error(
@@ -1484,9 +1440,7 @@ export default function App() {
           setIsRegistering(false);
           setPassword("");
         } else {
-          console.log("[Auth] Calling loginWithEmail...");
           const user = await loginWithEmail(email, password);
-          console.log("[Auth] Login success:", user?.id);
           setAuthNotice(null);
         }
       } catch (err: any) {
@@ -1501,7 +1455,6 @@ export default function App() {
         }
       } finally {
         clearTimeout(safetyTimer);
-        console.log("🏁 [Auth] Email auth finished, resetting loading");
         setLoading(false);
       }
     };

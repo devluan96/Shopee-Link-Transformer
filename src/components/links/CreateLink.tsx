@@ -17,7 +17,8 @@ import { cn, normalizeVietnameseSlug } from "@/src/lib/utils";
 
 const MAX_SHORT_CODE_LENGTH = 50;
 const SHOPEE_HOST_REGEX = /(^|\.)shopee\.[a-z.]+$/i;
-const TIKTOK_HOST_REGEX = /(^|\.)tiktok\.com$|(^|\.)vt\.tiktok\.com$|(^|\.)vm\.tiktok\.com$/i;
+const TIKTOK_HOST_REGEX =
+  /(^|\.)tiktok\.com$|(^|\.)vt\.tiktok\.com$|(^|\.)vm\.tiktok\.com$/i;
 
 type FormField =
   | "url"
@@ -121,13 +122,6 @@ export const CreateLink = ({
     : "";
   const uploadProgressOffset = 87.96 - (87.96 * videoUploadProgress) / 100;
 
-  React.useEffect(() => {
-    if (customImageUrl.trim() || videoUrl.trim()) {
-      clearFieldError("customImageUrl");
-      clearFieldError("videoUrl");
-    }
-  }, [customImageUrl, videoUrl]);
-
   const clearFieldError = (field: FormField) => {
     setFieldErrors((prev) => {
       if (!prev[field]) return prev;
@@ -136,6 +130,13 @@ export const CreateLink = ({
       return next;
     });
   };
+
+  React.useEffect(() => {
+    if (customImageUrl.trim() || videoUrl.trim()) {
+      clearFieldError("customImageUrl");
+      clearFieldError("videoUrl");
+    }
+  }, [customImageUrl, videoUrl]);
 
   const isValidShopeeUrl = (value: string) => {
     try {
@@ -318,7 +319,7 @@ export const CreateLink = ({
           <form
             onSubmit={handleSubmit}
             noValidate
-            className="relative space-y-6 overflow-hidden rounded-[2rem] border border-gray-100 bg-white/95 p-5 shadow-2xl backdrop-blur-xl sm:space-y-8 sm:rounded-[3rem] sm:p-8 lg:p-10"
+            className="relative space-y-6 overflow-hidden rounded-4xl border border-gray-100 bg-white/95 p-5 shadow-2xl backdrop-blur-xl sm:space-y-8 sm:rounded-[3rem] sm:p-8 lg:p-10"
           >
             <div className="pointer-events-none absolute right-0 top-0 -mr-16 -mt-16 h-32 w-32 rounded-full bg-orange-600/5 blur-3xl" />
 
@@ -327,7 +328,7 @@ export const CreateLink = ({
                 <p className="mb-2 px-1 text-[11px] font-black uppercase tracking-widest text-gray-400">
                   Thiết lập link
                 </p>
-                <h3 className="max-w-[12rem] text-3xl font-black leading-none tracking-tight text-gray-900 sm:max-w-none sm:text-2xl sm:leading-tight">
+                <h3 className="max-w-48 text-3xl font-black leading-none tracking-tight text-gray-900 sm:max-w-none sm:text-2xl sm:leading-tight">
                   Rút gọn link Shopee
                 </h3>
               </div>
@@ -485,20 +486,29 @@ export const CreateLink = ({
                     {"Bọc bảo vệ 2 bước"}
                   </p>
                   <p className="text-xs font-medium leading-relaxed text-amber-900/70">
-                    {"Mở link Shopee chính trước. Sau đó người dùng bấm thêm một"}
-                    {"lần nữa trên landing để mở link bước 2 trên cùng flow bảo"}
+                    {
+                      "Mở link Shopee chính trước. Sau đó người dùng bấm thêm một "
+                    }
+                    {
+                      "lần nữa trên landing để mở link bước 2 trên cùng flow bảo "
+                    }
                     {"vệ."}
                   </p>
                   <p className="mt-2 text-xs font-bold leading-relaxed text-amber-800">
-                    {"Chỉ dùng mode Shopee khi link gốc và link bước 2 cùng một"}
-                    {"nguồn affiliate. Nếu chọn TikTok thì bước 2 sẽ mở sang nền"}
+                    {
+                      "Chỉ dùng mode Shopee khi link gốc và link bước 2 cùng một "
+                    }
+                    {
+                      "nguồn affiliate. Nếu chọn TikTok thì bước 2 sẽ mở sang nền "
+                    }
                     {"tảng TikTok ở lần bấm tiếp theo."}
                   </p>
                 </div>
                 <div className="grid grid-cols-1 gap-6">
                   <div>
                     <label className="mb-3 flex items-center gap-2 px-1 text-[11px] font-black uppercase tracking-widest text-gray-500">
-                      <Type size={14} className="text-orange-500" /> {"Bước 2 mở gì"}
+                      <Type size={14} className="text-orange-500" />{" "}
+                      {"Bước 2 mở gì"}
                     </label>
                     <select
                       value={secondaryTargetType}
@@ -515,7 +525,8 @@ export const CreateLink = ({
                   </div>
                   <div>
                     <label className="mb-3 flex items-center gap-2 px-1 text-[11px] font-black uppercase tracking-widest text-gray-500">
-                      <Globe size={14} className="text-orange-500" /> {"Link bước 2"}
+                      <Globe size={14} className="text-orange-500" />{" "}
+                      {"Link bước 2"}
                     </label>
                     <input
                       data-field="secondaryUrl"
@@ -637,7 +648,7 @@ export const CreateLink = ({
                       className={cn(
                         "relative mt-auto overflow-hidden rounded-3xl bg-black shadow-2xl ring-4 ring-white",
                         videoPreviewOrientation === "portrait"
-                          ? "mx-auto aspect-[9/16] w-full max-w-[18rem]"
+                          ? "mx-auto aspect-9/16 w-full max-w-[18rem]"
                           : videoPreviewOrientation === "square"
                             ? "mx-auto aspect-square w-full max-w-[24rem]"
                             : "aspect-video w-full",
