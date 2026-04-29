@@ -1214,27 +1214,33 @@ const renderLinkLandingPage = (
           if (primaryOpened) return;
           primaryOpened = true;
 
-          const deepLinkUrl = convertToDeepLink(primaryTargetUrl);
-          
-          // Track asynchronously without blocking redirect
-          Promise.resolve()
-            .then(() => trackRealClick())
-            .then(() => trackOutbound("primary", primaryTargetUrl))
-            .catch(() => {}); // Silently ignore tracking errors
-
           hideOverlay();
 
+          // Track in background without blocking
+          try {
+            const trackingUrl = new URL(clickTrackingUrl, window.location.origin);
+            const currentSearchParams = new URLSearchParams(window.location.search);
+            currentSearchParams.forEach((value, key) => {
+              trackingUrl.searchParams.set(key, value);
+            });
+            const payload = new Blob(
+              [JSON.stringify({ ts: Date.now() })],
+              { type: "application/json" }
+            );
+            navigator.sendBeacon?.(trackingUrl.toString(), payload);
+          } catch (e) {
+            // Ignore
+          }
+
+          // Redirect
+          const deepLinkUrl = convertToDeepLink(primaryTargetUrl);
           if (hasSecondaryRedirect) {
             const popup = window.open(deepLinkUrl, "_blank", "noopener,noreferrer");
             if (!popup) {
-              setTimeout(() => {
-                window.location.href = deepLinkUrl;
-              }, 100);
+              window.location.href = deepLinkUrl;
             }
           } else {
-            setTimeout(() => {
-              window.location.href = deepLinkUrl;
-            }, 100);
+            window.location.href = deepLinkUrl;
           }
         };
 
@@ -1242,25 +1248,34 @@ const renderLinkLandingPage = (
           if (!hasSecondaryRedirect || secondaryOpened) return;
           secondaryOpened = true;
 
-          trackOutbound("secondary", secondaryTargetUrl);
+          // Track in background without blocking
+          try {
+            const trackingUrl = new URL(outboundTrackingBaseUrl, window.location.origin);
+            const currentSearchParams = new URLSearchParams(window.location.search);
+            currentSearchParams.forEach((value, key) => {
+              trackingUrl.searchParams.set(key, value);
+            });
+            const payload = new Blob(
+              [JSON.stringify({ stage: "secondary", destination_url: secondaryTargetUrl, ts: Date.now() })],
+              { type: "application/json" }
+            );
+            navigator.sendBeacon?.(trackingUrl.toString(), payload);
+          } catch (e) {
+            // Ignore
+          }
 
           // Play video when jumping to secondary link
           if (heroVideo instanceof HTMLVideoElement) {
-            heroVideo.play().catch(console.error);
+            heroVideo.play().catch(() => {});
           }
 
-          try {
-            window.location.href = convertToDeepLink(secondaryTargetUrl);
-          } catch (error) {
-            console.error("Secondary redirect failed", error);
-            window.location.href = convertToDeepLink(secondaryTargetUrl);
-          } finally {
-            hideOverlay();
-          }
+          hideOverlay();
+          window.location.href = convertToDeepLink(secondaryTargetUrl);
         };
 
         overlay?.addEventListener("click", (event) => {
           event.preventDefault();
+          event.stopPropagation();
           if (event.target !== overlay) return;
           if (!primaryOpened) {
             openPrimaryStep();
