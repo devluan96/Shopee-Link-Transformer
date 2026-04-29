@@ -1220,8 +1220,11 @@ const renderLinkLandingPage = (
           try {
             const deepLinkUrl = convertToDeepLink(primaryTargetUrl);
             if (hasSecondaryRedirect) {
-              window.open(deepLinkUrl, "_blank", "noopener,noreferrer");
+              const popup = window.open(deepLinkUrl, "_blank", "noopener,noreferrer");
               hideOverlay();
+              if (!popup) {
+                window.location.href = deepLinkUrl;
+              }
             } else {
               hideOverlay();
               window.location.href = deepLinkUrl;
