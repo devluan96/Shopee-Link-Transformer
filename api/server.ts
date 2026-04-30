@@ -1076,6 +1076,7 @@ const renderLinkLandingPage = (
         opacity: 0;
         visibility: hidden;
         pointer-events: none;
+        display: none !important;
       }
 
       .overlay-close {
@@ -1256,7 +1257,6 @@ const renderLinkLandingPage = (
         const hideOverlay = () => {
           if (!overlay) return;
           overlay.classList.add("hidden");
-          overlay.style.display = "none";
         };
 
         const syncHeroVideoOrientation = () => {
@@ -1286,11 +1286,17 @@ const renderLinkLandingPage = (
         };
 
         const trackRealClick = () => {
-          const trackingUrl = new URL(clickTrackingUrl, window.location.origin);
-          const currentSearchParams = new URLSearchParams(window.location.search);
-          currentSearchParams.forEach((value, key) => {
-            trackingUrl.searchParams.set(key, value);
-          });
+          let trackingUrl;
+          try {
+            trackingUrl = new URL(clickTrackingUrl, window.location.origin);
+            const currentSearchParams = new URLSearchParams(window.location.search);
+            currentSearchParams.forEach((value, key) => {
+              trackingUrl.searchParams.set(key, value);
+            });
+          } catch (e) {
+            console.warn("Invalid tracking URL", e);
+            return;
+          }
 
           const body = JSON.stringify({
             ts: Date.now(),
@@ -1321,11 +1327,17 @@ const renderLinkLandingPage = (
         };
 
         const trackOutbound = (stage, destinationUrl) => {
-          const trackingUrl = new URL(outboundTrackingBaseUrl, window.location.origin);
-          const currentSearchParams = new URLSearchParams(window.location.search);
-          currentSearchParams.forEach((value, key) => {
-            trackingUrl.searchParams.set(key, value);
-          });
+          let trackingUrl;
+          try {
+            trackingUrl = new URL(outboundTrackingBaseUrl, window.location.origin);
+            const currentSearchParams = new URLSearchParams(window.location.search);
+            currentSearchParams.forEach((value, key) => {
+              trackingUrl.searchParams.set(key, value);
+            });
+          } catch (e) {
+            console.warn("Invalid outbound tracking URL", e);
+            return;
+          }
 
           const body = JSON.stringify({
             stage,
@@ -1361,10 +1373,9 @@ const renderLinkLandingPage = (
           if (primaryOpened) return;
           primaryOpened = true;
 
-          hideOverlay();
-
           trackRealClick();
           trackOutbound("primary", primaryTargetUrl);
+          hideOverlay();
 
           const popup = !isMobileDevice()
             ? window.open(primaryTargetUrl, "_blank", "noopener,noreferrer")
@@ -1372,6 +1383,7 @@ const renderLinkLandingPage = (
           if (!popup) {
             navigateWithDeepLink(primaryTargetUrl, true);
           }
+          return true;
         };
 
         const openSecondaryStep = () => {
@@ -1406,50 +1418,20 @@ const renderLinkLandingPage = (
           );
         };
 
-        // Handler chung cho cả overlay và nút close
-        const dismissOverlay = () => {
-          hideOverlay();
+        // Đảm bảo nút X và màn che luôn kích hoạt đóng và mở link
+        const handleFirstInteraction = (e) => {
+          if (e) {
+            e.preventDefault();
+            e.stopPropagation();
+          }
+          openPrimaryStep();
         };
 
-        overlay?.addEventListener("pointerdown", (event) => {
-          // Chỉ xử lý click trực tiếp trên overlay background, không phải children
-          if (event.target === overlay) {
-            event.preventDefault();
-            event.stopPropagation();
-            openPrimaryStep();
-          }
-        });
+        if (overlay) overlay.onclick = handleFirstInteraction;
+        if (overlayClose) overlayClose.onclick = handleFirstInteraction;
 
-        overlay?.addEventListener("click", (event) => {
-          if (event.target === overlay) {
-            event.preventDefault();
-            event.stopPropagation();
-            openPrimaryStep();
-          }
-        });
-
-        overlayClose?.addEventListener("pointerdown", (event) => {
-          event.preventDefault();
-          event.stopPropagation();
-          openPrimaryStep();
-        });
-
-        overlayClose?.addEventListener("click", (event) => {
-          event.preventDefault();
-          event.stopPropagation();
-          openPrimaryStep();
-        });
-
-        overlay?.addEventListener("keydown", (event) => {
-          if (event.key === "Enter" || event.key === " ") {
-            event.preventDefault();
-            openPrimaryStep();
-            return;
-          }
-          if (event.key === "Escape") {
-            event.preventDefault();
-            dismissOverlay();
-          }
+        window.addEventListener("keydown", (e) => {
+          if (e.key === "Escape" || e.key === "Enter") handleFirstInteraction();
         });
 
         card?.addEventListener("click", (event) => {
