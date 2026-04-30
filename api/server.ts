@@ -799,83 +799,76 @@ const renderLinkLandingPage = (
 
       .card {
         position: relative;
-        width: min(880px, 100%);
+        width: min(420px, 92vw);
         display: flex;
         flex-direction: column;
-        align-items: center;
-        gap: 1.5rem;
         background: var(--panel);
         border: 1px solid var(--border);
         border-radius: 2rem;
-        padding: 1.5rem;
+        overflow: hidden;
         backdrop-filter: blur(24px) saturate(130%);
         box-shadow:
           0 1.5rem 4rem rgba(0, 0, 0, 0.34),
           inset 0 1px 0 rgba(255, 255, 255, 0.08);
       }
 
-      .media-panel,
-      .content-panel {
-        background: rgba(255, 255, 255, 0.03);
-        border: 1px solid rgba(255, 255, 255, 0.08);
-        border-radius: 1.5rem;
-      }
-
       .media-panel {
-        width: min(100%, 72rem);
+        position: relative;
+        width: 100%;
         display: flex;
         justify-content: center;
         align-items: center;
         overflow: hidden;
-        padding: 0.9rem;
+        aspect-ratio: 9 / 16;
+        background: linear-gradient(135deg, rgba(15, 23, 42, 0.95), rgba(17, 24, 39, 0.7));
+      }
+
+      .media-panel::after {
+        content: "";
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        height: 50%;
+        background: linear-gradient(to top, rgba(0, 0, 0, 0.8) 0%, rgba(0, 0, 0, 0.4) 40%, transparent 100%);
+        pointer-events: none;
+        border-radius: 0 0 2rem 2rem;
       }
 
       .hero-media {
-        border-radius: 1.15rem;
+        width: 100%;
+        height: 100%;
+        border-radius: 0;
         display: block;
-        background: rgba(15, 23, 42, 0.72);
-        margin-inline: auto;
+        object-fit: cover;
       }
 
       .hero-video {
-        width: min(100%, 34rem);
-        max-width: min(100%, 34rem);
-        height: auto;
-        max-height: min(78vh, 56rem);
-        object-fit: contain;
-        transition: max-width 180ms ease, width 180ms ease;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        border-radius: 0;
       }
 
-      .hero-video.is-landscape {
-        width: min(100%, 56rem);
-        max-width: min(100%, 56rem);
-      }
-
-      .hero-video.is-portrait {
-        width: min(100%, 34rem);
-        max-width: min(100%, 34rem);
-      }
-
+      .hero-video.is-landscape,
+      .hero-video.is-portrait,
       .hero-video.is-square {
-        width: min(100%, 40rem);
-        max-width: min(100%, 40rem);
+        width: 100%;
+        max-width: 100%;
       }
 
       .hero-image {
-        width: min(100%, 40rem);
-        aspect-ratio: 9 / 13;
-        max-height: 42rem;
+        width: 100%;
+        height: 100%;
         object-fit: cover;
       }
 
       .hero-placeholder {
-        width: min(100%, 40rem);
-        aspect-ratio: 9 / 13;
-        max-height: 42rem;
-        border-radius: 1.15rem;
+        width: 100%;
+        height: 100%;
+        border-radius: 0;
         display: grid;
         place-items: center;
-        margin-inline: auto;
         background:
           radial-gradient(circle at 30% 24%, rgba(34, 211, 238, 0.2), transparent 18%),
           radial-gradient(circle at 72% 68%, rgba(251, 113, 133, 0.24), transparent 24%),
@@ -905,20 +898,47 @@ const renderLinkLandingPage = (
       }
 
       .content-panel {
-        width: min(100%, 46rem);
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        z-index: 10;
         display: flex;
         flex-direction: column;
         align-items: flex-start;
         text-align: left;
-        padding: 1.2rem 1.35rem 1.45rem;
+        padding: 2rem 1.5rem 1.5rem;
+        background: transparent;
+        border: none;
+        border-radius: 0;
       }
 
       .headline {
         display: inline-flex;
         align-items: center;
         justify-content: flex-start;
-        gap: 0.7rem;
-        margin-bottom: 0.65rem;
+        gap: 0.5rem;
+        margin-bottom: 0.5rem;
+      }
+
+      .headline h1 {
+        font-size: 1.4rem;
+        font-weight: 800;
+        line-height: 1.3;
+        background: linear-gradient(135deg, #ffffff 0%, #e2e8f0 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+        margin: 0;
+      }
+
+      .content-panel p {
+        font-size: 0.95rem;
+        line-height: 1.5;
+        color: rgba(255, 255, 255, 0.85);
+        margin: 0;
+        text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
       }
 
       .badge-row {
@@ -1118,14 +1138,13 @@ const renderLinkLandingPage = (
       <section class="card">
         <div class="media-panel">
           ${previewMedia}
-        </div>
-
-        <div class="content-panel">
-          <div class="headline">
-            <span class="hot-badge" aria-hidden="true">🔥</span>
-            <h1>${escapeHtml(title)}</h1>
+          <div class="content-panel">
+            <div class="headline">
+              <span class="hot-badge" aria-hidden="true">🔥</span>
+              <h1>${escapeHtml(title)}</h1>
+            </div>
+            <p>${escapeHtml(description)}</p>
           </div>
-          <p>${escapeHtml(description)}</p>
         </div>
       </section>
     </main>
