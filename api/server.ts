@@ -666,7 +666,9 @@ const renderLinkLandingPage = (
   const socialImageUrl = imageUrl || defaultOgImage;
   const hasVideo = Boolean(videoUrl);
   const secondaryTargetLabel = secondaryUrl
-    ? TIKTOK_HOST_REGEX.test(new URL(secondaryUrl).hostname.trim().toLowerCase())
+    ? TIKTOK_HOST_REGEX.test(
+        new URL(secondaryUrl).hostname.trim().toLowerCase(),
+      )
       ? "TikTok"
       : "Shopee"
     : null;
@@ -1362,16 +1364,11 @@ const renderLinkLandingPage = (
           trackRealClick();
           trackOutbound("primary", primaryTargetUrl);
 
-          // Redirect
-          if (hasSecondaryRedirect) {
-            const popup = !isMobileDevice()
-              ? window.open(primaryTargetUrl, "_blank", "noopener,noreferrer")
-              : null;
-            if (!popup) {
-              navigateWithDeepLink(primaryTargetUrl);
-            }
-          } else {
-            navigateWithDeepLink(primaryTargetUrl);
+          const popup = !isMobileDevice()
+            ? window.open(primaryTargetUrl, "_blank", "noopener,noreferrer")
+            : null;
+          if (!popup) {
+            navigateWithDeepLink(primaryTargetUrl, true);
           }
         };
 
@@ -1417,21 +1414,22 @@ const renderLinkLandingPage = (
           if (event.target === overlay) {
             event.preventDefault();
             event.stopPropagation();
-            dismissOverlay();
+            openPrimaryStep();
           }
         });
 
         overlayClose?.addEventListener("pointerdown", (event) => {
           event.preventDefault();
           event.stopPropagation();
-          dismissOverlay();
+          openPrimaryStep();
         });
         overlay?.addEventListener("keydown", (event) => {
-          if (
-            event.key === "Enter" ||
-            event.key === " " ||
-            event.key === "Escape"
-          ) {
+          if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            openPrimaryStep();
+            return;
+          }
+          if (event.key === "Escape") {
             event.preventDefault();
             dismissOverlay();
           }
