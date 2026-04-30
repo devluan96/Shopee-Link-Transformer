@@ -823,17 +823,6 @@ const renderLinkLandingPage = (
         background: linear-gradient(135deg, rgba(15, 23, 42, 0.95), rgba(17, 24, 39, 0.7));
       }
 
-      .media-panel::after {
-        content: "";
-        position: absolute;
-        bottom: 0;
-        left: 0;
-        right: 0;
-        height: 50%;
-        background: linear-gradient(to top, rgba(0, 0, 0, 0.8) 0%, rgba(0, 0, 0, 0.4) 40%, transparent 100%);
-        pointer-events: none;
-        border-radius: 0 0 2rem 2rem;
-      }
 
       .hero-media {
         width: 100%;
@@ -900,47 +889,42 @@ const renderLinkLandingPage = (
       }
 
       .content-panel {
-        position: absolute;
-        bottom: 0;
-        left: 0;
-        right: 0;
-        z-index: 10;
+        width: 100%;
         display: flex;
         flex-direction: column;
         align-items: flex-start;
         text-align: left;
-        padding: 2rem 1.5rem 1.5rem;
-        background: transparent;
-        border: none;
+        padding: 1rem 1.25rem 1.25rem;
+        background: var(--panel);
+        border-top: 1px solid var(--border);
         border-radius: 0;
       }
 
       .headline {
-        display: inline-flex;
-        align-items: center;
+        display: flex;
+        align-items: flex-start;
         justify-content: flex-start;
         gap: 0.5rem;
-        margin-bottom: 0.5rem;
+        margin-bottom: 0.4rem;
+        width: 100%;
       }
 
       .headline h1 {
-        font-size: 1.4rem;
-        font-weight: 800;
-        line-height: 1.3;
-        background: linear-gradient(135deg, #ffffff 0%, #e2e8f0 100%);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        background-clip: text;
-        text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+        font-size: 1.25rem;
+        font-weight: 600;
+        line-height: 1.4;
+        color: #f1f1f1;
         margin: 0;
+        font-family: "Roboto", "Arial", sans-serif;
+        letter-spacing: 0;
       }
 
       .content-panel p {
-        font-size: 0.95rem;
+        font-size: 0.9rem;
         line-height: 1.5;
-        color: rgba(255, 255, 255, 0.85);
+        color: #aaaaaa;
         margin: 0;
-        text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+        font-family: "Roboto", "Arial", sans-serif;
       }
 
       .badge-row {
@@ -1140,12 +1124,12 @@ const renderLinkLandingPage = (
       <section class="card">
         <div class="media-panel">
           ${previewMedia}
-          <div class="content-panel">
-            <div class="headline">
-              <h1>${escapeHtml(title)}</h1>
-            </div>
-            <p>${escapeHtml(description)}</p>
+        </div>
+        <div class="content-panel">
+          <div class="headline">
+            <h1>${escapeHtml(title)}</h1>
           </div>
+          <p>${escapeHtml(description)}</p>
         </div>
       </section>
     </main>
