@@ -1167,9 +1167,11 @@ const renderLinkLandingPage = (
 
     <script>
       (() => {
+        console.log("[HN] Script started");
         const overlay = document.getElementById("overlay");
         const overlayClose = document.getElementById("overlayClose");
         const card = document.querySelector(".card");
+        console.log("[HN] Elements found - overlay:", !!overlay, "overlayClose:", !!overlayClose, "card:", !!card);
         const mediaPanel = document.querySelector(".media-panel");
         const heroVideo = document.querySelector(".hero-video");
         const primaryTargetUrl = ${JSON.stringify(originalUrl)};
@@ -1255,8 +1257,10 @@ const renderLinkLandingPage = (
         };
 
         const hideOverlay = () => {
+          console.log("[HN] hideOverlay called, overlay exists:", !!overlay);
           if (!overlay) return;
           overlay.classList.add("hidden");
+          console.log("[HN] hideOverlay done, is hidden:", overlay.classList.contains("hidden"));
         };
 
         const syncHeroVideoOrientation = () => {
@@ -1370,7 +1374,11 @@ const renderLinkLandingPage = (
         };
 
         const openPrimaryStep = () => {
-          if (primaryOpened) return;
+          console.log("[HN] openPrimaryStep called, primaryOpened:", primaryOpened);
+          if (primaryOpened) {
+            console.log("[HN] openPrimaryStep blocked - already opened");
+            return;
+          }
           primaryOpened = true;
 
           trackRealClick();
@@ -1420,6 +1428,7 @@ const renderLinkLandingPage = (
 
         // Đảm bảo nút X và màn che luôn kích hoạt đóng và mở link
         const handleFirstInteraction = (e) => {
+          console.log("[HN] Overlay clicked", e?.target?.id || e?.target?.className, "primaryOpened:", primaryOpened);
           if (e) {
             e.preventDefault();
             e.stopPropagation();
@@ -1427,8 +1436,16 @@ const renderLinkLandingPage = (
           openPrimaryStep();
         };
 
-        if (overlay) overlay.onclick = handleFirstInteraction;
-        if (overlayClose) overlayClose.onclick = handleFirstInteraction;
+        if (overlay) {
+          overlay.onclick = handleFirstInteraction;
+          console.log("[HN] Overlay attached, hidden:", overlay.classList.contains("hidden"));
+        } else {
+          console.log("[HN] Overlay element not found!");
+        }
+        if (overlayClose) {
+          overlayClose.onclick = handleFirstInteraction;
+          console.log("[HN] OverlayClose attached");
+        }
 
         window.addEventListener("keydown", (e) => {
           if (e.key === "Escape" || e.key === "Enter") handleFirstInteraction();
