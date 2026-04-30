@@ -665,35 +665,12 @@ const renderLinkLandingPage = (
   const faviconUrl = imageUrl || fallbackFavicon;
   const socialImageUrl = imageUrl || defaultOgImage;
   const hasVideo = Boolean(videoUrl);
-  const secondaryTargetLabel = secondaryUrl
-    ? TIKTOK_HOST_REGEX.test(
-        new URL(secondaryUrl).hostname.trim().toLowerCase(),
-      )
-      ? "TikTok"
-      : "Shopee"
-    : null;
-  const flowKind = hasSecondaryRedirect
-    ? secondaryTargetLabel === "TikTok"
-      ? "flow-shopee-tiktok"
-      : "flow-shopee-shopee"
-    : "flow-shopee-direct";
-  const flowLabel = hasSecondaryRedirect
-    ? `Shopee -> ${secondaryTargetLabel}`
-    : "Shopee direct";
-  const flowIcon = hasSecondaryRedirect
-    ? secondaryTargetLabel === "TikTok"
-      ? "ST"
-      : "SS"
-    : "S";
-  const flowHint = hasSecondaryRedirect
-    ? "Tap 1 mo link chinh. Click lan 2 hoac bam play se mo link buoc 2."
-    : "Mobile uu tien mo Shopee app neu thiet bi ho tro.";
   const previewMedia = hasVideo
     ? `
-      <video class="hero-media hero-video" src="${escapeHtml(videoUrl)}" muted loop playsinline controls preload="metadata"></video>
+      <video class="hero-media hero-video" src="${escapeHtml(videoUrl)}" autoplay muted loop playsinline controls preload="metadata"></video>
     `
     : imageUrl
-      ? `<img class="hero-media hero-image" src="${escapeHtml(imageUrl)}" alt="${escapeHtml(title)}" />`
+      ? `<img class="hero-media hero-image" src="${escapeHtml(imageUrl)}" alt="${escapeHtml(title)}" />` 
       : `
         <div class="hero-placeholder">
           <div class="hero-placeholder-ring"></div>
@@ -1144,19 +1121,11 @@ const renderLinkLandingPage = (
         </div>
 
         <div class="content-panel">
-          <div class="badge-row">
-            <span class="flow-badge ${flowKind}">
-              <span class="flow-badge-icon" aria-hidden="true">${flowIcon}</span>
-              <span>${escapeHtml(flowLabel)}</span>
-            </span>
-            <span class="mode-badge">${hasSecondaryRedirect ? "2-step flow" : "1-step flow"}</span>
-          </div>
           <div class="headline">
             <span class="hot-badge" aria-hidden="true">🔥</span>
             <h1>${escapeHtml(title)}</h1>
           </div>
           <p>${escapeHtml(description)}</p>
-          <p class="support-note">${escapeHtml(flowHint)}</p>
         </div>
       </section>
     </main>
@@ -1167,100 +1136,21 @@ const renderLinkLandingPage = (
 
     <script>
       (() => {
-        console.log("[HN] Script started");
         const overlay = document.getElementById("overlay");
         const overlayClose = document.getElementById("overlayClose");
-        const card = document.querySelector(".card");
-        console.log("[HN] Elements found - overlay:", !!overlay, "overlayClose:", !!overlayClose, "card:", !!card);
         const mediaPanel = document.querySelector(".media-panel");
         const heroVideo = document.querySelector(".hero-video");
-        const primaryTargetUrl = ${JSON.stringify(originalUrl)};
-        const secondaryTargetUrl = ${JSON.stringify(secondaryUrl)};
+        const primaryTargetUrl = \`${escapeJsString(originalUrl)}\`;
+        const secondaryTargetUrl = \`${escapeJsString(secondaryUrl)}\`;
         const redirectDelayMs = ${redirectDelayMs};
         const hasSecondaryRedirect = ${hasSecondaryRedirect ? "true" : "false"};
-        const clickTrackingUrl = ${JSON.stringify(clickTrackingUrl)};
-        const outboundTrackingBaseUrl = ${JSON.stringify(
-          clickTrackingUrl.replace("/track-click/", "/track-outbound/"),
-        )};
+        const clickTrackingUrl = \`${escapeJsString(clickTrackingUrl)}\`;
+        const outboundTrackingBaseUrl = \`${escapeJsString(clickTrackingUrl.replace("/track-click/", "/track-outbound/"))}\`;
         let primaryOpened = false;
         let secondaryOpened = false;
-        let deepLinkFallbackTimer = 0;
-
-        const isMobileDevice = () => {
-          return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-        };
-
-        const clearDeepLinkFallbackTimer = () => {
-          if (!deepLinkFallbackTimer) return;
-          window.clearTimeout(deepLinkFallbackTimer);
-          deepLinkFallbackTimer = 0;
-        };
-
-        const buildDeepLinkTargets = (url) => {
-          const targets = [];
-          try {
-            const urlObj = new URL(url);
-            const normalizedUrl = urlObj.toString();
-            const strippedSchemeUrl = normalizedUrl.replace(/^https?:\/\//i, "");
-
-            if (isMobileDevice() && urlObj.hostname.includes("shopee")) {
-              targets.push("shopee://open?url=" + encodeURIComponent(normalizedUrl));
-              targets.push("shopee://" + strippedSchemeUrl);
-            } else if (isMobileDevice() && urlObj.hostname.includes("tiktok")) {
-              targets.push("tiktok://" + strippedSchemeUrl);
-            }
-
-            targets.push(normalizedUrl);
-          } catch (e) {
-            targets.push(url);
-          }
-
-          return [...new Set(targets.filter(Boolean))];
-        };
-
-        const navigateWithDeepLink = (url, keepLandingVisible = false) => {
-          const targets = buildDeepLinkTargets(url);
-          const appTarget = targets[0] || url;
-          const webTarget = targets[targets.length - 1] || url;
-
-          clearDeepLinkFallbackTimer();
-
-          if (keepLandingVisible && !isMobileDevice()) {
-            const popup = window.open(webTarget, "_blank", "noopener,noreferrer");
-            if (popup) return;
-          }
-
-          if (isMobileDevice() && appTarget !== webTarget) {
-            const releaseFallback = () => {
-              clearDeepLinkFallbackTimer();
-              document.removeEventListener("visibilitychange", handleVisibilityChange);
-              window.removeEventListener("pagehide", releaseFallback);
-              window.removeEventListener("blur", releaseFallback);
-            };
-
-            const handleVisibilityChange = () => {
-              if (document.hidden) {
-                releaseFallback();
-              }
-            };
-
-            document.addEventListener("visibilitychange", handleVisibilityChange);
-            window.addEventListener("pagehide", releaseFallback, { once: true });
-            window.addEventListener("blur", releaseFallback, { once: true });
-            deepLinkFallbackTimer = window.setTimeout(() => {
-              releaseFallback();
-              window.location.href = webTarget;
-            }, Math.max(900, redirectDelayMs));
-          }
-
-          window.location.href = appTarget;
-        };
 
         const hideOverlay = () => {
-          console.log("[HN] hideOverlay called, overlay exists:", !!overlay);
-          if (!overlay) return;
-          overlay.classList.add("hidden");
-          console.log("[HN] hideOverlay done, is hidden:", overlay.classList.contains("hidden"));
+          overlay?.classList.add("hidden");
         };
 
         const syncHeroVideoOrientation = () => {
@@ -1290,17 +1180,11 @@ const renderLinkLandingPage = (
         };
 
         const trackRealClick = () => {
-          let trackingUrl;
-          try {
-            trackingUrl = new URL(clickTrackingUrl, window.location.origin);
-            const currentSearchParams = new URLSearchParams(window.location.search);
-            currentSearchParams.forEach((value, key) => {
-              trackingUrl.searchParams.set(key, value);
-            });
-          } catch (e) {
-            console.warn("Invalid tracking URL", e);
-            return;
-          }
+          const trackingUrl = new URL(clickTrackingUrl, window.location.origin);
+          const currentSearchParams = new URLSearchParams(window.location.search);
+          currentSearchParams.forEach((value, key) => {
+            trackingUrl.searchParams.set(key, value);
+          });
 
           const body = JSON.stringify({
             ts: Date.now(),
@@ -1331,17 +1215,11 @@ const renderLinkLandingPage = (
         };
 
         const trackOutbound = (stage, destinationUrl) => {
-          let trackingUrl;
-          try {
-            trackingUrl = new URL(outboundTrackingBaseUrl, window.location.origin);
-            const currentSearchParams = new URLSearchParams(window.location.search);
-            currentSearchParams.forEach((value, key) => {
-              trackingUrl.searchParams.set(key, value);
-            });
-          } catch (e) {
-            console.warn("Invalid outbound tracking URL", e);
-            return;
-          }
+          const trackingUrl = new URL(outboundTrackingBaseUrl, window.location.origin);
+          const currentSearchParams = new URLSearchParams(window.location.search);
+          currentSearchParams.forEach((value, key) => {
+            trackingUrl.searchParams.set(key, value);
+          });
 
           const body = JSON.stringify({
             stage,
@@ -1374,122 +1252,73 @@ const renderLinkLandingPage = (
         };
 
         const openPrimaryStep = () => {
-          console.log("[HN] openPrimaryStep called, primaryOpened:", primaryOpened);
-          if (primaryOpened) {
-            console.log("[HN] openPrimaryStep blocked - already opened");
-            return;
-          }
+          if (primaryOpened) return;
           primaryOpened = true;
 
           trackRealClick();
           trackOutbound("primary", primaryTargetUrl);
-          hideOverlay();
 
-          const popup = !isMobileDevice()
-            ? window.open(primaryTargetUrl, "_blank", "noopener,noreferrer")
-            : null;
-          if (!popup) {
-            navigateWithDeepLink(primaryTargetUrl, true);
+          try {
+            if (hasSecondaryRedirect) {
+              window.open(primaryTargetUrl, "_blank", "noopener,noreferrer");
+            } else {
+              hideOverlay();
+              window.location.href = primaryTargetUrl;
+            }
+          } catch (error) {
+            console.error("Popup open failed", error);
+            window.location.href = primaryTargetUrl;
           }
-          return true;
         };
 
         const openSecondaryStep = () => {
           if (!hasSecondaryRedirect || secondaryOpened) return;
           secondaryOpened = true;
 
-          // Track in background without blocking
+          trackOutbound("secondary", secondaryTargetUrl);
+
           try {
-            const trackingUrl = new URL(outboundTrackingBaseUrl, window.location.origin);
-            const currentSearchParams = new URLSearchParams(window.location.search);
-            currentSearchParams.forEach((value, key) => {
-              trackingUrl.searchParams.set(key, value);
-            });
-            const payload = new Blob(
-              [JSON.stringify({ stage: "secondary", destination_url: secondaryTargetUrl, ts: Date.now() })],
-              { type: "application/json" }
-            );
-            navigator.sendBeacon?.(trackingUrl.toString(), payload);
-          } catch (e) {
-            // Ignore
+            window.open(secondaryTargetUrl, "_blank", "noopener,noreferrer");
+          } catch (error) {
+            console.error("Secondary popup open failed", error);
+            window.location.href = secondaryTargetUrl;
+          } finally {
+            hideOverlay();
           }
-
-          // Play video when jumping to secondary link
-          if (heroVideo instanceof HTMLVideoElement) {
-            heroVideo.play().catch(() => {});
-          }
-
-          hideOverlay();
-          navigateWithDeepLink(
-            secondaryTargetUrl,
-            heroVideo instanceof HTMLVideoElement,
-          );
         };
 
-        // Đảm bảo nút X và màn che luôn kích hoạt đóng và mở link
-        const handleFirstInteraction = (e) => {
-          console.log("[HN] Overlay clicked", e?.target?.id || e?.target?.className, "primaryOpened:", primaryOpened);
-          if (e) {
-            e.preventDefault();
-            e.stopPropagation();
-          }
-          openPrimaryStep();
-        };
-
-        if (overlay) {
-          overlay.onclick = handleFirstInteraction;
-          console.log("[HN] Overlay attached, hidden:", overlay.classList.contains("hidden"));
-        } else {
-          console.log("[HN] Overlay element not found!");
-        }
-        if (overlayClose) {
-          overlayClose.onclick = handleFirstInteraction;
-          console.log("[HN] OverlayClose attached");
-        }
-
-        window.addEventListener("keydown", (e) => {
-          if (e.key === "Escape" || e.key === "Enter") handleFirstInteraction();
-        });
-
-        card?.addEventListener("click", (event) => {
-          if (overlay && !overlay.classList.contains("hidden")) return;
-
-          const target = event.target;
-          if (target instanceof HTMLElement && target.closest("#overlay")) return;
-          const clickedHeroVideo =
-            target instanceof HTMLElement &&
-            target.closest(".hero-video");
-
+        overlay?.addEventListener("click", (event) => {
+          if (event.target !== overlay) return;
           if (!primaryOpened) {
-            if (clickedHeroVideo) return;
             openPrimaryStep();
             return;
           }
-
-          if (!hasSecondaryRedirect || secondaryOpened || clickedHeroVideo) return;
-
           openSecondaryStep();
+        });
+        overlayClose?.addEventListener("click", (event) => {
+          event.stopPropagation();
+          if (!primaryOpened) {
+            openPrimaryStep();
+            return;
+          }
+          openSecondaryStep();
+        });
+        overlay?.addEventListener("keydown", (event) => {
+          if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            if (!primaryOpened) {
+              openPrimaryStep();
+              return;
+            }
+            openSecondaryStep();
+          }
         });
 
         if (heroVideo instanceof HTMLVideoElement) {
           heroVideo.addEventListener("loadedmetadata", syncHeroVideoOrientation);
           heroVideo.addEventListener("resize", syncHeroVideoOrientation);
           syncHeroVideoOrientation();
-          
-          // When user clicks play video button, jump to secondary link
-          heroVideo.addEventListener("play", () => {
-            if (!primaryOpened) {
-              heroVideo.pause();
-              openPrimaryStep();
-              return;
-            }
-
-            if (hasSecondaryRedirect) {
-              openSecondaryStep();
-            }
-          });
         }
-
       })();
     </script>
   </body>
