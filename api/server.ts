@@ -791,15 +791,16 @@ const renderLinkLandingPage = (
 
       .shell {
         min-height: 100vh;
-        display: grid;
-        place-items: center;
-        padding: 0.5rem;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        padding: 1rem;
         position: relative;
       }
 
       .card {
         position: relative;
-        width: min(1200px, 98vw);
+        width: min(100%, 1600px);
         display: flex;
         flex-direction: column;
         background: var(--panel);
@@ -890,24 +891,23 @@ const renderLinkLandingPage = (
 
       .content-panel {
         width: 100%;
+        max-width: 100%;
         display: flex;
         flex-direction: column;
-        align-items: flex-start;
+        align-items: stretch;
         text-align: left;
-        padding: 0.75rem 0;
+        padding: 1rem;
         background: var(--panel);
         border-top: 1px solid var(--border);
         border-radius: 0;
+        box-sizing: border-box;
       }
 
       .headline {
-        display: flex;
-        align-items: flex-start;
-        justify-content: flex-start;
-        gap: 0.5rem;
-        margin-bottom: 0.3rem;
+        display: block;
         width: 100%;
-        padding: 0 1rem;
+        max-width: 100%;
+        margin-bottom: 0.5rem;
       }
 
       .headline h1 {
@@ -917,8 +917,9 @@ const renderLinkLandingPage = (
         color: #f1f1f1;
         margin: 0;
         font-family: "Roboto", "Arial", sans-serif;
-        letter-spacing: 0;
         width: 100%;
+        max-width: 100%;
+        display: block;
       }
 
       .content-panel p {
@@ -928,7 +929,8 @@ const renderLinkLandingPage = (
         margin: 0;
         font-family: "Roboto", "Arial", sans-serif;
         width: 100%;
-        padding: 0 1rem;
+        max-width: 100%;
+        display: block;
       }
 
       .badge-row {
