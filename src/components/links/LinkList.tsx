@@ -82,6 +82,25 @@ export const LinkList = ({
     }
   };
 
+  const getSecondaryFlowBadge = (value?: string) => {
+    const targetLabel = getSecondaryTargetLabel(value);
+    if (!targetLabel) return null;
+
+    if (targetLabel === "TikTok") {
+      return {
+        label: "Shopee -> TikTok",
+        className:
+          "rounded-full border border-cyan-100 bg-cyan-50 px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-cyan-700",
+      };
+    }
+
+    return {
+      label: "Shopee -> Shopee",
+      className:
+        "rounded-full border border-amber-100 bg-amber-50 px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-amber-700",
+    };
+  };
+
   const startEdit = (link: ConvertedLink) => {
     setEditingLink(link);
     setEditForm({
@@ -228,13 +247,18 @@ export const LinkList = ({
                   </span>
                 </div>
 
-                {l.secondary_url && (
-                  <div className="mt-3 flex flex-wrap items-center gap-2">
-                    <span className="rounded-full border border-amber-100 bg-amber-50 px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-amber-700">
-                      {"2 bước · "}{getSecondaryTargetLabel(l.secondary_url)}
-                    </span>
-                  </div>
-                )}
+                {l.secondary_url && (() => {
+                  const flowBadge = getSecondaryFlowBadge(l.secondary_url);
+                  if (!flowBadge) return null;
+
+                  return (
+                    <div className="mt-3 flex flex-wrap items-center gap-2">
+                      <span className={flowBadge.className}>
+                        {flowBadge.label}
+                      </span>
+                    </div>
+                  );
+                })()}
 
                 {l.tracked_sources && l.tracked_sources.length > 0 && (
                   <div className="mt-3 flex flex-wrap items-center gap-2">

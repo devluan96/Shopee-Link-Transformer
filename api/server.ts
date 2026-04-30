@@ -626,8 +626,13 @@ const escapeHtml = (value: string) =>
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#39;");
 
-const escapeJsString = (value: string) =>
-  value.replace(/\\/g, "\\\\").replace(/`/g, "\\`").replace(/\$\{/g, "\\${");
+const escapeJsString = (value: string | null | undefined) => {
+  if (!value) return "";
+  return String(value)
+    .replace(/\\/g, "\\\\")
+    .replace(/`/g, "\\`")
+    .replace(/\$\{/g, "\\${");
+};
 
 const capitalizeFirstCharacter = (value: string) => {
   const trimmed = value.trim();
@@ -660,6 +665,27 @@ const renderLinkLandingPage = (
   const faviconUrl = imageUrl || fallbackFavicon;
   const socialImageUrl = imageUrl || defaultOgImage;
   const hasVideo = Boolean(videoUrl);
+  const secondaryTargetLabel = secondaryUrl
+    ? TIKTOK_HOST_REGEX.test(new URL(secondaryUrl).hostname.trim().toLowerCase())
+      ? "TikTok"
+      : "Shopee"
+    : null;
+  const flowKind = hasSecondaryRedirect
+    ? secondaryTargetLabel === "TikTok"
+      ? "flow-shopee-tiktok"
+      : "flow-shopee-shopee"
+    : "flow-shopee-direct";
+  const flowLabel = hasSecondaryRedirect
+    ? `Shopee -> ${secondaryTargetLabel}`
+    : "Shopee direct";
+  const flowIcon = hasSecondaryRedirect
+    ? secondaryTargetLabel === "TikTok"
+      ? "ST"
+      : "SS"
+    : "S";
+  const flowHint = hasSecondaryRedirect
+    ? "Tap 1 mo link chinh. Click lan 2 hoac bam play se mo link buoc 2."
+    : "Mobile uu tien mo Shopee app neu thiet bi ho tro.";
   const previewMedia = hasVideo
     ? `
       <video class="hero-media hero-video" src="${escapeHtml(videoUrl)}" muted loop playsinline controls preload="metadata"></video>
@@ -916,6 +942,80 @@ const renderLinkLandingPage = (
         margin-bottom: 0.65rem;
       }
 
+      .badge-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.55rem;
+        margin-bottom: 0.35rem;
+      }
+
+      .flow-badge,
+      .mode-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.45rem;
+        min-height: 2rem;
+        padding: 0.45rem 0.78rem;
+        border-radius: 999px;
+        font-size: 0.7rem;
+        font-weight: 900;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      .flow-badge {
+        border: 1px solid rgba(255, 255, 255, 0.14);
+        background: rgba(255, 255, 255, 0.06);
+      }
+
+      .flow-badge-icon {
+        width: 1.35rem;
+        height: 1.35rem;
+        display: grid;
+        place-items: center;
+        border-radius: 999px;
+        color: #fff;
+        font-size: 0.58rem;
+        line-height: 1;
+        letter-spacing: 0.04em;
+      }
+
+      .mode-badge {
+        color: rgba(226, 232, 240, 0.92);
+        border: 1px solid rgba(148, 163, 184, 0.25);
+        background: rgba(15, 23, 42, 0.4);
+      }
+
+      .flow-shopee-direct {
+        border-color: rgba(251, 146, 60, 0.34);
+        background: rgba(251, 146, 60, 0.12);
+        color: #fed7aa;
+      }
+
+      .flow-shopee-direct .flow-badge-icon {
+        background: linear-gradient(135deg, #fb923c, #f97316);
+      }
+
+      .flow-shopee-shopee {
+        border-color: rgba(249, 115, 22, 0.34);
+        background: rgba(249, 115, 22, 0.12);
+        color: #fdba74;
+      }
+
+      .flow-shopee-shopee .flow-badge-icon {
+        background: linear-gradient(135deg, #fb923c, #ef4444);
+      }
+
+      .flow-shopee-tiktok {
+        border-color: rgba(34, 211, 238, 0.28);
+        background: rgba(8, 145, 178, 0.12);
+        color: #a5f3fc;
+      }
+
+      .flow-shopee-tiktok .flow-badge-icon {
+        background: linear-gradient(135deg, #111827, #06b6d4);
+      }
+
       .hot-badge {
         flex: 0 0 auto;
         width: 2.25rem;
@@ -944,6 +1044,14 @@ const renderLinkLandingPage = (
         line-height: 1.6;
         max-width: 34rem;
         text-wrap: pretty;
+      }
+
+      .support-note {
+        margin-top: 0.9rem;
+        color: rgba(226, 232, 240, 0.78);
+        font-size: 0.76rem;
+        line-height: 1.55;
+        max-width: 34rem;
       }
 
       .overlay {
@@ -1059,57 +1167,136 @@ const renderLinkLandingPage = (
         </div>
 
         <div class="content-panel">
+          <div class="badge-row">
+            <span class="flow-badge ${flowKind}">
+              <span class="flow-badge-icon" aria-hidden="true">${flowIcon}</span>
+              <span>${escapeHtml(flowLabel)}</span>
+            </span>
+            <span class="mode-badge">${hasSecondaryRedirect ? "2-step flow" : "1-step flow"}</span>
+          </div>
           <div class="headline">
             <span class="hot-badge" aria-hidden="true">🔥</span>
             <h1>${escapeHtml(title)}</h1>
           </div>
           <p>${escapeHtml(description)}</p>
+          <p class="support-note">${escapeHtml(flowHint)}</p>
         </div>
       </section>
     </main>
 
     <div id="overlay" class="overlay" role="button" tabindex="0" aria-label="Mở link đích">
       <button class="overlay-close" id="overlayClose" aria-label="Đóng lớp mờ">×</button>
+      <div class="overlay-cta" id="overlayCtaText">Mo Shopee</div>
+      <div class="overlay-note" id="overlayNote">Tap de mo link chinh. Click lan 2 hoac bam play se mo link buoc 2.</div>
     </div>
 
     <script>
       (() => {
         const overlay = document.getElementById("overlay");
         const overlayClose = document.getElementById("overlayClose");
+        const overlayCtaText = document.getElementById("overlayCtaText");
+        const overlayNote = document.getElementById("overlayNote");
+        const card = document.querySelector(".card");
         const mediaPanel = document.querySelector(".media-panel");
         const heroVideo = document.querySelector(".hero-video");
-        const primaryTargetUrl = \`${escapeJsString(originalUrl)}\`;
-        const secondaryTargetUrl = \`${escapeJsString(secondaryUrl)}\`;
+        const primaryTargetUrl = ${JSON.stringify(originalUrl)};
+        const secondaryTargetUrl = ${JSON.stringify(secondaryUrl)};
         const redirectDelayMs = ${redirectDelayMs};
         const hasSecondaryRedirect = ${hasSecondaryRedirect ? "true" : "false"};
-        const clickTrackingUrl = \`${escapeJsString(clickTrackingUrl)}\`;
-        const outboundTrackingBaseUrl = \`${escapeJsString(
+        const clickTrackingUrl = ${JSON.stringify(clickTrackingUrl)};
+        const outboundTrackingBaseUrl = ${JSON.stringify(
           clickTrackingUrl.replace("/track-click/", "/track-outbound/"),
-        )}\`;
+        )};
         let primaryOpened = false;
         let secondaryOpened = false;
+        let deepLinkFallbackTimer = 0;
 
         const isMobileDevice = () => {
           return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
         };
 
-        const convertToDeepLink = (url) => {
-          if (!isMobileDevice()) return url;
+        const clearDeepLinkFallbackTimer = () => {
+          if (!deepLinkFallbackTimer) return;
+          window.clearTimeout(deepLinkFallbackTimer);
+          deepLinkFallbackTimer = 0;
+        };
+
+        const buildDeepLinkTargets = (url) => {
+          const targets = [];
           try {
             const urlObj = new URL(url);
-            if (urlObj.hostname.includes('shopee')) {
-              return url.replace(/^https?:\/\//, 'shopee://');
-            } else if (urlObj.hostname.includes('tiktok')) {
-              return url.replace(/^https?:\/\//, 'tiktok://');
+            const normalizedUrl = urlObj.toString();
+            const strippedSchemeUrl = normalizedUrl.replace(/^https?:\/\//i, "");
+
+            if (isMobileDevice() && urlObj.hostname.includes("shopee")) {
+              targets.push("shopee://open?url=" + encodeURIComponent(normalizedUrl));
+              targets.push("shopee://" + strippedSchemeUrl);
+            } else if (isMobileDevice() && urlObj.hostname.includes("tiktok")) {
+              targets.push("tiktok://" + strippedSchemeUrl);
             }
+
+            targets.push(normalizedUrl);
           } catch (e) {
-            // Invalid URL, return as is
+            targets.push(url);
           }
-          return url;
+
+          return [...new Set(targets.filter(Boolean))];
+        };
+
+        const navigateWithDeepLink = (url, keepLandingVisible = false) => {
+          const targets = buildDeepLinkTargets(url);
+          const appTarget = targets[0] || url;
+          const webTarget = targets[targets.length - 1] || url;
+
+          clearDeepLinkFallbackTimer();
+
+          if (keepLandingVisible && !isMobileDevice()) {
+            const popup = window.open(webTarget, "_blank", "noopener,noreferrer");
+            if (popup) return;
+          }
+
+          if (isMobileDevice() && appTarget !== webTarget) {
+            const releaseFallback = () => {
+              clearDeepLinkFallbackTimer();
+              document.removeEventListener("visibilitychange", handleVisibilityChange);
+              window.removeEventListener("pagehide", releaseFallback);
+              window.removeEventListener("blur", releaseFallback);
+            };
+
+            const handleVisibilityChange = () => {
+              if (document.hidden) {
+                releaseFallback();
+              }
+            };
+
+            document.addEventListener("visibilitychange", handleVisibilityChange);
+            window.addEventListener("pagehide", releaseFallback, { once: true });
+            window.addEventListener("blur", releaseFallback, { once: true });
+            deepLinkFallbackTimer = window.setTimeout(() => {
+              releaseFallback();
+              window.location.href = webTarget;
+            }, Math.max(900, redirectDelayMs));
+          }
+
+          window.location.href = appTarget;
         };
 
         const hideOverlay = () => {
           overlay?.classList.add("hidden");
+        };
+
+        const updateOverlayCopy = () => {
+          if (overlayCtaText instanceof HTMLElement) {
+            overlayCtaText.textContent = hasSecondaryRedirect
+              ? "Mo Shopee - Lan 1"
+              : "Mo Shopee";
+          }
+
+          if (overlayNote instanceof HTMLElement) {
+            overlayNote.textContent = hasSecondaryRedirect
+              ? "Tap lan 1 mo link chinh. Click lan 2 hoac bam play video se mo link buoc 2."
+              : "Tap de mo Shopee. Mobile uu tien mo app neu thiet bi ho tro.";
+          }
         };
 
         const syncHeroVideoOrientation = () => {
@@ -1216,31 +1403,19 @@ const renderLinkLandingPage = (
 
           hideOverlay();
 
-          // Track in background without blocking
-          try {
-            const trackingUrl = new URL(clickTrackingUrl, window.location.origin);
-            const currentSearchParams = new URLSearchParams(window.location.search);
-            currentSearchParams.forEach((value, key) => {
-              trackingUrl.searchParams.set(key, value);
-            });
-            const payload = new Blob(
-              [JSON.stringify({ ts: Date.now() })],
-              { type: "application/json" }
-            );
-            navigator.sendBeacon?.(trackingUrl.toString(), payload);
-          } catch (e) {
-            // Ignore
-          }
+          trackRealClick();
+          trackOutbound("primary", primaryTargetUrl);
 
           // Redirect
-          const deepLinkUrl = convertToDeepLink(primaryTargetUrl);
           if (hasSecondaryRedirect) {
-            const popup = window.open(deepLinkUrl, "_blank", "noopener,noreferrer");
+            const popup = !isMobileDevice()
+              ? window.open(primaryTargetUrl, "_blank", "noopener,noreferrer")
+              : null;
             if (!popup) {
-              window.location.href = deepLinkUrl;
+              navigateWithDeepLink(primaryTargetUrl);
             }
           } else {
-            window.location.href = deepLinkUrl;
+            navigateWithDeepLink(primaryTargetUrl);
           }
         };
 
@@ -1270,44 +1445,63 @@ const renderLinkLandingPage = (
           }
 
           hideOverlay();
-          window.location.href = convertToDeepLink(secondaryTargetUrl);
+          navigateWithDeepLink(
+            secondaryTargetUrl,
+            heroVideo instanceof HTMLVideoElement,
+          );
+        };
+
+        // Handler chung cho cả overlay và nút close
+        const handleOverlayAction = () => {
+          openPrimaryStep();
         };
 
         overlay?.addEventListener("click", (event) => {
-          event.preventDefault();
-          event.stopPropagation();
-          if (event.target !== overlay) return;
-          if (!primaryOpened) {
-            openPrimaryStep();
-            return;
+          // Chỉ xử lý click trực tiếp trên overlay background, không phải children
+          if (event.target === overlay) {
+            event.preventDefault();
+            event.stopPropagation();
+            handleOverlayAction();
           }
-          openSecondaryStep();
         });
+
         overlayClose?.addEventListener("click", (event) => {
           event.preventDefault();
           event.stopPropagation();
-          if (!primaryOpened) {
-            openPrimaryStep();
-            return;
-          }
-          openSecondaryStep();
+          handleOverlayAction();
         });
         overlay?.addEventListener("keydown", (event) => {
           if (event.key === "Enter" || event.key === " ") {
             event.preventDefault();
-            if (!primaryOpened) {
-              openPrimaryStep();
-              return;
-            }
-            openSecondaryStep();
+            openPrimaryStep();
           }
+        });
+
+        card?.addEventListener("click", (event) => {
+          if (heroVideo instanceof HTMLVideoElement) return;
+          if (!primaryOpened || !hasSecondaryRedirect || secondaryOpened) return;
+          if (overlay && !overlay.classList.contains("hidden")) return;
+
+          const target = event.target;
+          if (target instanceof HTMLElement && target.closest("#overlay")) return;
+
+          openSecondaryStep();
         });
 
         if (heroVideo instanceof HTMLVideoElement) {
           heroVideo.addEventListener("loadedmetadata", syncHeroVideoOrientation);
           heroVideo.addEventListener("resize", syncHeroVideoOrientation);
           syncHeroVideoOrientation();
+          
+          // When user clicks play video button, jump to secondary link
+          heroVideo.addEventListener("play", () => {
+            if (hasSecondaryRedirect) {
+              openSecondaryStep();
+            }
+          });
         }
+
+        updateOverlayCopy();
       })();
     </script>
   </body>
