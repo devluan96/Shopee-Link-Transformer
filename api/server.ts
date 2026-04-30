@@ -894,7 +894,7 @@ const renderLinkLandingPage = (
         flex-direction: column;
         align-items: flex-start;
         text-align: left;
-        padding: 1rem 1.25rem 1.25rem;
+        padding: 0.75rem 0;
         background: var(--panel);
         border-top: 1px solid var(--border);
         border-radius: 0;
@@ -905,8 +905,9 @@ const renderLinkLandingPage = (
         align-items: flex-start;
         justify-content: flex-start;
         gap: 0.5rem;
-        margin-bottom: 0.4rem;
+        margin-bottom: 0.3rem;
         width: 100%;
+        padding: 0 1rem;
       }
 
       .headline h1 {
@@ -917,6 +918,7 @@ const renderLinkLandingPage = (
         margin: 0;
         font-family: "Roboto", "Arial", sans-serif;
         letter-spacing: 0;
+        width: 100%;
       }
 
       .content-panel p {
@@ -925,6 +927,8 @@ const renderLinkLandingPage = (
         color: #aaaaaa;
         margin: 0;
         font-family: "Roboto", "Arial", sans-serif;
+        width: 100%;
+        padding: 0 1rem;
       }
 
       .badge-row {
