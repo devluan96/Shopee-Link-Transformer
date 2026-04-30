@@ -793,18 +793,18 @@ const renderLinkLandingPage = (
         min-height: 100vh;
         display: grid;
         place-items: center;
-        padding: 2rem;
+        padding: 0.5rem;
         position: relative;
       }
 
       .card {
         position: relative;
-        width: min(420px, 92vw);
+        width: min(1200px, 98vw);
         display: flex;
         flex-direction: column;
         background: var(--panel);
         border: 1px solid var(--border);
-        border-radius: 2rem;
+        border-radius: 1rem;
         overflow: hidden;
         backdrop-filter: blur(24px) saturate(130%);
         box-shadow:
@@ -819,8 +819,7 @@ const renderLinkLandingPage = (
         justify-content: center;
         align-items: center;
         overflow: hidden;
-        min-height: 300px;
-        max-height: 80vh;
+        aspect-ratio: 16 / 9;
         background: linear-gradient(135deg, rgba(15, 23, 42, 0.95), rgba(17, 24, 39, 0.7));
       }
 
@@ -837,53 +836,38 @@ const renderLinkLandingPage = (
       }
 
       .hero-media {
-        max-width: 100%;
-        max-height: 80vh;
+        width: 100%;
+        height: 100%;
         border-radius: 0;
         display: block;
-        object-fit: contain;
+        object-fit: cover;
       }
 
       .hero-video {
-        max-width: 100%;
-        max-height: 80vh;
-        object-fit: contain;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
         border-radius: 0;
       }
 
-      .hero-video.is-landscape {
-        width: auto;
-        height: auto;
-        max-width: min(100%, 80vh);
-        max-height: 80vh;
-      }
-
-      .hero-video.is-portrait {
-        width: auto;
-        height: auto;
-        max-width: min(100%, 45vh);
-        max-height: 80vh;
-      }
-
+      .hero-video.is-landscape,
+      .hero-video.is-portrait,
       .hero-video.is-square {
-        width: auto;
-        height: auto;
-        max-width: min(100%, 60vh);
-        max-height: 80vh;
+        width: 100%;
+        height: 100%;
+        max-width: 100%;
+        max-height: 100%;
       }
 
       .hero-image {
-        max-width: 100%;
-        max-height: 80vh;
-        width: auto;
-        height: auto;
-        object-fit: contain;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
       }
 
       .hero-placeholder {
         width: 100%;
-        min-height: 300px;
-        max-height: 80vh;
+        aspect-ratio: 16 / 9;
         border-radius: 0;
         display: grid;
         place-items: center;
