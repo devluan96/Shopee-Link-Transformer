@@ -1094,32 +1094,6 @@ const renderLinkLandingPage = (
         z-index: 21;
       }
 
-      .overlay-cta {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        min-width: min(88vw, 24rem);
-        padding: 1rem 1.4rem;
-        border: 1px solid rgba(255, 255, 255, 0.2);
-        border-radius: 999px;
-        background: rgba(15, 23, 42, 0.72);
-        color: var(--text);
-        font-size: 0.78rem;
-        font-weight: 900;
-        text-transform: uppercase;
-        letter-spacing: 0.18em;
-        box-shadow: 0 1rem 2rem rgba(0, 0, 0, 0.25);
-        backdrop-filter: blur(18px);
-      }
-
-      .overlay-note {
-        max-width: 22rem;
-        text-align: center;
-        font-size: 0.74rem;
-        color: rgba(226, 232, 240, 0.82);
-        line-height: 1.55;
-      }
-
       @media (max-width: 900px) {
         .content-panel {
           padding: 1.2rem 1rem 1.4rem;
@@ -1185,17 +1159,13 @@ const renderLinkLandingPage = (
     </main>
 
     <div id="overlay" class="overlay" role="button" tabindex="0" aria-label="Mở link đích">
-      <button class="overlay-close" id="overlayClose" aria-label="Đóng lớp mờ">×</button>
-      <div class="overlay-cta" id="overlayCtaText">Mo Shopee</div>
-      <div class="overlay-note" id="overlayNote">Tap de mo link chinh. Click lan 2 hoac bam play se mo link buoc 2.</div>
+      <button type="button" class="overlay-close" id="overlayClose" aria-label="Đóng lớp mờ">×</button>
     </div>
 
     <script>
       (() => {
         const overlay = document.getElementById("overlay");
         const overlayClose = document.getElementById("overlayClose");
-        const overlayCtaText = document.getElementById("overlayCtaText");
-        const overlayNote = document.getElementById("overlayNote");
         const card = document.querySelector(".card");
         const mediaPanel = document.querySelector(".media-panel");
         const heroVideo = document.querySelector(".hero-video");
@@ -1283,20 +1253,6 @@ const renderLinkLandingPage = (
 
         const hideOverlay = () => {
           overlay?.classList.add("hidden");
-        };
-
-        const updateOverlayCopy = () => {
-          if (overlayCtaText instanceof HTMLElement) {
-            overlayCtaText.textContent = hasSecondaryRedirect
-              ? "Mo Shopee - Lan 1"
-              : "Mo Shopee";
-          }
-
-          if (overlayNote instanceof HTMLElement) {
-            overlayNote.textContent = hasSecondaryRedirect
-              ? "Tap lan 1 mo link chinh. Click lan 2 hoac bam play video se mo link buoc 2."
-              : "Tap de mo Shopee. Mobile uu tien mo app neu thiet bi ho tro.";
-          }
         };
 
         const syncHeroVideoOrientation = () => {
@@ -1452,38 +1408,51 @@ const renderLinkLandingPage = (
         };
 
         // Handler chung cho cả overlay và nút close
-        const handleOverlayAction = () => {
-          openPrimaryStep();
+        const dismissOverlay = () => {
+          hideOverlay();
         };
 
-        overlay?.addEventListener("click", (event) => {
+        overlay?.addEventListener("pointerdown", (event) => {
           // Chỉ xử lý click trực tiếp trên overlay background, không phải children
           if (event.target === overlay) {
             event.preventDefault();
             event.stopPropagation();
-            handleOverlayAction();
+            dismissOverlay();
           }
         });
 
-        overlayClose?.addEventListener("click", (event) => {
+        overlayClose?.addEventListener("pointerdown", (event) => {
           event.preventDefault();
           event.stopPropagation();
-          handleOverlayAction();
+          dismissOverlay();
         });
         overlay?.addEventListener("keydown", (event) => {
-          if (event.key === "Enter" || event.key === " ") {
+          if (
+            event.key === "Enter" ||
+            event.key === " " ||
+            event.key === "Escape"
+          ) {
             event.preventDefault();
-            openPrimaryStep();
+            dismissOverlay();
           }
         });
 
         card?.addEventListener("click", (event) => {
-          if (heroVideo instanceof HTMLVideoElement) return;
-          if (!primaryOpened || !hasSecondaryRedirect || secondaryOpened) return;
           if (overlay && !overlay.classList.contains("hidden")) return;
 
           const target = event.target;
           if (target instanceof HTMLElement && target.closest("#overlay")) return;
+          const clickedHeroVideo =
+            target instanceof HTMLElement &&
+            target.closest(".hero-video");
+
+          if (!primaryOpened) {
+            if (clickedHeroVideo) return;
+            openPrimaryStep();
+            return;
+          }
+
+          if (!hasSecondaryRedirect || secondaryOpened || clickedHeroVideo) return;
 
           openSecondaryStep();
         });
@@ -1495,13 +1464,18 @@ const renderLinkLandingPage = (
           
           // When user clicks play video button, jump to secondary link
           heroVideo.addEventListener("play", () => {
+            if (!primaryOpened) {
+              heroVideo.pause();
+              openPrimaryStep();
+              return;
+            }
+
             if (hasSecondaryRedirect) {
               openSecondaryStep();
             }
           });
         }
 
-        updateOverlayCopy();
       })();
     </script>
   </body>
