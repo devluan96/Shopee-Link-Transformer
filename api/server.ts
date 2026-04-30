@@ -800,7 +800,7 @@ const renderLinkLandingPage = (
 
       .card {
         position: relative;
-        width: min(100%, 1600px);
+        width: min(1040px, 95vw);
         display: flex;
         flex-direction: column;
         background: var(--panel);
