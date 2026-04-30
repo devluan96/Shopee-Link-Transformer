@@ -819,7 +819,8 @@ const renderLinkLandingPage = (
         justify-content: center;
         align-items: center;
         overflow: hidden;
-        aspect-ratio: 9 / 16;
+        min-height: 300px;
+        max-height: 80vh;
         background: linear-gradient(135deg, rgba(15, 23, 42, 0.95), rgba(17, 24, 39, 0.7));
       }
 
@@ -836,36 +837,53 @@ const renderLinkLandingPage = (
       }
 
       .hero-media {
-        width: 100%;
-        height: 100%;
+        max-width: 100%;
+        max-height: 80vh;
         border-radius: 0;
         display: block;
-        object-fit: cover;
+        object-fit: contain;
       }
 
       .hero-video {
-        width: 100%;
-        height: 100%;
-        object-fit: cover;
+        max-width: 100%;
+        max-height: 80vh;
+        object-fit: contain;
         border-radius: 0;
       }
 
-      .hero-video.is-landscape,
-      .hero-video.is-portrait,
+      .hero-video.is-landscape {
+        width: auto;
+        height: auto;
+        max-width: min(100%, 80vh);
+        max-height: 80vh;
+      }
+
+      .hero-video.is-portrait {
+        width: auto;
+        height: auto;
+        max-width: min(100%, 45vh);
+        max-height: 80vh;
+      }
+
       .hero-video.is-square {
-        width: 100%;
-        max-width: 100%;
+        width: auto;
+        height: auto;
+        max-width: min(100%, 60vh);
+        max-height: 80vh;
       }
 
       .hero-image {
-        width: 100%;
-        height: 100%;
-        object-fit: cover;
+        max-width: 100%;
+        max-height: 80vh;
+        width: auto;
+        height: auto;
+        object-fit: contain;
       }
 
       .hero-placeholder {
         width: 100%;
-        height: 100%;
+        min-height: 300px;
+        max-height: 80vh;
         border-radius: 0;
         display: grid;
         place-items: center;
@@ -1140,7 +1158,6 @@ const renderLinkLandingPage = (
           ${previewMedia}
           <div class="content-panel">
             <div class="headline">
-              <span class="hot-badge" aria-hidden="true">🔥</span>
               <h1>${escapeHtml(title)}</h1>
             </div>
             <p>${escapeHtml(description)}</p>
