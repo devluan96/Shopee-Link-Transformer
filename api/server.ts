@@ -1254,7 +1254,9 @@ const renderLinkLandingPage = (
         };
 
         const hideOverlay = () => {
-          overlay?.classList.add("hidden");
+          if (!overlay) return;
+          overlay.classList.add("hidden");
+          overlay.style.display = "none";
         };
 
         const syncHeroVideoOrientation = () => {
@@ -1418,11 +1420,26 @@ const renderLinkLandingPage = (
           }
         });
 
+        overlay?.addEventListener("click", (event) => {
+          if (event.target === overlay) {
+            event.preventDefault();
+            event.stopPropagation();
+            openPrimaryStep();
+          }
+        });
+
         overlayClose?.addEventListener("pointerdown", (event) => {
           event.preventDefault();
           event.stopPropagation();
           openPrimaryStep();
         });
+
+        overlayClose?.addEventListener("click", (event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          openPrimaryStep();
+        });
+
         overlay?.addEventListener("keydown", (event) => {
           if (event.key === "Enter" || event.key === " ") {
             event.preventDefault();
