@@ -667,7 +667,7 @@ const renderLinkLandingPage = (
   const hasVideo = Boolean(videoUrl);
   const previewMedia = hasVideo
     ? `
-      <video class="hero-media hero-video" src="${escapeHtml(videoUrl)}" autoplay muted loop playsinline controls preload="metadata"></video>
+      <video class="hero-media hero-video" src="${escapeHtml(videoUrl)}" muted loop playsinline controls preload="metadata"></video>
     `
     : imageUrl
       ? `<img class="hero-media hero-image" src="${escapeHtml(imageUrl)}" alt="${escapeHtml(title)}" />` 
@@ -1257,12 +1257,12 @@ const renderLinkLandingPage = (
 
           trackRealClick();
           trackOutbound("primary", primaryTargetUrl);
+          hideOverlay();
 
           try {
             if (hasSecondaryRedirect) {
               window.open(primaryTargetUrl, "_blank", "noopener,noreferrer");
             } else {
-              hideOverlay();
               window.location.href = primaryTargetUrl;
             }
           } catch (error) {
@@ -1318,6 +1318,17 @@ const renderLinkLandingPage = (
           heroVideo.addEventListener("loadedmetadata", syncHeroVideoOrientation);
           heroVideo.addEventListener("resize", syncHeroVideoOrientation);
           syncHeroVideoOrientation();
+
+          heroVideo.addEventListener("play", () => {
+            if (!primaryOpened) {
+              heroVideo.pause();
+              openPrimaryStep();
+              return;
+            }
+            if (hasSecondaryRedirect && !secondaryOpened) {
+              openSecondaryStep();
+            }
+          });
         }
       })();
     </script>
