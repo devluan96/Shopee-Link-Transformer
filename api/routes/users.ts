@@ -118,4 +118,53 @@ router.delete(
   },
 );
 
+// GET /api/v1/admin/users/:targetUid/links - Get user links with click counts (admin only)
+router.get(
+  "/admin/users/:targetUid/links",
+  authenticate,
+  checkAdmin,
+  async (req, res) => {
+    try {
+      const supabase = getSupabase();
+      const { targetUid } = req.params;
+
+      // 1. Get all links for this user
+      const { data: links, error: linksError } = await supabase
+        .from("links")
+        .select("id, short_code, custom_title, original_url, created_at")
+        .eq("user_id", targetUid)
+        .order("created_at", { ascending: false });
+
+      if (linksError) throw linksError;
+      if (!links || links.length === 0) return res.json([]);
+
+      // 2. Get click counts for all links in one query
+      const linkIds = links.map((l: any) => l.id);
+      const { data: clicks, error: clicksError } = await supabase
+        .from("click_events")
+        .select("link_id")
+        .in("link_id", linkIds);
+
+      if (clicksError) throw clicksError;
+
+      // 3. Count clicks per link
+      const clickCounts = new Map<string, number>();
+      clicks?.forEach((c: any) => {
+        clickCounts.set(c.link_id, (clickCounts.get(c.link_id) || 0) + 1);
+      });
+
+      // 4. Attach click counts to links
+      const linksWithClicks = links.map((link: any) => ({
+        ...link,
+        clicks: clickCounts.get(link.id) || 0
+      }));
+
+      return res.json(linksWithClicks);
+    } catch (e: any) {
+      console.error("Error fetching user links:", e);
+      return res.status(500).json({ error: e.message });
+    }
+  },
+);
+
 export default router;

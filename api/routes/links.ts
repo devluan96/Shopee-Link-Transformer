@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { authenticate } from "../middleware/auth.js";
+import { authenticate, checkAdmin } from "../middleware/auth.js";
 import { getSupabase } from "../config/supabase.js";
 import { AuthenticatedRequest } from "../types/index.js";
 import * as linkService from "../services/linkService.js";
@@ -75,6 +75,72 @@ router.patch(
       return res.json(link);
     } catch (e: any) {
       return res.status(400).json({ error: e.message });
+    }
+  },
+);
+
+// GET /api/v1/admin/users/:targetUid/clicks - Get total clicks for all links of a user (admin only)
+router.get(
+  "/admin/users/:targetUid/clicks",
+  authenticate,
+  checkAdmin,
+  async (req, res) => {
+    try {
+      const supabase = getSupabase();
+      const { targetUid } = req.params;
+
+      // Get all link IDs for this user
+      const { data: links, error: linksError } = await supabase
+        .from("links")
+        .select("id")
+        .eq("user_id", targetUid);
+
+      if (linksError) throw linksError;
+
+      if (!links || links.length === 0) {
+        return res.json({ clicks: 0 });
+      }
+
+      const linkIds = links.map((l: any) => l.id);
+
+      // Count all clicks for these links
+      const { count, error } = await supabase
+        .from("click_events")
+        .select("*", { count: 'exact', head: true })
+        .in("link_id", linkIds);
+
+      if (error) throw error;
+      return res.json({ clicks: count || 0 });
+    } catch (e: any) {
+      return res.status(500).json({ error: e.message });
+    }
+  },
+);
+
+// GET /api/v1/links/:id/clicks - Get click count for a link
+router.get(
+  "/links/:id/clicks",
+  authenticate,
+  async (req: AuthenticatedRequest, res) => {
+    try {
+      const supabase = getSupabase();
+      const linkId = req.params.id;
+
+      console.log("[API] Fetching click count for link:", linkId);
+
+      // Count clicks from click_events table
+      const { count, error } = await supabase
+        .from("click_events")
+        .select("*", { count: 'exact', head: true })
+        .eq("link_id", linkId);
+
+      console.log("[API] Click count result:", count, "Error:", error);
+
+      if (error) throw error;
+      return res.json({ clicks: count || 0 });
+    } catch (e: any) {
+      console.error("[API] Error fetching click count:", e);
+      return res.status(500).json({ error: e.message });
     }
   },
 );

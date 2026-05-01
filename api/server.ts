@@ -16,7 +16,11 @@ import { authenticate } from "./middleware/auth.js";
 import apiRoutes from "./routes/index.js";
 
 // Utils
-import { getPublicBaseUrl, escapeHtml, getTrafficSourceFromRequest } from "./utils/helpers.js";
+import {
+  getPublicBaseUrl,
+  escapeHtml,
+  getTrafficSourceFromRequest,
+} from "./utils/helpers.js";
 import { normalizeTrafficSource } from "./utils/normalizers.js";
 import {
   insertClickWithTracking,
@@ -129,7 +133,7 @@ app.get("/s/:shortCode", async (req, res) => {
     // Increment click count
     supabase
       .rpc("increment_link_clicks", { link_id: link.id })
-      .catch((e) => console.error("Failed to increment clicks:", e));
+      .catch((e: any) => console.error("Failed to increment clicks:", e));
 
     // Redirect or render landing page
     const wantsRedirect = req.query.redirect === "true";
@@ -155,8 +159,15 @@ app.get("/s/:shortCode", async (req, res) => {
     res.setHeader("Cache-Control", "public, max-age=300");
     return res.send(html);
   } catch (e: any) {
-    console.error("Short link error:", e);
-    return res.status(500).send("Server error");
+    console.error("[REDIRECT ERROR]", {
+      shortCode,
+      message: e.message,
+      details: e.details,
+      hint: e.hint,
+      code: e.code,
+      stack: e.stack?.slice(0, 500)
+    });
+    return res.status(500).send("Server error: " + (e.message || "Unknown"));
   }
 });
 

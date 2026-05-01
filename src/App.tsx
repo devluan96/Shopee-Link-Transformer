@@ -373,6 +373,7 @@ export default function App() {
               handleApproveUser={handleApproveUser}
               handleUpdateSubscription={handleUpdateSubscription}
               handleDeleteUser={handleDeleteUser}
+              fetchWithAuth={fetchWithAuth}
             />
           )}
 
