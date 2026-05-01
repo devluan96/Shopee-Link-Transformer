@@ -130,10 +130,12 @@ app.get("/s/:shortCode", async (req, res) => {
       console.error("Click tracking error:", trackError);
     }
 
-    // Increment click count
-    supabase
-      .rpc("increment_link_clicks", { link_id: link.id })
-      .catch((e: any) => console.error("Failed to increment clicks:", e));
+    // Increment click count (fire and forget)
+    try {
+      await supabase.rpc("increment_link_clicks", { link_id: link.id });
+    } catch (e: any) {
+      console.error("Failed to increment clicks:", e.message);
+    }
 
     // Redirect or render landing page
     const wantsRedirect = req.query.redirect === "true";
