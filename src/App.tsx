@@ -139,11 +139,16 @@ export default function App() {
     clearVideo,
   } = useVideoUpload({ canAccessCreate: !!(profile?.subscription_plan && profile.subscription_plan !== "free" || profile?.role === "admin"), uploadAssetToCloudinary });
 
-  // Wrapper to handle thumbnail auto-set
+  // Wrapper to handle thumbnail auto-set and sync videoUrl to link creator
   const handleVideoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const result = await handleVideoUploadBase(e);
-    if (result && typeof result === "object" && result.thumbnailUrl) {
-      setCustomImageUrl(result.thumbnailUrl);
+    if (result && typeof result === "object") {
+      if (result.thumbnailUrl) {
+        setCustomImageUrl(result.thumbnailUrl);
+      }
+      if (result.videoUrl) {
+        setLinkCreatorVideoUrl(result.videoUrl);
+      }
     }
   };
 
