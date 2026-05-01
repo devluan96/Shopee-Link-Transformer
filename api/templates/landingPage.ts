@@ -308,12 +308,14 @@ export const renderLinkLandingPage = (
           heroVideo.addEventListener("resize", syncHeroVideoOrientation);
           syncHeroVideoOrientation();
           heroVideo.addEventListener("play", () => {
-            heroVideo.pause();
             if (hasSecondaryRedirect && !secondaryOpened) {
+              heroVideo.pause();
               openSecondaryStep();
             } else if (!primaryOpened) {
+              heroVideo.pause();
               openPrimaryStep();
             }
+            // If both links are opened, let video play normally
           });
         }
       })();

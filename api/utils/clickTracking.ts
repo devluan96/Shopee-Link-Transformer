@@ -49,6 +49,9 @@ export const insertOutboundEvent = async (
   supabase: SupabaseClient,
   payload: {
     link_id: string;
+    short_code: string;
+    stage: "primary" | "secondary";
+    destination_url: string;
     user_agent?: string | null;
     ip_address?: string | null;
     source?: string | null;

@@ -189,8 +189,22 @@ app.post("/api/v1/links/:linkId/track", async (req, res) => {
       req.socket.remoteAddress ||
       "";
 
+    // Fetch link details to get required fields
+    const { data: link, error: linkError } = await supabase
+      .from("links")
+      .select("id, short_code, original_url, secondary_url")
+      .eq("id", linkId)
+      .maybeSingle();
+
+    if (linkError || !link) {
+      return res.status(404).json({ error: "Link not found" });
+    }
+
     await insertOutboundEvent(supabase, {
       link_id: linkId,
+      short_code: link.short_code,
+      stage: "primary",
+      destination_url: link.original_url,
       user_agent: userAgent,
       ip_address: ipAddress,
       source,
