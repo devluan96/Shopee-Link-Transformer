@@ -141,7 +141,7 @@ router.get(
       // 2. Get click counts for all links in one query
       const linkIds = links.map((l: any) => l.id);
       const { data: clicks, error: clicksError } = await supabase
-        .from("click_events")
+        .from("clicks")
         .select("link_id")
         .in("link_id", linkIds);
 

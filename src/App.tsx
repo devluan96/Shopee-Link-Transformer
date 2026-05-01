@@ -219,17 +219,6 @@ export default function App() {
   const canAccessCreate = !!(isAdminRole || hasSub);
   const bootstrappingAccess = authLoading || (!!user && profileBootstrapLoading);
 
-  // Debug logging
-  console.log("[Access Debug]", {
-    isAdminRole,
-    hasSub,
-    canAccessCreate,
-    profileRole: profile?.role,
-    profilePlan: profile?.subscription_plan,
-    userEmail: user?.email,
-    bootstrappingAccess,
-  });
-
   // Loading screen
   if (bootstrappingAccess) {
     return (

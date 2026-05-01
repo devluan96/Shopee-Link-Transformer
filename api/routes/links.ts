@@ -105,7 +105,7 @@ router.get(
 
       // Count all clicks for these links
       const { count, error } = await supabase
-        .from("click_events")
+        .from("clicks")
         .select("*", { count: 'exact', head: true })
         .in("link_id", linkIds);
 
@@ -128,9 +128,9 @@ router.get(
 
       console.log("[API] Fetching click count for link:", linkId);
 
-      // Count clicks from click_events table
+      // Count clicks from clicks table
       const { count, error } = await supabase
-        .from("click_events")
+        .from("clicks")
         .select("*", { count: 'exact', head: true })
         .eq("link_id", linkId);
 
