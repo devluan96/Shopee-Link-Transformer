@@ -49,7 +49,7 @@ export interface LinkStats {
 
 export interface AnalyticsData {
   history: Array<{ date: string; clicks: number }>;
-  topLinks: Array<{ title: string; clicks: number }>;
+  topLinks: Array<{ id: string; short_code: string; title: string; clicks: number }>;
   trafficSources: Array<{ name: string; value: number }>;
   growthPercentage: number;
 }

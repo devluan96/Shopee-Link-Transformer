@@ -117,6 +117,8 @@ export const CreateLink = ({
   const [videoPreviewOrientation, setVideoPreviewOrientation] = React.useState<
     "landscape" | "portrait" | "square"
   >("landscape");
+  const [showQrModal, setShowQrModal] = React.useState(false);
+  const [qrDownloading, setQrDownloading] = React.useState(false);
   const normalizedShortCodePreview = customShortCode
     ? normalizeVietnameseSlug(customShortCode)
     : "";
@@ -805,6 +807,7 @@ export const CreateLink = ({
                 <Copy size={16} /> Sao chép Link
               </button>
               <button
+                onClick={() => result && setShowQrModal(true)}
                 disabled={!result}
                 className="flex items-center justify-center gap-2 rounded-2xl border-2 border-gray-100 bg-white py-4 text-[10px] font-black uppercase tracking-widest text-gray-900 shadow-sm transition-all hover:bg-gray-50 active:scale-95 sm:py-5"
               >
@@ -814,6 +817,46 @@ export const CreateLink = ({
           </div>
         </div>
       </div>
+
+      {/* QR Code Modal */}
+      {showQrModal && result && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          <div
+            onClick={() => setShowQrModal(false)}
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+          />
+          <div className="relative bg-white rounded-[2.5rem] p-8 max-w-sm w-full shadow-2xl border border-gray-100">
+            <h3 className="text-xl font-black text-gray-900 mb-2 text-center">QR Code</h3>
+            <p className="text-gray-500 font-medium text-sm text-center mb-6">
+              Quét để truy cập link
+            </p>
+            
+            <div className="flex justify-center mb-6">
+              <img
+                src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(`https://hotsnew.click/s/${result.short_code}`)}`}
+                alt="QR Code"
+                className="w-48 h-48 rounded-2xl shadow-lg"
+              />
+            </div>
+            
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowQrModal(false)}
+                className="flex-1 py-4 bg-gray-100 text-gray-500 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-gray-200 transition-all"
+              >
+                Đóng
+              </button>
+              <a
+                href={`https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=${encodeURIComponent(`https://hotsnew.click/s/${result.short_code}`)}&download=1`}
+                download={`qr-${result.short_code}.png`}
+                className="flex-1 py-4 bg-gray-900 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-black transition-all text-center"
+              >
+                Tải xuống
+              </a>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

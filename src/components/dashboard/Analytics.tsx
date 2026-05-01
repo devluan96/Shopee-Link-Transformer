@@ -173,7 +173,7 @@ export const Analytics = ({ analyticsData, linksCount }: AnalyticsProps) => {
                       {item.title}
                     </div>
                     <div className="text-[10px] font-black uppercase tracking-widest text-orange-500">
-                      {item.clicks} CLICKS
+                      {item.clicks} CLICKS · /s/{item.short_code}
                     </div>
                   </div>
                   <div className="h-1.5 w-24 overflow-hidden rounded-full bg-gray-100">
