@@ -11,6 +11,7 @@ export const authenticate = async (
   try {
     const token = getBearerToken(req);
     if (!token) {
+      console.error(`[Auth] No token for ${req.method} ${req.path}`);
       return res.status(401).json({ error: "Unauthorized - No token" });
     }
 
@@ -18,7 +19,8 @@ export const authenticate = async (
     const { data, error } = await supabase.auth.getUser(token);
 
     if (error || !data?.user) {
-      return res.status(401).json({ error: "Invalid token" });
+      console.error(`[Auth] Invalid token for ${req.method} ${req.path}:`, error?.message || "No user");
+      return res.status(401).json({ error: "Invalid token", details: error?.message });
     }
 
     const userId = data.user.id;
@@ -56,7 +58,9 @@ export const checkAdmin = (
     req.authProfile?.role === "admin" ||
     req.authUser?.email === "devluan1996@gmail.com";
   if (!isAdmin) {
+    console.error(`[Admin] Access denied for ${req.authUser?.email || "unknown"}, role: ${req.authProfile?.role || "none"}`);
     return res.status(403).json({ error: "Forbidden - Admin only" });
   }
+  console.log(`[Admin] Access granted for ${req.authUser?.email}`);
   next();
 };
