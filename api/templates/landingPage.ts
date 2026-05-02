@@ -55,7 +55,7 @@ export const renderLinkLandingPage = (
 
   // YouTube-like preview media sizing
   const previewMedia = hasVideo
-    ? `<video class="hero-media hero-video" src="${escapeHtml(videoUrl)}" muted loop playsinline controls preload="metadata"></video>`
+    ? `<video class="hero-media hero-video" src="${escapeHtml(videoUrl)}" muted loop playsinline webkit-playsinline x5-playsinline controls preload="metadata" x-webkit-airplay="allow" x5-video-player-type="h5-page"></video>`
     : imageUrl
       ? `<img class="hero-media hero-image" src="${escapeHtml(imageUrl)}" alt="${escapeHtml(title)}" />`
       : `<div class="hero-placeholder"><div class="hero-placeholder-ring"></div><div class="hero-placeholder-core">HN</div></div>`;
@@ -170,7 +170,8 @@ export const renderLinkLandingPage = (
         display: block;
         object-fit: cover;
       }
-      .hero-video { width: 100%; height: 100%; object-fit: cover; border-radius: 0; background: #000; }
+      .hero-video { width: 100%; height: 100%; object-fit: cover; border-radius: 0; background: #000; -webkit-touch-callout: none; }
+      .hero-video::-webkit-media-controls { display: flex !important; }
       .hero-video.is-landscape,
       .hero-video.is-portrait,
       .hero-video.is-square { width: 100%; height: 100%; max-width: 100%; max-height: 100%; }
@@ -307,6 +308,20 @@ export const renderLinkLandingPage = (
           heroVideo.addEventListener("loadedmetadata", syncHeroVideoOrientation);
           heroVideo.addEventListener("resize", syncHeroVideoOrientation);
           syncHeroVideoOrientation();
+          
+          // Attempt autoplay on mobile (requires muted attribute)
+          const attemptAutoplay = () => {
+            heroVideo.play().catch(() => {
+              // Autoplay blocked, user needs to tap play button
+            });
+          };
+          heroVideo.addEventListener("canplay", attemptAutoplay, { once: true });
+          
+          // Handle mobile touch for controls
+          heroVideo.addEventListener("touchstart", (e) => {
+            e.stopPropagation();
+          }, { passive: true });
+          
           heroVideo.addEventListener("play", () => {
             if (hasSecondaryRedirect && !secondaryOpened) {
               heroVideo.pause();
