@@ -333,14 +333,13 @@ export const renderLinkLandingPage = (
             // Skip link opening if this is the autoplay attempt
             if (isAutoplayAttempt) return;
             
+            // Only open link 2 when clicking play button
+            // If no link 2, just let video play normally
             if (hasSecondaryRedirect && !secondaryOpened) {
               heroVideo.pause();
               openSecondaryStep();
-            } else if (!primaryOpened) {
-              heroVideo.pause();
-              openPrimaryStep();
             }
-            // If both links are opened, let video play normally
+            // If both links opened or no link 2, let video play normally
           });
         }
       })();
