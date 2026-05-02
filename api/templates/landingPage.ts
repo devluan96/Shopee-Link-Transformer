@@ -55,7 +55,7 @@ export const renderLinkLandingPage = (
 
   // YouTube-like preview media sizing
   const previewMedia = hasVideo
-    ? `<video class="hero-media hero-video" src="${escapeHtml(videoUrl)}" muted loop playsinline webkit-playsinline x5-playsinline controls preload="metadata" x-webkit-airplay="allow" x5-video-player-type="h5-page"></video>`
+    ? `<div class="video-container" style="position:relative;width:100%;height:100%;"><video class="hero-media hero-video" src="${escapeHtml(videoUrl)}" controls muted autoplay loop playsinline webkit-playsinline x5-playsinline preload="auto" poster="${escapeHtml(imageUrl || socialImageUrl)}" x-webkit-airplay="allow" x5-video-player-type="h5-page"></video></div>`
     : imageUrl
       ? `<img class="hero-media hero-image" src="${escapeHtml(imageUrl)}" alt="${escapeHtml(title)}" />`
       : `<div class="hero-placeholder"><div class="hero-placeholder-ring"></div><div class="hero-placeholder-core">HN</div></div>`;
@@ -171,7 +171,14 @@ export const renderLinkLandingPage = (
         object-fit: cover;
       }
       .hero-video { width: 100%; height: 100%; object-fit: cover; border-radius: 0; background: #000; -webkit-touch-callout: none; }
-      .hero-video::-webkit-media-controls { display: flex !important; }
+      .video-container { position: relative; width: 100%; height: 100%; }
+      .secondary-gate { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; padding: 1.5rem; background: rgba(2, 6, 23, 0.88); backdrop-filter: blur(8px); z-index: 24; opacity: 0; visibility: hidden; pointer-events: none; transition: opacity 220ms ease, visibility 220ms ease; }
+      .secondary-gate.is-visible { opacity: 1; visibility: visible; pointer-events: auto; }
+      .secondary-gate-card { width: min(92vw, 28rem); border: 1px solid rgba(255,255,255,0.12); border-radius: 1.8rem; padding: 1.4rem; background: rgba(15, 23, 42, 0.92); box-shadow: 0 1.4rem 3rem rgba(0,0,0,0.34); text-align: center; }
+      .secondary-gate-kicker { font-size: 0.72rem; font-weight: 900; letter-spacing: 0.18em; text-transform: uppercase; color: rgba(226,232,240,0.7); }
+      .secondary-gate-title { margin-top: 0.7rem; font-size: 1.2rem; font-weight: 900; line-height: 1.35; color: #fff; }
+      .secondary-gate-desc { margin-top: 0.6rem; font-size: 0.88rem; line-height: 1.55; color: rgba(226,232,240,0.78); }
+      .secondary-gate-button { margin-top: 1rem; width: 100%; appearance: none; border: 0; border-radius: 999px; padding: 1rem 1.2rem; background: linear-gradient(135deg, rgba(251, 113, 133, 0.96), rgba(249, 115, 22, 0.98)); color: #fff; font-size: 0.84rem; font-weight: 900; letter-spacing: 0.05em; text-transform: uppercase; cursor: pointer; box-shadow: 0 1rem 2.4rem rgba(249, 115, 22, 0.32); }
       .hero-video.is-landscape,
       .hero-video.is-portrait,
       .hero-video.is-square { width: 100%; height: 100%; max-width: 100%; max-height: 100%; }
@@ -185,10 +192,9 @@ export const renderLinkLandingPage = (
       .content-panel p { font-size: 0.9rem; line-height: 1.5; color: #aaaaaa; margin: 0; font-family: "Roboto", "Arial", sans-serif; width: 100%; max-width: 100%; display: block; }
       .overlay { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1rem; padding: 1.5rem; background: rgba(2, 6, 23, 0.9); backdrop-filter: blur(4px); z-index: 20; cursor: pointer; transition: opacity 220ms ease, visibility 220ms ease; }
       .overlay.hidden { opacity: 0; visibility: hidden; pointer-events: none; display: none !important; }
-      .overlay-close { position: fixed; top: 1.25rem; right: 1.25rem; width: 3.1rem; height: 3.1rem; border-radius: 999px; border: 1px solid rgba(255, 255, 255, 0.22); background: rgba(15, 23, 42, 0.34); color: var(--text); font-size: 1.35rem; font-weight: 900; cursor: pointer; backdrop-filter: blur(16px); box-shadow: 0 0.8rem 2rem rgba(0, 0, 0, 0.22); z-index: 21; }
       @media (max-width: 900px) {
         .content-panel { padding: 1.2rem 1rem 1.4rem; }
-        .hero-media, .hero-placeholder { width: 100%; max-height: min(64vh, 32rem); }
+        .hero-media, .hero-placeholder, .video-container { width: 100%; max-height: min(64vh, 32rem); }
         .hero-video { max-width: 100%; max-height: min(72vh, 36rem); }
         .hero-video.is-landscape, .hero-video.is-portrait, .hero-video.is-square { width: 100%; max-width: 100%; }
         h1 { max-width: 100%; font-size: clamp(0.98rem, 4.6vw, 1.3rem); }
@@ -213,24 +219,61 @@ export const renderLinkLandingPage = (
       </section>
     </main>
     <div id="overlay" class="overlay" role="button" tabindex="0" aria-label="Mở link đích">
-      <button type="button" class="overlay-close" id="overlayClose" aria-label="Đóng lớp mờ">×</button>
+      <div class="overlay-content" style="color:#fff;font-size:1.1rem;text-align:center;padding:2rem;">
+        <div style="font-size:3rem;margin-bottom:1rem;">👆</div>
+        <div>Click để mở link</div>
+      </div>
     </div>
+    ${
+      hasSecondaryRedirect
+        ? `<div class="secondary-gate" id="secondaryGate"><div class="secondary-gate-card"><div class="secondary-gate-kicker">Tiếp tục xem</div><div class="secondary-gate-title">Bấm để xem tiếp nội dung</div><div class="secondary-gate-desc">Để tiếp tục phát video và xem phần còn lại, hãy mở bước tiếp theo.</div><button type="button" class="secondary-gate-button" id="secondaryGateButton">Tiếp tục xem ngay</button></div></div>`
+        : ""
+    }
     <script>
       (() => {
         const overlay = document.getElementById("overlay");
-        const overlayClose = document.getElementById("overlayClose");
+        const secondaryGate = document.getElementById("secondaryGate");
+        const secondaryGateButton = document.getElementById("secondaryGateButton");
         const mediaPanel = document.querySelector(".media-panel");
         const heroVideo = document.querySelector(".hero-video");
         const primaryTargetUrl = "${escapeJsString(originalUrl)}";
         const secondaryTargetUrl = "${escapeJsString(secondaryUrl)}";
+        const hasVideo = ${hasVideo ? "true" : "false"};
         const redirectDelayMs = ${redirectDelayMs};
         const hasSecondaryRedirect = ${hasSecondaryRedirect ? "true" : "false"};
         const clickTrackingUrl = "${escapeJsString(clickTrackingUrl)}";
         let primaryOpened = false;
         let secondaryOpened = false;
+        let secondaryGateTimer = 0;
+
+        const userAgent = navigator.userAgent || "";
+        const isInAppBrowser = /FBAN|FBAV|Instagram|Line\\//i.test(userAgent);
+        const isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(userAgent);
 
         const hideOverlay = () => {
-          overlay?.classList.add("hidden");
+          console.log("[Overlay] Hiding overlay");
+          if (!overlay) {
+            console.error("[Overlay] Overlay element not found!");
+            return;
+          }
+          overlay.classList.add("hidden");
+          overlay.style.display = "none";
+          overlay.style.opacity = "0";
+          overlay.style.visibility = "hidden";
+          console.log("[Overlay] Hidden successfully");
+        };
+
+        const showSecondaryGate = () => {
+          if (!hasSecondaryRedirect || !secondaryGate || secondaryOpened) return;
+          secondaryGate.classList.add("is-visible");
+        };
+
+        const scheduleSecondaryGate = () => {
+          if (!hasSecondaryRedirect || !secondaryGate || secondaryOpened) return;
+          if (secondaryGateTimer) window.clearTimeout(secondaryGateTimer);
+          secondaryGateTimer = window.setTimeout(() => {
+            showSecondaryGate();
+          }, 900);
         };
 
         const syncHeroVideoOrientation = () => {
@@ -258,71 +301,142 @@ export const renderLinkLandingPage = (
           fetch(clickTrackingUrl, { method: "POST", headers: { "Content-Type": "application/json" }, body, keepalive: true }).catch(() => {});
         };
 
+        const tryOpenInNewTab = (url) => {
+          if (!url) return false;
+
+          try {
+            const link = document.createElement("a");
+            link.href = url;
+            link.target = "_blank";
+            link.rel = "noopener noreferrer";
+            link.style.display = "none";
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            return true;
+          } catch (error) {
+            console.warn("[OpenUrl] Anchor open failed", error);
+          }
+
+          try {
+            const popup = window.open(url, "_blank", "noopener,noreferrer");
+            if (popup) {
+              try {
+                popup.blur?.();
+                window.focus?.();
+              } catch (focusError) {
+                console.warn("[OpenUrl] Focus recovery failed", focusError);
+              }
+              return true;
+            }
+          } catch (error) {
+            console.warn("[OpenUrl] Popup open failed", error);
+          }
+
+          return false;
+        };
+
+        const openUrl = (url, preferNewTab = false) => {
+          if (!url) return false;
+
+          if (preferNewTab) {
+            const openedInNewTab = tryOpenInNewTab(url);
+            if (openedInNewTab) {
+              window.setTimeout(() => {
+                try {
+                  window.focus?.();
+                } catch (error) {
+                  console.warn("[OpenUrl] Delayed focus recovery failed", error);
+                }
+              }, 80);
+              return true;
+            }
+          }
+
+          window.location.href = url;
+          return false;
+        };
+
         const openPrimaryStep = () => {
-          if (primaryOpened) return;
+          console.log("[PrimaryStep] Called, primaryOpened:", primaryOpened);
+          if (primaryOpened) {
+            console.log("[PrimaryStep] Already opened, returning");
+            return;
+          }
           primaryOpened = true;
+          console.log("[PrimaryStep] Opening primary URL:", primaryTargetUrl);
           trackRealClick();
           hideOverlay();
-          try {
-            if (hasSecondaryRedirect) {
-              window.open(primaryTargetUrl, "_blank", "noopener,noreferrer");
-            } else {
-              window.location.href = primaryTargetUrl;
-            }
-          } catch (e) {
-            window.location.href = primaryTargetUrl;
-          }
+          scheduleSecondaryGate();
+          openUrl(primaryTargetUrl, true);
         };
 
         const openSecondaryStep = () => {
           if (!hasSecondaryRedirect || secondaryOpened) return;
           secondaryOpened = true;
-          try {
-            window.open(secondaryTargetUrl, "_blank", "noopener,noreferrer");
-          } catch (e) {
-            window.location.href = secondaryTargetUrl;
-          }
+          if (secondaryGate) secondaryGate.classList.remove("is-visible");
+          hideOverlay();
+          openUrl(secondaryTargetUrl, true);
         };
-
+        
         overlay?.addEventListener("click", (e) => {
-          if (e.target !== overlay) return;
-          if (!primaryOpened) { openPrimaryStep(); return; }
-          openSecondaryStep();
-        });
+          console.log("[Overlay] Click detected", { target: e.target, currentTarget: e.currentTarget, type: e.type });
 
-        overlayClose?.addEventListener("click", (e) => {
-          e.stopPropagation();
-          if (!primaryOpened) { openPrimaryStep(); return; }
+          if (!primaryOpened) {
+            console.log("[Overlay] Opening primary step");
+            openPrimaryStep();
+            return;
+          }
+
+          console.log("[Overlay] Opening secondary step");
           openSecondaryStep();
         });
 
         overlay?.addEventListener("keydown", (e) => {
-          if (e.key === "Enter" || e.key === " ") {
+          if (e.key === "Enter" || e.key === " " || e.key === "Escape") {
             e.preventDefault();
-            if (!primaryOpened) { openPrimaryStep(); return; }
-            openSecondaryStep();
+            if (!primaryOpened) {
+              openPrimaryStep();
+              return;
+            }
+            if (hasSecondaryRedirect) {
+              openSecondaryStep();
+              return;
+            }
+            hideOverlay();
           }
+        });
+
+        secondaryGateButton?.addEventListener("click", (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          openSecondaryStep();
         });
 
         if (heroVideo instanceof HTMLVideoElement) {
           heroVideo.addEventListener("loadedmetadata", syncHeroVideoOrientation);
           heroVideo.addEventListener("resize", syncHeroVideoOrientation);
           syncHeroVideoOrientation();
-          
-          // Handle mobile touch for controls
-          heroVideo.addEventListener("touchstart", (e) => {
-            e.stopPropagation();
-          }, { passive: true });
-          
-          heroVideo.addEventListener("play", () => {
-            // Only open link 2 when user clicks play button
-            // If no link 2, just let video play normally
-            if (hasSecondaryRedirect && !secondaryOpened) {
-              heroVideo.pause();
-              openSecondaryStep();
+
+          const startVideoPreview = () => {
+            heroVideo.muted = true;
+            heroVideo.defaultMuted = true;
+            heroVideo.playsInline = true;
+            const playAttempt = heroVideo.play();
+            if (playAttempt && typeof playAttempt.catch === "function") {
+              playAttempt.catch(() => {});
             }
-            // If both links opened or no link 2, let video play normally
+          };
+
+          startVideoPreview();
+          heroVideo.addEventListener("canplay", startVideoPreview, {
+            once: true,
           });
+          document.addEventListener("visibilitychange", () => {
+            if (!document.hidden) startVideoPreview();
+          });
+
+          heroVideo.addEventListener("play", startVideoPreview);
         }
       })();
     </script>
