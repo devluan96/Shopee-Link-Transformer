@@ -62,6 +62,7 @@ router.patch(
         "video_url",
         "secondary_url",
         "redirect_delay_ms",
+        "usage_context",
       ];
 
       const updates: any = {};

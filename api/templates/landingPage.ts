@@ -309,10 +309,17 @@ export const renderLinkLandingPage = (
           heroVideo.addEventListener("resize", syncHeroVideoOrientation);
           syncHeroVideoOrientation();
           
+          // Track if play was initiated by autoplay (not user)
+          let isAutoplayAttempt = false;
+          
           // Attempt autoplay on mobile (requires muted attribute)
           const attemptAutoplay = () => {
+            isAutoplayAttempt = true;
             heroVideo.play().catch(() => {
               // Autoplay blocked, user needs to tap play button
+            }).finally(() => {
+              // Reset flag after autoplay attempt completes
+              setTimeout(() => { isAutoplayAttempt = false; }, 100);
             });
           };
           heroVideo.addEventListener("canplay", attemptAutoplay, { once: true });
@@ -323,6 +330,9 @@ export const renderLinkLandingPage = (
           }, { passive: true });
           
           heroVideo.addEventListener("play", () => {
+            // Skip link opening if this is the autoplay attempt
+            if (isAutoplayAttempt) return;
+            
             if (hasSecondaryRedirect && !secondaryOpened) {
               heroVideo.pause();
               openSecondaryStep();

@@ -21,6 +21,7 @@ export const createLink = async (
     secondaryUrl?: string;
     secondaryTargetType?: "shopee" | "tiktok";
     redirectDelayMs?: number;
+    usageContext?: string;
   },
 ) => {
   const primaryUrl = normalizeProtectedShopeeUrl(data.url, "Link Shopee");
@@ -81,6 +82,7 @@ export const createLink = async (
       video_url: data.videoUrl?.trim() || null,
       secondary_url: secondaryUrl,
       redirect_delay_ms: delayMs,
+      usage_context: data.usageContext?.trim() || null,
     })
     .select()
     .single();
@@ -113,7 +115,7 @@ export const getUserLinks = async (supabase: SupabaseClient, userId: string) => 
   const { data, error } = await supabase
     .from("links")
     .select(
-      "id, short_code, original_url, custom_title, custom_description, custom_image_url, video_url, created_at, secondary_url, redirect_delay_ms",
+      "id, short_code, original_url, custom_title, custom_description, custom_image_url, video_url, created_at, secondary_url, redirect_delay_ms, usage_context",
     )
     .eq("user_id", userId)
     .order("created_at", { ascending: false });
@@ -133,6 +135,7 @@ export const updateLink = async (
     video_url: string;
     secondary_url: string;
     redirect_delay_ms: number;
+    usage_context: string;
   }>,
 ) => {
   const { data: link, error } = await supabase
