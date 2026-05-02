@@ -1,4 +1,4 @@
-import React, { useState, Suspense, lazy } from "react";
+import React, { useEffect, useState, Suspense, lazy } from "react";
 import { Zap, Menu } from "lucide-react";
 import { Toaster } from "sonner";
 import { Tab } from "./types";
@@ -23,6 +23,7 @@ import { Sidebar } from "./components/layout/Sidebar";
 import { AuthScreen } from "./components/auth/AuthScreen";
 import { PendingApproval } from "./components/PendingApproval";
 import { Footer } from "./components/layout/Footer";
+import { Overview } from "./components/dashboard/Overview";
 
 // Lazy Loaded Components
 const Pricing = lazy(() =>
@@ -31,11 +32,6 @@ const Pricing = lazy(() =>
 const AdminPanel = lazy(() =>
   import("./components/admin/AdminPanel").then((m) => ({
     default: m.AdminPanel,
-  })),
-);
-const Overview = lazy(() =>
-  import("./components/dashboard/Overview").then((m) => ({
-    default: m.Overview,
   })),
 );
 const Analytics = lazy(() =>
@@ -218,6 +214,11 @@ export default function App() {
   const hasSub = profile?.subscription_plan && profile.subscription_plan !== "free";
   const canAccessCreate = !!(isAdminRole || hasSub);
   const bootstrappingAccess = authLoading || (!!user && profileBootstrapLoading);
+
+  useEffect(() => {
+    setActiveTab("dashboard");
+    setIsSidebarOpen(false);
+  }, [user?.id]);
 
   // Loading screen
   if (bootstrappingAccess) {

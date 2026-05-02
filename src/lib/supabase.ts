@@ -107,8 +107,14 @@ export const loginWithEmail = async (email: string, pass: string) => {
 };
 
 export const logout = async () => {
-  const { error } = await supabase.auth.signOut();
-  if (error) throw error;
+  const { error } = await supabase.auth.signOut({ scope: "local" });
+  if (
+    error &&
+    !String(error.message || "").toLowerCase().includes("session missing") &&
+    !String(error.message || "").toLowerCase().includes("refresh token")
+  ) {
+    throw error;
+  }
 };
 
 export const clearStoredSession = () => {

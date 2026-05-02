@@ -85,6 +85,13 @@ export function useLinks({ user, profile, fetchWithAuth, activeTab }: UseLinksPr
     setLinksDirty(true);
   }, []);
 
+  useEffect(() => {
+    setLinks([]);
+    setSearchTerm("");
+    setListLoading(false);
+    setLinksDirty(!!user);
+  }, [user?.id]);
+
   // Auto-fetch when tab is list and data is dirty
   useEffect(() => {
     const isAdminRole = profile?.role === "admin" || user?.email === "devluan1996@gmail.com";

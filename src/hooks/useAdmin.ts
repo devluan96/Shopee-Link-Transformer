@@ -157,6 +157,13 @@ export function useAdmin({ user, profile, fetchWithAuth, activeTab }: UseAdminPr
     };
   }, [user?.id, isAdminRole]);
 
+  useEffect(() => {
+    setAllUsers([]);
+    setOnlineUserIds([]);
+    setAdminLoading(false);
+    setAdminDirty(!!user);
+  }, [user?.id]);
+
   // Auto-fetch admin data
   useEffect(() => {
     if (user && isAdminRole && activeTab === "admin" && (adminDirty || allUsers.length === 0)) {

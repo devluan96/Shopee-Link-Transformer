@@ -126,6 +126,13 @@ export function useProfile({ user, fetchWithAuth }: UseProfileProps): ProfileSta
     }
   }, [user, fetchWithAuth]);
 
+  useEffect(() => {
+    bootstrappedUserIdRef.current = null;
+    setProfile(null);
+    setProfileLoading(false);
+    setProfileBootstrapLoading(!!user?.id);
+  }, [user?.id]);
+
   // Profile bootstrap and realtime sync
   useEffect(() => {
     let isActive = true;

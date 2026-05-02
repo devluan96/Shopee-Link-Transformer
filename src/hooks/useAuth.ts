@@ -41,8 +41,17 @@ export function useAuth(): AuthState & AuthActions {
   
   const sessionRef = useRef<Session | null>(null);
   const isLoggingOutRef = useRef(false);
+  const userRef = useRef<User | null>(null);
+
+  useEffect(() => {
+    userRef.current = user;
+  }, [user]);
 
   const getAccessToken = useCallback(async (): Promise<string | null> => {
+    if (isLoggingOutRef.current || !userRef.current) {
+      return null;
+    }
+
     const nowInSeconds = Math.floor(Date.now() / 1000);
     const cachedSession = sessionRef.current;
 
@@ -57,6 +66,9 @@ export function useAuth(): AuthState & AuthActions {
       data: { session },
     } = await supabase.auth.getSession();
     sessionRef.current = session ?? null;
+    if (!session?.user || session.user.id !== userRef.current?.id) {
+      return null;
+    }
     if (session?.access_token) {
       const expiresAt = session.expires_at ?? 0;
       if (expiresAt - nowInSeconds > 60) {
@@ -67,6 +79,14 @@ export function useAuth(): AuthState & AuthActions {
     const { data: refreshed, error } = await supabase.auth.refreshSession();
     if (error) {
       console.error("[Auth] refreshSession failed:", error);
+      clearStoredSession();
+      sessionRef.current = null;
+      setUser(null);
+      return null;
+    }
+
+    if (!refreshed.session?.user || refreshed.session.user.id !== userRef.current?.id) {
+      sessionRef.current = null;
       return null;
     }
 
@@ -144,6 +164,9 @@ export function useAuth(): AuthState & AuthActions {
 
     isLoggingOutRef.current = true;
     setUser(null);
+    userRef.current = null;
+    sessionRef.current = null;
+    clearStoredSession();
     
     try {
       setAuthLoading(false);
@@ -221,6 +244,7 @@ export function useAuth(): AuthState & AuthActions {
       
       if (event === "SIGNED_OUT") {
         isLoggingOutRef.current = false;
+        sessionRef.current = null;
         setUser(null);
         setAuthLoading(false);
         return;
@@ -245,6 +269,8 @@ export function useAuth(): AuthState & AuthActions {
       sessionRef.current = session ?? null;
       if (session?.user) {
         setUser(session.user);
+      } else {
+        setAuthLoading(false);
       }
     });
 

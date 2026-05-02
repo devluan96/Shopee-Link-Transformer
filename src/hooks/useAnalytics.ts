@@ -34,20 +34,23 @@ export function useAnalytics({
   activeTab,
   linksLength 
 }: UseAnalyticsProps): AnalyticsState & AnalyticsActions {
-  const [stats, setStats] = useState<LinkStats>({
+  const emptyStats: LinkStats = {
     totalLinks: 0,
     totalClicks: 0,
     recentClicks: [],
     topLinks: [],
     growthPercentage: 0,
-  });
-  
-  const [analyticsData, setAnalyticsData] = useState<AnalyticsData>({
+  };
+  const emptyAnalyticsData: AnalyticsData = {
     history: [],
     topLinks: [],
     trafficSources: [],
     growthPercentage: 0,
-  });
+  };
+
+  const [stats, setStats] = useState<LinkStats>(emptyStats);
+  
+  const [analyticsData, setAnalyticsData] = useState<AnalyticsData>(emptyAnalyticsData);
   
   const [statsDirty, setStatsDirty] = useState(true);
   const [analyticsDirty, setAnalyticsDirty] = useState(true);
@@ -79,6 +82,13 @@ export function useAnalytics({
 
   const refreshStats = useCallback(() => setStatsDirty(true), []);
   const refreshAnalytics = useCallback(() => setAnalyticsDirty(true), []);
+
+  useEffect(() => {
+    setStats(emptyStats);
+    setAnalyticsData(emptyAnalyticsData);
+    setStatsDirty(!!user);
+    setAnalyticsDirty(!!user);
+  }, [user?.id]);
 
   // Auto-fetch stats when on dashboard
   useEffect(() => {
