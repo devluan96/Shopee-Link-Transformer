@@ -182,7 +182,7 @@ export const AdvancedAnalytics = ({ fetchWithAuth }: AdvancedAnalyticsProps) => 
   return (
     <div className="space-y-6">
       {/* Tabs */}
-      <div className="flex flex-wrap gap-2 rounded-2xl bg-gray-100 p-1.5">
+      <div className="flex flex-wrap gap-2 rounded-2xl bg-gray-100 p-1.5 dark:bg-slate-800">
         {[
           { id: "geo", label: "Địa lý", icon: Globe },
           { id: "device", label: "Thiết bị", icon: Smartphone },
@@ -194,8 +194,8 @@ export const AdvancedAnalytics = ({ fetchWithAuth }: AdvancedAnalyticsProps) => 
             onClick={() => setActiveTab(tab.id as any)}
             className={`flex items-center gap-2 rounded-xl px-4 py-2.5 text-xs font-black uppercase tracking-widest transition-all ${
               activeTab === tab.id
-                ? "bg-white text-orange-600 shadow-sm"
-                : "text-gray-500 hover:text-gray-700"
+                ? "bg-white text-orange-600 shadow-sm dark:bg-slate-700"
+                : "text-gray-500 hover:text-gray-700 dark:text-slate-400 dark:hover:text-slate-300"
             }`}
           >
             <tab.icon size={14} />
@@ -209,14 +209,14 @@ export const AdvancedAnalytics = ({ fetchWithAuth }: AdvancedAnalyticsProps) => 
         <div className="flex gap-2">
           <button
             onClick={() => exportCSV("clicks")}
-            className="flex items-center gap-2 rounded-xl bg-gray-900 px-4 py-2.5 text-xs font-black uppercase tracking-widest text-white transition-all hover:bg-black"
+            className="flex items-center gap-2 rounded-xl bg-gray-900 px-4 py-2.5 text-xs font-black uppercase tracking-widest text-white transition-all hover:bg-black dark:bg-slate-700 dark:hover:bg-slate-600"
           >
             <Download size={14} />
             Xuất chi tiết (CSV)
           </button>
           <button
             onClick={() => exportCSV("summary")}
-            className="flex items-center gap-2 rounded-xl border-2 border-gray-200 px-4 py-2.5 text-xs font-black uppercase tracking-widest text-gray-700 transition-all hover:border-gray-300"
+            className="flex items-center gap-2 rounded-xl border-2 border-gray-200 px-4 py-2.5 text-xs font-black uppercase tracking-widest text-gray-700 transition-all hover:border-gray-300 dark:border-slate-700 dark:text-slate-300 dark:hover:border-slate-600"
           >
             <Download size={14} />
             Xuất tổng quan
@@ -228,7 +228,7 @@ export const AdvancedAnalytics = ({ fetchWithAuth }: AdvancedAnalyticsProps) => 
       {activeTab === "geo" && (
         <div className="grid gap-6 lg:grid-cols-2">
           {/* Countries */}
-          <div className="rounded-[2.5rem] border border-gray-100 bg-white p-8 shadow-sm">
+          <div className="rounded-[2.5rem] border border-gray-100 bg-white p-8 shadow-sm dark:border-slate-700 dark:bg-slate-800">
             <div className="mb-6 flex items-center gap-3">
               <Globe size={20} className="text-orange-500" />
               <h3 className="text-xl font-black text-gray-900">Quốc gia</h3>
@@ -265,7 +265,7 @@ export const AdvancedAnalytics = ({ fetchWithAuth }: AdvancedAnalyticsProps) => 
                 </div>
                 <div className="space-y-2">
                   {geoData.countries.slice(0, 5).map((country, idx) => (
-                    <div key={country.name} className="flex items-center justify-between rounded-xl bg-gray-50 p-3">
+                    <div key={country.name} className="flex items-center justify-between rounded-xl bg-gray-50 p-3 dark:bg-slate-900">
                       <div className="flex items-center gap-3">
                         <span
                           className="h-3 w-3 rounded-full"
@@ -279,7 +279,7 @@ export const AdvancedAnalytics = ({ fetchWithAuth }: AdvancedAnalyticsProps) => 
                 </div>
               </>
             ) : (
-              <div className="flex h-64 flex-col items-center justify-center text-gray-400">
+              <div className="flex h-64 flex-col items-center justify-center text-gray-400 dark:text-slate-500">
                 <Globe size={48} className="mb-4 opacity-20" />
                 <p className="text-sm font-medium">Chưa có dữ liệu địa lý</p>
               </div>
@@ -287,7 +287,7 @@ export const AdvancedAnalytics = ({ fetchWithAuth }: AdvancedAnalyticsProps) => 
           </div>
 
           {/* Cities */}
-          <div className="rounded-[2.5rem] border border-gray-100 bg-white p-8 shadow-sm">
+          <div className="rounded-[2.5rem] border border-gray-100 bg-white p-8 shadow-sm dark:border-slate-700 dark:bg-slate-800">
             <div className="mb-6 flex items-center gap-3">
               <MapPin size={20} className="text-blue-500" />
               <h3 className="text-xl font-black text-gray-900">Thành phố</h3>
@@ -302,7 +302,7 @@ export const AdvancedAnalytics = ({ fetchWithAuth }: AdvancedAnalyticsProps) => 
             ) : geoData?.cities && geoData.cities.length > 0 ? (
               <div className="max-h-96 space-y-2 overflow-y-auto">
                 {geoData.cities.slice(0, 10).map((city) => (
-                  <div key={`${city.name}-${city.country}`} className="flex items-center justify-between rounded-xl bg-gray-50 p-3">
+                  <div key={`${city.name}-${city.country}`} className="flex items-center justify-between rounded-xl bg-gray-50 p-3 dark:bg-slate-900">
                     <div>
                       <span className="font-bold text-gray-900">{city.name}</span>
                       {city.country && (
@@ -314,7 +314,7 @@ export const AdvancedAnalytics = ({ fetchWithAuth }: AdvancedAnalyticsProps) => 
                 ))}
               </div>
             ) : (
-              <div className="flex h-64 flex-col items-center justify-center text-gray-400">
+              <div className="flex h-64 flex-col items-center justify-center text-gray-400 dark:text-slate-500">
                 <MapPin size={48} className="mb-4 opacity-20" />
                 <p className="text-sm font-medium">Chưa có dữ liệu thành phố</p>
               </div>
@@ -327,7 +327,7 @@ export const AdvancedAnalytics = ({ fetchWithAuth }: AdvancedAnalyticsProps) => 
       {activeTab === "device" && (
         <div className="grid gap-6 lg:grid-cols-3">
           {/* Device Types */}
-          <div className="rounded-[2.5rem] border border-gray-100 bg-white p-8 shadow-sm">
+          <div className="rounded-[2.5rem] border border-gray-100 bg-white p-8 shadow-sm dark:border-slate-700 dark:bg-slate-800">
             <div className="mb-6 flex items-center gap-3">
               <Smartphone size={20} className="text-green-500" />
               <h3 className="text-lg font-black text-gray-900">Loại thiết bị</h3>
@@ -376,7 +376,7 @@ export const AdvancedAnalytics = ({ fetchWithAuth }: AdvancedAnalyticsProps) => 
                 </div>
               </>
             ) : (
-              <div className="flex h-48 flex-col items-center justify-center text-gray-400">
+              <div className="flex h-48 flex-col items-center justify-center text-gray-400 dark:text-slate-500">
                 <Smartphone size={40} className="mb-3 opacity-20" />
                 <p className="text-sm">Chưa có dữ liệu</p>
               </div>
@@ -384,7 +384,7 @@ export const AdvancedAnalytics = ({ fetchWithAuth }: AdvancedAnalyticsProps) => 
           </div>
 
           {/* Browsers */}
-          <div className="rounded-[2.5rem] border border-gray-100 bg-white p-8 shadow-sm">
+          <div className="rounded-[2.5rem] border border-gray-100 bg-white p-8 shadow-sm dark:border-slate-700 dark:bg-slate-800">
             <div className="mb-6 flex items-center gap-3">
               <Monitor size={20} className="text-purple-500" />
               <h3 className="text-lg font-black text-gray-900">Trình duyệt</h3>
@@ -401,7 +401,7 @@ export const AdvancedAnalytics = ({ fetchWithAuth }: AdvancedAnalyticsProps) => 
                       <span className="text-sm font-medium text-gray-700">{browser.name}</span>
                       <span className="text-sm font-bold text-gray-900">{browser.percentage}%</span>
                     </div>
-                    <div className="h-2 overflow-hidden rounded-full bg-gray-100">
+                    <div className="h-2 overflow-hidden rounded-full bg-gray-100 dark:bg-slate-700">
                       <div
                         className="h-full rounded-full transition-all"
                         style={{
@@ -415,7 +415,7 @@ export const AdvancedAnalytics = ({ fetchWithAuth }: AdvancedAnalyticsProps) => 
                 ))}
               </div>
             ) : (
-              <div className="flex h-48 flex-col items-center justify-center text-gray-400">
+              <div className="flex h-48 flex-col items-center justify-center text-gray-400 dark:text-slate-500">
                 <Monitor size={40} className="mb-3 opacity-20" />
                 <p className="text-sm">Chưa có dữ liệu</p>
               </div>
@@ -423,7 +423,7 @@ export const AdvancedAnalytics = ({ fetchWithAuth }: AdvancedAnalyticsProps) => 
           </div>
 
           {/* Operating Systems */}
-          <div className="rounded-[2.5rem] border border-gray-100 bg-white p-8 shadow-sm">
+          <div className="rounded-[2.5rem] border border-gray-100 bg-white p-8 shadow-sm dark:border-slate-700 dark:bg-slate-800">
             <div className="mb-6 flex items-center gap-3">
               <Monitor size={20} className="text-cyan-500" />
               <h3 className="text-lg font-black text-gray-900">Hệ điều hành</h3>
@@ -440,7 +440,7 @@ export const AdvancedAnalytics = ({ fetchWithAuth }: AdvancedAnalyticsProps) => 
                       <span className="text-sm font-medium text-gray-700">{os.name}</span>
                       <span className="text-sm font-bold text-gray-900">{os.percentage}%</span>
                     </div>
-                    <div className="h-2 overflow-hidden rounded-full bg-gray-100">
+                    <div className="h-2 overflow-hidden rounded-full bg-gray-100 dark:bg-slate-700">
                       <div
                         className="h-full rounded-full transition-all"
                         style={{
@@ -454,7 +454,7 @@ export const AdvancedAnalytics = ({ fetchWithAuth }: AdvancedAnalyticsProps) => 
                 ))}
               </div>
             ) : (
-              <div className="flex h-48 flex-col items-center justify-center text-gray-400">
+              <div className="flex h-48 flex-col items-center justify-center text-gray-400 dark:text-slate-500">
                 <Monitor size={40} className="mb-3 opacity-20" />
                 <p className="text-sm">Chưa có dữ liệu</p>
               </div>
@@ -467,7 +467,7 @@ export const AdvancedAnalytics = ({ fetchWithAuth }: AdvancedAnalyticsProps) => 
       {activeTab === "time" && (
         <div className="grid gap-6 lg:grid-cols-2">
           {/* Hourly Distribution */}
-          <div className="rounded-[2.5rem] border border-gray-100 bg-white p-8 shadow-sm">
+          <div className="rounded-[2.5rem] border border-gray-100 bg-white p-8 shadow-sm dark:border-slate-700 dark:bg-slate-800">
             <div className="mb-6 flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <Clock size={20} className="text-orange-500" />
@@ -501,7 +501,7 @@ export const AdvancedAnalytics = ({ fetchWithAuth }: AdvancedAnalyticsProps) => 
                 </ResponsiveContainer>
               </div>
             ) : (
-              <div className="flex h-64 flex-col items-center justify-center text-gray-400">
+              <div className="flex h-64 flex-col items-center justify-center text-gray-400 dark:text-slate-500">
                 <Clock size={48} className="mb-4 opacity-20" />
                 <p className="text-sm">Chưa có dữ liệu</p>
               </div>
@@ -509,7 +509,7 @@ export const AdvancedAnalytics = ({ fetchWithAuth }: AdvancedAnalyticsProps) => 
           </div>
 
           {/* Daily Distribution */}
-          <div className="rounded-[2.5rem] border border-gray-100 bg-white p-8 shadow-sm">
+          <div className="rounded-[2.5rem] border border-gray-100 bg-white p-8 shadow-sm dark:border-slate-700 dark:bg-slate-800">
             <div className="mb-6 flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <Clock size={20} className="text-blue-500" />
@@ -537,7 +537,7 @@ export const AdvancedAnalytics = ({ fetchWithAuth }: AdvancedAnalyticsProps) => 
                 </ResponsiveContainer>
               </div>
             ) : (
-              <div className="flex h-64 flex-col items-center justify-center text-gray-400">
+              <div className="flex h-64 flex-col items-center justify-center text-gray-400 dark:text-slate-500">
                 <Clock size={48} className="mb-4 opacity-20" />
                 <p className="text-sm">Chưa có dữ liệu</p>
               </div>
@@ -548,7 +548,7 @@ export const AdvancedAnalytics = ({ fetchWithAuth }: AdvancedAnalyticsProps) => 
 
       {/* Notifications Settings */}
       {activeTab === "notifications" && (
-        <div className="rounded-[2.5rem] border border-gray-100 bg-white p-8 shadow-sm">
+        <div className="rounded-[2.5rem] border border-gray-100 bg-white p-8 shadow-sm dark:border-slate-700 dark:bg-slate-800">
           <div className="mb-8 flex items-center gap-3">
             <Bell size={20} className="text-orange-500" />
             <h3 className="text-xl font-black text-gray-900">Cài đặt thông báo</h3>
@@ -556,7 +556,7 @@ export const AdvancedAnalytics = ({ fetchWithAuth }: AdvancedAnalyticsProps) => 
 
           <div className="space-y-6">
             {/* Enable notifications */}
-            <div className="flex items-center justify-between rounded-2xl border border-gray-100 p-4">
+            <div className="flex items-center justify-between rounded-2xl border border-gray-100 p-4 dark:border-slate-700 dark:bg-slate-900/70">
               <div>
                 <h4 className="font-bold text-gray-900">Thông báo khi có click</h4>
                 <p className="text-sm text-gray-500">Nhận thông báo qua Webhook hoặc Telegram</p>
@@ -585,7 +585,7 @@ export const AdvancedAnalytics = ({ fetchWithAuth }: AdvancedAnalyticsProps) => 
                 min={0}
                 value={settings.notify_threshold}
                 onChange={(e) => setSettings({ ...settings, notify_threshold: parseInt(e.target.value) || 0 })}
-                className="w-full rounded-xl border-2 border-gray-100 px-4 py-3 font-medium outline-none transition-all focus:border-orange-500"
+                className="w-full rounded-xl border-2 border-gray-100 px-4 py-3 font-medium outline-none transition-all focus:border-orange-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
                 placeholder="Ví dụ: 10 (thông báo mỗi 10 click)"
               />
               <p className="mt-1 text-xs text-gray-500">
@@ -600,7 +600,7 @@ export const AdvancedAnalytics = ({ fetchWithAuth }: AdvancedAnalyticsProps) => 
                 type="url"
                 value={settings.webhook_url || ""}
                 onChange={(e) => setSettings({ ...settings, webhook_url: e.target.value })}
-                className="w-full rounded-xl border-2 border-gray-100 px-4 py-3 font-medium outline-none transition-all focus:border-orange-500"
+                className="w-full rounded-xl border-2 border-gray-100 px-4 py-3 font-medium outline-none transition-all focus:border-orange-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
                 placeholder="https://your-webhook-endpoint.com/webhook"
               />
               <p className="mt-1 text-xs text-gray-500">
@@ -609,7 +609,7 @@ export const AdvancedAnalytics = ({ fetchWithAuth }: AdvancedAnalyticsProps) => 
             </div>
 
             {/* Telegram Settings */}
-            <div className="rounded-2xl bg-gray-50 p-6">
+            <div className="rounded-2xl bg-gray-50 p-6 dark:bg-slate-900">
               <h4 className="mb-4 font-bold text-gray-900">Cài đặt Telegram Bot</h4>
               
               <div className="mb-4">
@@ -619,7 +619,7 @@ export const AdvancedAnalytics = ({ fetchWithAuth }: AdvancedAnalyticsProps) => 
                     type={showTelegramToken ? "text" : "password"}
                     value={settings.telegram_bot_token || ""}
                     onChange={(e) => setSettings({ ...settings, telegram_bot_token: e.target.value })}
-                    className="w-full rounded-xl border-2 border-gray-100 px-4 py-3 pr-12 font-medium outline-none transition-all focus:border-orange-500"
+                    className="w-full rounded-xl border-2 border-gray-100 px-4 py-3 pr-12 font-medium outline-none transition-all focus:border-orange-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
                     placeholder="123456789:ABCdefGHIjklMNOpqrsTUVwxyz"
                   />
                   <button
@@ -638,7 +638,7 @@ export const AdvancedAnalytics = ({ fetchWithAuth }: AdvancedAnalyticsProps) => 
                   type="text"
                   value={settings.telegram_chat_id || ""}
                   onChange={(e) => setSettings({ ...settings, telegram_chat_id: e.target.value })}
-                  className="w-full rounded-xl border-2 border-gray-100 px-4 py-3 font-medium outline-none transition-all focus:border-orange-500"
+                  className="w-full rounded-xl border-2 border-gray-100 px-4 py-3 font-medium outline-none transition-all focus:border-orange-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
                   placeholder="123456789 hoặc @channelusername"
                 />
               </div>

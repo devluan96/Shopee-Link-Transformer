@@ -101,6 +101,26 @@ export const normalizeProtectedShopeeUrl = (
   return normalizedUrl;
 };
 
+export const normalizeProtectedPrimaryUrl = (
+  value?: string | null,
+  label = "Link gốc",
+) => {
+  const normalizedUrl = normalizeHttpUrl(value);
+  if (!normalizedUrl) return null;
+
+  const parsedUrl = new URL(normalizedUrl);
+  const normalizedHostname = parsedUrl.hostname.trim().toLowerCase();
+
+  if (
+    !SHOPEE_HOST_REGEX.test(normalizedHostname) &&
+    !TIKTOK_HOST_REGEX.test(normalizedHostname)
+  ) {
+    throw new Error(`${label} chỉ hỗ trợ domain Shopee hoặc TikTok hợp lệ.`);
+  }
+
+  return normalizedUrl;
+};
+
 export const ensureSameShopeeHostname = (
   primaryUrl?: string | null,
   secondaryUrl?: string | null,

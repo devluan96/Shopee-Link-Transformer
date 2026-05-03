@@ -83,10 +83,10 @@ export const Overview = ({
   return (
     <div key="dashboard">
       <header className="mb-12">
-        <h2 className="mb-2 text-4xl font-black tracking-tight text-gray-900">
+        <h2 className="mb-2 text-4xl font-black tracking-tight text-gray-900 dark:text-slate-100">
           Chào buổi sáng!
         </h2>
-        <p className="font-medium italic text-gray-500">
+        <p className="font-medium italic text-gray-500 dark:text-slate-400">
           Đây là tóm tắt nhanh hiệu suất chiến dịch hotsnew của bạn.
         </p>
       </header>
@@ -95,17 +95,17 @@ export const Overview = ({
         {cards.map((card, i) => (
           <div
             key={i}
-            className={`group relative overflow-hidden rounded-[2.5rem] border bg-white/90 p-8 shadow-sm backdrop-blur-sm transition-all hover:shadow-xl ${card.border}`}
+            className={`group relative overflow-hidden rounded-[2.5rem] border bg-white/90 dark:bg-slate-800/90 dark:border-slate-700 p-8 shadow-sm backdrop-blur-sm transition-all hover:shadow-xl ${card.border}`}
           >
             <div
               className={`relative z-10 mb-6 flex h-14 w-14 items-center justify-center rounded-2xl shadow-sm transition-transform group-hover:scale-110 ${card.bg} ${card.color}`}
             >
               <card.icon size={28} />
             </div>
-            <div className="relative z-10 mb-1 font-mono text-3xl font-black text-gray-900">
+            <div className="relative z-10 mb-1 font-mono text-3xl font-black text-gray-900 dark:text-slate-100">
               {card.value}
             </div>
-            <div className="relative z-10 text-[11px] font-black uppercase tracking-widest text-gray-400">
+            <div className="relative z-10 text-[11px] font-black uppercase tracking-widest text-gray-400 dark:text-slate-500">
               {card.label}
             </div>
             <div
@@ -153,8 +153,8 @@ export const Overview = ({
           />
         </div>
 
-        <div className="rounded-[3rem] border border-gray-200 bg-white p-8 shadow-sm">
-          <h3 className="mb-8 flex items-center gap-2 px-2 text-sm font-black uppercase tracking-[0.2em] text-gray-400">
+        <div className="rounded-[3rem] border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-8 shadow-sm">
+          <h3 className="mb-8 flex items-center gap-2 px-2 text-sm font-black uppercase tracking-[0.2em] text-gray-400 dark:text-slate-500">
             <BarChart3 size={16} /> Link Hiệu Quả Nhất
           </h3>
           <div className="space-y-4">
@@ -162,13 +162,13 @@ export const Overview = ({
               stats.topLinks.map((tl, idx) => (
                 <div
                   key={idx}
-                  className="group flex cursor-pointer items-center gap-4 rounded-2xl p-4 transition-all hover:bg-gray-50"
+                  className="group flex cursor-pointer items-center gap-4 rounded-2xl p-4 transition-all hover:bg-gray-50 dark:hover:bg-slate-700"
                 >
-                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gray-100 font-mono font-black text-gray-400 transition-all group-hover:bg-orange-600 group-hover:text-white">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gray-100 dark:bg-slate-700 font-mono font-black text-gray-400 dark:text-slate-400 transition-all group-hover:bg-orange-600 group-hover:text-white">
                     {idx + 1}
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p className="mb-0.5 truncate font-bold text-gray-900">
+                    <p className="mb-0.5 truncate font-bold text-gray-900 dark:text-slate-200">
                       {tl.title}
                     </p>
                     <p className="text-[10px] font-black uppercase tracking-widest text-orange-500">
@@ -178,7 +178,7 @@ export const Overview = ({
                 </div>
               ))
             ) : (
-              <div className="py-20 text-center font-medium italic text-gray-400">
+              <div className="py-20 text-center font-medium italic text-gray-400 dark:text-slate-500">
                 Chưa có dữ liệu.
               </div>
             )}

@@ -2,6 +2,7 @@ import { SupabaseClient } from "../config/supabase.js";
 import { nanoid } from "nanoid";
 import {
   normalizeShortCode,
+  normalizeProtectedPrimaryUrl,
   normalizeProtectedShopeeUrl,
   ensureSameShopeeHostname,
   normalizeRedirectDelayMs,
@@ -25,7 +26,7 @@ export const createLink = async (
     expiresAt?: string;
   },
 ) => {
-  const primaryUrl = normalizeProtectedShopeeUrl(data.url, "Link Shopee");
+  const primaryUrl = normalizeProtectedPrimaryUrl(data.url, "Link gốc");
 
   let shortCode: string;
   if (data.customShortCode && data.customShortCode.trim()) {

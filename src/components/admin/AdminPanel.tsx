@@ -92,16 +92,16 @@ export const AdminPanel = ({ allUsers, adminLoading, onlineUserIds, handleApprov
             className="absolute inset-0 bg-black/60 backdrop-blur-sm" 
           />
           <div 
-            className="relative bg-white rounded-[2.5rem] p-8 max-w-sm w-full shadow-2xl border border-gray-100"
+            className="relative bg-white rounded-[2.5rem] p-8 max-w-sm w-full shadow-2xl border border-gray-100 dark:border-slate-700 dark:bg-slate-800"
           >
-            <h3 className="text-xl font-black text-gray-900 mb-2">Xác nhận xóa?</h3>
-            <p className="text-gray-500 font-medium text-sm leading-relaxed mb-8">
+            <h3 className="text-xl font-black text-gray-900 mb-2 dark:text-slate-100">Xác nhận xóa?</h3>
+            <p className="text-gray-500 font-medium text-sm leading-relaxed mb-8 dark:text-slate-400">
               Bạn có chắc chắn muốn xóa người dùng này? Mọi liên kết và dữ liệu liên quan sẽ bị xóa vĩnh viễn.
             </p>
             <div className="flex gap-4">
               <button 
                 onClick={() => setDeleteId(null)}
-                className="flex-1 py-4 bg-gray-100 text-gray-500 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-gray-200 transition-all"
+                className="flex-1 py-4 bg-gray-100 text-gray-500 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-gray-200 transition-all dark:bg-slate-700 dark:text-slate-300 dark:hover:bg-slate-600"
               >
                 Hủy
               </button>
@@ -118,51 +118,51 @@ export const AdminPanel = ({ allUsers, adminLoading, onlineUserIds, handleApprov
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-        <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm">
+        <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm dark:border-slate-700 dark:bg-slate-800">
           <div className="flex items-center gap-3 mb-2">
             <div className="w-10 h-10 rounded-xl bg-blue-100 flex items-center justify-center">
               <UsersIcon size={20} className="text-blue-600" />
             </div>
-            <span className="text-sm font-medium text-gray-500">Tổng Users</span>
+            <span className="text-sm font-medium text-gray-500 dark:text-slate-400">Tổng Users</span>
           </div>
-          <div className="text-2xl font-black text-gray-900">{stats.totalUsers}</div>
+          <div className="text-2xl font-black text-gray-900 dark:text-slate-100">{stats.totalUsers}</div>
         </div>
-        <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm">
+        <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm dark:border-slate-700 dark:bg-slate-800">
           <div className="flex items-center gap-3 mb-2">
             <div className="w-10 h-10 rounded-xl bg-green-100 flex items-center justify-center">
               <Check size={20} className="text-green-600" />
             </div>
-            <span className="text-sm font-medium text-gray-500">Premium</span>
+            <span className="text-sm font-medium text-gray-500 dark:text-slate-400">Premium</span>
           </div>
-          <div className="text-2xl font-black text-gray-900">{stats.premiumUsers}</div>
+          <div className="text-2xl font-black text-gray-900 dark:text-slate-100">{stats.premiumUsers}</div>
         </div>
-        <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm">
+        <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm dark:border-slate-700 dark:bg-slate-800">
           <div className="flex items-center gap-3 mb-2">
             <div className="w-10 h-10 rounded-xl bg-orange-100 flex items-center justify-center">
               <UserCheck size={20} className="text-orange-600" />
             </div>
-            <span className="text-sm font-medium text-gray-500">Chờ Duyệt</span>
+            <span className="text-sm font-medium text-gray-500 dark:text-slate-400">Chờ Duyệt</span>
           </div>
-          <div className="text-2xl font-black text-gray-900">{stats.pendingUsers}</div>
+          <div className="text-2xl font-black text-gray-900 dark:text-slate-100">{stats.pendingUsers}</div>
         </div>
-        <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm">
+        <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm dark:border-slate-700 dark:bg-slate-800">
           <div className="flex items-center gap-3 mb-2">
             <div className="w-10 h-10 rounded-xl bg-purple-100 flex items-center justify-center">
               <BarChart3 size={20} className="text-purple-600" />
             </div>
-            <span className="text-sm font-medium text-gray-500">Doanh Thu</span>
+            <span className="text-sm font-medium text-gray-500 dark:text-slate-400">Doanh Thu</span>
           </div>
-          <div className="text-2xl font-black text-gray-900">{stats.revenue.toLocaleString()}đ</div>
+          <div className="text-2xl font-black text-gray-900 dark:text-slate-100">{stats.revenue.toLocaleString()}đ</div>
         </div>
       </div>
 
       <header className="mb-8">
-        <h2 className="text-3xl font-black text-gray-900 mb-2">Quản Lý Người Dùng</h2>
-        <p className="text-gray-500 font-medium">Quản lý, phê duyệt và theo dõi hoạt động thành viên</p>
+        <h2 className="text-3xl font-black text-gray-900 mb-2 dark:text-slate-100">Quản Lý Người Dùng</h2>
+        <p className="text-gray-500 font-medium dark:text-slate-400">Quản lý, phê duyệt và theo dõi hoạt động thành viên</p>
       </header>
 
       {/* Search & Filters */}
-      <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm mb-6">
+      <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm mb-6 dark:border-slate-700 dark:bg-slate-800">
         <div className="flex flex-wrap gap-4">
           <div className="flex-1 min-w-[200px] relative">
             <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
@@ -171,7 +171,7 @@ export const AdminPanel = ({ allUsers, adminLoading, onlineUserIds, handleApprov
               placeholder="Tìm theo tên hoặc email..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-11 pr-4 py-3 rounded-xl border border-gray-200 focus:border-gray-900 focus:outline-none text-sm"
+              className="w-full pl-11 pr-4 py-3 rounded-xl border border-gray-200 focus:border-gray-900 focus:outline-none text-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:focus:border-orange-500"
             />
           </div>
           <div className="flex items-center gap-2">
@@ -179,7 +179,7 @@ export const AdminPanel = ({ allUsers, adminLoading, onlineUserIds, handleApprov
             <select
               value={planFilter}
               onChange={(e) => setPlanFilter(e.target.value as any)}
-              className="px-4 py-3 rounded-xl border border-gray-200 focus:border-gray-900 focus:outline-none text-sm bg-white"
+              className="px-4 py-3 rounded-xl border border-gray-200 focus:border-gray-900 focus:outline-none text-sm bg-white dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:focus:border-orange-500"
             >
               <option value="all">Tất cả gói</option>
               <option value="free">Free</option>
@@ -189,7 +189,7 @@ export const AdminPanel = ({ allUsers, adminLoading, onlineUserIds, handleApprov
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value as any)}
-              className="px-4 py-3 rounded-xl border border-gray-200 focus:border-gray-900 focus:outline-none text-sm bg-white"
+              className="px-4 py-3 rounded-xl border border-gray-200 focus:border-gray-900 focus:outline-none text-sm bg-white dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:focus:border-orange-500"
             >
               <option value="all">Tất cả trạng thái</option>
               <option value="approved">Đã duyệt</option>
@@ -197,26 +197,26 @@ export const AdminPanel = ({ allUsers, adminLoading, onlineUserIds, handleApprov
             </select>
           </div>
         </div>
-        <div className="mt-3 text-sm text-gray-500">
+        <div className="mt-3 text-sm text-gray-500 dark:text-slate-400">
           Hiển thị {filteredUsers.length} / {allUsers.length} users
         </div>
       </div>
 
-      <div className="bg-white rounded-[3rem] border border-gray-100 overflow-hidden shadow-sm">
-        <div className="p-8 border-b border-gray-100 bg-gray-50/50 flex items-center justify-between">
+      <div className="bg-white rounded-[3rem] border border-gray-100 overflow-hidden shadow-sm dark:border-slate-700 dark:bg-slate-800">
+        <div className="p-8 border-b border-gray-100 bg-gray-50/50 flex items-center justify-between dark:border-slate-700 dark:bg-slate-900/70">
            <h3 className="font-black text-sm uppercase tracking-widest flex items-center gap-2">
              <UsersIcon size={18} /> Thành viên hệ thống
            </h3>
            <span className="bg-gray-900 text-white px-3 py-1 rounded-full text-[10px] font-bold">{filteredUsers.length} Users</span>
         </div>
         
-        <div className="divide-y divide-gray-100">
+        <div className="divide-y divide-gray-100 dark:divide-slate-700">
           {adminLoading ? (
             <div className="p-20 text-center text-gray-300 font-bold">Loading users...</div>
           ) : filteredUsers.length === 0 ? (
             <div className="p-20 text-center text-gray-400 font-medium italic">Không tìm thấy người dùng nào.</div>
           ) : filteredUsers.map(u => (
-            <div key={u.id} className="p-6 flex items-center justify-between gap-6 hover:bg-gray-50 transition-all cursor-pointer" onClick={() => setSelectedUser(u)}>
+            <div key={u.id} className="p-6 flex items-center justify-between gap-6 hover:bg-gray-50 transition-all cursor-pointer dark:hover:bg-slate-900/70" onClick={() => setSelectedUser(u)}>
                <div className="flex items-center gap-4 flex-1">
                   <div className="relative w-12 h-12">
                     {u.avatar_url ? (
@@ -243,8 +243,8 @@ export const AdminPanel = ({ allUsers, adminLoading, onlineUserIds, handleApprov
                     />
                   </div>
                   <div className="flex-1">
-                    <h4 className="font-black text-gray-900">{u.full_name || 'Chưa đặt tên'}</h4>
-                    <p className="text-sm text-gray-500">{u.email}</p>
+                    <h4 className="font-black text-gray-900 dark:text-slate-100">{u.full_name || 'Chưa đặt tên'}</h4>
+                    <p className="text-sm text-gray-500 dark:text-slate-400">{u.email}</p>
                     <div className="flex items-center gap-2 mt-1">
                       <span className={cn(
                         "text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full",
@@ -269,7 +269,7 @@ export const AdminPanel = ({ allUsers, adminLoading, onlineUserIds, handleApprov
                   </div>
                   <button
                     onClick={(e) => { e.stopPropagation(); setSelectedUser(u); }}
-                    className="p-2 rounded-xl bg-gray-100 hover:bg-gray-200 transition-all"
+                    className="p-2 rounded-xl bg-gray-100 hover:bg-gray-200 transition-all dark:bg-slate-700 dark:hover:bg-slate-600"
                     title="Xem chi tiết"
                   >
                     <Eye size={18} className="text-gray-600" />
@@ -278,7 +278,7 @@ export const AdminPanel = ({ allUsers, adminLoading, onlineUserIds, handleApprov
                
                <div className="flex items-center gap-3" onClick={(e) => e.stopPropagation()}>
                   <select 
-                    className="bg-gray-50 border border-gray-200 rounded-lg text-[10px] font-bold px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-orange-500/20 cursor-pointer"
+                    className="bg-gray-50 border border-gray-200 rounded-lg text-[10px] font-bold px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-orange-500/20 cursor-pointer dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
                     value={u.subscription_plan || 'free'}
                     onChange={(e) => handleUpdateSubscription(u.id, e.target.value as any)}
                   >
@@ -297,7 +297,7 @@ export const AdminPanel = ({ allUsers, adminLoading, onlineUserIds, handleApprov
                    )}
                    <button 
                      onClick={(e) => { e.stopPropagation(); setDeleteId(u.id); }}
-                     className="p-3 bg-gray-100 text-gray-400 rounded-xl hover:bg-red-50 hover:text-red-500 transition-all active:scale-90"
+                     className="p-3 bg-gray-100 text-gray-400 rounded-xl hover:bg-red-50 hover:text-red-500 transition-all active:scale-90 dark:bg-slate-700 dark:text-slate-400 dark:hover:bg-red-500/10"
                    >
                       <Trash2 size={16} />
                    </button>
@@ -314,12 +314,12 @@ export const AdminPanel = ({ allUsers, adminLoading, onlineUserIds, handleApprov
             onClick={() => setSelectedUser(null)}
             className="absolute inset-0 bg-black/60 backdrop-blur-sm" 
           />
-          <div className="relative bg-white rounded-[2rem] w-full max-w-3xl max-h-[90vh] overflow-auto shadow-2xl border border-gray-100">
-            <div className="p-6 border-b border-gray-100 flex items-center justify-between sticky top-0 bg-white">
-              <h3 className="text-xl font-black text-gray-900">Chi tiết người dùng</h3>
+          <div className="relative bg-white rounded-[2rem] w-full max-w-3xl max-h-[90vh] overflow-auto shadow-2xl border border-gray-100 dark:border-slate-700 dark:bg-slate-800">
+            <div className="p-6 border-b border-gray-100 flex items-center justify-between sticky top-0 bg-white dark:border-slate-700 dark:bg-slate-800">
+              <h3 className="text-xl font-black text-gray-900 dark:text-slate-100">Chi tiết người dùng</h3>
               <button 
                 onClick={() => setSelectedUser(null)}
-                className="p-2 rounded-xl hover:bg-gray-100 transition-all"
+                className="p-2 rounded-xl hover:bg-gray-100 transition-all dark:hover:bg-slate-700"
               >
                 <X size={20} className="text-gray-500" />
               </button>
@@ -344,8 +344,8 @@ export const AdminPanel = ({ allUsers, adminLoading, onlineUserIds, handleApprov
                   )}
                 </div>
                 <div>
-                  <h4 className="font-black text-xl text-gray-900">{selectedUser.full_name || 'Chưa đặt tên'}</h4>
-                  <p className="text-gray-500">{selectedUser.email}</p>
+                  <h4 className="font-black text-xl text-gray-900 dark:text-slate-100">{selectedUser.full_name || 'Chưa đặt tên'}</h4>
+                  <p className="text-gray-500 dark:text-slate-400">{selectedUser.email}</p>
                   <div className="flex items-center gap-2 mt-2">
                     <span className={cn(
                       "text-xs font-black uppercase tracking-widest px-3 py-1 rounded-full",
@@ -382,7 +382,7 @@ export const AdminPanel = ({ allUsers, adminLoading, onlineUserIds, handleApprov
                     handleUpdateSubscription(selectedUser.id, newPlan); 
                     setSelectedUser({...selectedUser, subscription_plan: newPlan}); 
                   }}
-                  className="px-4 py-3 border border-gray-200 rounded-xl font-bold text-sm focus:border-gray-900 focus:outline-none"
+                  className="px-4 py-3 border border-gray-200 rounded-xl font-bold text-sm focus:border-gray-900 focus:outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
                 >
                   <option value="free">FREE</option>
                   <option value="monthly">MONTHLY</option>
@@ -397,8 +397,8 @@ export const AdminPanel = ({ allUsers, adminLoading, onlineUserIds, handleApprov
               </div>
 
               {/* User Links */}
-              <div className="border-t border-gray-100 pt-6">
-                <h4 className="font-black text-lg text-gray-900 mb-4 flex items-center gap-2">
+              <div className="border-t border-gray-100 pt-6 dark:border-slate-700">
+                <h4 className="font-black text-lg text-gray-900 mb-4 flex items-center gap-2 dark:text-slate-100">
                   <Link2 size={20} /> Link của user ({userLinks.length})
                 </h4>
                 {userLinksLoading ? (
@@ -408,10 +408,10 @@ export const AdminPanel = ({ allUsers, adminLoading, onlineUserIds, handleApprov
                 ) : (
                   <div className="space-y-3 max-h-[300px] overflow-auto">
                     {userLinks.map((link) => (
-                      <div key={link.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
+                      <div key={link.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-xl dark:bg-slate-900">
                         <div className="min-w-0 flex-1">
-                          <p className="font-bold text-gray-900 truncate">{link.custom_title || link.short_code}</p>
-                          <p className="text-xs text-gray-500 truncate">{link.original_url}</p>
+                          <p className="font-bold text-gray-900 truncate dark:text-slate-100">{link.custom_title || link.short_code}</p>
+                          <p className="text-xs text-gray-500 truncate dark:text-slate-400">{link.original_url}</p>
                           <div className="flex items-center gap-4 mt-1">
                             <span className="text-xs font-black text-orange-600">{link.clicks || 0} CLICKS</span>
                             <span className="text-xs text-gray-400">{new Date(link.created_at).toLocaleDateString('vi-VN')}</span>
@@ -422,7 +422,7 @@ export const AdminPanel = ({ allUsers, adminLoading, onlineUserIds, handleApprov
                             href={`/s/${link.short_code}`} 
                             target="_blank" 
                             rel="noopener noreferrer"
-                            className="p-2 rounded-lg bg-white border border-gray-200 hover:bg-gray-100 transition-all"
+                            className="p-2 rounded-lg bg-white border border-gray-200 hover:bg-gray-100 transition-all dark:border-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700"
                           >
                             <ExternalLink size={16} className="text-gray-600" />
                           </a>

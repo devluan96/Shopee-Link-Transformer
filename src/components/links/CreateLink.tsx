@@ -60,6 +60,7 @@ interface CreateLinkProps {
   videoUploadSuccess: boolean;
   videoInputRef: React.RefObject<HTMLInputElement | null>;
   handleVideoUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  handleVideoFileUpload: (file: File) => Promise<void>;
   handleConvert: (e: React.FormEvent) => void;
   loading: boolean;
   error: string | null;
@@ -108,6 +109,7 @@ export const CreateLink = ({
   videoUploadSuccess,
   videoInputRef,
   handleVideoUpload,
+  handleVideoFileUpload,
   handleConvert,
   loading,
   error,
@@ -122,6 +124,7 @@ export const CreateLink = ({
   const [videoPreviewOrientation, setVideoPreviewOrientation] = React.useState<
     "landscape" | "portrait" | "square"
   >("landscape");
+  const [isDraggingVideo, setIsDraggingVideo] = React.useState(false);
   const [showQrModal, setShowQrModal] = React.useState(false);
   const [qrDownloading, setQrDownloading] = React.useState(false);
   const normalizedShortCodePreview = customShortCode
@@ -169,6 +172,9 @@ export const CreateLink = ({
     }
   };
 
+  const isValidPrimaryUrl = (value: string) =>
+    isValidShopeeUrl(value) || isValidTikTokUrl(value);
+
   const getShopeeHostname = (value: string) => {
     try {
       return new URL(value.trim()).hostname.trim().toLowerCase();
@@ -181,9 +187,9 @@ export const CreateLink = ({
     const nextErrors: Partial<Record<FormField, string>> = {};
 
     if (!url.trim()) {
-      nextErrors.url = "Vui lòng nhập link Shopee gốc.";
-    } else if (!isValidShopeeUrl(url)) {
-      nextErrors.url = "Link Shopee gốc phải là domain Shopee hợp lệ.";
+      nextErrors.url = "Vui lòng nhập link gốc Shopee hoặc TikTok.";
+    } else if (!isValidPrimaryUrl(url)) {
+      nextErrors.url = "Link gốc phải là domain Shopee hoặc TikTok hợp lệ.";
     }
 
     if (!customTitle.trim()) {
@@ -295,13 +301,29 @@ export const CreateLink = ({
     );
   };
 
+  const handleVideoDrop = async (event: React.DragEvent<HTMLButtonElement>) => {
+    event.preventDefault();
+    setIsDraggingVideo(false);
+
+    const file = event.dataTransfer.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith("video/")) {
+      setError("Please drop a valid video file.");
+      return;
+    }
+
+    clearFieldError("videoUrl");
+    await handleVideoFileUpload(file);
+  };
+
   return (
     <div key="create">
       <header className="mb-8 md:mb-12">
-        <h2 className="mb-2 text-3xl font-black tracking-tight text-gray-900 md:text-4xl">
+        <h2 className="mb-2 text-3xl font-black tracking-tight text-gray-900 dark:text-slate-100 md:text-4xl">
           Tạo Landing Page Mới
         </h2>
-        <p className="font-medium italic text-gray-500">
+        <p className="font-medium italic text-gray-500 dark:text-slate-400">
           Chúng tôi sẽ tự động lấy dữ liệu và tối ưu hóa hiển thị trên Facebook.
         </p>
       </header>
@@ -326,7 +348,7 @@ export const CreateLink = ({
           <form
             onSubmit={handleSubmit}
             noValidate
-            className="relative space-y-6 overflow-hidden rounded-4xl border border-gray-100 bg-white/95 p-5 shadow-2xl backdrop-blur-xl sm:space-y-8 sm:rounded-[3rem] sm:p-8 lg:p-10"
+            className="relative space-y-6 overflow-hidden rounded-4xl border border-gray-100 dark:border-slate-700 bg-white/95 dark:bg-slate-800/95 p-5 shadow-2xl backdrop-blur-xl sm:space-y-8 sm:rounded-[3rem] sm:p-8 lg:p-10"
           >
             <div className="pointer-events-none absolute right-0 top-0 -mr-16 -mt-16 h-32 w-32 rounded-full bg-orange-600/5 blur-3xl" />
 
@@ -335,8 +357,8 @@ export const CreateLink = ({
                 <p className="mb-2 px-1 text-[11px] font-black uppercase tracking-widest text-gray-400">
                   Thiết lập link
                 </p>
-                <h3 className="max-w-48 text-3xl font-black leading-none tracking-tight text-gray-900 sm:max-w-none sm:text-2xl sm:leading-tight">
-                  Rút gọn link Shopee
+                <h3 className="max-w-48 text-3xl font-black leading-none tracking-tight text-gray-900 dark:text-slate-100 sm:max-w-none sm:text-2xl sm:leading-tight">
+                  Rút gọn link Shopee / TikTok
                 </h3>
               </div>
               <button
@@ -356,7 +378,7 @@ export const CreateLink = ({
 
             <div>
               <label className="mb-3 flex items-center gap-2 px-1 text-[11px] font-black uppercase tracking-widest text-gray-400">
-                <Globe size={14} className="text-orange-500" /> Link Shopee gốc
+                <Globe size={14} className="text-orange-500" /> Link gốc Shopee / TikTok
               </label>
               <div className="group relative">
                 <input
@@ -367,10 +389,10 @@ export const CreateLink = ({
                     setUrl(e.target.value);
                     clearFieldError("url");
                   }}
-                  placeholder="Dán link sản phẩm Shopee..."
+                  placeholder="Dán link sản phẩm Shopee hoặc TikTok..."
                   className={inputClass(
                     "url",
-                    "w-full rounded-3xl bg-gray-50 px-6 py-5 font-medium text-gray-900 placeholder:text-gray-300 focus:bg-white focus:ring-4 focus:ring-orange-500/10",
+                    "w-full rounded-3xl bg-gray-50 dark:bg-slate-700 px-6 py-5 font-medium text-gray-900 dark:text-slate-100 placeholder:text-gray-300 dark:placeholder:text-slate-400 focus:bg-white dark:focus:bg-slate-700 focus:ring-4 focus:ring-orange-500/10",
                   )}
                 />
                 <div className="absolute right-4 top-1/2 -translate-y-1/2 opacity-0 transition-opacity group-focus-within:opacity-100">
@@ -378,8 +400,8 @@ export const CreateLink = ({
                 </div>
               </div>
               {renderFieldError("url")}
-              <p className="mt-2 px-1 text-[11px] font-medium text-gray-500">
-                Chỉ nhận link domain Shopee để giữ flow bọc bảo vệ ổn định.
+              <p className="mt-2 px-1 text-[11px] font-medium text-gray-500 dark:text-slate-400">
+                Hỗ trợ link domain Shopee và TikTok để giữ flow chuyển đổi ổn định.
               </p>
             </div>
 
@@ -401,7 +423,7 @@ export const CreateLink = ({
                     placeholder="Tiêu đề hiển thị..."
                     className={inputClass(
                       "customTitle",
-                      "w-full rounded-2xl bg-gray-50 px-6 py-4 font-medium focus:bg-white",
+                      "w-full rounded-2xl bg-gray-50 px-6 py-4 font-medium text-gray-900 dark:bg-slate-700 dark:text-slate-100 focus:bg-white dark:focus:bg-slate-700",
                     )}
                   />
                   {renderFieldError("customTitle")}
@@ -422,7 +444,7 @@ export const CreateLink = ({
                     placeholder="Mô tả thu hút lượt click..."
                     className={inputClass(
                       "customDescription",
-                      "w-full rounded-2xl bg-gray-50 px-6 py-4 font-medium focus:bg-white",
+                      "w-full rounded-2xl bg-gray-50 px-6 py-4 font-medium text-gray-900 dark:bg-slate-700 dark:text-slate-100 focus:bg-white dark:focus:bg-slate-700",
                     )}
                   />
                   {renderFieldError("customDescription")}
@@ -446,7 +468,7 @@ export const CreateLink = ({
                   placeholder="Ví dụ: toi-yeu-em"
                   className={inputClass(
                     "customShortCode",
-                    "w-full rounded-2xl bg-gray-50 px-6 py-4 font-medium focus:bg-white",
+                    "w-full rounded-2xl bg-gray-50 px-6 py-4 font-medium text-gray-900 dark:bg-slate-700 dark:text-slate-100 focus:bg-white dark:focus:bg-slate-700",
                   )}
                 />
                 {renderFieldError("customShortCode")}
@@ -476,7 +498,7 @@ export const CreateLink = ({
                   }}
                   className={inputClass(
                     "usageContext",
-                    "w-full rounded-2xl bg-gray-50 px-6 py-4 font-medium text-gray-900 focus:bg-white",
+                    "w-full rounded-2xl bg-gray-50 px-6 py-4 font-medium text-gray-900 dark:bg-slate-700 dark:text-slate-100 focus:bg-white dark:focus:bg-slate-700",
                   )}
                 >
                   {usageOptions.map((option) => (
@@ -502,7 +524,7 @@ export const CreateLink = ({
                     className={`rounded-xl px-3 py-3 text-[10px] font-black uppercase tracking-wider transition-all ${
                       expiresAt === ""
                         ? "bg-orange-500 text-white shadow-lg shadow-orange-200"
-                        : "bg-gray-50 text-gray-500 hover:bg-gray-100"
+                        : "bg-gray-50 text-gray-500 hover:bg-gray-100 dark:bg-slate-700 dark:text-slate-300 dark:hover:bg-slate-600"
                     }`}
                   >
                     Không hết hạn
@@ -531,7 +553,7 @@ export const CreateLink = ({
                             (1000 * 60 * 60 * 24),
                         ) === days
                           ? "bg-orange-500 text-white shadow-lg shadow-orange-200"
-                          : "bg-gray-50 text-gray-500 hover:bg-gray-100"
+                          : "bg-gray-50 text-gray-500 hover:bg-gray-100 dark:bg-slate-700 dark:text-slate-300 dark:hover:bg-slate-600"
                       }`}
                     >
                       {label}
@@ -581,7 +603,7 @@ export const CreateLink = ({
                           e.target.value === "tiktok" ? "tiktok" : "shopee",
                         )
                       }
-                      className="w-full rounded-2xl bg-white px-6 py-4 font-medium text-gray-900 outline-none transition-all focus:ring-4 focus:ring-orange-500/10"
+                      className="w-full rounded-2xl bg-white dark:bg-slate-700 px-6 py-4 font-medium text-gray-900 dark:text-slate-100 outline-none transition-all focus:ring-4 focus:ring-orange-500/10"
                     >
                       <option value="shopee">Shopee</option>
                       <option value="tiktok">TikTok</option>
@@ -607,7 +629,7 @@ export const CreateLink = ({
                       }
                       className={inputClass(
                         "secondaryUrl",
-                        "w-full rounded-2xl bg-white px-6 py-4 font-medium",
+                        "w-full rounded-2xl bg-white px-6 py-4 font-medium text-gray-900 dark:bg-slate-700 dark:text-slate-100",
                       )}
                     />
                     {renderFieldError("secondaryUrl")}
@@ -639,11 +661,34 @@ export const CreateLink = ({
                   <button
                     type="button"
                     onClick={() => videoInputRef?.current?.click()}
+                    onDragEnter={(event) => {
+                      event.preventDefault();
+                      setIsDraggingVideo(true);
+                    }}
+                    onDragOver={(event) => {
+                      event.preventDefault();
+                      if (!isDraggingVideo) {
+                        setIsDraggingVideo(true);
+                      }
+                    }}
+                    onDragLeave={(event) => {
+                      event.preventDefault();
+                      const nextTarget = event.relatedTarget as Node | null;
+                      if (!event.currentTarget.contains(nextTarget)) {
+                        setIsDraggingVideo(false);
+                      }
+                    }}
+                    onDrop={handleVideoDrop}
                     data-field="videoUrl"
-                    className="group flex min-h-21 w-full flex-col items-start gap-4 rounded-2xl border-2 border-dashed border-orange-100 bg-orange-50/30 px-5 py-5 text-left transition-all hover:border-orange-300 hover:bg-orange-50/50 sm:flex-row sm:items-center sm:justify-between sm:px-6"
+                    className={cn(
+                      "group flex min-h-21 w-full flex-col items-start gap-4 rounded-2xl border-2 border-dashed px-5 py-5 text-left transition-all sm:flex-row sm:items-center sm:justify-between sm:px-6",
+                      isDraggingVideo
+                        ? "border-orange-400 bg-orange-100/80 shadow-lg shadow-orange-100"
+                        : "border-orange-100 bg-orange-50/30 hover:border-orange-300 hover:bg-orange-50/50",
+                    )}
                   >
                     <div className="flex items-center gap-3 font-bold text-orange-400 group-hover:text-orange-600">
-                      <div className="relative flex h-10 w-10 items-center justify-center rounded-xl bg-white shadow-sm">
+                      <div className="relative flex h-10 w-10 items-center justify-center rounded-xl bg-white shadow-sm dark:bg-slate-800">
                         {uploadingVideo ? (
                           <svg
                             className="h-10 w-10 -rotate-90"
@@ -698,6 +743,9 @@ export const CreateLink = ({
                       </div>
                     )}
                   </button>
+                  <p className="px-1 text-[11px] font-medium text-gray-500">
+                    Drag and drop a video here, or click to browse.
+                  </p>
                   {renderFieldError("videoUrl")}
 
                   {videoUploadSuccess && (
@@ -757,13 +805,13 @@ export const CreateLink = ({
                     placeholder="Link ảnh cover..."
                     className={inputClass(
                       "customImageUrl",
-                      "min-h-21 w-full rounded-2xl bg-gray-50 px-6 py-4 font-medium focus:bg-white",
+                      "min-h-21 w-full rounded-2xl bg-gray-50 px-6 py-4 font-medium text-gray-900 dark:bg-slate-700 dark:text-slate-100 focus:bg-white dark:focus:bg-slate-700",
                     )}
                   />
                   {renderFieldError("customImageUrl")}
 
                   {customImageUrl && (
-                    <div className="relative mt-auto aspect-video overflow-hidden rounded-3xl bg-gray-100 shadow-xl ring-4 ring-white">
+                    <div className="relative mt-auto aspect-video overflow-hidden rounded-3xl bg-gray-100 shadow-xl ring-4 ring-white dark:bg-slate-700 dark:ring-slate-700">
                       <img
                         src={customImageUrl}
                         alt="Thumbnail preview"
@@ -778,15 +826,15 @@ export const CreateLink = ({
         </div>
 
         <div className="max-w-xl space-y-5">
-          <div className="relative overflow-hidden rounded-[1.75rem] border border-gray-200 bg-white shadow-xl sm:rounded-[2.25rem]">
+          <div className="relative overflow-hidden rounded-[1.75rem] border border-gray-200 bg-white shadow-xl dark:border-slate-700 dark:bg-slate-800 sm:rounded-[2.25rem]">
             {!result && (
-              <div className="absolute inset-0 z-10 flex items-center justify-center bg-white/40 p-6 text-center backdrop-blur-[2px]">
+              <div className="absolute inset-0 z-10 flex items-center justify-center bg-white/40 p-6 text-center backdrop-blur-[2px] dark:bg-slate-900/50">
                 <p className="rounded-full bg-gray-900 px-4 py-2 text-[10px] font-bold uppercase text-white">
                   Review Mode
                 </p>
               </div>
             )}
-            <div className="relative flex aspect-[12/5.4] items-center justify-center bg-gray-100">
+            <div className="relative flex aspect-[12/5.4] items-center justify-center bg-gray-100 dark:bg-slate-700">
               {customImageUrl ? (
                 <img
                   src={customImageUrl}
@@ -802,14 +850,14 @@ export const CreateLink = ({
                 </div>
               )}
             </div>
-            <div className="bg-[#F2F3F5] p-5 sm:p-6">
+            <div className="bg-[#F2F3F5] p-5 dark:bg-slate-900 sm:p-6">
               <p className="mb-2 flex items-center gap-2 text-[10px] font-bold uppercase text-gray-400">
                 <Globe size={10} /> HOTSNEW.CLICK
               </p>
-              <h4 className="mb-2 line-clamp-2 text-lg font-black leading-tight text-gray-900">
+              <h4 className="mb-2 line-clamp-2 text-lg font-black leading-tight text-gray-900 dark:text-slate-100">
                 {customTitle || "Tiêu đề của bạn sẽ xuất hiện tại đây..."}
               </h4>
-              <p className="line-clamp-2 text-[13px] font-medium leading-relaxed text-gray-600 opacity-70">
+              <p className="line-clamp-2 text-[13px] font-medium leading-relaxed text-gray-600 opacity-70 dark:text-slate-400">
                 {customDescription ||
                   "Hệ thống sẽ tự động tạo landing page chứa video và tiêu đề chuyên nghiệp như một trang tin tức thực thụ."}
               </p>
@@ -820,8 +868,8 @@ export const CreateLink = ({
             className={cn(
               "relative overflow-hidden rounded-[1.75rem] border-2 p-5 transition-all duration-500 sm:rounded-[2.25rem] sm:p-8",
               result
-                ? "scale-100 border-orange-100 bg-white shadow-2xl"
-                : "pointer-events-none scale-[0.98] border-gray-100 bg-gray-50 opacity-50 grayscale",
+                ? "scale-100 border-orange-100 bg-white shadow-2xl dark:border-orange-500/20 dark:bg-slate-800"
+                : "pointer-events-none scale-[0.98] border-gray-100 bg-gray-50 opacity-50 grayscale dark:border-slate-700 dark:bg-slate-800/60",
             )}
           >
             {result && (
@@ -841,13 +889,13 @@ export const CreateLink = ({
                     "res",
                   )
                 }
-                className="rounded-2xl border border-gray-100 bg-white p-3 text-orange-600 shadow-sm transition-all hover:bg-orange-50"
+                className="rounded-2xl border border-gray-100 bg-white p-3 text-orange-600 shadow-sm transition-all hover:bg-orange-50 dark:border-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700"
               >
                 {copiedId === "res" ? <Check size={20} /> : <Copy size={20} />}
               </button>
             </div>
 
-            <div className="relative z-10 mb-6 truncate rounded-2xl border border-gray-100 bg-gray-50/50 p-4 font-mono text-[11px] font-black text-gray-400 sm:mb-10 sm:p-6 sm:text-xs">
+            <div className="relative z-10 mb-6 truncate rounded-2xl border border-gray-100 bg-gray-50/50 p-4 font-mono text-[11px] font-black text-gray-400 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-400 sm:mb-10 sm:p-6 sm:text-xs">
               {result
                 ? `https://hotsnew.click/s/${result.short_code}`
                 : "https://hotsnew.click/s/########"}
@@ -864,14 +912,14 @@ export const CreateLink = ({
                   )
                 }
                 disabled={!result}
-                className="flex items-center justify-center gap-2 rounded-2xl bg-gray-900 py-4 text-[10px] font-black uppercase tracking-widest text-white shadow-lg transition-all hover:bg-black active:scale-95 sm:py-5"
+                className="flex items-center justify-center gap-2 rounded-2xl bg-gray-900 py-4 text-[10px] font-black uppercase tracking-widest text-white shadow-lg transition-all hover:bg-black active:scale-95 dark:bg-slate-700 dark:hover:bg-slate-600 sm:py-5"
               >
                 <Copy size={16} /> Sao chép Link
               </button>
               <button
                 onClick={() => result && setShowQrModal(true)}
                 disabled={!result}
-                className="flex items-center justify-center gap-2 rounded-2xl border-2 border-gray-100 bg-white py-4 text-[10px] font-black uppercase tracking-widest text-gray-900 shadow-sm transition-all hover:bg-gray-50 active:scale-95 sm:py-5"
+                className="flex items-center justify-center gap-2 rounded-2xl border-2 border-gray-100 bg-white py-4 text-[10px] font-black uppercase tracking-widest text-gray-900 shadow-sm transition-all hover:bg-gray-50 active:scale-95 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700 sm:py-5"
               >
                 <QrCode size={16} /> QR Code
               </button>
@@ -887,9 +935,9 @@ export const CreateLink = ({
             onClick={() => setShowQrModal(false)}
             className="absolute inset-0 bg-black/60 backdrop-blur-sm"
           />
-          <div className="relative bg-white rounded-[2.5rem] p-8 max-w-sm w-full shadow-2xl border border-gray-100">
-            <h3 className="text-xl font-black text-gray-900 mb-2 text-center">QR Code</h3>
-            <p className="text-gray-500 font-medium text-sm text-center mb-6">
+          <div className="relative bg-white rounded-[2.5rem] p-8 max-w-sm w-full shadow-2xl border border-gray-100 dark:border-slate-700 dark:bg-slate-800">
+            <h3 className="text-xl font-black text-gray-900 dark:text-slate-100 mb-2 text-center">QR Code</h3>
+            <p className="text-gray-500 dark:text-slate-400 font-medium text-sm text-center mb-6">
               Quét để truy cập link
             </p>
             
@@ -904,14 +952,14 @@ export const CreateLink = ({
             <div className="flex gap-3">
               <button
                 onClick={() => setShowQrModal(false)}
-                className="flex-1 py-4 bg-gray-100 text-gray-500 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-gray-200 transition-all"
+                className="flex-1 py-4 bg-gray-100 text-gray-500 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-gray-200 transition-all dark:bg-slate-700 dark:text-slate-300 dark:hover:bg-slate-600"
               >
                 Đóng
               </button>
               <a
                 href={`https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=${encodeURIComponent(`https://hotsnew.click/s/${result.short_code}`)}&download=1`}
                 download={`qr-${result.short_code}.png`}
-                className="flex-1 py-4 bg-gray-900 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-black transition-all text-center"
+                className="flex-1 py-4 bg-gray-900 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-black transition-all text-center dark:bg-slate-700 dark:hover:bg-slate-600"
               >
                 Tải xuống
               </a>

@@ -85,10 +85,14 @@ export const LinkList = ({
   };
 
   const toggleSelectAll = () => {
-    if (selectedIds.size === links.length) {
+    const linkIds = links
+      .map((l) => l.id)
+      .filter((id): id is string => id !== undefined);
+
+    if (selectedIds.size === linkIds.length) {
       setSelectedIds(new Set());
     } else {
-      setSelectedIds(new Set(links.map((l) => l.id)));
+      setSelectedIds(new Set(linkIds));
     }
   };
 
@@ -228,14 +232,14 @@ export const LinkList = ({
             placeholder="Tìm kiếm tài nguyên..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full min-w-0 rounded-2xl border border-gray-200 bg-white py-4 pl-12 pr-6 font-medium focus:border-orange-500 focus:outline-none focus:ring-4 focus:ring-orange-500/5 md:min-w-75"
+            className="w-full min-w-0 rounded-2xl border border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-700 py-4 pl-12 pr-6 font-medium text-gray-900 dark:text-slate-100 focus:border-orange-500 focus:outline-none focus:ring-4 focus:ring-orange-500/5 md:min-w-75"
           />
         </div>
       </header>
 
       {/* Bulk Actions Bar */}
       {links.length > 0 && onDeleteManyLinks && (
-        <div className="mb-4 flex items-center justify-between rounded-2xl border border-gray-200 bg-white px-4 py-3 shadow-sm">
+        <div className="mb-4 flex items-center justify-between rounded-2xl border border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-800 px-4 py-3 shadow-sm">
           <div className="flex items-center gap-3">
             <button
               onClick={toggleSelectAll}
@@ -281,23 +285,26 @@ export const LinkList = ({
             Chưa có link nào được tạo.
           </div>
         ) : (
-          links.map((l) => (
+          links.map((l) => {
+            const linkId = l.id ?? l.short_code;
+
+            return (
             <div
-              key={l.id}
+              key={linkId}
               className={`group flex flex-col gap-5 rounded-[2.5rem] border p-5 shadow-sm transition-all hover:shadow-xl sm:flex-row sm:items-start sm:p-6 ${
-                selectedIds.has(l.id)
-                  ? "border-orange-300 bg-orange-50/30"
-                  : "border-gray-100 bg-white"
+                selectedIds.has(linkId)
+                  ? "border-orange-300 bg-orange-50/30 dark:bg-orange-900/20"
+                  : "border-gray-100 dark:border-slate-700 bg-white dark:bg-slate-800"
               }`}
             >
               {/* Checkbox for bulk selection */}
               {onDeleteManyLinks && (
                 <div className="flex items-start pt-1">
                   <button
-                    onClick={() => toggleSelect(l.id)}
+                    onClick={() => toggleSelect(linkId)}
                     className="rounded-lg p-1 transition-all hover:bg-gray-100"
                   >
-                    {selectedIds.has(l.id) ? (
+                    {selectedIds.has(linkId) ? (
                       <CheckSquare size={20} className="text-orange-500" />
                     ) : (
                       <Square size={20} className="text-gray-300" />
@@ -349,7 +356,7 @@ export const LinkList = ({
                     <MousePointer2 size={10} />
                     <span>{l.clicks || 0} CLICKS</span>
                   </div>
-                  <span className="max-w-full truncate rounded-lg border border-gray-100 bg-gray-50 px-2 py-0.5 text-[10px] font-black uppercase tracking-tighter text-gray-400">
+                  <span className="max-w-full truncate rounded-lg border border-gray-100 dark:border-slate-600 bg-gray-50 dark:bg-slate-700 px-2 py-0.5 text-[10px] font-black uppercase tracking-tighter text-gray-400 dark:text-slate-400">
                     {l.short_code}
                   </span>
                   <span className="text-[10px] font-medium uppercase tracking-tighter text-gray-400">
@@ -368,36 +375,40 @@ export const LinkList = ({
                       ⏰ Đã hết hạn
                     </span>
                   )}
-                  {!isLinkExpired(l.expires_at) && isLinkExpiringSoon(l.expires_at) && (
-                    <span className="rounded-full border border-amber-200 bg-amber-100 px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-amber-700">
-                      ⏰ Sắp hết hạn
-                    </span>
-                  )}
-                  {l.expires_at && !isLinkExpired(l.expires_at) && !isLinkExpiringSoon(l.expires_at) && (
-                    <span className="rounded-full border border-blue-100 bg-blue-50 px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-blue-600">
-                      ⏰ Hết hạn {formatDistanceToNow(new Date(l.expires_at))}
-                    </span>
-                  )}
+                  {!isLinkExpired(l.expires_at) &&
+                    isLinkExpiringSoon(l.expires_at) && (
+                      <span className="rounded-full border border-amber-200 bg-amber-100 px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-amber-700">
+                        ⏰ Sắp hết hạn
+                      </span>
+                    )}
+                  {l.expires_at &&
+                    !isLinkExpired(l.expires_at) &&
+                    !isLinkExpiringSoon(l.expires_at) && (
+                      <span className="rounded-full border border-blue-100 bg-blue-50 px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-blue-600">
+                        ⏰ Hết hạn {formatDistanceToNow(new Date(l.expires_at))}
+                      </span>
+                    )}
                 </div>
 
-                {l.secondary_url && (() => {
-                  const flowBadge = getSecondaryFlowBadge(l.secondary_url);
-                  if (!flowBadge) return null;
+                {l.secondary_url &&
+                  (() => {
+                    const flowBadge = getSecondaryFlowBadge(l.secondary_url);
+                    if (!flowBadge) return null;
 
-                  return (
-                    <div className="mt-3 flex flex-wrap items-center gap-2">
-                      <span className={flowBadge.className}>
-                        {flowBadge.label}
-                      </span>
-                    </div>
-                  );
-                })()}
+                    return (
+                      <div className="mt-3 flex flex-wrap items-center gap-2">
+                        <span className={flowBadge.className}>
+                          {flowBadge.label}
+                        </span>
+                      </div>
+                    );
+                  })()}
 
                 {l.tracked_sources && l.tracked_sources.length > 0 && (
                   <div className="mt-3 flex flex-wrap items-center gap-2">
                     {l.tracked_sources.map((source) => (
                       <span
-                        key={`${l.id}-${source.label}`}
+                        key={`${linkId}-${source.label}`}
                         className="rounded-full border border-emerald-100 bg-emerald-50 px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-emerald-700"
                       >
                         {source.label} · {source.count}
@@ -411,7 +422,7 @@ export const LinkList = ({
                     onClick={() =>
                       copyToClipboard(
                         buildTrackedLink(l.short_code, "facebook"),
-                        `${l.id}-facebook`,
+                        `${linkId}-facebook`,
                       )
                     }
                     className="inline-flex items-center gap-1.5 rounded-full border border-blue-100 bg-blue-50 px-3 py-1.5 text-[10px] font-black uppercase tracking-wider text-blue-700 transition-all hover:bg-blue-100"
@@ -422,7 +433,7 @@ export const LinkList = ({
                     onClick={() =>
                       copyToClipboard(
                         buildTrackedLink(l.short_code, "tiktok"),
-                        `${l.id}-tiktok`,
+                        `${linkId}-tiktok`,
                       )
                     }
                     className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-100 px-3 py-1.5 text-[10px] font-black uppercase tracking-wider text-slate-700 transition-all hover:bg-slate-200"
@@ -433,7 +444,7 @@ export const LinkList = ({
                     onClick={() =>
                       copyToClipboard(
                         buildTrackedLink(l.short_code, "zalo"),
-                        `${l.id}-zalo`,
+                        `${linkId}-zalo`,
                       )
                     }
                     className="inline-flex items-center gap-1.5 rounded-full border border-cyan-100 bg-cyan-50 px-3 py-1.5 text-[10px] font-black uppercase tracking-wider text-cyan-700 transition-all hover:bg-cyan-100"
@@ -462,12 +473,12 @@ export const LinkList = ({
                   onClick={() =>
                     copyToClipboard(
                       `https://hotsnew.click/s/${l.short_code}`,
-                      l.id || "",
+                      linkId,
                     )
                   }
                   className="min-w-27.5 flex-1 shrink-0 rounded-xl bg-gray-900 px-6 py-3 text-xs font-black uppercase tracking-widest text-white transition-all hover:scale-105 active:scale-95 sm:mx-1 sm:flex-none"
                 >
-                  {copiedId === l.id ? "DONE" : "COPY"}
+                  {copiedId === linkId ? "DONE" : "COPY"}
                 </button>
                 <button
                   onClick={() => setQrLink(l)}
@@ -481,29 +492,30 @@ export const LinkList = ({
                 </button>
               </div>
             </div>
-          ))
+            );
+          })
         )}
       </div>
 
       {editingLink && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-6 backdrop-blur-sm">
-          <div className="w-full max-w-xl overflow-hidden rounded-[3rem] bg-white shadow-2xl animate-in fade-in zoom-in duration-300">
-            <div className="flex items-center justify-between border-b border-gray-100 bg-gray-50/50 p-8">
-              <h3 className="text-xl font-black text-gray-900">
+          <div className="flex max-h-[90vh] w-full max-w-5xl flex-col overflow-hidden rounded-[3rem] bg-white dark:bg-slate-800 shadow-2xl animate-in fade-in zoom-in duration-300">
+            <div className="flex items-center justify-between border-b border-gray-100 dark:border-slate-700 bg-gray-50/50 dark:bg-slate-700/50 p-8">
+              <h3 className="text-xl font-black text-gray-900 dark:text-slate-100">
                 Người dùng Chỉnh sửa Link
               </h3>
               <button
                 onClick={() => setEditingLink(null)}
-                className="rounded-full p-2 transition-colors hover:bg-white"
+                className="rounded-full p-2 transition-colors hover:bg-white dark:text-slate-300 dark:hover:bg-slate-600"
               >
                 <X size={20} />
               </button>
             </div>
 
-            <div className="space-y-6 p-8">
-              <div className="space-y-1">
+            <div className="grid flex-1 gap-6 overflow-y-auto p-6 md:p-8 lg:grid-cols-2 lg:gap-8">
+              <div className="space-y-1 lg:col-start-1 lg:row-start-1">
                 <label className="ml-1 text-[10px] font-black uppercase tracking-widest text-gray-400">
-                  Link Shopee / TikTok ( đầu vào )
+                  Link Shopee / TikTok gốc (Original URL)
                 </label>
                 <input
                   type="url"
@@ -512,14 +524,14 @@ export const LinkList = ({
                     setEditForm({ ...editForm, original: e.target.value })
                   }
                   placeholder="https://shopee.vn/..."
-                  className="w-full rounded-2xl border-2 border-orange-100 bg-orange-50/50 px-6 py-4 text-sm font-bold text-orange-900 outline-none transition-all focus:border-orange-500"
+                  className="w-full rounded-2xl border-2 border-orange-100 bg-orange-50/50 px-6 py-4 text-sm font-bold text-orange-900 outline-none transition-all focus:border-orange-500 dark:border-orange-500/20 dark:bg-orange-500/10 dark:text-orange-200"
                 />
-                <p className="px-1 text-[9px] font-medium text-gray-400">
+                <p className="px-1 text-[9px] font-medium text-gray-400 dark:text-slate-500">
                   Link thực tế mà người dùng sẽ được chuyển tới.
                 </p>
               </div>
 
-              <div className="space-y-1">
+              <div className="space-y-1 lg:col-start-1 lg:row-start-2">
                 <label className="ml-1 text-[10px] font-black uppercase tracking-widest text-gray-400">
                   Tiêu đề ( Facebook )
                 </label>
@@ -530,11 +542,11 @@ export const LinkList = ({
                     setEditForm({ ...editForm, title: e.target.value })
                   }
                   placeholder="Tiêu đề hiển thị..."
-                  className="w-full rounded-2xl border-2 border-transparent bg-gray-50 px-6 py-4 text-sm font-bold outline-none transition-all focus:border-orange-500"
+                  className="w-full rounded-2xl border-2 border-transparent bg-gray-50 px-6 py-4 text-sm font-bold text-gray-900 outline-none transition-all focus:border-orange-500 dark:bg-slate-700 dark:text-slate-100"
                 />
               </div>
 
-              <div className="space-y-1">
+              <div className="space-y-1 lg:col-start-1 lg:row-start-3">
                 <label className="ml-1 text-[10px] font-black uppercase tracking-widest text-gray-400">
                   Mô tả ( Facebook )
                 </label>
@@ -544,12 +556,12 @@ export const LinkList = ({
                     setEditForm({ ...editForm, desc: e.target.value })
                   }
                   placeholder="Mô tả nội dung..."
-                  rows={3}
-                  className="w-full resize-none rounded-2xl border-2 border-transparent bg-gray-50 px-6 py-4 text-sm font-medium outline-none transition-all focus:border-orange-500"
+                  rows={6}
+                  className="min-h-36 w-full resize-none rounded-2xl border-2 border-transparent bg-gray-50 px-6 py-4 text-sm font-medium text-gray-900 outline-none transition-all focus:border-orange-500 dark:bg-slate-700 dark:text-slate-100"
                 />
               </div>
 
-              <div className="space-y-1">
+              <div className="space-y-1 lg:col-start-1 lg:row-start-4">
                 <label className="ml-1 text-[10px] font-black uppercase tracking-widest text-gray-400">
                   Dùng ở đâu
                 </label>
@@ -558,7 +570,7 @@ export const LinkList = ({
                   onChange={(e) =>
                     setEditForm({ ...editForm, usage: e.target.value })
                   }
-                  className="w-full rounded-2xl border-2 border-transparent bg-gray-50 px-6 py-4 text-sm font-medium text-gray-900 outline-none transition-all focus:border-orange-500"
+                  className="w-full rounded-2xl border-2 border-transparent bg-gray-50 px-6 py-4 text-sm font-medium text-gray-900 outline-none transition-all focus:border-orange-500 dark:bg-slate-700 dark:text-slate-100"
                 >
                   {usageOptions.map((option) => (
                     <option key={option.value} value={option.value}>
@@ -568,7 +580,7 @@ export const LinkList = ({
                 </select>
               </div>
 
-              <div className="space-y-1">
+              <div className="space-y-1 lg:col-start-2 lg:row-start-2">
                 <label className="ml-1 text-[10px] font-black uppercase tracking-widest text-gray-400">
                   Thumbnail URL
                 </label>
@@ -579,24 +591,22 @@ export const LinkList = ({
                     setEditForm({ ...editForm, img: e.target.value })
                   }
                   placeholder="https://..."
-                  className="w-full rounded-2xl border-2 border-transparent bg-gray-50 px-6 py-4 text-sm font-medium outline-none transition-all focus:border-orange-500"
+                  className="w-full rounded-2xl border-2 border-transparent bg-gray-50 px-6 py-4 text-sm font-medium text-gray-900 outline-none transition-all focus:border-orange-500 dark:bg-slate-700 dark:text-slate-100"
                 />
               </div>
 
-              <div className="space-y-2">
+              <div className="space-y-2 lg:col-start-2 lg:row-start-3">
                 <label className="ml-1 text-[10px] font-black uppercase tracking-widest text-gray-400">
                   Thời hạn link (tùy chọn)
                 </label>
-                <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
+                <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-2">
                   <button
                     type="button"
-                    onClick={() =>
-                      setEditForm({ ...editForm, expiresAt: "" })
-                    }
+                    onClick={() => setEditForm({ ...editForm, expiresAt: "" })}
                     className={`rounded-xl px-2 py-2 text-[9px] font-black uppercase tracking-wider transition-all ${
                       editForm.expiresAt === ""
                         ? "bg-orange-500 text-white"
-                        : "bg-gray-50 text-gray-500 hover:bg-gray-100"
+                        : "bg-gray-50 text-gray-500 hover:bg-gray-100 dark:bg-slate-700 dark:text-slate-300 dark:hover:bg-slate-600"
                     }`}
                   >
                     Không hết hạn
@@ -630,7 +640,7 @@ export const LinkList = ({
                         className={`rounded-xl px-2 py-2 text-[9px] font-black uppercase tracking-wider transition-all ${
                           isSelected
                             ? "bg-orange-500 text-white"
-                            : "bg-gray-50 text-gray-500 hover:bg-gray-100"
+                            : "bg-gray-50 text-gray-500 hover:bg-gray-100 dark:bg-slate-700 dark:text-slate-300 dark:hover:bg-slate-600"
                         }`}
                       >
                         {label}
@@ -638,15 +648,15 @@ export const LinkList = ({
                     );
                   })}
                 </div>
-                <p className="px-1 text-[9px] font-medium text-gray-400">
+                <p className="px-1 text-[9px] font-medium text-gray-400 dark:text-slate-500">
                   Link sẽ tự động vô hiệu sau thời gian đã chọn.
                 </p>
               </div>
 
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <div className="grid grid-cols-1 gap-4 lg:col-start-2 lg:row-start-1">
                 <div className="space-y-1">
                   <label className="ml-1 text-[10px] font-black uppercase tracking-widest text-gray-400">
-                    Link Shopee phụ
+                    Link Shopee / TikTok ( bước 2 - tùy chọn )
                   </label>
                   <input
                     type="url"
@@ -655,16 +665,16 @@ export const LinkList = ({
                       setEditForm({ ...editForm, secondary: e.target.value })
                     }
                     placeholder="https://shopee.vn/..."
-                    className="w-full rounded-2xl border-2 border-transparent bg-gray-50 px-6 py-4 text-sm font-medium outline-none transition-all focus:border-orange-500"
+                    className="w-full rounded-2xl border-2 border-transparent bg-gray-50 px-6 py-4 text-sm font-medium text-gray-900 outline-none transition-all focus:border-orange-500 dark:bg-slate-700 dark:text-slate-100"
                   />
                 </div>
               </div>
             </div>
 
-            <div className="flex gap-4 border-t border-gray-100 bg-gray-50 p-8">
+            <div className="flex gap-4 border-t border-gray-100 dark:border-slate-700 bg-gray-50 dark:bg-slate-700 p-6 md:p-8">
               <button
                 onClick={() => setEditingLink(null)}
-                className="flex-1 rounded-2xl border border-gray-200 bg-white py-4 text-[10px] font-black uppercase tracking-widest text-gray-600 transition-all hover:bg-gray-100"
+                className="flex-1 rounded-2xl border border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-600 py-4 text-[10px] font-black uppercase tracking-widest text-gray-600 dark:text-slate-300 transition-all hover:bg-gray-100 dark:hover:bg-slate-500"
               >
                 Hủy bỏ
               </button>
@@ -687,17 +697,17 @@ export const LinkList = ({
 
       {deletingLink && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-6 backdrop-blur-sm">
-          <div className="w-full max-w-md overflow-hidden rounded-[3rem] bg-white shadow-2xl animate-in fade-in zoom-in duration-300">
+          <div className="w-full max-w-md overflow-hidden rounded-[3rem] bg-white dark:bg-slate-800 shadow-2xl animate-in fade-in zoom-in duration-300">
             <div className="p-10 text-center">
-              <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-3xl bg-red-50 text-red-600 shadow-sm shadow-red-100">
+              <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-3xl bg-red-50 text-red-600 shadow-sm shadow-red-100 dark:bg-red-500/10 dark:shadow-red-900/20">
                 <AlertTriangle size={40} />
               </div>
-              <h3 className="mb-4 text-2xl font-black tracking-tight text-gray-900">
+              <h3 className="mb-4 text-2xl font-black tracking-tight text-gray-900 dark:text-slate-100">
                 Xác nhận xóa link?
               </h3>
-              <p className="mb-10 px-4 font-medium leading-relaxed text-gray-500">
+              <p className="mb-10 px-4 font-medium leading-relaxed text-gray-500 dark:text-slate-400">
                 Hành động này sẽ xóa vĩnh viễn link{" "}
-                <span className="font-bold tracking-tight text-gray-900">
+                <span className="font-bold tracking-tight text-gray-900 dark:text-slate-100">
                   {deletingLink.short_code}
                 </span>{" "}
                 và mọi dữ liệu thống kê. Không thể khôi phục sau khi xóa.
@@ -718,7 +728,7 @@ export const LinkList = ({
                 <button
                   onClick={() => setDeletingLink(null)}
                   disabled={isDeleting}
-                  className="w-full rounded-2xl bg-gray-100 py-5 text-[11px] font-black uppercase tracking-widest text-gray-600 transition-all hover:bg-gray-200 active:scale-95"
+                  className="w-full rounded-2xl bg-gray-100 py-5 text-[11px] font-black uppercase tracking-widest text-gray-600 transition-all hover:bg-gray-200 active:scale-95 dark:bg-slate-700 dark:text-slate-300 dark:hover:bg-slate-600"
                 >
                   Hủy bỏ
                 </button>
@@ -730,8 +740,8 @@ export const LinkList = ({
 
       {qrLink && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-6 backdrop-blur-sm">
-          <div className="w-full max-w-sm overflow-hidden rounded-[3rem] bg-white shadow-2xl animate-in fade-in zoom-in duration-300">
-            <div className="flex items-center justify-between border-b border-gray-100 bg-gray-50/50 p-8">
+          <div className="w-full max-w-sm overflow-hidden rounded-[3rem] bg-white dark:bg-slate-800 shadow-2xl animate-in fade-in zoom-in duration-300">
+            <div className="flex items-center justify-between border-b border-gray-100 dark:border-slate-700 bg-gray-50/50 dark:bg-slate-700/50 p-8">
               <h3 className="text-xl font-black tracking-tight text-gray-900">
                 Mã QR của bạn
               </h3>
@@ -743,7 +753,7 @@ export const LinkList = ({
               </button>
             </div>
             <div className="flex flex-col items-center p-10">
-              <div className="mb-8 rounded-[2.5rem] border border-gray-100 bg-white p-6 shadow-xl ring-4 ring-gray-50">
+              <div className="mb-8 rounded-[2.5rem] border border-gray-100 dark:border-slate-600 bg-white dark:bg-slate-700 p-6 shadow-xl ring-4 ring-gray-50 dark:ring-slate-700">
                 <QRCodeCanvas
                   value={`https://hotsnew.click/s/${qrLink.short_code}`}
                   size={200}
@@ -782,15 +792,15 @@ export const LinkList = ({
       {/* Bulk Delete Confirmation Modal */}
       {showBulkDeleteConfirm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-6 backdrop-blur-sm">
-          <div className="w-full max-w-md overflow-hidden rounded-[3rem] bg-white shadow-2xl animate-in fade-in zoom-in duration-300">
+          <div className="w-full max-w-md overflow-hidden rounded-[3rem] bg-white dark:bg-slate-800 shadow-2xl animate-in fade-in zoom-in duration-300">
             <div className="p-10 text-center">
-              <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-3xl bg-red-50 text-red-600 shadow-sm shadow-red-100">
+              <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-3xl bg-red-50 text-red-600 shadow-sm shadow-red-100 dark:bg-red-500/10 dark:shadow-red-900/20">
                 <AlertTriangle size={40} />
               </div>
-              <h3 className="mb-4 text-2xl font-black tracking-tight text-gray-900">
+              <h3 className="mb-4 text-2xl font-black tracking-tight text-gray-900 dark:text-slate-100">
                 Xác nhận xóa {selectedIds.size} link?
               </h3>
-              <p className="mb-10 px-4 font-medium leading-relaxed text-gray-500">
+              <p className="mb-10 px-4 font-medium leading-relaxed text-gray-500 dark:text-slate-400">
                 Hành động này sẽ xóa vĩnh viễn {selectedIds.size} link và mọi dữ
                 liệu thống kê. Không thể khôi phục sau khi xóa.
               </p>
@@ -810,7 +820,7 @@ export const LinkList = ({
                 <button
                   onClick={() => setShowBulkDeleteConfirm(false)}
                   disabled={bulkDeleting}
-                  className="w-full rounded-2xl bg-gray-100 py-5 text-[11px] font-black uppercase tracking-widest text-gray-600 transition-all hover:bg-gray-200 active:scale-95"
+                  className="w-full rounded-2xl bg-gray-100 py-5 text-[11px] font-black uppercase tracking-widest text-gray-600 transition-all hover:bg-gray-200 active:scale-95 dark:bg-slate-700 dark:text-slate-300 dark:hover:bg-slate-600"
                 >
                   Hủy bỏ
                 </button>

@@ -7,7 +7,10 @@ import { toast } from "sonner";
 interface UseLinksProps {
   user: User | null;
   profile: UserProfile | null;
-  fetchWithAuth: (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
+  fetchWithAuth: (
+    input: RequestInfo | URL,
+    init?: RequestInit,
+  ) => Promise<Response>;
   activeTab: string;
 }
 
@@ -28,7 +31,12 @@ export interface LinksActions {
   refreshLinks: () => void;
 }
 
-export function useLinks({ user, profile, fetchWithAuth, activeTab }: UseLinksProps): LinksState & LinksActions {
+export function useLinks({
+  user,
+  profile,
+  fetchWithAuth,
+  activeTab,
+}: UseLinksProps): LinksState & LinksActions {
   const [links, setLinks] = useState<ConvertedLink[]>([]);
   const [listLoading, setListLoading] = useState(false);
   const [linksDirty, setLinksDirty] = useState(true);
@@ -49,55 +57,66 @@ export function useLinks({ user, profile, fetchWithAuth, activeTab }: UseLinksPr
     }
   }, [user, fetchWithAuth]);
 
-  const handleDeleteLink = useCallback(async (id: string) => {
-    try {
-      const res = await fetchWithAuth(`/api/v1/user/links/${id}`, {
-        method: "DELETE",
-      });
-      if (!res.ok) throw new Error("Delete failed");
-      setLinks((prev) => prev.filter((l) => l.id !== id));
-      setLinksDirty(false);
-      toast.success("Đã xóa link thành công!");
-    } catch (e: any) {
-      toast.error("Lỗi khi xóa link: " + e.message);
-    }
-  }, [fetchWithAuth]);
+  const handleDeleteLink = useCallback(
+    async (id: string) => {
+      try {
+        const res = await fetchWithAuth(`/api/v1/user/links/${id}`, {
+          method: "DELETE",
+        });
+        if (!res.ok) throw new Error("Delete failed");
+        setLinks((prev) => prev.filter((l) => l.id !== id));
+        setLinksDirty(false);
+        toast.success("Đã xóa link thành công!");
+      } catch (e: any) {
+        toast.error("Lỗi khi xóa link: " + e.message);
+      }
+    },
+    [fetchWithAuth],
+  );
 
-  const handleUpdateLink = useCallback(async (id: string, data: Partial<ConvertedLink>) => {
-    try {
-      const res = await fetchWithAuth(`/api/v1/user/links/${id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      });
-      if (!res.ok) throw new Error("Update failed");
-      const updated = await res.json();
-      setLinks((prev) =>
-        prev.map((l) => (l.id === id ? { ...l, ...updated } : l)),
-      );
-      setLinksDirty(false);
-      toast.success("Đã cập nhật link thành công!");
-    } catch (e: any) {
-      toast.error("Lỗi khi cập nhật link: " + e.message);
-    }
-  }, [fetchWithAuth]);
+  const handleUpdateLink = useCallback(
+    async (id: string, data: Partial<ConvertedLink>) => {
+      try {
+        const res = await fetchWithAuth(`/api/v1/user/links/${id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(data),
+        });
+        if (!res.ok) throw new Error("Update failed");
+        const updated = await res.json();
+        setLinks((prev) =>
+          prev.map((l) => (l.id === id ? { ...l, ...updated } : l)),
+        );
+        setLinksDirty(false);
+        toast.success("Đã cập nhật link thành công!");
+      } catch (e: any) {
+        toast.error("Lỗi khi cập nhật link: " + e.message);
+      }
+    },
+    [fetchWithAuth],
+  );
 
-  const handleDeleteManyLinks = useCallback(async (ids: string[]) => {
-    try {
-      const res = await fetchWithAuth("/api/v1/user/links/bulk-delete", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ids }),
-      });
-      if (!res.ok) throw new Error("Bulk delete failed");
-      const result = await res.json();
-      setLinks((prev) => prev.filter((l) => !ids.includes(l.id)));
-      setLinksDirty(false);
-      toast.success(`Đã xóa ${result.deleted || ids.length} link thành công!`);
-    } catch (e: any) {
-      toast.error("Lỗi khi xóa link: " + e.message);
-    }
-  }, [fetchWithAuth]);
+  const handleDeleteManyLinks = useCallback(
+    async (ids: string[]) => {
+      try {
+        const res = await fetchWithAuth("/api/v1/user/links/bulk-delete", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ ids }),
+        });
+        if (!res.ok) throw new Error("Bulk delete failed");
+        const result = await res.json();
+        setLinks((prev) => prev.filter((l) => l.id && !ids.includes(l.id)));
+        setLinksDirty(false);
+        toast.success(
+          `Đã xóa ${result.deleted || ids.length} link thành công!`,
+        );
+      } catch (e: any) {
+        toast.error("Lỗi khi xóa link: " + e.message);
+      }
+    },
+    [fetchWithAuth],
+  );
 
   const refreshLinks = useCallback(() => {
     setLinksDirty(true);
@@ -112,10 +131,16 @@ export function useLinks({ user, profile, fetchWithAuth, activeTab }: UseLinksPr
 
   // Auto-fetch when tab is list and data is dirty
   useEffect(() => {
-    const isAdminRole = profile?.role === "admin" || user?.email === "devluan1996@gmail.com";
+    const isAdminRole =
+      profile?.role === "admin" || user?.email === "devluan1996@gmail.com";
     const isApproved = profile?.status === "approved" || isAdminRole;
 
-    if (user && isApproved && activeTab === "list" && (linksDirty || links.length === 0)) {
+    if (
+      user &&
+      isApproved &&
+      activeTab === "list" &&
+      (linksDirty || links.length === 0)
+    ) {
       fetchLinks();
     }
   }, [user, profile, activeTab, linksDirty, links.length, fetchLinks]);

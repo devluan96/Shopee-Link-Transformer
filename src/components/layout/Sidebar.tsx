@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import {
   BarChart3,
+  Download,
   LayoutDashboard,
   List,
   Lock,
@@ -12,6 +13,8 @@ import {
 } from "lucide-react";
 import { cn } from "@/src/lib/utils";
 import { Tab, UserProfile } from "@/src/types";
+import { InstallAppButton } from "@/src/components/common/InstallAppButton";
+import { ThemeToggle } from "@/src/components/common/ThemeToggle";
 
 interface SidebarProps {
   activeTab: Tab;
@@ -43,7 +46,7 @@ const SidebarItem = ({
       "group flex w-full items-center justify-between rounded-xl px-4 py-3 text-left text-sm font-bold transition-all",
       active
         ? "bg-orange-600 text-white shadow-lg shadow-orange-200"
-        : "text-gray-500 hover:bg-gray-100 hover:text-gray-900",
+        : "text-gray-500 hover:bg-gray-100 hover:text-gray-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-200",
     )}
   >
     <div className="flex items-center gap-3">
@@ -123,7 +126,7 @@ export const Sidebar = ({
 
       <aside
         className={cn(
-          "fixed inset-y-0 left-0 z-50 flex w-72 flex-col border-r border-gray-200 bg-white p-6 transition-transform lg:sticky lg:z-0 lg:h-screen lg:translate-x-0",
+          "fixed inset-y-0 left-0 z-50 flex w-72 flex-col border-r border-gray-200 bg-white p-6 transition-transform dark:border-slate-700 dark:bg-slate-900 lg:sticky lg:z-0 lg:h-screen lg:translate-x-0",
           isOpen ? "translate-x-0" : "-translate-x-full",
         )}
       >
@@ -135,7 +138,7 @@ export const Sidebar = ({
               className="h-10 w-10 rounded-xl object-cover shadow-lg shadow-orange-100"
             />
             <div>
-              <h1 className="text-xl font-black leading-none tracking-tight text-gray-900">
+              <h1 className="text-xl font-black leading-none tracking-tight text-gray-900 dark:text-white">
                 HotsNew
               </h1>
               <p className="mt-1 text-[10px] font-black uppercase tracking-[0.2em] text-orange-500">
@@ -153,7 +156,7 @@ export const Sidebar = ({
         </div>
 
         <nav className="flex-1 space-y-2 overflow-y-auto">
-          <div className="mb-4 px-4 text-[10px] font-black uppercase tracking-widest text-gray-400">
+          <div className="mb-4 px-4 text-[10px] font-black uppercase tracking-widest text-gray-400 dark:text-slate-500">
             Menu chính
           </div>
           <SidebarItem
@@ -161,6 +164,12 @@ export const Sidebar = ({
             label="Bảng điều khiển"
             active={activeTab === "dashboard"}
             onClick={() => handleTabClick("dashboard")}
+          />
+          <SidebarItem
+            icon={Download}
+            label="Cài app / Extension"
+            active={activeTab === "install"}
+            onClick={() => handleTabClick("install")}
           />
           <SidebarItem
             icon={PlusCircle}
@@ -199,17 +208,25 @@ export const Sidebar = ({
           )}
         </nav>
 
-        <div className="mt-auto border-t border-gray-100 pt-6">
+        <div className="mt-auto border-t border-gray-100 dark:border-slate-700 pt-6">
+          {/* Theme Toggle - Desktop */}
+          <div className="hidden lg:flex justify-center mb-4">
+            <ThemeToggle />
+          </div>
+          <div className="mb-4">
+            <InstallAppButton />
+          </div>
+
           <div ref={userMenuRef} className="relative">
             {isUserMenuOpen && (
-              <div className="absolute bottom-full left-0 right-0 mb-3 rounded-2xl border border-gray-100 bg-white p-2 shadow-xl shadow-gray-200/70">
+              <div className="absolute bottom-full left-0 right-0 mb-3 rounded-2xl border border-gray-100 bg-white p-2 shadow-xl shadow-gray-200/70 dark:border-slate-700 dark:bg-slate-800 dark:shadow-black/30">
                 <button
                   onClick={() => handleTabClick("pricing")}
                   className={cn(
                     "flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left text-sm font-bold transition-all",
                     activeTab === "pricing"
                       ? "bg-orange-600 text-white shadow-lg shadow-orange-200"
-                      : "text-gray-600 hover:bg-gray-100 hover:text-gray-900",
+                      : "text-gray-600 hover:bg-gray-100 hover:text-gray-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-200",
                   )}
                 >
                   <Tag size={18} />
@@ -221,7 +238,7 @@ export const Sidebar = ({
                     "flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left text-sm font-bold transition-all",
                     activeTab === "profile"
                       ? "bg-orange-600 text-white shadow-lg shadow-orange-200"
-                      : "text-gray-600 hover:bg-gray-100 hover:text-gray-900",
+                      : "text-gray-600 hover:bg-gray-100 hover:text-gray-900 dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-slate-200",
                   )}
                 >
                   <User size={18} />
@@ -232,7 +249,7 @@ export const Sidebar = ({
                     setIsUserMenuOpen(false);
                     handleLogout();
                   }}
-                  className="mt-1 flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left text-sm font-bold text-red-500 transition-all hover:bg-red-50"
+                  className="mt-1 flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left text-sm font-bold text-red-500 transition-all hover:bg-red-50 dark:hover:bg-red-500/10"
                 >
                   <LogOut size={18} />
                   Đăng xuất
@@ -267,10 +284,10 @@ export const Sidebar = ({
               </button>
 
               <div className="min-w-0">
-                <p className="truncate text-sm font-bold text-gray-900">
+                <p className="truncate text-sm font-bold text-gray-900 dark:text-slate-200">
                   {userProfile?.full_name || userEmail}
                 </p>
-                <p className="text-[10px] font-bold uppercase text-green-600">
+                <p className="text-[10px] font-bold uppercase text-green-600 dark:text-green-400">
                   {isActuallyAdmin
                     ? "Administrator"
                     : userProfile?.subscription_plan === "monthly" ||

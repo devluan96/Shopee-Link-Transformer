@@ -17,9 +17,13 @@
     <meta name="googlebot" content="index, follow, max-image-preview:large" />
     <meta name="theme-color" content="#f97316" />
     <meta name="application-name" content="HotsNew Click" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <link rel="icon" type="image/png" href="/logo-app.png" />
     <link rel="shortcut icon" href="/logo-app.png" />
     <link rel="apple-touch-icon" href="/logo-app.png" />
+    <link rel="manifest" href="/manifest.webmanifest" />
     <link rel="canonical" href="https://hotsnew.click/" />
     <link rel="alternate" href="https://hotsnew.click/" hreflang="vi-VN" />
 
@@ -65,6 +69,23 @@
           "name": "HotsNew Click"
         }
       }
+    </script>
+    <script>
+      (() => {
+        const storedTheme = localStorage.getItem("theme-preference");
+        const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+        const resolvedTheme =
+          storedTheme === "dark" || (storedTheme !== "light" && prefersDark)
+            ? "dark"
+            : "light";
+
+        if (resolvedTheme === "dark") {
+          document.documentElement.classList.add("dark");
+          document
+            .querySelector('meta[name="theme-color"]')
+            ?.setAttribute("content", "#0f172a");
+        }
+      })();
     </script>
   </head>
   <body>

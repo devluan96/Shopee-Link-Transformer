@@ -42,7 +42,7 @@ export const Analytics = ({ analyticsData, linksCount, fetchWithAuth }: Analytic
   const growthDisplay = `${growthPercentage >= 0 ? "+" : ""}${growthPercentage.toFixed(1)}%`;
 
   return (
-    <div className="space-y-8 pb-12">
+    <div className="space-y-8 pb-12 dark:bg-slate-900">
       <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
         {[
           {
@@ -69,17 +69,17 @@ export const Analytics = ({ analyticsData, linksCount, fetchWithAuth }: Analytic
         ].map((stat, idx) => (
           <div
             key={idx}
-            className="rounded-[2.5rem] border border-gray-100 bg-white p-8 shadow-sm"
+            className="rounded-[2.5rem] border border-gray-100 dark:border-slate-700 bg-white dark:bg-slate-800 p-8 shadow-sm"
           >
             <div
-              className={`mb-6 flex h-12 w-12 items-center justify-center rounded-2xl ${stat.bg} ${stat.color}`}
+              className={`mb-6 flex h-12 w-12 items-center justify-center rounded-2xl ${stat.bg} dark:bg-slate-700 ${stat.color}`}
             >
               <stat.icon size={24} />
             </div>
-            <div className="mb-1 font-mono text-3xl font-black text-gray-900">
+            <div className="mb-1 font-mono text-3xl font-black text-gray-900 dark:text-slate-100">
               {stat.value}
             </div>
-            <div className="text-[11px] font-black uppercase tracking-widest text-gray-400">
+            <div className="text-[11px] font-black uppercase tracking-widest text-gray-400 dark:text-slate-500">
               {stat.label}
             </div>
           </div>
@@ -88,13 +88,13 @@ export const Analytics = ({ analyticsData, linksCount, fetchWithAuth }: Analytic
 
       {/* View Toggle - Basic/Advanced */}
       {fetchWithAuth && (
-        <div className="flex gap-2 rounded-2xl bg-gray-100 p-1.5">
+        <div className="flex gap-2 rounded-2xl bg-gray-100 dark:bg-slate-800 p-1.5">
           <button
             onClick={() => setActiveView("basic")}
             className={`flex flex-1 items-center justify-center gap-2 rounded-xl py-3 text-xs font-black uppercase tracking-widest transition-all ${
               activeView === "basic"
-                ? "bg-white text-orange-600 shadow-sm"
-                : "text-gray-500 hover:text-gray-700"
+                ? "bg-white text-orange-600 shadow-sm dark:bg-slate-700"
+                : "text-gray-500 hover:text-gray-700 dark:text-slate-400 dark:hover:text-slate-300"
             }`}
           >
             <BarChart3 size={14} />
@@ -104,8 +104,8 @@ export const Analytics = ({ analyticsData, linksCount, fetchWithAuth }: Analytic
             onClick={() => setActiveView("advanced")}
             className={`flex flex-1 items-center justify-center gap-2 rounded-xl py-3 text-xs font-black uppercase tracking-widest transition-all ${
               activeView === "advanced"
-                ? "bg-white text-orange-600 shadow-sm"
-                : "text-gray-500 hover:text-gray-700"
+                ? "bg-white text-orange-600 shadow-sm dark:bg-slate-700"
+                : "text-gray-500 hover:text-gray-700 dark:text-slate-400 dark:hover:text-slate-300"
             }`}
           >
             <Map size={14} />
@@ -118,13 +118,13 @@ export const Analytics = ({ analyticsData, linksCount, fetchWithAuth }: Analytic
         <AdvancedAnalytics fetchWithAuth={fetchWithAuth} />
       ) : (
         <>
-          <div className="rounded-[2.5rem] border border-gray-100 bg-white p-8 shadow-sm">
+          <div className="rounded-[2.5rem] border border-gray-100 dark:border-slate-700 bg-white dark:bg-slate-800 p-8 shadow-sm">
             <div className="mb-10 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <h3 className="text-xl font-black text-gray-900">
+                <h3 className="text-xl font-black text-gray-900 dark:text-slate-100">
                   Biểu đồ lượt click
                 </h3>
-                <p className="text-xs font-medium text-gray-400">
+                <p className="text-xs font-medium text-gray-400 dark:text-slate-400">
                   Thống kê dữ liệu trong 30 ngày gần nhất
                 </p>
               </div>
@@ -188,10 +188,10 @@ export const Analytics = ({ analyticsData, linksCount, fetchWithAuth }: Analytic
       </div>
 
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
-        <div className="rounded-[2.5rem] border border-gray-100 bg-white p-8 shadow-sm">
+        <div className="rounded-[2.5rem] border border-gray-100 dark:border-slate-700 bg-white dark:bg-slate-800 p-8 shadow-sm">
           <div className="mb-8 flex items-center gap-3">
             <TrendingUp size={20} className="text-orange-500" />
-            <h3 className="text-xl font-black text-gray-900">
+            <h3 className="text-xl font-black text-gray-900 dark:text-slate-100">
               Top Link Hiệu Quả
             </h3>
           </div>
@@ -200,20 +200,20 @@ export const Analytics = ({ analyticsData, linksCount, fetchWithAuth }: Analytic
               topLinks.map((item, idx) => (
                 <div
                   key={idx}
-                  className="group flex items-center gap-4 rounded-2xl p-4 transition-all hover:bg-gray-50"
+                  className="group flex items-center gap-4 rounded-2xl p-4 transition-all hover:bg-gray-50 dark:hover:bg-slate-700"
                 >
-                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gray-100 font-mono font-black text-gray-400 transition-all group-hover:bg-orange-500 group-hover:text-white">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gray-100 dark:bg-slate-700 font-mono font-black text-gray-400 dark:text-slate-400 transition-all group-hover:bg-orange-500 group-hover:text-white">
                     0{idx + 1}
                   </div>
                   <div className="min-w-0 flex-1 pr-4">
-                    <div className="truncate font-bold text-gray-900">
+                    <div className="truncate font-bold text-gray-900 dark:text-slate-200">
                       {item.title}
                     </div>
                     <div className="text-[10px] font-black uppercase tracking-widest text-orange-500">
                       {item.clicks} CLICKS · /s/{item.short_code}
                     </div>
                   </div>
-                  <div className="h-1.5 w-24 overflow-hidden rounded-full bg-gray-100">
+                  <div className="h-1.5 w-24 overflow-hidden rounded-full bg-gray-100 dark:bg-slate-700">
                     <div
                       className="h-full bg-orange-500"
                       style={{
@@ -224,17 +224,17 @@ export const Analytics = ({ analyticsData, linksCount, fetchWithAuth }: Analytic
                 </div>
               ))
             ) : (
-              <div className="py-12 text-center text-sm font-medium italic text-gray-400">
+              <div className="py-12 text-center text-sm font-medium italic text-gray-400 dark:text-slate-500">
                 Chưa có dữ liệu thống kê link
               </div>
             )}
           </div>
         </div>
 
-        <div className="rounded-[2.5rem] border border-gray-100 bg-white p-8 shadow-sm">
+        <div className="rounded-[2.5rem] border border-gray-100 dark:border-slate-700 bg-white dark:bg-slate-800 p-8 shadow-sm">
           <div className="mb-8 flex items-center gap-3">
             <PieChartIcon size={20} className="text-blue-500" />
-            <h3 className="text-xl font-black text-gray-900">
+            <h3 className="text-xl font-black text-gray-900 dark:text-slate-100">
               Nguồn Lưu Lượng
             </h3>
           </div>
@@ -265,7 +265,7 @@ export const Analytics = ({ analyticsData, linksCount, fetchWithAuth }: Analytic
                 </BarChart>
               </ResponsiveContainer>
             ) : (
-              <div className="flex h-full items-center justify-center rounded-3xl border border-dashed border-gray-100 bg-gray-50 text-center text-sm font-medium italic text-gray-400">
+              <div className="flex h-full items-center justify-center rounded-3xl border border-dashed border-gray-100 dark:border-slate-700 bg-gray-50 dark:bg-slate-700/50 text-center text-sm font-medium italic text-gray-400 dark:text-slate-400">
                 Chưa có dữ liệu nguồn lưu lượng.
               </div>
             )}
@@ -274,7 +274,7 @@ export const Analytics = ({ analyticsData, linksCount, fetchWithAuth }: Analytic
             {trafficSources.map((source, index) => (
               <span
                 key={source.name}
-                className="inline-flex items-center gap-2 rounded-full border border-gray-100 px-3 py-1.5 text-[10px] font-black uppercase tracking-widest text-gray-600"
+                className="inline-flex items-center gap-2 rounded-full border border-gray-100 dark:border-slate-600 px-3 py-1.5 text-[10px] font-black uppercase tracking-widest text-gray-600 dark:text-slate-400"
               >
                 <span
                   className="h-2.5 w-2.5 rounded-full"

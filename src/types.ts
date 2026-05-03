@@ -33,6 +33,7 @@ export interface UserProfile {
 
 export type Tab =
   | "dashboard"
+  | "install"
   | "pricing"
   | "create"
   | "list"

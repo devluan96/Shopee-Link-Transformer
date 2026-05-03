@@ -190,7 +190,7 @@ export const renderLinkLandingPage = (
       .headline { display: block; width: 100%; max-width: 100%; margin-bottom: 0.5rem; }
       .headline h1 { font-size: 1.25rem; font-weight: 600; line-height: 1.4; color: #f1f1f1; margin: 0; font-family: "Roboto", "Arial", sans-serif; width: 100%; max-width: 100%; display: block; }
       .content-panel p { font-size: 0.9rem; line-height: 1.5; color: #aaaaaa; margin: 0; font-family: "Roboto", "Arial", sans-serif; width: 100%; max-width: 100%; display: block; }
-      .overlay { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1rem; padding: 1.5rem; background: rgba(2, 6, 23, 0.9); backdrop-filter: blur(4px); z-index: 20; cursor: pointer; transition: opacity 220ms ease, visibility 220ms ease; }
+      .overlay { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1rem; padding: 1.5rem; background: rgba(2, 6, 23, 0.7); backdrop-filter: blur(4px); z-index: 20; cursor: pointer; transition: opacity 220ms ease, visibility 220ms ease; }
       .overlay.hidden { opacity: 0; visibility: hidden; pointer-events: none; display: none !important; }
       @media (max-width: 900px) {
         .content-panel { padding: 1.2rem 1rem 1.4rem; }

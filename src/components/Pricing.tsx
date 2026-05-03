@@ -161,24 +161,24 @@ export const Pricing = ({
   return (
     <div className="mx-auto max-w-6xl">
       <header className="mb-12">
-        <h2 className="mb-2 text-3xl font-black text-gray-900">
+        <h2 className="mb-2 text-3xl font-black text-gray-900 dark:text-slate-100">
           Bảng giá dịch vụ
         </h2>
-        <p className="font-medium italic text-gray-500">
+        <p className="font-medium italic text-gray-500 dark:text-slate-400">
           Nâng cấp tài khoản để mở khóa toàn bộ tính năng chuyển đổi link.
         </p>
       </header>
 
-      <div className="mb-12 flex flex-col items-center justify-between gap-6 rounded-[2.5rem] border border-gray-100 bg-white p-8 shadow-sm md:flex-row">
+      <div className="mb-12 flex flex-col items-center justify-between gap-6 rounded-[2.5rem] border border-gray-100 bg-white p-8 shadow-sm dark:border-slate-700 dark:bg-slate-800 md:flex-row">
         <div className="flex items-center gap-6 text-center md:text-left">
           <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-orange-50">
             <Crown className="h-8 w-8 text-orange-600" />
           </div>
           <div>
-            <p className="mb-1 text-[10px] font-black uppercase tracking-widest text-gray-400">
+            <p className="mb-1 text-[10px] font-black uppercase tracking-widest text-gray-400 dark:text-slate-500">
               TRẠNG THÁI HIỆN TẠI
             </p>
-            <h3 className="text-2xl font-black text-gray-900">
+            <h3 className="text-2xl font-black text-gray-900 dark:text-slate-100">
               {currentPlan === "free"
                 ? "Gói miễn phí"
                 : currentPlan === "monthly"
@@ -186,7 +186,7 @@ export const Pricing = ({
                   : "Gói năm"}
             </h3>
             {expiryDate && (
-              <p className="text-sm font-medium text-gray-500">
+              <p className="text-sm font-medium text-gray-500 dark:text-slate-400">
                 Gói đang hoạt động đến {expiryDate}.
               </p>
             )}
@@ -217,10 +217,10 @@ export const Pricing = ({
             <div
               key={plan.id}
               className={cn(
-                "relative flex h-full flex-col rounded-[3rem] border bg-white p-10 shadow-sm transition-all hover:-translate-y-1 hover:shadow-xl",
+                "relative flex h-full flex-col rounded-[3rem] border bg-white p-10 shadow-sm transition-all hover:-translate-y-1 hover:shadow-xl dark:border-slate-700 dark:bg-slate-800",
                 plan.highlight
-                  ? "border-orange-500 ring-4 ring-orange-50"
-                  : "border-gray-100",
+                  ? "border-orange-500 ring-4 ring-orange-50 dark:ring-orange-500/10"
+                  : "border-gray-100 dark:border-slate-700",
               )}
             >
               <div className="absolute right-10 top-10">
@@ -232,21 +232,21 @@ export const Pricing = ({
               </div>
 
               <div className="mb-8">
-                <span className="mb-4 block text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">
+                <span className="mb-4 block text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 dark:text-slate-500">
                   {plan.badge}
                 </span>
-                <h4 className="mb-4 text-3xl font-black text-gray-900">
+                <h4 className="mb-4 text-3xl font-black text-gray-900 dark:text-slate-100">
                   {plan.name}
                 </h4>
                 <div className="mb-4 flex items-baseline gap-1">
-                  <span className="text-4xl font-black text-gray-900">
+                  <span className="text-4xl font-black text-gray-900 dark:text-slate-100">
                     {plan.price}
                   </span>
-                  <span className="text-sm font-bold text-gray-400">
+                  <span className="text-sm font-bold text-gray-400 dark:text-slate-500">
                     {plan.period}
                   </span>
                 </div>
-                <p className="text-sm font-medium leading-relaxed text-gray-500">
+                <p className="text-sm font-medium leading-relaxed text-gray-500 dark:text-slate-400">
                   {plan.description}
                 </p>
               </div>
@@ -257,7 +257,7 @@ export const Pricing = ({
                     <div className="mt-1 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-green-100 bg-green-50">
                       <Check size={12} className="text-green-600" />
                     </div>
-                    <span className="text-sm font-bold leading-tight text-gray-600">
+                    <span className="text-sm font-bold leading-tight text-gray-600 dark:text-slate-300">
                       {feature}
                     </span>
                   </div>
@@ -271,7 +271,7 @@ export const Pricing = ({
                   "flex w-full items-center justify-center gap-2 rounded-3xl py-5 text-xs font-black uppercase tracking-widest transition-all active:scale-95 disabled:cursor-not-allowed disabled:opacity-60",
                   plan.highlight
                     ? "bg-orange-600 text-white shadow-lg shadow-orange-200 hover:bg-orange-700"
-                    : "bg-gray-900 text-white hover:bg-black",
+                    : "bg-gray-900 text-white hover:bg-black dark:bg-slate-700 dark:hover:bg-slate-600",
                 )}
               >
                 {checkoutLoadingPlan === plan.id ? (
@@ -288,7 +288,7 @@ export const Pricing = ({
               </button>
 
               {buttonState.helperText && (
-                <p className="mt-3 text-center text-[11px] font-medium text-gray-400">
+                <p className="mt-3 text-center text-[11px] font-medium text-gray-400 dark:text-slate-500">
                   {buttonState.helperText}
                 </p>
               )}
@@ -298,7 +298,7 @@ export const Pricing = ({
       </div>
 
       <footer className="mt-12 text-center">
-        <p className="text-[10px] font-black uppercase tracking-widest text-gray-300">
+        <p className="text-[10px] font-black uppercase tracking-widest text-gray-300 dark:text-slate-600">
           (c) 2026 HOTSNEW.CLICK INFRASTRUCTURE
         </p>
       </footer>

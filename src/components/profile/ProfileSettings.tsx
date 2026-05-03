@@ -73,11 +73,11 @@ export const ProfileSettings = ({
             <div className="p-2 bg-orange-600 rounded-lg shadow-lg shadow-orange-200">
               <Settings className="text-white w-5 h-5" />
             </div>
-            <h2 className="text-3xl font-black text-gray-900 tracking-tight">
+            <h2 className="text-3xl font-black text-gray-900 tracking-tight dark:text-slate-100">
               Hồ Sơ Cá Nhân
             </h2>
           </div>
-          <p className="text-gray-500 font-medium italic">
+          <p className="text-gray-500 font-medium italic dark:text-slate-400">
             Quản lý danh tính và các thiết lập tài khoản của bạn.
           </p>
         </div>
@@ -95,11 +95,11 @@ export const ProfileSettings = ({
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Left Column: Avatar & Quick Info */}
         <div className="space-y-8">
-          <div className="bg-white rounded-[2.5rem] border border-gray-100 shadow-sm p-10 flex flex-col items-center relative overflow-hidden group">
+          <div className="bg-white rounded-[2.5rem] border border-gray-100 shadow-sm p-10 flex flex-col items-center relative overflow-hidden group dark:border-slate-700 dark:bg-slate-800">
             <div className="absolute top-0 left-0 w-full h-24 bg-linear-to-br from-orange-500 to-amber-400 opacity-10 group-hover:opacity-20 transition-opacity" />
 
             <div className="relative mt-4">
-              <div className="w-36 h-36 rounded-[2.5rem] overflow-hidden bg-white shadow-2xl ring-8 ring-white relative z-10 transition-transform duration-500 group-hover:scale-105">
+              <div className="w-36 h-36 rounded-[2.5rem] overflow-hidden bg-white shadow-2xl ring-8 ring-white relative z-10 transition-transform duration-500 group-hover:scale-105 dark:bg-slate-700 dark:ring-slate-700">
                 {avatarUrl ? (
                   <img
                     src={avatarUrl}
@@ -123,7 +123,7 @@ export const ProfileSettings = ({
 
               <button
                 onClick={() => fileInputRef.current?.click()}
-                className="absolute -bottom-2 -right-2 p-4 bg-gray-900 text-white rounded-2xl shadow-xl hover:bg-orange-600 transition-all active:scale-90 z-20 group-hover:rotate-12"
+                className="absolute -bottom-2 -right-2 p-4 bg-gray-900 text-white rounded-2xl shadow-xl hover:bg-orange-600 transition-all active:scale-90 z-20 group-hover:rotate-12 dark:bg-slate-700"
               >
                 <Camera size={20} />
               </button>
@@ -137,10 +137,10 @@ export const ProfileSettings = ({
             </div>
 
             <div className="text-center mt-8 space-y-2">
-              <h3 className="text-xl font-black text-gray-900 line-clamp-1">
+              <h3 className="text-xl font-black text-gray-900 line-clamp-1 dark:text-slate-100">
                 {profile?.full_name || "Chưa đặt tên"}
               </h3>
-              <p className="text-gray-400 text-sm font-medium">
+              <p className="text-gray-400 text-sm font-medium dark:text-slate-400">
                 {profile?.email}
               </p>
             </div>
@@ -148,10 +148,10 @@ export const ProfileSettings = ({
             <div className="w-full h-px bg-gray-100 my-8" />
 
             <div className="w-full space-y-4">
-              <div className="flex items-center justify-between p-4 bg-gray-50 rounded-2xl border border-gray-100">
+              <div className="flex items-center justify-between p-4 bg-gray-50 rounded-2xl border border-gray-100 dark:border-slate-700 dark:bg-slate-900">
                 <div className="flex items-center gap-3">
                   <BadgeCheck size={18} className="text-green-500" />
-                  <span className="text-[10px] font-black uppercase tracking-widest text-gray-500">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-gray-500 dark:text-slate-400">
                     Trạng thái
                   </span>
                 </div>
@@ -167,14 +167,14 @@ export const ProfileSettings = ({
                 </span>
               </div>
 
-              <div className="flex items-center justify-between p-4 bg-gray-50 rounded-2xl border border-gray-100">
+              <div className="flex items-center justify-between p-4 bg-gray-50 rounded-2xl border border-gray-100 dark:border-slate-700 dark:bg-slate-900">
                 <div className="flex items-center gap-3">
                   <Clock size={18} className="text-orange-500" />
-                  <span className="text-[10px] font-black uppercase tracking-widest text-gray-500">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-gray-500 dark:text-slate-400">
                     Gia nhập
                   </span>
                 </div>
-                <span className="text-[10px] font-black text-gray-900">
+                <span className="text-[10px] font-black text-gray-900 dark:text-slate-100">
                   {profile?.created_at
                     ? new Date(profile.created_at).toLocaleDateString("vi-VN")
                     : "---"}
@@ -188,11 +188,11 @@ export const ProfileSettings = ({
         <div className="lg:col-span-2 space-y-8">
           <form
             onSubmit={handleSubmit}
-            className="bg-white rounded-[2.5rem] border border-gray-100 shadow-sm p-10 md:p-12 space-y-10"
+            className="bg-white rounded-[2.5rem] border border-gray-100 shadow-sm p-10 md:p-12 space-y-10 dark:border-slate-700 dark:bg-slate-800"
           >
             <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
               <div className="space-y-4">
-                <label className="flex items-center gap-2 text-[11px] font-black uppercase tracking-widest text-gray-400 ml-1">
+                <label className="flex items-center gap-2 text-[11px] font-black uppercase tracking-widest text-gray-400 ml-1 dark:text-slate-500">
                   <Mail size={14} className="text-orange-500" /> Địa chỉ Email
                 </label>
                 <div className="relative group">
@@ -200,19 +200,19 @@ export const ProfileSettings = ({
                     type="text"
                     readOnly
                     value={profile?.email || ""}
-                    className="w-full px-6 py-4.5 bg-gray-100/50 border-2 border-gray-100 rounded-3xl text-gray-400 font-bold text-sm cursor-not-allowed"
+                    className="w-full px-6 py-4.5 bg-gray-100/50 border-2 border-gray-100 rounded-3xl text-gray-400 font-bold text-sm cursor-not-allowed dark:border-slate-700 dark:bg-slate-900 dark:text-slate-500"
                   />
                   <div className="absolute right-4 top-1/2 -translate-y-1/2">
                     <ShieldCheck size={16} className="text-gray-300" />
                   </div>
                 </div>
-                <p className="text-[10px] text-gray-400 font-medium italic ml-1">
+                <p className="text-[10px] text-gray-400 font-medium italic ml-1 dark:text-slate-500">
                   Định danh tài khoản không thể thay đổi.
                 </p>
               </div>
 
               <div className="space-y-4">
-                <label className="flex items-center gap-2 text-[11px] font-black uppercase tracking-widest text-gray-400 ml-1">
+                <label className="flex items-center gap-2 text-[11px] font-black uppercase tracking-widest text-gray-400 ml-1 dark:text-slate-500">
                   <User size={14} className="text-orange-500" /> Họ và tên đầy
                   đủ
                 </label>
@@ -221,27 +221,27 @@ export const ProfileSettings = ({
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
                   placeholder="Họ tên hiển thị của bạn..."
-                  className="w-full px-6 py-4.5 bg-gray-50 border-2 border-transparent rounded-3xl transition-all focus:border-orange-500/20 focus:bg-white outline-none font-bold text-gray-900 placeholder:text-gray-300"
+                  className="w-full px-6 py-4.5 bg-gray-50 border-2 border-transparent rounded-3xl transition-all focus:border-orange-500/20 focus:bg-white outline-none font-bold text-gray-900 placeholder:text-gray-300 dark:bg-slate-900 dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:bg-slate-900"
                 />
               </div>
             </div>
 
-            <div className="p-6 bg-blue-50/50 rounded-3xl border border-blue-100/50 flex items-start gap-4">
-              <div className="p-3 bg-white rounded-xl shadow-sm text-blue-500">
+            <div className="p-6 bg-blue-50/50 rounded-3xl border border-blue-100/50 flex items-start gap-4 dark:border-blue-500/20 dark:bg-blue-500/10">
+              <div className="p-3 bg-white rounded-xl shadow-sm text-blue-500 dark:bg-slate-800">
                 <ShieldCheck size={20} />
               </div>
               <div>
-                <h4 className="text-sm font-black text-blue-900 uppercase tracking-tight mb-1">
+                <h4 className="text-sm font-black text-blue-900 uppercase tracking-tight mb-1 dark:text-blue-200">
                   Dữ liệu cá nhân an toàn
                 </h4>
-                <p className="text-[11px] font-medium text-blue-600/80 leading-relaxed uppercase tracking-tighter">
+                <p className="text-[11px] font-medium text-blue-600/80 leading-relaxed uppercase tracking-tighter dark:text-blue-200/80">
                   Thông tin của bạn được mã hóa và chỉ dùng cho mục đích xác
                   thực, quản lý quyền hạn trong hệ thống HotsNew Click.
                 </p>
               </div>
             </div>
 
-            <div className="pt-4 flex flex-col sm:flex-row items-center gap-6 border-t border-gray-100 mt-10">
+            <div className="pt-4 flex flex-col sm:flex-row items-center gap-6 border-t border-gray-100 mt-10 dark:border-slate-700">
               <button
                 type="submit"
                 disabled={updating || uploading}
@@ -256,7 +256,7 @@ export const ProfileSettings = ({
                 )}
               </button>
 
-              <div className="flex items-center gap-2 text-gray-400 font-bold text-[10px] uppercase tracking-widest">
+              <div className="flex items-center gap-2 text-gray-400 font-bold text-[10px] uppercase tracking-widest dark:text-slate-500">
                 <BadgeCheck size={16} className="text-green-500" />
                 Mọi thông tin đã được kiểm định
               </div>

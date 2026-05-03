@@ -1,5 +1,6 @@
 import React, { useEffect, useState, Suspense, lazy } from "react";
-import { Zap, Menu } from "lucide-react";
+import { Menu, Zap } from "lucide-react";
+import { ThemeToggle } from "./components/common/ThemeToggle";
 import { Toaster } from "sonner";
 import { Tab } from "./types";
 
@@ -24,6 +25,7 @@ import { AuthScreen } from "./components/auth/AuthScreen";
 import { PendingApproval } from "./components/PendingApproval";
 import { Footer } from "./components/layout/Footer";
 import { Overview } from "./components/dashboard/Overview";
+import { InstallCenter } from "./components/InstallCenter";
 
 // Lazy Loaded Components
 const Pricing = lazy(() =>
@@ -133,12 +135,24 @@ export default function App() {
     videoInputRef,
     setVideoUrl,
     handleVideoUpload: handleVideoUploadBase,
-    clearVideo,
+    handleVideoFileUpload: handleVideoFileUploadBase,
   } = useVideoUpload({ canAccessCreate: !!(profile?.subscription_plan && profile.subscription_plan !== "free" || profile?.role === "admin"), uploadAssetToCloudinary });
 
   // Wrapper to handle thumbnail auto-set and sync videoUrl to link creator
   const handleVideoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const result = await handleVideoUploadBase(e);
+    if (result && typeof result === "object") {
+      if (result.thumbnailUrl) {
+        setCustomImageUrl(result.thumbnailUrl);
+      }
+      if (result.videoUrl) {
+        setLinkCreatorVideoUrl(result.videoUrl);
+      }
+    }
+  };
+
+  const handleVideoFileUpload = async (file: File) => {
+    const result = await handleVideoFileUploadBase(file);
     if (result && typeof result === "object") {
       if (result.thumbnailUrl) {
         setCustomImageUrl(result.thumbnailUrl);
@@ -223,6 +237,22 @@ export default function App() {
     setIsSidebarOpen(false);
   }, [user?.id]);
 
+  useEffect(() => {
+    if (!user) return;
+
+    const params = new URLSearchParams(window.location.search);
+    const prefilledUrl = params.get("url");
+    const openCreate = params.get("create") === "1";
+
+    if (prefilledUrl) {
+      setUrl(prefilledUrl);
+    }
+
+    if (openCreate && canAccessCreate) {
+      setActiveTab("create");
+    }
+  }, [user, canAccessCreate, setUrl]);
+
   // Loading screen
   if (bootstrappingAccess) {
     return (
@@ -260,7 +290,7 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 lg:flex font-sans relative">
+    <div className="min-h-screen bg-slate-50 lg:flex font-sans relative dark:bg-slate-900">
       <Toaster position="top-right" richColors />
       <Sidebar
         activeTab={activeTab}
@@ -277,26 +307,29 @@ export default function App() {
       />
 
       {/* Mobile Header */}
-      <div className="lg:hidden bg-white border-b border-gray-100 px-6 py-4 flex items-center justify-between sticky top-0 z-30">
+      <div className="lg:hidden bg-white dark:bg-slate-800 border-b border-gray-100 dark:border-slate-700 px-6 py-4 flex items-center justify-between sticky top-0 z-30">
         <div className="flex items-center gap-2">
           <img
             src="/logo-app.png"
             alt="HotsNew Click logo"
             className="h-7 w-7 rounded-lg object-cover"
           />
-          <span className="font-black text-gray-900 tracking-tight">
+          <span className="font-black text-gray-900 dark:text-white tracking-tight">
             HotsNew
           </span>
         </div>
-        <button
-          onClick={() => setIsSidebarOpen(true)}
-          className="p-2 text-gray-500 hover:text-gray-900 transition-colors"
-        >
-          <Menu size={24} />
-        </button>
+        <div className="flex items-center gap-3">
+          <ThemeToggle />
+          <button
+            onClick={() => setIsSidebarOpen(true)}
+            className="p-2 text-gray-500 hover:text-gray-900 dark:text-slate-400 dark:hover:text-slate-200 transition-colors"
+          >
+            <Menu size={24} />
+          </button>
+        </div>
       </div>
 
-      <main className="flex-1 p-6 lg:p-12 min-h-screen pb-32">
+      <main className="flex-1 p-6 lg:p-12 min-h-screen pb-32 dark:bg-slate-900">
         <Suspense fallback={<TabLoading />}>
           {activeTab === "dashboard" && (
             <Overview
@@ -305,6 +338,8 @@ export default function App() {
               canAccessCreate={canAccessCreate}
             />
           )}
+
+          {activeTab === "install" && <InstallCenter />}
 
           {activeTab === "pricing" && (
             <Pricing
@@ -345,6 +380,7 @@ export default function App() {
                 videoUploadSuccess={videoUploadSuccess}
                 videoInputRef={videoInputRef}
                 handleVideoUpload={handleVideoUpload}
+                handleVideoFileUpload={handleVideoFileUpload}
                 handleConvert={handleConvert}
                 loading={loading}
                 error={error}
