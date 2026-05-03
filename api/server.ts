@@ -140,54 +140,13 @@ app.get("/s/:shortCode", async (req, res) => {
       `);
     }
 
-    // Track click
+    // Store request info for potential tracking (used when user clicks overlay)
     const { source, source_detail, referer } = getTrafficSourceFromRequest(req);
     const userAgent = req.headers["user-agent"] || "";
     const ipAddress =
       (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim() ||
       req.socket.remoteAddress ||
       "";
-
-    let clickData: any = null;
-    try {
-      await insertClickWithTracking(supabase, {
-        link_id: link.id,
-        user_agent: userAgent,
-        ip_address: ipAddress,
-        source,
-        source_detail,
-        referer,
-      });
-      
-      // Prepare click data for notifications
-      clickData = {
-        country: undefined, // Will be populated by insertClickWithTracking
-        city: undefined,
-        device_type: undefined,
-        browser: undefined,
-        os: undefined,
-        source: source || "direct",
-        created_at: new Date().toISOString(),
-      };
-    } catch (trackError) {
-      console.error("Click tracking error:", trackError);
-    }
-
-    // Send notification (fire and forget)
-    if (link.user_id && clickData) {
-      try {
-        handleClickNotification(supabase, link.user_id, link.id, shortCode, clickData);
-      } catch (notifyError) {
-        console.error("Notification error:", notifyError);
-      }
-    }
-
-    // Increment click count (fire and forget)
-    try {
-      await supabase.rpc("increment_link_clicks", { link_id: link.id });
-    } catch (e: any) {
-      console.error("Failed to increment clicks:", e.message);
-    }
 
     // Redirect or render landing page
     const wantsRedirect = req.query.redirect === "true";
@@ -250,6 +209,40 @@ app.post("/api/v1/links/:linkId/track", async (req, res) => {
 
     if (linkError || !link) {
       return res.status(404).json({ error: "Link not found" });
+    }
+
+    // Record real click when user clicks overlay (not just page load)
+    try {
+      await insertClickWithTracking(supabase, {
+        link_id: link.id,
+        user_agent: userAgent,
+        ip_address: ipAddress,
+        source,
+        source_detail,
+        referer,
+      });
+    } catch (trackError) {
+      console.error("Click tracking error:", trackError);
+    }
+
+    // Increment click count
+    try {
+      await supabase.rpc("increment_link_clicks", { link_id: link.id });
+    } catch (e: any) {
+      console.error("Failed to increment clicks:", e.message);
+    }
+
+    // Send notification (fire and forget)
+    if (link.user_id) {
+      try {
+        const clickData = {
+          source: source || "direct",
+          created_at: new Date().toISOString(),
+        };
+        handleClickNotification(supabase, link.user_id, link.id, link.short_code, clickData);
+      } catch (notifyError) {
+        console.error("Notification error:", notifyError);
+      }
     }
 
     await insertOutboundEvent(supabase, {
