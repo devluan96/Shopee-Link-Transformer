@@ -1,9 +1,11 @@
-import React from "react";
+import React, { useState } from "react";
 import {
   MousePointer2,
   Activity,
   TrendingUp,
   PieChart as PieChartIcon,
+  BarChart3,
+  Map,
 } from "lucide-react";
 import {
   ResponsiveContainer,
@@ -17,15 +19,18 @@ import {
   Cell,
 } from "recharts";
 import { AnalyticsData } from "@/src/types";
+import { AdvancedAnalytics } from "./AdvancedAnalytics";
 
 interface AnalyticsProps {
   analyticsData: AnalyticsData;
   linksCount: number;
+  fetchWithAuth?: (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
 }
 
 const TRAFFIC_COLORS = ["#3b82f6", "#ef4444", "#10b981", "#f59e0b", "#8b5cf6"];
 
-export const Analytics = ({ analyticsData, linksCount }: AnalyticsProps) => {
+export const Analytics = ({ analyticsData, linksCount, fetchWithAuth }: AnalyticsProps) => {
+  const [activeView, setActiveView] = useState<"basic" | "advanced">("basic");
   const history = analyticsData?.history || [];
   const topLinks = analyticsData?.topLinks || [];
   const trafficSources = analyticsData?.trafficSources || [];
@@ -81,23 +86,55 @@ export const Analytics = ({ analyticsData, linksCount }: AnalyticsProps) => {
         ))}
       </div>
 
-      <div className="rounded-[2.5rem] border border-gray-100 bg-white p-8 shadow-sm">
-        <div className="mb-10 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h3 className="text-xl font-black text-gray-900">
-              Biểu đồ lượt click
-            </h3>
-            <p className="text-xs font-medium text-gray-400">
-              Thống kê dữ liệu trong 30 ngày gần nhất
-            </p>
-          </div>
-          <div className="flex gap-2">
-            <span className="flex items-center gap-2 rounded-full bg-orange-50 px-3 py-1.5 text-[10px] font-black uppercase tracking-widest text-orange-500">
-              <div className="h-1.5 w-1.5 rounded-full bg-orange-500 animate-pulse" />
-              Live Data
-            </span>
-          </div>
+      {/* View Toggle - Basic/Advanced */}
+      {fetchWithAuth && (
+        <div className="flex gap-2 rounded-2xl bg-gray-100 p-1.5">
+          <button
+            onClick={() => setActiveView("basic")}
+            className={`flex flex-1 items-center justify-center gap-2 rounded-xl py-3 text-xs font-black uppercase tracking-widest transition-all ${
+              activeView === "basic"
+                ? "bg-white text-orange-600 shadow-sm"
+                : "text-gray-500 hover:text-gray-700"
+            }`}
+          >
+            <BarChart3 size={14} />
+            Thống kê cơ bản
+          </button>
+          <button
+            onClick={() => setActiveView("advanced")}
+            className={`flex flex-1 items-center justify-center gap-2 rounded-xl py-3 text-xs font-black uppercase tracking-widest transition-all ${
+              activeView === "advanced"
+                ? "bg-white text-orange-600 shadow-sm"
+                : "text-gray-500 hover:text-gray-700"
+            }`}
+          >
+            <Map size={14} />
+            Phân tích nâng cao
+          </button>
         </div>
+      )}
+
+      {activeView === "advanced" && fetchWithAuth ? (
+        <AdvancedAnalytics fetchWithAuth={fetchWithAuth} />
+      ) : (
+        <>
+          <div className="rounded-[2.5rem] border border-gray-100 bg-white p-8 shadow-sm">
+            <div className="mb-10 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <h3 className="text-xl font-black text-gray-900">
+                  Biểu đồ lượt click
+                </h3>
+                <p className="text-xs font-medium text-gray-400">
+                  Thống kê dữ liệu trong 30 ngày gần nhất
+                </p>
+              </div>
+              <div className="flex gap-2">
+                <span className="flex items-center gap-2 rounded-full bg-orange-50 px-3 py-1.5 text-[10px] font-black uppercase tracking-widest text-orange-500">
+                  <div className="h-1.5 w-1.5 rounded-full bg-orange-500 animate-pulse" />
+                  Live Data
+                </span>
+              </div>
+            </div>
 
         <div className="h-[350px] min-h-[350px] w-full">
           {history.length > 0 ? (
@@ -252,6 +289,9 @@ export const Analytics = ({ analyticsData, linksCount }: AnalyticsProps) => {
           </div>
         </div>
       </div>
+
+        </>
+      )}
     </div>
   );
 };

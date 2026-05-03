@@ -406,6 +406,7 @@ export default function App() {
             <Analytics
               analyticsData={analyticsData}
               linksCount={links.length}
+              fetchWithAuth={fetchWithAuth}
             />
           )}
 

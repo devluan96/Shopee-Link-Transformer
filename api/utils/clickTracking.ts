@@ -2,6 +2,7 @@ import { getSupabase, SupabaseClient } from "../config/supabase.js";
 import { CLICK_SELECT_ATTEMPTS } from "../config/constants.js";
 import { normalizeTrafficSource } from "./normalizers.js";
 import { chunkArray } from "./helpers.js";
+import { parseDeviceInfo, getGeoInfo, DeviceInfo, GeoInfo } from "./deviceDetection.js";
 
 export const fetchClicksForLinkIds = async (
   supabase: SupabaseClient,
@@ -71,53 +72,38 @@ export const insertClickWithTracking = async (
   supabase: SupabaseClient,
   payload: Record<string, unknown>,
 ) => {
-  const attempts = [
-    {
-      link_id: payload.link_id,
-      user_agent: payload.user_agent,
-      ip_address: payload.ip_address ?? payload.ip,
-      source: payload.source,
-      source_detail: payload.source_detail,
-      referer: payload.referer,
-    },
-    {
-      link_id: payload.link_id,
-      user_agent: payload.user_agent,
-      ip_address: payload.ip_address ?? payload.ip,
-      source: payload.source,
-      referer: payload.referer,
-    },
-    {
-      link_id: payload.link_id,
-      user_agent: payload.user_agent,
-      ip: payload.ip ?? payload.ip_address,
-      source: payload.source,
-      referer: payload.referer,
-    },
-    {
-      link_id: payload.link_id,
-      user_agent: payload.user_agent,
-      ip_address: payload.ip_address ?? payload.ip,
-    },
-    {
-      link_id: payload.link_id,
-      user_agent: payload.user_agent,
-      ip: payload.ip ?? payload.ip_address,
-    },
-  ];
+  // Parse device info from user agent
+  const userAgent = (payload.user_agent as string) || "";
+  const deviceInfo = parseDeviceInfo(userAgent);
 
-  let lastError: any = null;
+  // Get geo info from IP
+  const ipAddress = ((payload.ip_address ?? payload.ip) as string) || "";
+  const geoInfo = await getGeoInfo(ipAddress);
 
-  for (const attempt of attempts) {
-    const sanitizedPayload = Object.fromEntries(
-      Object.entries(attempt).filter(([, value]) => value !== undefined),
-    );
-    const { error } = await supabase.from("clicks").insert(sanitizedPayload);
-    if (!error) return;
-    lastError = error;
-  }
+  const fullPayload = {
+    link_id: payload.link_id,
+    user_agent: userAgent || null,
+    ip_address: ipAddress || null,
+    source: payload.source,
+    source_detail: payload.source_detail,
+    referer: payload.referer,
+    // Device info
+    device_type: deviceInfo.deviceType,
+    browser: deviceInfo.browser,
+    os: deviceInfo.os,
+    device_brand: deviceInfo.deviceBrand,
+    // Geo info
+    country: geoInfo?.country,
+    city: geoInfo?.city,
+  };
 
-  throw lastError;
+  // Remove undefined values
+  const sanitizedPayload = Object.fromEntries(
+    Object.entries(fullPayload).filter(([, value]) => value !== undefined && value !== null),
+  );
+
+  const { error } = await supabase.from("clicks").insert(sanitizedPayload);
+  if (error) throw error;
 };
 
 export const attachTrackedSourcesToLinks = async (

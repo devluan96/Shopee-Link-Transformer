@@ -26,6 +26,7 @@ import {
   insertClickWithTracking,
   insertOutboundEvent,
 } from "./utils/clickTracking.js";
+import { handleClickNotification } from "./services/notificationService.js";
 
 // Templates
 import { renderLinkLandingPage } from "./templates/landingPage.js";
@@ -147,6 +148,7 @@ app.get("/s/:shortCode", async (req, res) => {
       req.socket.remoteAddress ||
       "";
 
+    let clickData: any = null;
     try {
       await insertClickWithTracking(supabase, {
         link_id: link.id,
@@ -156,8 +158,28 @@ app.get("/s/:shortCode", async (req, res) => {
         source_detail,
         referer,
       });
+      
+      // Prepare click data for notifications
+      clickData = {
+        country: undefined, // Will be populated by insertClickWithTracking
+        city: undefined,
+        device_type: undefined,
+        browser: undefined,
+        os: undefined,
+        source: source || "direct",
+        created_at: new Date().toISOString(),
+      };
     } catch (trackError) {
       console.error("Click tracking error:", trackError);
+    }
+
+    // Send notification (fire and forget)
+    if (link.user_id && clickData) {
+      try {
+        handleClickNotification(supabase, link.user_id, link.id, shortCode, clickData);
+      } catch (notifyError) {
+        console.error("Notification error:", notifyError);
+      }
     }
 
     // Increment click count (fire and forget)

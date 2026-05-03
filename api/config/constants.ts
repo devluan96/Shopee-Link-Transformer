@@ -30,12 +30,12 @@ export const CLOUDINARY_UPLOAD_FOLDER =
   process.env.CLOUDINARY_SHORTLINK_FOLDER || "hotsnew";
 
 export const CLICK_SELECT_ATTEMPTS = [
-  "id, link_id, created_at, source, source_detail, referer, user_agent, ip_address, ip",
-  "id, link_id, created_at, source, source_detail, referer, user_agent, ip_address",
-  "id, link_id, created_at, source, source_detail, referer, user_agent, ip",
+  "id, link_id, created_at, source, source_detail, referer, user_agent, ip_address, ip, country, city, device_type, browser, os",
+  "id, link_id, created_at, source, source_detail, referer, user_agent, ip_address, country, city, device_type, browser, os",
+  "id, link_id, created_at, source, source_detail, referer, user_agent, ip, country, city, device_type, browser, os",
+  "id, link_id, created_at, source, source_detail, referer, user_agent, country, city, device_type, browser, os",
+  "id, link_id, created_at, source, referer, user_agent, country, city, device_type, browser, os",
   "id, link_id, created_at, source, source_detail, referer, user_agent",
-  "id, link_id, created_at, source, referer, user_agent, ip_address",
-  "id, link_id, created_at, source, referer, user_agent, ip",
   "id, link_id, created_at, source, referer, user_agent",
   "id, link_id, created_at, source, source_detail, referer",
   "id, link_id, created_at, source, referer",
