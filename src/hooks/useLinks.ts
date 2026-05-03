@@ -24,6 +24,7 @@ export interface LinksActions {
   fetchLinks: () => Promise<void>;
   handleDeleteLink: (id: string) => Promise<void>;
   handleUpdateLink: (id: string, data: Partial<ConvertedLink>) => Promise<void>;
+  handleDeleteManyLinks: (ids: string[]) => Promise<void>;
   refreshLinks: () => void;
 }
 
@@ -81,6 +82,23 @@ export function useLinks({ user, profile, fetchWithAuth, activeTab }: UseLinksPr
     }
   }, [fetchWithAuth]);
 
+  const handleDeleteManyLinks = useCallback(async (ids: string[]) => {
+    try {
+      const res = await fetchWithAuth("/api/v1/user/links/bulk-delete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ids }),
+      });
+      if (!res.ok) throw new Error("Bulk delete failed");
+      const result = await res.json();
+      setLinks((prev) => prev.filter((l) => !ids.includes(l.id)));
+      setLinksDirty(false);
+      toast.success(`Đã xóa ${result.deleted || ids.length} link thành công!`);
+    } catch (e: any) {
+      toast.error("Lỗi khi xóa link: " + e.message);
+    }
+  }, [fetchWithAuth]);
+
   const refreshLinks = useCallback(() => {
     setLinksDirty(true);
   }, []);
@@ -112,6 +130,7 @@ export function useLinks({ user, profile, fetchWithAuth, activeTab }: UseLinksPr
     fetchLinks,
     handleDeleteLink,
     handleUpdateLink,
+    handleDeleteManyLinks,
     refreshLinks,
   };
 }

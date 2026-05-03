@@ -24,6 +24,7 @@ export interface LinkCreatorState {
   secondaryUrl: string;
   secondaryTargetType: "shopee" | "tiktok";
   redirectDelayMs: number;
+  expiresAt: string;
   videoUrl: string;
   loading: boolean;
   error: string | null;
@@ -40,6 +41,7 @@ export interface LinkCreatorActions {
   setSecondaryUrl: (v: string) => void;
   setSecondaryTargetType: (v: "shopee" | "tiktok") => void;
   setRedirectDelayMs: (v: number) => void;
+  setExpiresAt: (v: string) => void;
   setVideoUrl: (v: string) => void;
   setError: (v: string | null) => void;
   setResult: (v: any) => void;
@@ -63,6 +65,7 @@ export function useLinkCreator({
   const [secondaryUrl, setSecondaryUrl] = useState("");
   const [secondaryTargetType, setSecondaryTargetType] = useState<"shopee" | "tiktok">("shopee");
   const [redirectDelayMs, setRedirectDelayMs] = useState(3000);
+  const [expiresAt, setExpiresAt] = useState("");
   const [videoUrl, setVideoUrl] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -102,6 +105,7 @@ export function useLinkCreator({
           secondaryUrl: secondaryUrl.trim(),
           secondaryTargetType,
           redirectDelayMs,
+          expiresAt: expiresAt || undefined,
           videoUrl,
         }),
       });
@@ -125,7 +129,7 @@ export function useLinkCreator({
   }, [
     url, user, canAccessCreate, customShortCode, customTitle, customDescription,
     usageContext, customImageUrl, secondaryUrl, secondaryTargetType,
-    redirectDelayMs, videoUrl, fetchWithAuth, onSuccess
+    redirectDelayMs, expiresAt, videoUrl, fetchWithAuth, onSuccess
   ]);
 
   const resetForm = useCallback(() => {
@@ -138,6 +142,7 @@ export function useLinkCreator({
     setSecondaryUrl("");
     setSecondaryTargetType("shopee");
     setRedirectDelayMs(3000);
+    setExpiresAt("");
     setVideoUrl("");
     setError(null);
     setResult(null);
@@ -153,6 +158,7 @@ export function useLinkCreator({
     secondaryUrl,
     secondaryTargetType,
     redirectDelayMs,
+    expiresAt,
     videoUrl,
     loading,
     error,
@@ -166,6 +172,7 @@ export function useLinkCreator({
     setSecondaryUrl,
     setSecondaryTargetType,
     setRedirectDelayMs,
+    setExpiresAt,
     setVideoUrl,
     setError,
     setResult,

@@ -183,6 +183,11 @@ export function useAuth(): AuthState & AuthActions {
 
   const handleEmailAuth = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
+    e.stopPropagation();
+    // Persist event for async handling
+    if ('persist' in e) {
+      e.persist();
+    }
     if (authLoading) return;
 
     setAuthError(null);
@@ -222,15 +227,27 @@ export function useAuth(): AuthState & AuthActions {
     } catch (err: any) {
       console.error("❌ [Auth] Email auth error:", err);
       const rawMessage = String(err?.message || "");
-      if (rawMessage.toLowerCase().includes("email rate limit exceeded")) {
+      // Translate common error messages to Vietnamese
+      if (rawMessage.toLowerCase().includes("invalid login credentials")) {
+        setAuthError("Email hoặc mật khẩu không đúng. Vui lòng kiểm tra lại.");
+      } else if (rawMessage.toLowerCase().includes("email rate limit exceeded")) {
         setAuthError(
           "Supabase đang chạm giới hạn gửi email xác nhận. Email này chưa chắc đã tồn tại. Hãy đợi vài phút rồi thử đăng ký lại.",
         );
+      } else if (rawMessage.toLowerCase().includes("user not found")) {
+        setAuthError("Không tìm thấy tài khoản với email này.");
+      } else if (rawMessage.toLowerCase().includes("invalid email")) {
+        setAuthError("Email không hợp lệ. Vui lòng kiểm tra lại.");
       } else {
-        setAuthError(err.message || "Authentication failed");
+        setAuthError(err.message || "Đăng nhập thất bại. Vui lòng thử lại.");
       }
+      // Reset loading state immediately when error occurs
+      setAuthLoading(false);
+      // Ensure we don't continue execution after error
+      return;
     } finally {
       clearTimeout(safetyTimer);
+      // Also reset in finally as backup
       setAuthLoading(false);
     }
   }, [email, password, isRegistering, authLoading]);

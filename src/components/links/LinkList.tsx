@@ -11,6 +11,8 @@ import {
   QrCode,
   AlertTriangle,
   Link2,
+  CheckSquare,
+  Square,
 } from "lucide-react";
 import { ConvertedLink } from "@/src/types";
 import { formatDistanceToNow } from "date-fns";
@@ -39,6 +41,7 @@ interface LinkListProps {
   copiedId: string;
   onDeleteLink: (id: string) => Promise<void>;
   onUpdateLink: (id: string, data: Partial<ConvertedLink>) => Promise<void>;
+  onDeleteManyLinks?: (ids: string[]) => Promise<void>;
 }
 
 export const LinkList = ({
@@ -50,10 +53,14 @@ export const LinkList = ({
   copiedId,
   onDeleteLink,
   onUpdateLink,
+  onDeleteManyLinks,
 }: LinkListProps) => {
   const [editingLink, setEditingLink] = useState<ConvertedLink | null>(null);
   const [deletingLink, setDeletingLink] = useState<ConvertedLink | null>(null);
   const [qrLink, setQrLink] = useState<ConvertedLink | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkDeleting, setBulkDeleting] = useState(false);
+  const [showBulkDeleteConfirm, setShowBulkDeleteConfirm] = useState(false);
   const [editForm, setEditForm] = useState({
     title: "",
     desc: "",
@@ -62,9 +69,40 @@ export const LinkList = ({
     original: "",
     secondary: "",
     redirectDelayMs: 3000,
+    expiresAt: "",
   });
   const [isUpdating, setIsUpdating] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+
+  const toggleSelect = (id: string) => {
+    const newSet = new Set(selectedIds);
+    if (newSet.has(id)) {
+      newSet.delete(id);
+    } else {
+      newSet.add(id);
+    }
+    setSelectedIds(newSet);
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedIds.size === links.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(links.map((l) => l.id)));
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    if (!onDeleteManyLinks || selectedIds.size === 0) return;
+    setBulkDeleting(true);
+    try {
+      await onDeleteManyLinks(Array.from(selectedIds));
+      setSelectedIds(new Set());
+      setShowBulkDeleteConfirm(false);
+    } finally {
+      setBulkDeleting(false);
+    }
+  };
 
   const buildTrackedLink = (
     shortCode: string,
@@ -111,6 +149,9 @@ export const LinkList = ({
       original: link.original_url || "",
       secondary: link.secondary_url || "",
       redirectDelayMs: link.redirect_delay_ms || 3000,
+      expiresAt: link.expires_at
+        ? new Date(link.expires_at).toISOString().slice(0, 16)
+        : "",
     });
   };
 
@@ -118,7 +159,7 @@ export const LinkList = ({
     if (!editingLink?.id) return;
     setIsUpdating(true);
     try {
-      await onUpdateLink(editingLink.id, {
+      const updates: any = {
         custom_title: editForm.title,
         custom_description: editForm.desc,
         usage_context: editForm.usage,
@@ -126,11 +167,33 @@ export const LinkList = ({
         original_url: editForm.original,
         secondary_url: editForm.secondary,
         redirect_delay_ms: editForm.redirectDelayMs,
-      });
+      };
+      // Only include expires_at if it's set
+      if (editForm.expiresAt) {
+        updates.expires_at = new Date(editForm.expiresAt).toISOString();
+      } else {
+        updates.expires_at = null; // Clear expiration
+      }
+      await onUpdateLink(editingLink.id, updates);
       setEditingLink(null);
     } finally {
       setIsUpdating(false);
     }
+  };
+
+  // Helper to check if link is expired
+  const isLinkExpired = (expiresAt?: string) => {
+    if (!expiresAt) return false;
+    return new Date(expiresAt) < new Date();
+  };
+
+  // Helper to check if link expires soon (within 24 hours)
+  const isLinkExpiringSoon = (expiresAt?: string) => {
+    if (!expiresAt || isLinkExpired(expiresAt)) return false;
+    const expires = new Date(expiresAt);
+    const now = new Date();
+    const diffHours = (expires.getTime() - now.getTime()) / (1000 * 60 * 60);
+    return diffHours <= 24;
   };
 
   const confirmDelete = async () => {
@@ -170,6 +233,41 @@ export const LinkList = ({
         </div>
       </header>
 
+      {/* Bulk Actions Bar */}
+      {links.length > 0 && onDeleteManyLinks && (
+        <div className="mb-4 flex items-center justify-between rounded-2xl border border-gray-200 bg-white px-4 py-3 shadow-sm">
+          <div className="flex items-center gap-3">
+            <button
+              onClick={toggleSelectAll}
+              className="flex items-center gap-2 rounded-xl bg-gray-50 px-3 py-2 text-xs font-bold text-gray-600 transition-all hover:bg-gray-100"
+            >
+              {selectedIds.size === links.length ? (
+                <CheckSquare size={16} className="text-orange-500" />
+              ) : (
+                <Square size={16} />
+              )}
+              {selectedIds.size === links.length
+                ? "Bỏ chọn tất cả"
+                : "Chọn tất cả"}
+            </button>
+            {selectedIds.size > 0 && (
+              <span className="text-xs font-medium text-gray-500">
+                Đã chọn {selectedIds.size} link
+              </span>
+            )}
+          </div>
+          {selectedIds.size > 0 && (
+            <button
+              onClick={() => setShowBulkDeleteConfirm(true)}
+              className="flex items-center gap-2 rounded-xl bg-red-50 px-4 py-2 text-xs font-black uppercase tracking-wider text-red-600 transition-all hover:bg-red-100"
+            >
+              <Trash2 size={14} />
+              Xóa {selectedIds.size} link
+            </button>
+          )}
+        </div>
+      )}
+
       <div className="grid gap-4">
         {listLoading ? (
           Array.from({ length: 4 }).map((_, i) => (
@@ -186,8 +284,28 @@ export const LinkList = ({
           links.map((l) => (
             <div
               key={l.id}
-              className="group flex flex-col gap-5 rounded-[2.5rem] border border-gray-100 bg-white p-5 shadow-sm transition-all hover:shadow-xl sm:flex-row sm:items-start sm:p-6"
+              className={`group flex flex-col gap-5 rounded-[2.5rem] border p-5 shadow-sm transition-all hover:shadow-xl sm:flex-row sm:items-start sm:p-6 ${
+                selectedIds.has(l.id)
+                  ? "border-orange-300 bg-orange-50/30"
+                  : "border-gray-100 bg-white"
+              }`}
             >
+              {/* Checkbox for bulk selection */}
+              {onDeleteManyLinks && (
+                <div className="flex items-start pt-1">
+                  <button
+                    onClick={() => toggleSelect(l.id)}
+                    className="rounded-lg p-1 transition-all hover:bg-gray-100"
+                  >
+                    {selectedIds.has(l.id) ? (
+                      <CheckSquare size={20} className="text-orange-500" />
+                    ) : (
+                      <Square size={20} className="text-gray-300" />
+                    )}
+                  </button>
+                </div>
+              )}
+
               <div className="relative mx-auto flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-gray-50 sm:mx-0">
                 {l.custom_image_url ? (
                   <img
@@ -245,6 +363,21 @@ export const LinkList = ({
                   <span className="rounded-full border border-orange-100 bg-orange-50 px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-orange-700">
                     Shopee Protected
                   </span>
+                  {isLinkExpired(l.expires_at) && (
+                    <span className="rounded-full border border-red-200 bg-red-100 px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-red-700">
+                      ⏰ Đã hết hạn
+                    </span>
+                  )}
+                  {!isLinkExpired(l.expires_at) && isLinkExpiringSoon(l.expires_at) && (
+                    <span className="rounded-full border border-amber-200 bg-amber-100 px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-amber-700">
+                      ⏰ Sắp hết hạn
+                    </span>
+                  )}
+                  {l.expires_at && !isLinkExpired(l.expires_at) && !isLinkExpiringSoon(l.expires_at) && (
+                    <span className="rounded-full border border-blue-100 bg-blue-50 px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-blue-600">
+                      ⏰ Hết hạn {formatDistanceToNow(new Date(l.expires_at))}
+                    </span>
+                  )}
                 </div>
 
                 {l.secondary_url && (() => {
@@ -450,6 +583,66 @@ export const LinkList = ({
                 />
               </div>
 
+              <div className="space-y-2">
+                <label className="ml-1 text-[10px] font-black uppercase tracking-widest text-gray-400">
+                  Thời hạn link (tùy chọn)
+                </label>
+                <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setEditForm({ ...editForm, expiresAt: "" })
+                    }
+                    className={`rounded-xl px-2 py-2 text-[9px] font-black uppercase tracking-wider transition-all ${
+                      editForm.expiresAt === ""
+                        ? "bg-orange-500 text-white"
+                        : "bg-gray-50 text-gray-500 hover:bg-gray-100"
+                    }`}
+                  >
+                    Không hết hạn
+                  </button>
+                  {[
+                    { days: 1, label: "1 ngày" },
+                    { days: 3, label: "3 ngày" },
+                    { days: 7, label: "7 ngày" },
+                    { days: 15, label: "15 ngày" },
+                    { days: 30, label: "30 ngày" },
+                  ].map(({ days, label }) => {
+                    const isSelected =
+                      editForm.expiresAt &&
+                      new Date(editForm.expiresAt).getTime() > Date.now() &&
+                      Math.round(
+                        (new Date(editForm.expiresAt).getTime() - Date.now()) /
+                          (1000 * 60 * 60 * 24),
+                      ) === days;
+                    return (
+                      <button
+                        key={days}
+                        type="button"
+                        onClick={() => {
+                          const future = new Date();
+                          future.setDate(future.getDate() + days);
+                          setEditForm({
+                            ...editForm,
+                            expiresAt: future.toISOString(),
+                          });
+                        }}
+                        className={`rounded-xl px-2 py-2 text-[9px] font-black uppercase tracking-wider transition-all ${
+                          isSelected
+                            ? "bg-orange-500 text-white"
+                            : "bg-gray-50 text-gray-500 hover:bg-gray-100"
+                        }`}
+                      >
+                        {label}
+                      </button>
+                    );
+                  })}
+                </div>
+                <p className="px-1 text-[9px] font-medium text-gray-400">
+                  Link sẽ tự động vô hiệu sau thời gian đã chọn.
+                </p>
+              </div>
+
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <div className="space-y-1">
                   <label className="ml-1 text-[10px] font-black uppercase tracking-widest text-gray-400">
@@ -581,6 +774,47 @@ export const LinkList = ({
               >
                 <Save size={18} /> Tải mã QR (.png)
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Bulk Delete Confirmation Modal */}
+      {showBulkDeleteConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-6 backdrop-blur-sm">
+          <div className="w-full max-w-md overflow-hidden rounded-[3rem] bg-white shadow-2xl animate-in fade-in zoom-in duration-300">
+            <div className="p-10 text-center">
+              <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-3xl bg-red-50 text-red-600 shadow-sm shadow-red-100">
+                <AlertTriangle size={40} />
+              </div>
+              <h3 className="mb-4 text-2xl font-black tracking-tight text-gray-900">
+                Xác nhận xóa {selectedIds.size} link?
+              </h3>
+              <p className="mb-10 px-4 font-medium leading-relaxed text-gray-500">
+                Hành động này sẽ xóa vĩnh viễn {selectedIds.size} link và mọi dữ
+                liệu thống kê. Không thể khôi phục sau khi xóa.
+              </p>
+              <div className="flex flex-col gap-3">
+                <button
+                  onClick={handleBulkDelete}
+                  disabled={bulkDeleting}
+                  className="flex w-full items-center justify-center gap-3 rounded-2xl bg-red-600 py-5 text-[11px] font-black uppercase tracking-widest text-white shadow-xl shadow-red-100 transition-all hover:bg-red-700 active:scale-95 disabled:opacity-50"
+                >
+                  {bulkDeleting ? (
+                    <div className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+                  ) : (
+                    <Trash2 size={18} />
+                  )}
+                  Xóa {selectedIds.size} link vĩnh viễn
+                </button>
+                <button
+                  onClick={() => setShowBulkDeleteConfirm(false)}
+                  disabled={bulkDeleting}
+                  className="w-full rounded-2xl bg-gray-100 py-5 text-[11px] font-black uppercase tracking-widest text-gray-600 transition-all hover:bg-gray-200 active:scale-95"
+                >
+                  Hủy bỏ
+                </button>
+              </div>
             </div>
           </div>
         </div>

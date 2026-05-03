@@ -98,7 +98,7 @@ app.get("/s/:shortCode", async (req, res) => {
     const { data: link, error } = await supabase
       .from("links")
       .select(
-        "id, short_code, original_url, custom_title, custom_description, custom_image_url, video_url, secondary_url, redirect_delay_ms",
+        "id, short_code, original_url, custom_title, custom_description, custom_image_url, video_url, secondary_url, redirect_delay_ms, expires_at",
       )
       .eq("short_code", shortCode)
       .maybeSingle();
@@ -107,6 +107,36 @@ app.get("/s/:shortCode", async (req, res) => {
 
     if (!link) {
       return res.status(404).send("Link not found");
+    }
+
+    // Check if link has expired
+    if (link.expires_at && new Date(link.expires_at) < new Date()) {
+      return res.status(410).send(`
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <title>Link Expired</title>
+            <meta name="viewport" content="width=device-width, initial-scale=1">
+            <style>
+              body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+              .container { text-align: center; padding: 2rem; background: white; border-radius: 1rem; box-shadow: 0 20px 40px rgba(0,0,0,0.1); max-width: 400px; margin: 1rem; }
+              .icon { font-size: 4rem; margin-bottom: 1rem; }
+              h1 { color: #1a202c; margin: 0 0 0.5rem; font-size: 1.5rem; }
+              p { color: #718096; margin: 0 0 1.5rem; line-height: 1.6; }
+              a { display: inline-block; padding: 0.75rem 1.5rem; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; text-decoration: none; border-radius: 0.5rem; font-weight: 600; }
+              a:hover { transform: translateY(-2px); box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3); }
+            </style>
+          </head>
+          <body>
+            <div class="container">
+              <div class="icon">⏰</div>
+              <h1>Link đã hết hạn</h1>
+              <p>Link này đã hết hạn và không còn khả dụng nữa. Vui lòng liên hệ người tạo link để được hỗ trợ.</p>
+              <a href="/">Về trang chủ</a>
+            </div>
+          </body>
+        </html>
+      `);
     }
 
     // Track click

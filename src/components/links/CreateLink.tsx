@@ -29,7 +29,8 @@ type FormField =
   | "customImageUrl"
   | "videoUrl"
   | "secondaryUrl"
-  | "redirectDelayMs";
+  | "redirectDelayMs"
+  | "expiresAt";
 
 interface CreateLinkProps {
   url: string;
@@ -50,6 +51,8 @@ interface CreateLinkProps {
   setSecondaryTargetType: (v: "shopee" | "tiktok") => void;
   redirectDelayMs: number;
   setRedirectDelayMs: (v: number) => void;
+  expiresAt: string;
+  setExpiresAt: (v: string) => void;
   videoUrl: string;
   setVideoUrl: (v: string) => void;
   uploadingVideo: boolean;
@@ -96,6 +99,8 @@ export const CreateLink = ({
   setSecondaryTargetType,
   redirectDelayMs,
   setRedirectDelayMs,
+  expiresAt,
+  setExpiresAt,
   videoUrl,
   setVideoUrl,
   uploadingVideo,
@@ -482,6 +487,63 @@ export const CreateLink = ({
                 </select>
                 {renderFieldError("usageContext")}
               </div>
+
+              <div>
+                <label className="mb-3 flex items-center gap-2 px-1 text-[11px] font-black uppercase tracking-widest text-gray-400">
+                  <Type size={14} className="text-orange-500" /> Thời hạn link
+                </label>
+                <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setExpiresAt("");
+                      clearFieldError("expiresAt");
+                    }}
+                    className={`rounded-xl px-3 py-3 text-[10px] font-black uppercase tracking-wider transition-all ${
+                      expiresAt === ""
+                        ? "bg-orange-500 text-white shadow-lg shadow-orange-200"
+                        : "bg-gray-50 text-gray-500 hover:bg-gray-100"
+                    }`}
+                  >
+                    Không hết hạn
+                  </button>
+                  {[
+                    { days: 1, label: "1 ngày" },
+                    { days: 3, label: "3 ngày" },
+                    { days: 7, label: "7 ngày" },
+                    { days: 15, label: "15 ngày" },
+                    { days: 30, label: "30 ngày" },
+                  ].map(({ days, label }) => (
+                    <button
+                      key={days}
+                      type="button"
+                      onClick={() => {
+                        const future = new Date();
+                        future.setDate(future.getDate() + days);
+                        setExpiresAt(future.toISOString());
+                        clearFieldError("expiresAt");
+                      }}
+                      className={`rounded-xl px-3 py-3 text-[10px] font-black uppercase tracking-wider transition-all ${
+                        expiresAt &&
+                        new Date(expiresAt).getTime() > Date.now() &&
+                        Math.round(
+                          (new Date(expiresAt).getTime() - Date.now()) /
+                            (1000 * 60 * 60 * 24),
+                        ) === days
+                          ? "bg-orange-500 text-white shadow-lg shadow-orange-200"
+                          : "bg-gray-50 text-gray-500 hover:bg-gray-100"
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+                {renderFieldError("expiresAt")}
+                <p className="mt-2 px-1 text-[11px] font-medium text-gray-400">
+                  Link sẽ tự động vô hiệu sau thời gian đã chọn.
+                </p>
+              </div>
+
               <div className="grid grid-cols-1 gap-6 rounded-[1.75rem] border border-amber-100 bg-amber-50/60 p-4 sm:p-5">
                 <div>
                   <p className="mb-1 text-[11px] font-black uppercase tracking-widest text-amber-700">

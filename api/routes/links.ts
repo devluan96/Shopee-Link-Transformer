@@ -63,6 +63,7 @@ router.patch(
         "secondary_url",
         "redirect_delay_ms",
         "usage_context",
+        "expires_at",
       ];
 
       const updates: any = {};
@@ -162,6 +163,40 @@ router.delete(
 
       await linkService.deleteLink(supabase, linkId, userId);
       return res.json({ success: true });
+    } catch (e: any) {
+      return res.status(400).json({ error: e.message });
+    }
+  },
+);
+
+// POST /api/v1/user/links/bulk-delete - Delete multiple links
+router.post(
+  "/user/links/bulk-delete",
+  authenticate,
+  async (req: AuthenticatedRequest, res) => {
+    try {
+      const supabase = getSupabase();
+      const userId = req.authUser?.id;
+      const { ids } = req.body;
+
+      if (!userId) {
+        return res.status(400).json({ error: "Missing userId" });
+      }
+
+      if (!Array.isArray(ids) || ids.length === 0) {
+        return res.status(400).json({ error: "Missing or invalid ids array" });
+      }
+
+      // Delete all links that belong to this user and match the ids
+      const { error, count } = await supabase
+        .from("links")
+        .delete({ count: "exact" })
+        .eq("user_id", userId)
+        .in("id", ids);
+
+      if (error) throw error;
+
+      return res.json({ success: true, deleted: count || ids.length });
     } catch (e: any) {
       return res.status(400).json({ error: e.message });
     }

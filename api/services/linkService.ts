@@ -22,6 +22,7 @@ export const createLink = async (
     secondaryTargetType?: "shopee" | "tiktok";
     redirectDelayMs?: number;
     usageContext?: string;
+    expiresAt?: string;
   },
 ) => {
   const primaryUrl = normalizeProtectedShopeeUrl(data.url, "Link Shopee");
@@ -70,6 +71,16 @@ export const createLink = async (
 
   const delayMs = normalizeRedirectDelayMs(data.redirectDelayMs);
 
+  // Validate and normalize expires_at
+  let expiresAt: string | null = null;
+  if (data.expiresAt && data.expiresAt.trim()) {
+    const date = new Date(data.expiresAt);
+    if (isNaN(date.getTime())) {
+      throw new Error("Ngày hết hạn không hợp lệ.");
+    }
+    expiresAt = date.toISOString();
+  }
+
   const { data: link, error } = await supabase
     .from("links")
     .insert({
@@ -83,6 +94,7 @@ export const createLink = async (
       secondary_url: secondaryUrl,
       redirect_delay_ms: delayMs,
       usage_context: data.usageContext?.trim() || null,
+      expires_at: expiresAt,
     })
     .select()
     .single();
@@ -115,7 +127,7 @@ export const getUserLinks = async (supabase: SupabaseClient, userId: string) => 
   const { data, error } = await supabase
     .from("links")
     .select(
-      "id, short_code, original_url, custom_title, custom_description, custom_image_url, video_url, created_at, secondary_url, redirect_delay_ms, usage_context",
+      "id, short_code, original_url, custom_title, custom_description, custom_image_url, video_url, created_at, expires_at, secondary_url, redirect_delay_ms, usage_context",
     )
     .eq("user_id", userId)
     .order("created_at", { ascending: false });
@@ -136,6 +148,7 @@ export const updateLink = async (
     secondary_url: string;
     redirect_delay_ms: number;
     usage_context: string;
+    expires_at: string;
   }>,
 ) => {
   const { data: link, error } = await supabase

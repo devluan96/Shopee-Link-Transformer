@@ -110,6 +110,7 @@ export default function App() {
     setLinksDirty,
     handleDeleteLink,
     handleUpdateLink,
+    handleDeleteManyLinks,
     refreshLinks,
   } = useLinks({ user, profile, fetchWithAuth, activeTab });
 
@@ -159,6 +160,7 @@ export default function App() {
     secondaryUrl,
     secondaryTargetType,
     redirectDelayMs,
+    expiresAt,
     loading,
     error,
     result,
@@ -171,6 +173,7 @@ export default function App() {
     setSecondaryUrl,
     setSecondaryTargetType,
     setRedirectDelayMs,
+    setExpiresAt,
     setVideoUrl: setLinkCreatorVideoUrl,
     setError,
     handleConvert,
@@ -213,7 +216,7 @@ export default function App() {
   const isAdminRole = profile?.role === "admin" || user?.email === "devluan1996@gmail.com";
   const hasSub = profile?.subscription_plan && profile.subscription_plan !== "free";
   const canAccessCreate = !!(isAdminRole || hasSub);
-  const bootstrappingAccess = authLoading || (!!user && profileBootstrapLoading);
+  const bootstrappingAccess = !!user && (authLoading || profileBootstrapLoading);
 
   useEffect(() => {
     setActiveTab("dashboard");
@@ -333,6 +336,8 @@ export default function App() {
                 setSecondaryTargetType={setSecondaryTargetType}
                 redirectDelayMs={redirectDelayMs}
                 setRedirectDelayMs={setRedirectDelayMs}
+                expiresAt={expiresAt}
+                setExpiresAt={setExpiresAt}
                 videoUrl={videoUrl}
                 setVideoUrl={handleSetVideoUrl}
                 uploadingVideo={uploadingVideo}
@@ -393,6 +398,7 @@ export default function App() {
               copiedId={copiedId || ""}
               onDeleteLink={handleDeleteLink}
               onUpdateLink={handleUpdateLink}
+              onDeleteManyLinks={handleDeleteManyLinks}
             />
           )}
 

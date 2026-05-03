@@ -10,6 +10,7 @@ export interface ConvertedLink {
   custom_image_url?: string;
   video_url?: string;
   created_at: string;
+  expires_at?: string;
   user_id: string;
   clicks?: number;
   tracked_sources?: Array<{

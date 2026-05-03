@@ -7,6 +7,9 @@ import {
   ArrowRight,
   Mail,
   Lock,
+  Eye,
+  EyeOff,
+  Loader2,
 } from "lucide-react";
 import { cn } from "@/src/lib/utils";
 import { signInWithGoogle } from "@/src/lib/supabase";
@@ -264,6 +267,8 @@ const AuthForm = ({
   resetLoading,
   dark = false,
 }: any) => {
+  const [showPassword, setShowPassword] = useState(false);
+
   return (
     <div className="flex flex-col h-full">
       <div className="mb-6">
@@ -363,14 +368,35 @@ const AuthForm = ({
         </div>
 
         <div className="space-y-1.5">
-          <label
-            className={cn(
-              "text-[10px] font-black uppercase tracking-widest ml-1",
-              dark ? "text-slate-500" : "text-gray-400",
+          <div className="flex items-center justify-between ml-1">
+            <label
+              className={cn(
+                "text-[10px] font-black uppercase tracking-widest",
+                dark ? "text-slate-500" : "text-gray-400",
+              )}
+            >
+              Password
+            </label>
+            {!isRegistering && (
+              <button
+                type="button"
+                onClick={() => {
+                  const emailInput = document.querySelector('input[type="email"]') as HTMLInputElement;
+                  if (emailInput?.value) {
+                    window.open(`/api/v1/auth/reset-password?email=${encodeURIComponent(emailInput.value)}`, '_blank');
+                  } else {
+                    alert('Vui lòng nhập email trước khi yêu cầu đặt lại mật khẩu');
+                  }
+                }}
+                className={cn(
+                  "text-[9px] font-bold transition-colors hover:underline",
+                  dark ? "text-orange-400 hover:text-orange-300" : "text-orange-600 hover:text-orange-700",
+                )}
+              >
+                Quên mật khẩu?
+              </button>
             )}
-          >
-            Password
-          </label>
+          </div>
           <div className="relative group">
             <span
               className={cn(
@@ -383,18 +409,30 @@ const AuthForm = ({
               <Lock size={18} />
             </span>
             <input
-              type="password"
+              type={showPassword ? "text" : "password"}
               required
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="••••••••"
               className={cn(
-                "w-full pl-12 pr-4 py-3.5 border-2 outline-none transition-all font-medium text-sm rounded-[1.25rem]",
+                "w-full pl-12 pr-12 py-3.5 border-2 outline-none transition-all font-medium text-sm rounded-[1.25rem]",
                 dark
                   ? "bg-slate-800/50 border-transparent focus:border-white/20 text-white placeholder:text-slate-700"
                   : "bg-gray-50 border-transparent focus:border-orange-500 text-gray-900 placeholder:text-gray-300",
               )}
             />
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              className={cn(
+                "absolute right-4 top-1/2 -translate-y-1/2 transition-colors",
+                dark
+                  ? "text-slate-500 hover:text-white"
+                  : "text-gray-400 hover:text-orange-500",
+              )}
+            >
+              {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+            </button>
           </div>
         </div>
 
@@ -457,20 +495,3 @@ const AuthForm = ({
     </div>
   );
 };
-
-const Loader2 = ({ className }: { className?: string }) => (
-  <svg
-    className={className}
-    xmlns="http://www.w3.org/2000/svg"
-    width="24"
-    height="24"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-  >
-    <path d="M21 12a9 9 0 1 1-6.219-8.56" />
-  </svg>
-);
