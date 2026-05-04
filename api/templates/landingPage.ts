@@ -192,6 +192,7 @@ export const renderLinkLandingPage = (
       .content-panel p { font-size: 0.9rem; line-height: 1.5; color: #aaaaaa; margin: 0; font-family: "Roboto", "Arial", sans-serif; width: 100%; max-width: 100%; display: block; }
       .overlay { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1rem; padding: 1.5rem; background: rgba(2, 6, 23, 0.7); backdrop-filter: blur(4px); z-index: 20; cursor: pointer; transition: opacity 220ms ease, visibility 220ms ease; }
       .overlay.hidden { opacity: 0; visibility: hidden; pointer-events: none; display: none !important; }
+      .overlay.delayed-hidden { opacity: 0; visibility: hidden; pointer-events: none; }
       .action-dock { position: fixed; left: 50%; bottom: 1rem; z-index: 22; display: none; width: min(92vw, 32rem); transform: translateX(-50%); gap: 0.75rem; padding: 0.75rem; border: 1px solid rgba(255,255,255,0.14); border-radius: 1.5rem; background: rgba(9, 18, 32, 0.82); backdrop-filter: blur(18px); box-shadow: 0 1rem 2.5rem rgba(0,0,0,0.32); }
       .action-dock.is-visible { display: flex; }
       .action-dock-button { flex: 1; appearance: none; border: 0; border-radius: 999px; padding: 0.95rem 1rem; color: #fff; font-size: 0.8rem; font-weight: 900; letter-spacing: 0.06em; text-transform: uppercase; cursor: pointer; }
@@ -227,10 +228,10 @@ export const renderLinkLandingPage = (
         </div>
       </section>
     </main>
-    <div id="overlay" class="overlay" role="button" tabindex="0" aria-label="Mở link đích">
+    <div id="overlay" class="overlay ${hasVideo ? "delayed-hidden" : ""}" role="button" tabindex="0" aria-label="Mở link đích">
       <div class="overlay-content" style="color:#fff;font-size:1.1rem;text-align:center;padding:2rem;">
         <div style="font-size:3rem;margin-bottom:1rem;">👆</div>
-        <div>Click để mở link</div>
+        <div>${hasVideo ? "Click ủng hộ để tiếp tục" : "Click để mở link"}</div>
       </div>
     </div>
     <div id="actionDock" class="action-dock">
@@ -270,6 +271,7 @@ export const renderLinkLandingPage = (
         let primaryOpened = false;
         let secondaryOpened = false;
         let secondaryGateTimer = 0;
+        let overlayRevealTimer = 0;
 
         const userAgent = navigator.userAgent || "";
         const isInAppBrowser = /FBAN|FBAV|Instagram|Line\\//i.test(userAgent);
@@ -334,6 +336,18 @@ export const renderLinkLandingPage = (
           overlay.style.visibility = "hidden";
           console.log("[Overlay] Hidden successfully");
           pushDebug("overlay_hidden");
+        };
+
+        const revealOverlay = () => {
+          if (!overlay || primaryOpened) return;
+          overlay.classList.remove("delayed-hidden");
+          pushDebug("overlay_revealed");
+        };
+
+        const scheduleOverlayReveal = () => {
+          if (!hasVideo || !overlay || primaryOpened) return;
+          if (overlayRevealTimer) window.clearTimeout(overlayRevealTimer);
+          overlayRevealTimer = window.setTimeout(revealOverlay, 5000);
         };
 
         const showActionDock = () => {
@@ -620,24 +634,24 @@ export const renderLinkLandingPage = (
 
           const startVideoPreview = () => {
             if (!(currentHeroVideo instanceof HTMLVideoElement)) return;
-            if (isMobileDevice) {
-              currentHeroVideo.autoplay = false;
-              currentHeroVideo.loop = false;
-              currentHeroVideo.controls = false;
-              currentHeroVideo.pause();
-              pushDebug("mobile_preview_paused");
-              return;
-            }
             currentHeroVideo.muted = true;
             currentHeroVideo.defaultMuted = true;
             currentHeroVideo.playsInline = true;
+            currentHeroVideo.autoplay = true;
+            currentHeroVideo.loop = true;
+            currentHeroVideo.controls = false;
             const playAttempt = currentHeroVideo.play();
             if (playAttempt && typeof playAttempt.catch === "function") {
-              playAttempt.catch(() => {});
+              playAttempt.catch((error) => {
+                pushDebug("video_autoplay_blocked", {
+                  message: error?.message || "play_failed",
+                });
+              });
             }
           };
 
           startVideoPreview();
+          scheduleOverlayReveal();
           currentHeroVideo.addEventListener("canplay", startVideoPreview, {
             once: true,
           });

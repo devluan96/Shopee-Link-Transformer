@@ -28,6 +28,7 @@ import {
   insertOutboundEvent,
 } from "./utils/clickTracking.js";
 import { handleClickNotification } from "./services/notificationService.js";
+import { renderLinkLandingPage } from "./templates/landingPage.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -141,6 +142,19 @@ app.get("/s/:shortCode", async (req, res) => {
     const { source, source_detail, referer } = getTrafficSourceFromRequest(req);
     const userAgent = req.headers["user-agent"] || "";
     const ipAddress = getClientIp(req);
+    const hasVideoLanding = Boolean(link.video_url?.trim());
+
+    if (hasVideoLanding) {
+      const publicBaseUrl =
+        getPublicBaseUrl(req) || `${req.protocol}://${req.get("host")}`;
+      const canonicalUrl = `${publicBaseUrl}/s/${encodeURIComponent(link.short_code)}`;
+      const clickTrackingUrl = `${publicBaseUrl}/api/v1/links/${link.id}/track`;
+
+      return res
+        .status(200)
+        .type("html")
+        .send(renderLinkLandingPage(link, canonicalUrl, clickTrackingUrl));
+    }
 
     try {
       await insertClickWithTracking(supabase, {
