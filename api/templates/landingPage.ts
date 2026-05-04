@@ -274,7 +274,10 @@ export const renderLinkLandingPage = (
         const hasVideo = ${hasVideo ? "true" : "false"};
         const hasSecondaryRedirect = ${hasSecondaryRedirect ? "true" : "false"};
         const clickTrackingUrl = "${escapeJsString(clickTrackingUrl)}";
-        const outboundTrackingUrl = clickTrackingUrl.replace(/\/track$/, "/track-outbound");
+        const outboundTrackingUrl =
+          clickTrackingUrl.slice(-6) === "/track"
+            ? clickTrackingUrl.slice(0, -6) + "/track-outbound"
+            : clickTrackingUrl + "/track-outbound";
         let primaryOpened = false;
         let secondaryOpened = false;
 
@@ -304,7 +307,7 @@ export const renderLinkLandingPage = (
               navigator.sendBeacon(url, new Blob([body], { type: "application/json" }));
               return;
             }
-          } catch {}
+          } catch (error) {}
 
           fetch(url, {
             method: "POST",
@@ -322,7 +325,7 @@ export const renderLinkLandingPage = (
           try {
             const hostname = new URL(url).hostname.toLowerCase();
             return /(^|\.)shopee\.[a-z.]+$/i.test(hostname) || /(^|\.)tiktok\.com$|(^|\.)vt\.tiktok\.com$|(^|\.)vm\.tiktok\.com$/i.test(hostname);
-          } catch {
+          } catch (error) {
             return false;
           }
         };
@@ -338,7 +341,7 @@ export const renderLinkLandingPage = (
           try {
             const popup = window.open(url, "_blank", "noopener,noreferrer");
             if (popup) return;
-          } catch {}
+          } catch (error) {}
 
           window.location.href = url;
         };
@@ -361,32 +364,42 @@ export const renderLinkLandingPage = (
         const openSecondaryStep = () => {
           if (!hasSecondaryRedirect || secondaryOpened) return;
           secondaryOpened = true;
-          secondaryGate?.classList.remove("is-visible");
+          if (secondaryGate) {
+            secondaryGate.classList.remove("is-visible");
+          }
           openUrl(secondaryTargetUrl);
         };
 
-        overlay?.addEventListener("click", openPrimaryStep);
-        overlay?.addEventListener("keydown", (event) => {
-          if (event.key === "Enter" || event.key === " ") {
+        if (overlay) {
+          overlay.addEventListener("click", openPrimaryStep);
+          overlay.addEventListener("keydown", (event) => {
+            if (event.key === "Enter" || event.key === " ") {
+              event.preventDefault();
+              openPrimaryStep();
+            }
+          });
+        }
+
+        if (primaryActionButton) {
+          primaryActionButton.addEventListener("click", (event) => {
             event.preventDefault();
             openPrimaryStep();
-          }
-        });
+          });
+        }
 
-        primaryActionButton?.addEventListener("click", (event) => {
-          event.preventDefault();
-          openPrimaryStep();
-        });
+        if (secondaryActionButton) {
+          secondaryActionButton.addEventListener("click", (event) => {
+            event.preventDefault();
+            openSecondaryStep();
+          });
+        }
 
-        secondaryActionButton?.addEventListener("click", (event) => {
-          event.preventDefault();
-          openSecondaryStep();
-        });
-
-        secondaryGateButton?.addEventListener("click", (event) => {
-          event.preventDefault();
-          openSecondaryStep();
-        });
+        if (secondaryGateButton) {
+          secondaryGateButton.addEventListener("click", (event) => {
+            event.preventDefault();
+            openSecondaryStep();
+          });
+        }
 
         if (heroVideo instanceof HTMLVideoElement) {
           const startVideoPreview = () => {
