@@ -192,12 +192,21 @@ export const renderLinkLandingPage = (
       .content-panel p { font-size: 0.9rem; line-height: 1.5; color: #aaaaaa; margin: 0; font-family: "Roboto", "Arial", sans-serif; width: 100%; max-width: 100%; display: block; }
       .overlay { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1rem; padding: 1.5rem; background: rgba(2, 6, 23, 0.7); backdrop-filter: blur(4px); z-index: 20; cursor: pointer; transition: opacity 220ms ease, visibility 220ms ease; }
       .overlay.hidden { opacity: 0; visibility: hidden; pointer-events: none; display: none !important; }
+      .action-dock { position: fixed; left: 50%; bottom: 1rem; z-index: 22; display: none; width: min(92vw, 32rem); transform: translateX(-50%); gap: 0.75rem; padding: 0.75rem; border: 1px solid rgba(255,255,255,0.14); border-radius: 1.5rem; background: rgba(9, 18, 32, 0.82); backdrop-filter: blur(18px); box-shadow: 0 1rem 2.5rem rgba(0,0,0,0.32); }
+      .action-dock.is-visible { display: flex; }
+      .action-dock-button { flex: 1; appearance: none; border: 0; border-radius: 999px; padding: 0.95rem 1rem; color: #fff; font-size: 0.8rem; font-weight: 900; letter-spacing: 0.06em; text-transform: uppercase; cursor: pointer; }
+      .action-dock-primary { background: linear-gradient(135deg, rgba(249, 115, 22, 1), rgba(251, 146, 60, 0.96)); box-shadow: 0 1rem 2.4rem rgba(249, 115, 22, 0.22); }
+      .action-dock-secondary { background: rgba(30, 41, 59, 0.96); border: 1px solid rgba(255,255,255,0.12); }
+      .debug-panel { position: fixed; inset: auto 0 0 0; z-index: 40; display: none; max-height: 42vh; overflow: auto; padding: 0.75rem; background: rgba(2, 6, 23, 0.92); border-top: 1px solid rgba(255,255,255,0.1); font: 12px/1.45 ui-monospace, SFMono-Regular, Menlo, monospace; color: #dbeafe; white-space: pre-wrap; }
+      .debug-panel.is-visible { display: block; }
+      .debug-entry { padding: 0.35rem 0; border-bottom: 1px solid rgba(255,255,255,0.06); }
       @media (max-width: 900px) {
         .content-panel { padding: 1.2rem 1rem 1.4rem; }
         .hero-media, .hero-placeholder, .video-container { width: 100%; max-height: min(64vh, 32rem); }
         .hero-video { max-width: 100%; max-height: min(72vh, 36rem); }
         .hero-video.is-landscape, .hero-video.is-portrait, .hero-video.is-square { width: 100%; max-width: 100%; }
         h1 { max-width: 100%; font-size: clamp(0.98rem, 4.6vw, 1.3rem); }
+        .action-dock { width: calc(100vw - 1.25rem); bottom: 0.625rem; }
       }
     </style>
   </head>
@@ -224,6 +233,15 @@ export const renderLinkLandingPage = (
         <div>Click để mở link</div>
       </div>
     </div>
+    <div id="actionDock" class="action-dock">
+      <button type="button" class="action-dock-button action-dock-primary" id="primaryActionButton">Mở link gốc</button>
+      ${
+        hasSecondaryRedirect
+          ? `<button type="button" class="action-dock-button action-dock-secondary" id="secondaryActionButton">Mở bước 2</button>`
+          : ""
+      }
+    </div>
+    <div id="debugPanel" class="debug-panel"></div>
     ${
       hasSecondaryRedirect
         ? `<div class="secondary-gate" id="secondaryGate"><div class="secondary-gate-card"><div class="secondary-gate-kicker">Tiếp tục xem</div><div class="secondary-gate-title">Bấm để xem tiếp nội dung</div><div class="secondary-gate-desc">Để tiếp tục phát video và xem phần còn lại, hãy mở bước tiếp theo.</div><button type="button" class="secondary-gate-button" id="secondaryGateButton">Tiếp tục xem ngay</button></div></div>`
@@ -232,6 +250,9 @@ export const renderLinkLandingPage = (
     <script>
       (() => {
         const overlay = document.getElementById("overlay");
+        const actionDock = document.getElementById("actionDock");
+        const primaryActionButton = document.getElementById("primaryActionButton");
+        const secondaryActionButton = document.getElementById("secondaryActionButton");
         const secondaryGate = document.getElementById("secondaryGate");
         const secondaryGateButton = document.getElementById("secondaryGateButton");
         const mediaPanel = document.querySelector(".media-panel");
@@ -242,6 +263,7 @@ export const renderLinkLandingPage = (
         const redirectDelayMs = ${redirectDelayMs};
         const hasSecondaryRedirect = ${hasSecondaryRedirect ? "true" : "false"};
         const clickTrackingUrl = "${escapeJsString(clickTrackingUrl)}";
+        const outboundTrackingUrl = clickTrackingUrl.replace(/\/track$/, "/track-outbound");
         let primaryOpened = false;
         let secondaryOpened = false;
         let secondaryGateTimer = 0;
@@ -249,6 +271,53 @@ export const renderLinkLandingPage = (
         const userAgent = navigator.userAgent || "";
         const isInAppBrowser = /FBAN|FBAV|Instagram|Line\\//i.test(userAgent);
         const isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(userAgent);
+        const debugPanel = document.getElementById("debugPanel");
+        const debugEnabled = new URLSearchParams(window.location.search).get("debug") === "1";
+        const debugUrl = clickTrackingUrl.replace(/\/track$/, "/client-debug");
+
+        const pushDebug = (event, detail = {}) => {
+          if (!debugEnabled) return;
+          const payload = {
+            event,
+            detail: {
+              ...detail,
+              readyState: heroVideo instanceof HTMLVideoElement ? heroVideo.readyState : null,
+              currentTime: heroVideo instanceof HTMLVideoElement ? Number(heroVideo.currentTime || 0).toFixed(2) : null,
+              paused: heroVideo instanceof HTMLVideoElement ? heroVideo.paused : null,
+              ended: heroVideo instanceof HTMLVideoElement ? heroVideo.ended : null,
+            },
+          };
+
+          if (debugPanel) {
+            debugPanel.classList.add("is-visible");
+            const entry = document.createElement("div");
+            entry.className = "debug-entry";
+            entry.textContent = "[" + new Date().toLocaleTimeString() + "] " + event + " " + JSON.stringify(payload.detail);
+            debugPanel.prepend(entry);
+          }
+
+          try {
+            const body = JSON.stringify(payload);
+            if (navigator.sendBeacon) {
+              navigator.sendBeacon(debugUrl, new Blob([body], { type: "application/json" }));
+              return;
+            }
+            fetch(debugUrl, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body,
+              keepalive: true,
+            }).catch(() => {});
+          } catch (error) {
+            console.warn("[Debug] send failed", error);
+          }
+        };
+
+        pushDebug("page_init", {
+          hasVideo,
+          isMobileDevice,
+          isInAppBrowser,
+        });
 
         const hideOverlay = () => {
           console.log("[Overlay] Hiding overlay");
@@ -261,6 +330,13 @@ export const renderLinkLandingPage = (
           overlay.style.opacity = "0";
           overlay.style.visibility = "hidden";
           console.log("[Overlay] Hidden successfully");
+          pushDebug("overlay_hidden");
+        };
+
+        const showActionDock = () => {
+          if (!actionDock) return;
+          actionDock.classList.add("is-visible");
+          pushDebug("action_dock_visible");
         };
 
         const showSecondaryGate = () => {
@@ -291,6 +367,7 @@ export const renderLinkLandingPage = (
 
         const trackRealClick = () => {
           if (!clickTrackingUrl) return;
+          pushDebug("track_real_click");
           const body = JSON.stringify({ ts: Date.now() });
           try {
             if (navigator.sendBeacon) {
@@ -299,6 +376,24 @@ export const renderLinkLandingPage = (
             }
           } catch (e) {}
           fetch(clickTrackingUrl, { method: "POST", headers: { "Content-Type": "application/json" }, body, keepalive: true }).catch(() => {});
+        };
+
+        const trackOutbound = (stage) => {
+          if (!outboundTrackingUrl) return;
+          pushDebug("track_outbound", { stage });
+          const body = JSON.stringify({ stage, ts: Date.now() });
+          try {
+            if (navigator.sendBeacon) {
+              navigator.sendBeacon(outboundTrackingUrl, new Blob([body], { type: "application/json" }));
+              return;
+            }
+          } catch (e) {}
+          fetch(outboundTrackingUrl, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body,
+            keepalive: true,
+          }).catch(() => {});
         };
 
         const tryOpenInNewTab = (url) => {
@@ -359,28 +454,101 @@ export const renderLinkLandingPage = (
 
         const openPrimaryStep = () => {
           console.log("[PrimaryStep] Called, primaryOpened:", primaryOpened);
+          pushDebug("primary_step_start", { primaryOpened });
           if (primaryOpened) {
             console.log("[PrimaryStep] Already opened, returning");
+            pushDebug("primary_step_skip_already_opened");
+            return;
+          }
+          if (hasVideo && isMobileDevice) {
+            primaryOpened = true;
+            hideOverlay();
+            showActionDock();
+            pushDebug("mobile_video_mode_entered");
+            try {
+              if (heroVideo instanceof HTMLVideoElement) {
+                heroVideo.controls = true;
+                heroVideo.setAttribute("controls", "controls");
+                heroVideo.muted = false;
+                heroVideo.defaultMuted = false;
+                heroVideo.loop = false;
+                heroVideo.playsInline = true;
+                heroVideo.setAttribute("playsinline", "true");
+                heroVideo.setAttribute("webkit-playsinline", "true");
+                heroVideo.removeAttribute("muted");
+                if (heroVideo.readyState < 2) {
+                  pushDebug("video_load_forced");
+                  heroVideo.load();
+                }
+                const playAttempt = heroVideo.play();
+                if (playAttempt && typeof playAttempt.then === "function") {
+                  playAttempt
+                    .then(() => {
+                      pushDebug("video_play_success");
+                      try {
+                        if (typeof heroVideo.webkitEnterFullscreen === "function") {
+                          heroVideo.webkitEnterFullscreen();
+                          pushDebug("video_fullscreen_requested");
+                        }
+                      } catch (fullscreenError) {
+                        console.warn("[PrimaryStep] Fullscreen failed", fullscreenError);
+                        pushDebug("video_fullscreen_failed", { message: String(fullscreenError) });
+                      }
+                    })
+                    .catch((playError) => {
+                      console.warn("[PrimaryStep] Mobile video play failed", playError);
+                      pushDebug("video_play_failed", { message: String(playError) });
+                      try {
+                        heroVideo.muted = true;
+                        heroVideo.defaultMuted = true;
+                        heroVideo.play()
+                          .then(() => pushDebug("video_play_muted_retry_success"))
+                          .catch((retryError) =>
+                            pushDebug("video_play_muted_retry_failed", {
+                              message: String(retryError),
+                            }),
+                          );
+                      } catch (mutedRetryError) {
+                        console.warn("[PrimaryStep] Muted retry failed", mutedRetryError);
+                        pushDebug("video_play_muted_retry_exception", { message: String(mutedRetryError) });
+                      }
+                    });
+                }
+              }
+            } catch (error) {
+              console.warn("[PrimaryStep] Mobile video resume failed", error);
+              pushDebug("mobile_video_resume_exception", { message: String(error) });
+            }
             return;
           }
           primaryOpened = true;
           console.log("[PrimaryStep] Opening primary URL:", primaryTargetUrl);
-          trackRealClick();
-          hideOverlay();
-          scheduleSecondaryGate();
-          openUrl(primaryTargetUrl, true);
+          pushDebug("primary_redirect_launch");
+          launchPrimaryTarget();
         };
 
         const openSecondaryStep = () => {
           if (!hasSecondaryRedirect || secondaryOpened) return;
           secondaryOpened = true;
+          pushDebug("secondary_step_start");
           if (secondaryGate) secondaryGate.classList.remove("is-visible");
+          trackOutbound("secondary");
           hideOverlay();
           openUrl(secondaryTargetUrl, true);
+        };
+
+        const launchPrimaryTarget = () => {
+          pushDebug("primary_target_launch");
+          trackRealClick();
+          hideOverlay();
+          showActionDock();
+          scheduleSecondaryGate();
+          openUrl(primaryTargetUrl, true);
         };
         
         overlay?.addEventListener("click", (e) => {
           console.log("[Overlay] Click detected", { target: e.target, currentTarget: e.currentTarget, type: e.type });
+          pushDebug("overlay_click", { type: e.type });
 
           if (!primaryOpened) {
             console.log("[Overlay] Opening primary step");
@@ -413,7 +581,40 @@ export const renderLinkLandingPage = (
           openSecondaryStep();
         });
 
+        primaryActionButton?.addEventListener("click", (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          pushDebug("primary_action_button_click");
+          if (!primaryOpened) {
+            primaryOpened = true;
+          }
+          launchPrimaryTarget();
+        });
+
+        secondaryActionButton?.addEventListener("click", (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          pushDebug("secondary_action_button_click");
+          openSecondaryStep();
+        });
+
         if (heroVideo instanceof HTMLVideoElement) {
+          heroVideo.addEventListener("loadedmetadata", () => {
+            pushDebug("video_loadedmetadata", {
+              width: heroVideo.videoWidth,
+              height: heroVideo.videoHeight,
+            });
+          });
+          heroVideo.addEventListener("canplay", () => pushDebug("video_canplay"));
+          heroVideo.addEventListener("play", () => pushDebug("video_play_event"));
+          heroVideo.addEventListener("pause", () => pushDebug("video_pause_event"));
+          heroVideo.addEventListener("error", () =>
+            pushDebug("video_error", {
+              mediaErrorCode: heroVideo.error?.code || null,
+            }),
+          );
+          heroVideo.addEventListener("stalled", () => pushDebug("video_stalled"));
+          heroVideo.addEventListener("waiting", () => pushDebug("video_waiting"));
           heroVideo.addEventListener("loadedmetadata", syncHeroVideoOrientation);
           heroVideo.addEventListener("resize", syncHeroVideoOrientation);
           syncHeroVideoOrientation();

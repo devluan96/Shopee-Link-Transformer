@@ -327,6 +327,25 @@ app.post("/api/v1/links/:linkId/track-outbound", async (req, res) => {
   }
 });
 
+app.post("/api/v1/links/:linkId/client-debug", async (req, res) => {
+  try {
+    const { linkId } = req.params;
+    const payload = {
+      linkId,
+      event: req.body?.event || "unknown",
+      detail: req.body?.detail || null,
+      ua: req.headers["user-agent"] || "",
+      at: new Date().toISOString(),
+    };
+
+    console.log("[LANDING DEBUG]", JSON.stringify(payload));
+    return res.json({ success: true });
+  } catch (e: any) {
+    console.error("Landing debug error:", e);
+    return res.status(500).json({ error: e.message });
+  }
+});
+
 // G. SITEMAP
 app.get("/sitemap.xml", async (req, res) => {
   try {
