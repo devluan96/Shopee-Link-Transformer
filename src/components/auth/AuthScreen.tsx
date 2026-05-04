@@ -163,7 +163,7 @@ export const AuthScreen = ({
           >
             <div className="flex items-center justify-center ">
               <img
-                src="/logo-app.png"
+                src="/logo-app-192.png"
                 alt="HotsNew Click logo"
                 className="h-16 w-16 rounded-2xl object-cover"
               />

@@ -1,4 +1,5 @@
 import { Request } from "express";
+import { isIP } from "node:net";
 import crypto from "crypto";
 import { normalizeTrafficSource } from "./normalizers.js";
 
@@ -43,6 +44,89 @@ export const chunkArray = <T>(items: T[], chunkSize: number) => {
     chunks.push(items.slice(index, index + chunkSize));
   }
   return chunks;
+};
+
+export const normalizeClientIp = (value: unknown) => {
+  if (typeof value !== "string") return "";
+
+  let candidate = value.split(",")[0]?.trim() || "";
+  if (!candidate) return "";
+
+  candidate = candidate
+    .replace(/^for=/i, "")
+    .replace(/^"+|"+$/g, "")
+    .replace(/^\[|\]$/g, "")
+    .replace(/^::ffff:/i, "");
+
+  if (candidate.includes(":") && candidate.includes(".") && /:\d+$/.test(candidate)) {
+    candidate = candidate.replace(/:\d+$/, "");
+  }
+
+  if (candidate === "::1") return candidate;
+
+  return isIP(candidate) ? candidate : "";
+};
+
+export const isPrivateOrLocalIp = (ip: string) => {
+  const normalizedIp = normalizeClientIp(ip);
+  if (!normalizedIp) return true;
+
+  const version = isIP(normalizedIp);
+  if (version === 4) {
+    if (
+      normalizedIp.startsWith("10.") ||
+      normalizedIp.startsWith("127.") ||
+      normalizedIp.startsWith("192.168.") ||
+      normalizedIp.startsWith("169.254.")
+    ) {
+      return true;
+    }
+
+    const secondOctet = Number(normalizedIp.split(".")[1] || 0);
+    if (normalizedIp.startsWith("172.") && secondOctet >= 16 && secondOctet <= 31) {
+      return true;
+    }
+
+    return false;
+  }
+
+  if (version === 6) {
+    const lower = normalizedIp.toLowerCase();
+    return (
+      lower === "::1" ||
+      lower.startsWith("fc") ||
+      lower.startsWith("fd") ||
+      lower.startsWith("fe80:")
+    );
+  }
+
+  return true;
+};
+
+export const getClientIp = (req: Request) => {
+  const headerCandidates = [
+    req.headers["cf-connecting-ip"],
+    req.headers["x-real-ip"],
+    req.headers["x-client-ip"],
+    req.headers["true-client-ip"],
+    req.headers["fly-client-ip"],
+    req.headers["x-forwarded-for"],
+  ];
+
+  for (const candidate of headerCandidates) {
+    const normalized = normalizeClientIp(
+      Array.isArray(candidate) ? candidate[0] : candidate,
+    );
+    if (normalized) {
+      return normalized;
+    }
+  }
+
+  return (
+    normalizeClientIp(req.ip) ||
+    normalizeClientIp(req.socket.remoteAddress) ||
+    ""
+  );
 };
 
 export const getPublicBaseUrl = (req?: Request) => {

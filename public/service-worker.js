@@ -1,8 +1,9 @@
-const CACHE_NAME = "hotsnew-click-v1";
+const CACHE_NAME = "hotsnew-click-v2";
 const APP_SHELL = [
   "/",
   "/manifest.webmanifest",
-  "/logo-app.png",
+  "/logo-app-192.png",
+  "/logo-app-512.png",
 ];
 
 self.addEventListener("install", (event) => {

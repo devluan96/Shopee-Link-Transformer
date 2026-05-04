@@ -51,15 +51,15 @@ router.post(
       }
 
       // Check file type
-      const allowedTypes = ["image/jpeg", "image/png", "image/gif", "image/webp"];
+      const allowedTypes = ["image/jpeg", "image/png", "image/webp"];
       if (!allowedTypes.includes(file.mimetype)) {
-        return res.status(400).json({ error: "Invalid file type. Only JPEG, PNG, GIF, WebP allowed." });
+        return res.status(400).json({ error: "Invalid file type. Only JPEG, PNG, WebP allowed." });
       }
 
-      // Check file size (5MB)
-      const maxSize = 5 * 1024 * 1024;
+      // Check file size (2MB after client-side resize)
+      const maxSize = 2 * 1024 * 1024;
       if (file.size > maxSize) {
-        return res.status(400).json({ error: "File too large. Max 5MB." });
+        return res.status(400).json({ error: "File too large. Max 2MB." });
       }
 
       // Upload to Cloudinary
@@ -68,7 +68,17 @@ router.post(
           {
             folder: `${CLOUDINARY_UPLOAD_FOLDER}/avatars`,
             public_id: `avatar_${userId}_${Date.now()}`,
-            transformation: [{ width: 400, height: 400, crop: "fill" }],
+            format: "webp",
+            transformation: [
+              {
+                width: 256,
+                height: 256,
+                crop: "fill",
+                gravity: "face",
+                fetch_format: "auto",
+                quality: "auto:good",
+              },
+            ],
           },
           (error, result) => {
             if (error) reject(error);

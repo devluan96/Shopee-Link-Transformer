@@ -358,7 +358,7 @@ export const CreateLink = ({
                   Thiết lập link
                 </p>
                 <h3 className="max-w-48 text-3xl font-black leading-none tracking-tight text-gray-900 dark:text-slate-100 sm:max-w-none sm:text-2xl sm:leading-tight">
-                  Rút gọn link Shopee / TikTok
+                  Rút gọn link
                 </h3>
               </div>
               <button
@@ -378,7 +378,8 @@ export const CreateLink = ({
 
             <div>
               <label className="mb-3 flex items-center gap-2 px-1 text-[11px] font-black uppercase tracking-widest text-gray-400">
-                <Globe size={14} className="text-orange-500" /> Link gốc Shopee / TikTok
+                <Globe size={14} className="text-orange-500" /> Link gốc Shopee
+                / TikTok
               </label>
               <div className="group relative">
                 <input
@@ -401,7 +402,8 @@ export const CreateLink = ({
               </div>
               {renderFieldError("url")}
               <p className="mt-2 px-1 text-[11px] font-medium text-gray-500 dark:text-slate-400">
-                Hỗ trợ link domain Shopee và TikTok để giữ flow chuyển đổi ổn định.
+                Hỗ trợ link domain Shopee và TikTok để giữ flow chuyển đổi ổn
+                định.
               </p>
             </div>
 
@@ -936,11 +938,13 @@ export const CreateLink = ({
             className="absolute inset-0 bg-black/60 backdrop-blur-sm"
           />
           <div className="relative bg-white rounded-[2.5rem] p-8 max-w-sm w-full shadow-2xl border border-gray-100 dark:border-slate-700 dark:bg-slate-800">
-            <h3 className="text-xl font-black text-gray-900 dark:text-slate-100 mb-2 text-center">QR Code</h3>
+            <h3 className="text-xl font-black text-gray-900 dark:text-slate-100 mb-2 text-center">
+              QR Code
+            </h3>
             <p className="text-gray-500 dark:text-slate-400 font-medium text-sm text-center mb-6">
               Quét để truy cập link
             </p>
-            
+
             <div className="flex justify-center mb-6">
               <img
                 src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(`https://hotsnew.click/s/${result.short_code}`)}`}
@@ -948,7 +952,7 @@ export const CreateLink = ({
                 className="w-48 h-48 rounded-2xl shadow-lg"
               />
             </div>
-            
+
             <div className="flex gap-3">
               <button
                 onClick={() => setShowQrModal(false)}

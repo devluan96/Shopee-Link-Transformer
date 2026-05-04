@@ -310,7 +310,7 @@ export default function App() {
       <div className="lg:hidden bg-white dark:bg-slate-800 border-b border-gray-100 dark:border-slate-700 px-6 py-4 flex items-center justify-between sticky top-0 z-30">
         <div className="flex items-center gap-2">
           <img
-            src="/logo-app.png"
+            src="/logo-app-192.png"
             alt="HotsNew Click logo"
             className="h-7 w-7 rounded-lg object-cover"
           />

@@ -1,4 +1,5 @@
 import { UAParser } from "ua-parser-js";
+import { isPrivateOrLocalIp, normalizeClientIp } from "./helpers.js";
 
 export interface DeviceInfo {
   deviceType: string;
@@ -82,68 +83,107 @@ const geoCache = new Map<string, GeoInfo>();
 const CACHE_TTL = 24 * 60 * 60 * 1000; // 24 hours
 
 export const getGeoInfo = async (ip: string): Promise<GeoInfo | null> => {
+  const normalizedIp = normalizeClientIp(ip);
+
   // Skip for localhost/private IPs
-  if (!ip || ip === "127.0.0.1" || ip === "::1" || ip.startsWith("192.168.") || ip.startsWith("10.")) {
+  if (!normalizedIp || isPrivateOrLocalIp(normalizedIp)) {
     return null;
   }
 
   // Check cache
-  const cached = geoCache.get(ip);
+  const cached = geoCache.get(normalizedIp);
   if (cached) {
     return cached;
   }
 
-  try {
-    // Using free IP API (rate limited, good for development)
-    const response = await fetch(`https://ipapi.co/${ip}/json/`, {
-      headers: { "User-Agent": "Mozilla/5.0 (compatible; AnalyticsBot/1.0)" },
-    });
+  const providers: Array<() => Promise<GeoInfo | null>> = [
+    async () => {
+      const response = await fetch(`https://ipapi.co/${normalizedIp}/json/`, {
+        headers: { "User-Agent": "Mozilla/5.0 (compatible; AnalyticsBot/1.0)" },
+        signal: AbortSignal.timeout(2500),
+      });
 
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
+      if (!response.ok) {
+        throw new Error(`ipapi.co HTTP ${response.status}`);
+      }
+
+      const data = await response.json();
+      if (data.error) {
+        throw new Error(data.reason || "ipapi.co lookup failed");
+      }
+
+      return {
+        country: data.country_name,
+        countryCode: data.country_code,
+        city: data.city,
+        region: data.region,
+        timezone: data.timezone,
+        lat: data.latitude,
+        lon: data.longitude,
+      };
+    },
+    async () => {
+      const response = await fetch(`https://ipwho.is/${normalizedIp}`, {
+        signal: AbortSignal.timeout(2500),
+      });
+
+      if (!response.ok) {
+        throw new Error(`ipwho.is HTTP ${response.status}`);
+      }
+
+      const data = await response.json();
+      if (data.success === false) {
+        throw new Error(data.message || "ipwho.is lookup failed");
+      }
+
+      return {
+        country: data.country,
+        countryCode: data.country_code,
+        city: data.city,
+        region: data.region,
+        timezone: data.timezone?.id,
+        lat: data.latitude,
+        lon: data.longitude,
+      };
+    },
+    async () =>
+      getGeoInfoIpInfo(normalizedIp, process.env.IPINFO_TOKEN || process.env.IPINFO_API_TOKEN),
+  ];
+
+  for (const provider of providers) {
+    try {
+      const geoInfo = await provider();
+      if (!geoInfo?.country && !geoInfo?.city) {
+        continue;
+      }
+
+      geoCache.set(normalizedIp, geoInfo);
+      setTimeout(() => geoCache.delete(normalizedIp), CACHE_TTL);
+      return geoInfo;
+    } catch (error) {
+      console.warn("Geo provider failed for IP:", normalizedIp, error);
     }
-
-    const data = await response.json();
-
-    if (data.error) {
-      throw new Error(data.reason || "IP lookup failed");
-    }
-
-    const geoInfo: GeoInfo = {
-      country: data.country_name,
-      countryCode: data.country_code,
-      city: data.city,
-      region: data.region,
-      timezone: data.timezone,
-      lat: data.latitude,
-      lon: data.longitude,
-    };
-
-    // Cache result
-    geoCache.set(ip, geoInfo);
-    
-    // Clear cache entry after TTL
-    setTimeout(() => geoCache.delete(ip), CACHE_TTL);
-
-    return geoInfo;
-  } catch (error) {
-    console.error("Error getting geo info for IP:", ip, error);
-    return null;
   }
+
+  console.error("Error getting geo info for IP:", normalizedIp);
+  return null;
 };
 
 // Alternative: Using ipinfo.io (requires token for production)
 export const getGeoInfoIpInfo = async (ip: string, token?: string): Promise<GeoInfo | null> => {
-  if (!ip || ip === "127.0.0.1" || ip === "::1") {
+  const normalizedIp = normalizeClientIp(ip);
+  if (!normalizedIp || isPrivateOrLocalIp(normalizedIp)) {
     return null;
   }
 
   try {
     const url = token 
-      ? `https://ipinfo.io/${ip}?token=${token}`
-      : `https://ipinfo.io/${ip}/json`;
+      ? `https://ipinfo.io/${normalizedIp}?token=${token}`
+      : `https://ipinfo.io/${normalizedIp}/json`;
 
-    const response = await fetch(url);
+    const response = await fetch(url, {
+      signal: AbortSignal.timeout(2500),
+    });
     
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);

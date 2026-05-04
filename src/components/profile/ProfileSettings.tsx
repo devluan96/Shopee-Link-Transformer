@@ -30,7 +30,17 @@ export const ProfileSettings = ({
   const [fullName, setFullName] = React.useState(profile?.full_name || "");
   const [avatarUrl, setAvatarUrl] = React.useState(profile?.avatar_url || "");
   const [uploading, setUploading] = React.useState(false);
+  const [selectedAvatarMeta, setSelectedAvatarMeta] = React.useState<{
+    name: string;
+    size: number;
+  } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const formatFileSize = (bytes: number) => {
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
+  };
 
   // Sync state if profile changes
   React.useEffect(() => {
@@ -49,6 +59,10 @@ export const ProfileSettings = ({
     const file = e.target.files?.[0];
     if (!file) return;
 
+    setSelectedAvatarMeta({
+      name: file.name,
+      size: file.size,
+    });
     setUploading(true);
     try {
       const url = await onAvatarUpload(file);
@@ -59,6 +73,9 @@ export const ProfileSettings = ({
       console.error("❌ ProfileSettings handleFileChange error:", err);
     } finally {
       setUploading(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
     }
   };
 
@@ -131,7 +148,7 @@ export const ProfileSettings = ({
                 type="file"
                 ref={fileInputRef}
                 onChange={handleFileChange}
-                accept="image/*"
+                accept="image/jpeg,image/png,image/webp"
                 className="hidden"
               />
             </div>
@@ -142,6 +159,24 @@ export const ProfileSettings = ({
               </h3>
               <p className="text-gray-400 text-sm font-medium dark:text-slate-400">
                 {profile?.email}
+              </p>
+            </div>
+
+            <div className="mt-5 w-full rounded-2xl border border-gray-100 bg-gray-50 px-4 py-3 text-left dark:border-slate-700 dark:bg-slate-900">
+              <p className="text-[10px] font-black uppercase tracking-widest text-gray-500 dark:text-slate-400">
+                Avatar upload
+              </p>
+              {selectedAvatarMeta ? (
+                <p className="mt-2 text-xs font-medium text-gray-600 dark:text-slate-300">
+                  {selectedAvatarMeta.name} · {formatFileSize(selectedAvatarMeta.size)}
+                </p>
+              ) : (
+                <p className="mt-2 text-xs font-medium text-gray-400 dark:text-slate-500">
+                  Chọn JPG, PNG hoặc WebP để thay avatar.
+                </p>
+              )}
+              <p className="mt-1 text-[11px] font-medium text-gray-400 dark:text-slate-500">
+                Hệ thống sẽ tự resize về tối đa 512px và nén WebP trước khi tải lên.
               </p>
             </div>
 

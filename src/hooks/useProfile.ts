@@ -4,6 +4,73 @@ import { supabase } from "@/src/lib/supabase";
 import { UserProfile } from "@/src/types";
 import { toast } from "sonner";
 
+const AVATAR_MAX_DIMENSION = 512;
+const AVATAR_MAX_FILE_SIZE = 2 * 1024 * 1024;
+const AVATAR_OUTPUT_TYPE = "image/webp";
+const AVATAR_OUTPUT_QUALITY = 0.82;
+
+const resizeAvatarFile = async (file: File): Promise<File> => {
+  if (!file.type.startsWith("image/")) {
+    throw new Error("File avatar phải là ảnh");
+  }
+
+  if (file.type === "image/gif") {
+    throw new Error("Avatar không hỗ trợ GIF. Hãy dùng JPG, PNG hoặc WebP.");
+  }
+
+  const objectUrl = URL.createObjectURL(file);
+
+  try {
+    const image = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => resolve(img);
+      img.onerror = () => reject(new Error("Không đọc được ảnh avatar"));
+      img.src = objectUrl;
+    });
+
+    const scale = Math.min(
+      1,
+      AVATAR_MAX_DIMENSION / Math.max(image.naturalWidth, image.naturalHeight),
+    );
+    const width = Math.max(1, Math.round(image.naturalWidth * scale));
+    const height = Math.max(1, Math.round(image.naturalHeight * scale));
+
+    const canvas = document.createElement("canvas");
+    canvas.width = width;
+    canvas.height = height;
+
+    const context = canvas.getContext("2d");
+    if (!context) {
+      throw new Error("Không khởi tạo được bộ nén avatar");
+    }
+
+    context.drawImage(image, 0, 0, width, height);
+
+    const blob = await new Promise<Blob>((resolve, reject) => {
+      canvas.toBlob(
+        (result) => {
+          if (result) resolve(result);
+          else reject(new Error("Không nén được avatar"));
+        },
+        AVATAR_OUTPUT_TYPE,
+        AVATAR_OUTPUT_QUALITY,
+      );
+    });
+
+    if (blob.size > AVATAR_MAX_FILE_SIZE) {
+      throw new Error("Ảnh sau khi nén vẫn quá lớn. Hãy chọn ảnh nhỏ hơn.");
+    }
+
+    const outputName = file.name.replace(/\.[^.]+$/, "") || "avatar";
+    return new File([blob], `${outputName}.webp`, {
+      type: AVATAR_OUTPUT_TYPE,
+      lastModified: Date.now(),
+    });
+  } finally {
+    URL.revokeObjectURL(objectUrl);
+  }
+};
+
 export interface ProfileState {
   profile: UserProfile | null;
   profileLoading: boolean;
@@ -97,8 +164,9 @@ export function useProfile({ user, fetchWithAuth }: UseProfileProps): ProfileSta
     }
 
     try {
+      const optimizedFile = await resizeAvatarFile(file);
       const formData = new FormData();
-      formData.append("file", file);
+      formData.append("file", optimizedFile);
 
       const res = await fetchWithAuth("/api/v1/upload-avatar", {
         method: "POST",

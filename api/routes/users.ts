@@ -36,6 +36,7 @@ router.post(
 
       const { full_name, avatar_url } = req.body;
       const profile = await userService.updateUserProfile(supabase, userId, {
+        email: req.authUser?.email ?? req.authProfile?.email ?? null,
         full_name,
         avatar_url,
       });

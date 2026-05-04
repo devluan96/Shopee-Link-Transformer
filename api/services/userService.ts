@@ -15,14 +15,23 @@ export const updateUserProfile = async (
   supabase: SupabaseClient,
   userId: string,
   data: {
+    email?: string | null;
     full_name: string;
     avatar_url: string;
   },
 ) => {
+  const existingProfile = await getUserProfile(supabase, userId);
+  const resolvedEmail = data.email || existingProfile?.email;
+
+  if (!resolvedEmail) {
+    throw new Error("Thiếu email tài khoản để cập nhật hồ sơ");
+  }
+
   const { data: profile, error } = await supabase
     .from("profiles")
     .upsert({
       id: userId,
+      email: resolvedEmail,
       full_name: data.full_name,
       avatar_url: data.avatar_url,
       updated_at: new Date().toISOString(),

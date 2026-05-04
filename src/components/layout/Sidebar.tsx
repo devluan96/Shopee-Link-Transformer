@@ -133,7 +133,7 @@ export const Sidebar = ({
         <div className="mb-12 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <img
-              src="/logo-app.png"
+              src="/logo-app-192.png"
               alt="HotsNew Click logo"
               className="h-10 w-10 rounded-xl object-cover shadow-lg shadow-orange-100"
             />

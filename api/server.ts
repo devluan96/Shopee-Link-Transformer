@@ -20,6 +20,7 @@ import {
   getPublicBaseUrl,
   escapeHtml,
   getTrafficSourceFromRequest,
+  getClientIp,
 } from "./utils/helpers.js";
 import { normalizeTrafficSource } from "./utils/normalizers.js";
 import {
@@ -143,10 +144,7 @@ app.get("/s/:shortCode", async (req, res) => {
     // Store request info for potential tracking (used when user clicks overlay)
     const { source, source_detail, referer } = getTrafficSourceFromRequest(req);
     const userAgent = req.headers["user-agent"] || "";
-    const ipAddress =
-      (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim() ||
-      req.socket.remoteAddress ||
-      "";
+    const ipAddress = getClientIp(req);
 
     // Redirect or render landing page
     const wantsRedirect = req.query.redirect === "true";
@@ -195,10 +193,7 @@ app.post("/api/v1/links/:linkId/track", async (req, res) => {
     const supabase = getSupabase();
     const { source, source_detail, referer } = getTrafficSourceFromRequest(req);
     const userAgent = req.headers["user-agent"] || "";
-    const ipAddress =
-      (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim() ||
-      req.socket.remoteAddress ||
-      "";
+    const ipAddress = getClientIp(req);
 
     // Fetch link details to get required fields
     const { data: link, error: linkError } = await supabase
