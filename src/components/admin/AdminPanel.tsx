@@ -15,6 +15,7 @@ import {
   Shield,
   Ban,
   Unlock,
+  Globe,
 } from "lucide-react";
 import { cn } from "@/src/lib/utils";
 import { AccessLogEntry, BlockedIpEntry, UserProfile } from "@/src/types";
@@ -34,12 +35,15 @@ interface AdminPanelProps {
   adminAccessLogs: AccessLogEntry[];
   blockedIps: BlockedIpEntry[];
   adminSecurityLoading: boolean;
+  outputDomains: string[];
+  outputDomainsLoading: boolean;
   onBlockIp: (payload: {
     ipAddress: string;
     reason?: string;
     expiresAt?: string;
   }) => Promise<BlockedIpEntry>;
   onUnblockIp: (blockedIpId: string) => Promise<void>;
+  onUpdateOutputDomains: (domains: string[]) => Promise<void>;
   onlineUserIds: string[];
   handleApproveUser: (userId: string) => void;
   handleUpdateSubscription: (
@@ -59,8 +63,11 @@ export const AdminPanel = ({
   adminAccessLogs,
   blockedIps,
   adminSecurityLoading,
+  outputDomains,
+  outputDomainsLoading,
   onBlockIp,
   onUnblockIp,
+  onUpdateOutputDomains,
   onlineUserIds,
   handleApproveUser,
   handleUpdateSubscription,
@@ -83,6 +90,13 @@ export const AdminPanel = ({
   const [blockedIpAddress, setBlockedIpAddress] = React.useState("");
   const [blockedIpReason, setBlockedIpReason] = React.useState("");
   const [blockingIp, setBlockingIp] = React.useState(false);
+  const [domainDraft, setDomainDraft] = React.useState("");
+  const [domainList, setDomainList] = React.useState<string[]>(outputDomains);
+  const [savingDomains, setSavingDomains] = React.useState(false);
+
+  React.useEffect(() => {
+    setDomainList(outputDomains);
+  }, [outputDomains]);
 
   const confirmDelete = () => {
     if (deleteId) {
@@ -152,10 +166,26 @@ export const AdminPanel = ({
     }
   };
 
+  const handleAddDomain = () => {
+    const normalized = domainDraft.trim().toLowerCase().replace(/^https?:\/\//, "").replace(/\/+$/, "");
+    if (!normalized || domainList.includes(normalized)) return;
+    setDomainList((current) => [...current, normalized]);
+    setDomainDraft("");
+  };
+
+  const handleSaveDomains = async () => {
+    setSavingDomains(true);
+    try {
+      await onUpdateOutputDomains(domainList);
+    } finally {
+      setSavingDomains(false);
+    }
+  };
+
   return (
     <div key="admin">
       {deleteId && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-100 flex items-center justify-center p-4">
           <div
             onClick={() => setDeleteId(null)}
             className="absolute inset-0 bg-black/60 backdrop-blur-sm"
@@ -251,6 +281,69 @@ export const AdminPanel = ({
       </header>
 
       <div className="mb-8 grid grid-cols-1 gap-8 xl:grid-cols-[1.05fr_0.95fr]">
+        <section className="rounded-[2.5rem] border border-gray-100 bg-white p-8 shadow-sm dark:border-slate-700 dark:bg-slate-800 xl:col-span-2">
+          <div className="mb-6 flex items-center gap-3">
+            <Globe className="text-sky-500" size={20} />
+            <div>
+              <h3 className="text-xl font-black text-gray-900 dark:text-slate-100">
+                Output Domains
+              </h3>
+              <p className="text-sm font-medium text-gray-500 dark:text-slate-400">
+                Chọn trước 2-3 domain đầu ra để user gói Yearly chọn khi tạo link.
+              </p>
+            </div>
+          </div>
+
+          <div className="mb-4 flex flex-wrap gap-3">
+            {domainList.map((domain) => (
+              <div
+                key={domain}
+                className="inline-flex items-center gap-2 rounded-full bg-sky-50 px-4 py-2 text-xs font-black uppercase tracking-wider text-sky-700"
+              >
+                <span>{domain}</span>
+                {domain !== "hotsnew.click" && (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setDomainList((current) =>
+                        current.filter((item) => item !== domain),
+                      )
+                    }
+                    className="rounded-full p-1 text-sky-600 hover:bg-sky-100"
+                  >
+                    <X size={12} />
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+
+          <div className="flex flex-col gap-3 md:flex-row">
+            <input
+              type="text"
+              value={domainDraft}
+              onChange={(e) => setDomainDraft(e.target.value)}
+              placeholder="go.hotsnew.click"
+              className="flex-1 rounded-2xl border border-gray-100 bg-gray-50 px-5 py-4 font-medium text-gray-900 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+            />
+            <button
+              type="button"
+              onClick={handleAddDomain}
+              className="rounded-2xl bg-sky-600 px-6 py-4 text-xs font-black uppercase tracking-widest text-white"
+            >
+              Thêm domain
+            </button>
+            <button
+              type="button"
+              onClick={handleSaveDomains}
+              disabled={savingDomains || outputDomainsLoading}
+              className="rounded-2xl bg-gray-900 px-6 py-4 text-xs font-black uppercase tracking-widest text-white disabled:opacity-60"
+            >
+              {savingDomains ? "Đang lưu..." : "Lưu danh sách"}
+            </button>
+          </div>
+        </section>
+
         <section className="rounded-[2.5rem] border border-gray-100 bg-white p-8 shadow-sm dark:border-slate-700 dark:bg-slate-800">
           <div className="mb-6 flex items-center gap-3">
             <Shield size={20} className="text-orange-500" />
@@ -263,7 +356,7 @@ export const AdminPanel = ({
               </p>
             </div>
           </div>
-          <div className="max-h-[420px] space-y-3 overflow-auto">
+          <div className="max-h-105 space-y-3 overflow-auto">
             {adminSecurityLoading ? (
               <div className="rounded-2xl bg-gray-50 px-4 py-10 text-center text-sm font-medium text-gray-400 dark:bg-slate-900 dark:text-slate-500">
                 Đang tải access logs...
@@ -344,7 +437,7 @@ export const AdminPanel = ({
             </button>
           </form>
 
-          <div className="mt-5 max-h-[240px] space-y-3 overflow-auto">
+          <div className="mt-5 max-h-60 space-y-3 overflow-auto">
             {blockedIps.length === 0 ? (
               <div className="rounded-2xl bg-gray-50 px-4 py-8 text-center text-sm font-medium text-gray-400 dark:bg-slate-900 dark:text-slate-500">
                 Chưa có IP nào bị chặn.
@@ -385,7 +478,7 @@ export const AdminPanel = ({
 
       <div className="mb-6 rounded-2xl border border-gray-100 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-800">
         <div className="flex flex-wrap gap-4">
-          <div className="relative min-w-[200px] flex-1">
+          <div className="relative min-w-50 flex-1">
             <Search
               size={18}
               className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"
@@ -576,12 +669,12 @@ export const AdminPanel = ({
       </div>
 
       {selectedUser && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-100 flex items-center justify-center p-4">
           <div
             onClick={() => setSelectedUser(null)}
             className="absolute inset-0 bg-black/60 backdrop-blur-sm"
           />
-          <div className="relative max-h-[90vh] w-full max-w-3xl overflow-auto rounded-[2rem] border border-gray-100 bg-white shadow-2xl dark:border-slate-700 dark:bg-slate-800">
+          <div className="relative max-h-[90vh] w-full max-w-3xl overflow-auto rounded-4xl border border-gray-100 bg-white shadow-2xl dark:border-slate-700 dark:bg-slate-800">
             <div className="sticky top-0 flex items-center justify-between border-b border-gray-100 bg-white p-6 dark:border-slate-700 dark:bg-slate-800">
               <h3 className="text-xl font-black text-gray-900 dark:text-slate-100">
                 Chi tiết người dùng
@@ -627,7 +720,9 @@ export const AdminPanel = ({
                           : "bg-orange-100 text-orange-700",
                       )}
                     >
-                      {selectedUser.status === "approved" ? "ĐÃ DUYỆT" : "CHỜ DUYỆT"}
+                      {selectedUser.status === "approved"
+                        ? "ĐÃ DUYỆT"
+                        : "CHỜ DUYỆT"}
                     </span>
                     <span
                       className={cn(
@@ -692,13 +787,15 @@ export const AdminPanel = ({
                   <Link2 size={20} /> Link của user ({userLinks.length})
                 </h4>
                 {userLinksLoading ? (
-                  <div className="py-8 text-center text-gray-400">Đang tải...</div>
+                  <div className="py-8 text-center text-gray-400">
+                    Đang tải...
+                  </div>
                 ) : userLinks.length === 0 ? (
                   <div className="py-8 text-center text-gray-400">
                     Chưa có link nào
                   </div>
                 ) : (
-                  <div className="max-h-[300px] space-y-3 overflow-auto">
+                  <div className="max-h-75 space-y-3 overflow-auto">
                     {userLinks.map((link) => (
                       <div
                         key={link.id}
@@ -716,7 +813,9 @@ export const AdminPanel = ({
                               {link.clicks || 0} CLICKS
                             </span>
                             <span className="text-xs text-gray-400">
-                              {new Date(link.created_at).toLocaleDateString("vi-VN")}
+                              {new Date(link.created_at).toLocaleDateString(
+                                "vi-VN",
+                              )}
                             </span>
                           </div>
                         </div>

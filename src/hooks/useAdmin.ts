@@ -16,6 +16,8 @@ export interface AdminState {
   adminLoading: boolean;
   adminDirty: boolean;
   onlineUserIds: string[];
+  outputDomains: string[];
+  outputDomainsLoading: boolean;
 }
 
 export interface AdminActions {
@@ -23,6 +25,8 @@ export interface AdminActions {
   handleApproveUser: (targetUid: string, status?: boolean) => Promise<void>;
   handleUpdateSubscription: (targetUid: string, plan: "free" | "monthly" | "yearly") => Promise<void>;
   handleDeleteUser: (targetUid: string) => Promise<void>;
+  fetchOutputDomains: () => Promise<void>;
+  updateOutputDomains: (domains: string[]) => Promise<void>;
   setAdminDirty: (v: boolean) => void;
 }
 
@@ -31,6 +35,8 @@ export function useAdmin({ user, profile, fetchWithAuth, activeTab }: UseAdminPr
   const [adminLoading, setAdminLoading] = useState(false);
   const [adminDirty, setAdminDirty] = useState(true);
   const [onlineUserIds, setOnlineUserIds] = useState<string[]>([]);
+  const [outputDomains, setOutputDomains] = useState<string[]>(["hotsnew.click"]);
+  const [outputDomainsLoading, setOutputDomainsLoading] = useState(false);
 
   const isAdminRole = profile?.role === "admin" || user?.email === "devluan1996@gmail.com";
 
@@ -122,6 +128,41 @@ export function useAdmin({ user, profile, fetchWithAuth, activeTab }: UseAdminPr
     }
   }, [user, isAdminRole, fetchWithAuth, fetchAllUsers]);
 
+  const fetchOutputDomains = useCallback(async () => {
+    if (!user || !isAdminRole) return;
+    setOutputDomainsLoading(true);
+    try {
+      const response = await fetchWithAuth("/api/v1/settings/output-domains");
+      const data = await response.json();
+      setOutputDomains(
+        Array.isArray(data?.domains) && data.domains.length
+          ? data.domains
+          : ["hotsnew.click"],
+      );
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setOutputDomainsLoading(false);
+    }
+  }, [user, isAdminRole, fetchWithAuth]);
+
+  const updateOutputDomains = useCallback(
+    async (domains: string[]) => {
+      if (!user || !isAdminRole) return;
+      const response = await fetchWithAuth("/api/v1/admin/settings/output-domains", {
+        method: "PUT",
+        body: JSON.stringify({ domains }),
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || "Khong the cap nhat domains");
+      }
+      setOutputDomains(data.domains || ["hotsnew.click"]);
+      toast.success("Da cap nhat danh sach domain dau ra");
+    },
+    [user, isAdminRole, fetchWithAuth],
+  );
+
   // Presence/online users tracking
   useEffect(() => {
     if (!user?.id || !isAdminRole) {
@@ -168,18 +209,23 @@ export function useAdmin({ user, profile, fetchWithAuth, activeTab }: UseAdminPr
   useEffect(() => {
     if (user && isAdminRole && activeTab === "admin" && (adminDirty || allUsers.length === 0)) {
       fetchAllUsers();
+      fetchOutputDomains();
     }
-  }, [user, isAdminRole, activeTab, adminDirty, allUsers.length, fetchAllUsers]);
+  }, [user, isAdminRole, activeTab, adminDirty, allUsers.length, fetchAllUsers, fetchOutputDomains]);
 
   return {
     allUsers,
     adminLoading,
     adminDirty,
     onlineUserIds,
+    outputDomains,
+    outputDomainsLoading,
     fetchAllUsers,
     handleApproveUser,
     handleUpdateSubscription,
     handleDeleteUser,
+    fetchOutputDomains,
+    updateOutputDomains,
     setAdminDirty,
   };
 }

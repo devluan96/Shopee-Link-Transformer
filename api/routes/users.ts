@@ -3,6 +3,7 @@ import { authenticate, checkAdmin } from "../middleware/auth.js";
 import { getSupabase } from "../config/supabase.js";
 import { AuthenticatedRequest } from "../types/index.js";
 import * as userService from "../services/userService.js";
+import * as featureLimitService from "../services/featureLimitService.js";
 
 const router = Router();
 
@@ -47,6 +48,25 @@ router.post(
     }
   },
 );
+
+router.get("/user/limits", authenticate, async (req: AuthenticatedRequest, res) => {
+  try {
+    const supabase = getSupabase();
+    const userId = req.authUser?.id;
+    if (!userId) {
+      return res.status(400).json({ error: "Missing userId" });
+    }
+
+    const limits = await featureLimitService.getUserFeatureSnapshot(
+      supabase,
+      userId,
+      req.authProfile || undefined,
+    );
+    return res.json(limits);
+  } catch (e: any) {
+    return res.status(500).json({ error: e.message || "Failed to fetch limits" });
+  }
+});
 
 // GET /api/v1/admin/users - Get all users (admin only)
 router.get("/admin/users", authenticate, checkAdmin, async (req, res) => {

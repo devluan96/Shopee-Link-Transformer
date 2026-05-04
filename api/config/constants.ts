@@ -26,6 +26,15 @@ export const SUBSCRIPTION_PRICING: Record<
   },
 };
 
+export const LINK_DAILY_LIMITS: Record<
+  import("../types/index.js").SubscriptionPlan,
+  number
+> = {
+  free: 0,
+  monthly: 5,
+  yearly: 50,
+};
+
 export const CLOUDINARY_UPLOAD_FOLDER =
   process.env.CLOUDINARY_SHORTLINK_FOLDER || "hotsnew";
 

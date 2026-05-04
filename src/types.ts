@@ -2,6 +2,8 @@ export interface ConvertedLink {
   id?: string;
   short_code: string;
   original_url: string;
+  converted_url?: string;
+  custom_domain?: string;
   workspace_id?: string;
   folder_name?: string;
   tags?: string[];
@@ -12,6 +14,20 @@ export interface ConvertedLink {
   usage_context?: string;
   custom_image_url?: string;
   video_url?: string;
+  utm_source?: string;
+  utm_medium?: string;
+  utm_campaign?: string;
+  utm_content?: string;
+  utm_term?: string;
+  shopee_affiliate_params?: string;
+  tiktok_affiliate_params?: string;
+  ab_test_enabled?: boolean;
+  ab_variant_b_title?: string;
+  ab_variant_b_description?: string;
+  ab_variant_b_image_url?: string;
+  ab_variant_b_video_url?: string;
+  ab_variant_b_original_url?: string;
+  ab_variant_b_secondary_url?: string;
   created_at: string;
   expires_at?: string;
   user_id: string;
@@ -119,4 +135,24 @@ export interface AnalyticsData {
   growthPercentage: number;
   totalShopeeClicks?: number;
   totalTiktokClicks?: number;
+}
+
+export interface LinkQuota {
+  plan: "free" | "monthly" | "yearly" | "admin";
+  dailyLimit: number | null;
+  usedToday: number;
+  remainingToday: number | null;
+  canCreate: boolean;
+}
+
+export interface UserLimits {
+  plan: "free" | "monthly" | "yearly" | "admin";
+  canUseAbTesting: boolean;
+  dailyVideoUploads: number | null;
+  videoUploadsUsedToday: number;
+  videoUploadsRemainingToday: number | null;
+  maxTeamWorkspaces: number | null;
+  ownedTeamWorkspaces: number;
+  teamWorkspacesRemaining: number | null;
+  maxTeamMembersPerWorkspace: number | null;
 }

@@ -5,6 +5,7 @@ import { cloudinary } from "../config/cloudinary.js";
 import { upload } from "../config/multer.js";
 import { CLOUDINARY_UPLOAD_FOLDER } from "../config/constants.js";
 import { AuthenticatedRequest } from "../types/index.js";
+import * as featureLimitService from "../services/featureLimitService.js";
 
 const router = Router();
 
@@ -14,6 +15,43 @@ router.post(
   authenticate,
   async (req: AuthenticatedRequest, res) => {
     try {
+      const userId = req.authUser?.id;
+      if (!userId) {
+        return res.status(400).json({ error: "Unauthorized" });
+      }
+
+      const resourceType =
+        req.body?.resourceType === "video" ? "video" : "image";
+      const limits = featureLimitService.getFeatureLimitsForProfile(
+        req.authProfile || undefined,
+      );
+
+      if (resourceType === "video") {
+        if (limits.dailyVideoUploads === 0) {
+          return res.status(403).json({
+            error: "Gói hiện tại chưa hỗ trợ upload video.",
+          });
+        }
+
+        if (limits.dailyVideoUploads !== null) {
+          const usedToday = await featureLimitService.getVideoUploadUsageToday(
+            getSupabase(),
+            userId,
+          );
+          if (usedToday >= limits.dailyVideoUploads) {
+            return res.status(429).json({
+              error: `Bạn đã dùng hết ${limits.dailyVideoUploads} lượt upload video hôm nay.`,
+            });
+          }
+          await featureLimitService.recordFeatureUsage(
+            getSupabase(),
+            userId,
+            "video_upload",
+            { resourceType },
+          );
+        }
+      }
+
       const timestamp = Math.round(Date.now() / 1000);
       const signature = cloudinary.utils.api_sign_request(
         { folder: CLOUDINARY_UPLOAD_FOLDER, timestamp },

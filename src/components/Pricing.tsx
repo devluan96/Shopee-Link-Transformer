@@ -2,10 +2,12 @@ import React, { useEffect, useRef, useState } from "react";
 import { Check, Crown, LoaderCircle, Sparkles, Zap } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/src/lib/utils";
-import { UserProfile } from "@/src/types";
+import { LinkQuota, UserLimits, UserProfile } from "@/src/types";
 
 interface PricingProps {
   userProfile: UserProfile | null;
+  linkQuota: LinkQuota | null;
+  userLimits: UserLimits | null;
   checkoutLoadingPlan: "monthly" | "yearly" | null;
   onCheckout: (plan: "monthly" | "yearly") => Promise<void>;
   onCheckPaymentStatus: (
@@ -15,10 +17,13 @@ interface PricingProps {
 
 export const Pricing = ({
   userProfile,
+  linkQuota,
+  userLimits,
   checkoutLoadingPlan,
   onCheckout,
   onCheckPaymentStatus,
 }: PricingProps) => {
+  const zaloContactUrl = "https://zalo.me/0969361607";
   const currentPlan = userProfile?.subscription_plan || "free";
   const expiryTimestamp = userProfile?.subscription_expiry
     ? new Date(userProfile.subscription_expiry).getTime()
@@ -158,6 +163,15 @@ export const Pricing = ({
     return { disabled, buttonText, helperText };
   };
 
+  const getPlanDailyLimit = (planId: "monthly" | "yearly") =>
+    planId === "monthly" ? 5 : 50;
+  const getPlanVideoLimit = (planId: "monthly" | "yearly") =>
+    planId === "monthly" ? 3 : 20;
+  const getPlanWorkspaceLimit = (planId: "monthly" | "yearly") =>
+    planId === "monthly" ? 1 : 5;
+  const getPlanMemberLimit = (planId: "monthly" | "yearly") =>
+    planId === "monthly" ? 3 : 20;
+
   return (
     <div className="mx-auto max-w-6xl">
       <header className="mb-12">
@@ -206,6 +220,20 @@ export const Pricing = ({
               Chưa có ngày hết hạn để hiển thị đếm ngược.
             </p>
           )}
+          {linkQuota && (
+            <p className="text-center text-sm font-bold text-sky-600 dark:text-sky-300">
+              {linkQuota.dailyLimit === null
+                ? "Không giới hạn số link tạo mỗi ngày."
+                : `Hôm nay đã dùng ${linkQuota.usedToday}/${linkQuota.dailyLimit} link, còn lại ${linkQuota.remainingToday}.`}
+            </p>
+          )}
+          {userLimits && (
+            <p className="text-center text-sm font-bold text-violet-600 dark:text-violet-300">
+              {userLimits.dailyVideoUploads === null
+                ? "Không giới hạn upload video / ngày."
+                : `Video hôm nay: ${userLimits.videoUploadsUsedToday}/${userLimits.dailyVideoUploads}`}
+            </p>
+          )}
         </div>
       </div>
 
@@ -249,6 +277,9 @@ export const Pricing = ({
                 <p className="text-sm font-medium leading-relaxed text-gray-500 dark:text-slate-400">
                   {plan.description}
                 </p>
+                <div className="mt-4 inline-flex rounded-full border border-sky-100 bg-sky-50 px-4 py-2 text-[11px] font-black uppercase tracking-widest text-sky-700 dark:border-sky-500/20 dark:bg-sky-500/10 dark:text-sky-200">
+                  Tạo tối đa {getPlanDailyLimit(plan.id)} link / ngày
+                </div>
               </div>
 
               <div className="mb-10 flex-1 space-y-4">
@@ -295,6 +326,23 @@ export const Pricing = ({
             </div>
           );
         })}
+      </div>
+
+      <div className="mt-8 rounded-4xl border border-sky-100 bg-sky-50/80 p-6 text-center dark:border-sky-500/20 dark:bg-sky-500/10">
+        <p className="text-sm font-bold text-sky-900 dark:text-sky-100">
+          Cần mở gói nhanh hoặc cần admin kích hoạt thủ công?
+        </p>
+        <p className="mt-2 text-sm font-medium text-sky-700/80 dark:text-sky-200/80">
+          Liên hệ Zalo admin `0969361607` để được hỗ trợ nhanh hơn.
+        </p>
+        <a
+          href={zaloContactUrl}
+          target="_blank"
+          rel="noreferrer"
+          className="mt-4 inline-flex items-center justify-center rounded-2xl bg-sky-600 px-6 py-4 text-xs font-black uppercase tracking-widest text-white transition-all hover:bg-sky-700"
+        >
+          Liên hệ Zalo Admin
+        </a>
       </div>
 
       <footer className="mt-12 text-center">

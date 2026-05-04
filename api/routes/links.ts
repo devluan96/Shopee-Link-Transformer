@@ -2,8 +2,10 @@ import { Router } from "express";
 import { authenticate, checkAdmin } from "../middleware/auth.js";
 import { getSupabase } from "../config/supabase.js";
 import { AuthenticatedRequest } from "../types/index.js";
+import { LINK_DAILY_LIMITS } from "../config/constants.js";
 import * as linkService from "../services/linkService.js";
 import * as workspaceService from "../services/workspaceService.js";
+import * as featureLimitService from "../services/featureLimitService.js";
 import {
   attachTrackedSourcesToLinks,
   fetchOutboundEventsForLinkIds,
@@ -12,20 +14,140 @@ import {
 
 const router = Router();
 
+const VIETNAM_OFFSET_MS = 7 * 60 * 60 * 1000;
+
+function getVietnamDayRange() {
+  const now = new Date();
+  const vietnamNow = new Date(now.getTime() + VIETNAM_OFFSET_MS);
+  const startUtcMs =
+    Date.UTC(
+      vietnamNow.getUTCFullYear(),
+      vietnamNow.getUTCMonth(),
+      vietnamNow.getUTCDate(),
+      0,
+      0,
+      0,
+      0,
+    ) - VIETNAM_OFFSET_MS;
+
+  const start = new Date(startUtcMs);
+  const end = new Date(startUtcMs + 24 * 60 * 60 * 1000);
+
+  return {
+    startIso: start.toISOString(),
+    endIso: end.toISOString(),
+  };
+}
+
+function getDailyLinkLimit(req: AuthenticatedRequest) {
+  if (req.authProfile?.role === "admin") {
+    return null;
+  }
+
+  const plan = req.authProfile?.subscription_plan || "free";
+  return LINK_DAILY_LIMITS[plan];
+}
+
+async function getDailyLinkQuota(
+  supabase: ReturnType<typeof getSupabase>,
+  req: AuthenticatedRequest,
+  userId: string,
+) {
+  const dailyLimit = getDailyLinkLimit(req);
+
+  if (dailyLimit === null) {
+    return {
+      plan: "admin" as const,
+      dailyLimit: null,
+      usedToday: 0,
+      remainingToday: null,
+      canCreate: true,
+    };
+  }
+
+  const { startIso, endIso } = getVietnamDayRange();
+  const { count, error } = await supabase
+    .from("links")
+    .select("id", { count: "exact", head: true })
+    .eq("user_id", userId)
+    .gte("created_at", startIso)
+    .lt("created_at", endIso);
+
+  if (error) throw error;
+
+  const usedToday = count || 0;
+  const remainingToday = Math.max(0, dailyLimit - usedToday);
+
+  return {
+    plan: (req.authProfile?.subscription_plan || "free") as
+      | "free"
+      | "monthly"
+      | "yearly",
+    dailyLimit,
+    usedToday,
+    remainingToday,
+    canCreate: remainingToday > 0,
+  };
+}
+
 // POST /api/v1/convert - Create new link
 router.post("/convert", authenticate, async (req: AuthenticatedRequest, res) => {
   try {
     const supabase = getSupabase();
     const userId = req.authUser?.id;
+    const canUseCustomDomain =
+      req.authProfile?.role === "admin" ||
+      req.authProfile?.subscription_plan === "yearly";
     if (!userId) {
       return res.status(400).json({ error: "Missing userId" });
     }
 
-    const link = await linkService.createLink(supabase, userId, req.body);
+    const quota = await getDailyLinkQuota(supabase, req, userId);
+    if (!quota.canCreate) {
+      return res.status(429).json({
+        error:
+          quota.dailyLimit === 0
+            ? "Gói hiện tại chưa được phép tạo link."
+            : `Bạn đã dùng hết ${quota.dailyLimit} lượt tạo link hôm nay.`,
+        quota,
+      });
+    }
+
+    const payload = {
+      ...req.body,
+      customDomain: canUseCustomDomain ? req.body?.customDomain : undefined,
+    };
+
+    const featureLimits = featureLimitService.getFeatureLimitsForProfile(
+      req.authProfile || undefined,
+    );
+    if (payload.abTestEnabled && !featureLimits.canUseAbTesting) {
+      return res.status(403).json({
+        error: "A/B testing chỉ mở cho gói năm hoặc admin.",
+      });
+    }
+
+    const link = await linkService.createLink(supabase, userId, payload);
     return res.json(link);
   } catch (e: any) {
     console.error("❌ Convert error:", e);
     return res.status(400).json({ error: e.message || "Convert failed" });
+  }
+});
+
+router.get("/user/link-quota", authenticate, async (req: AuthenticatedRequest, res) => {
+  try {
+    const supabase = getSupabase();
+    const userId = req.authUser?.id;
+
+    if (!userId) {
+      return res.status(400).json({ error: "Missing userId" });
+    }
+
+    const quota = await getDailyLinkQuota(supabase, req, userId);
+    return res.json(quota);
+  } catch (e: any) {
+    return res.status(500).json({ error: e.message || "Failed to fetch quota" });
   }
 });
 
@@ -68,6 +190,21 @@ router.patch(
         "custom_image_url",
         "video_url",
         "secondary_url",
+        "custom_domain",
+        "utm_source",
+        "utm_medium",
+        "utm_campaign",
+        "utm_content",
+        "utm_term",
+        "shopee_affiliate_params",
+        "tiktok_affiliate_params",
+        "ab_test_enabled",
+        "ab_variant_b_title",
+        "ab_variant_b_description",
+        "ab_variant_b_image_url",
+        "ab_variant_b_video_url",
+        "ab_variant_b_original_url",
+        "ab_variant_b_secondary_url",
         "redirect_delay_ms",
         "usage_context",
         "expires_at",
@@ -80,6 +217,24 @@ router.patch(
         if (req.body[key] !== undefined) {
           updates[key] = req.body[key];
         }
+      }
+
+      const featureLimits = featureLimitService.getFeatureLimitsForProfile(
+        req.authProfile || undefined,
+      );
+      if (
+        (updates.ab_test_enabled ||
+          updates.ab_variant_b_title !== undefined ||
+          updates.ab_variant_b_description !== undefined ||
+          updates.ab_variant_b_image_url !== undefined ||
+          updates.ab_variant_b_video_url !== undefined ||
+          updates.ab_variant_b_original_url !== undefined ||
+          updates.ab_variant_b_secondary_url !== undefined) &&
+        !featureLimits.canUseAbTesting
+      ) {
+        return res.status(403).json({
+          error: "A/B testing chỉ mở cho gói năm hoặc admin.",
+        });
       }
 
       const link = await linkService.updateLink(supabase, linkId, userId, updates);

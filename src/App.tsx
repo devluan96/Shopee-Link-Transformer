@@ -2,7 +2,7 @@ import React, { useEffect, useState, Suspense, lazy } from "react";
 import { Menu, Zap } from "lucide-react";
 import { ThemeToggle } from "./components/common/ThemeToggle";
 import { Toaster } from "sonner";
-import { Tab } from "./types";
+import { LinkQuota, Tab, UserLimits } from "./types";
 
 // Hooks
 import {
@@ -73,6 +73,8 @@ export default function App() {
   // UI State
   const [activeTab, setActiveTab] = useState<Tab>("dashboard");
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [linkQuota, setLinkQuota] = useState<LinkQuota | null>(null);
+  const [userLimits, setUserLimits] = useState<UserLimits | null>(null);
 
   // Auth Hook
   const {
@@ -171,7 +173,13 @@ export default function App() {
     setVideoUrl,
     handleVideoUpload: handleVideoUploadBase,
     handleVideoFileUpload: handleVideoFileUploadBase,
-  } = useVideoUpload({ canAccessCreate: !!(profile?.subscription_plan && profile.subscription_plan !== "free" || profile?.role === "admin"), uploadAssetToCloudinary });
+  } = useVideoUpload({
+    canAccessCreate: !!(
+      (profile?.subscription_plan && profile.subscription_plan !== "free") ||
+      profile?.role === "admin"
+    ),
+    uploadAssetToCloudinary,
+  });
 
   // Wrapper to handle thumbnail auto-set and sync videoUrl to link creator
   const handleVideoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -208,10 +216,25 @@ export default function App() {
     folderName,
     tagsText,
     customImageUrl,
+    customDomain,
+    utmSource,
+    utmMedium,
+    utmCampaign,
+    utmContent,
+    utmTerm,
+    shopeeAffiliateParams,
+    tiktokAffiliateParams,
     secondaryUrl,
     secondaryTargetType,
     redirectDelayMs,
     expiresAt,
+    abTestEnabled,
+    abVariantBTitle,
+    abVariantBDescription,
+    abVariantBImageUrl,
+    abVariantBVideoUrl,
+    abVariantBOriginalUrl,
+    abVariantBSecondaryUrl,
     loading,
     error,
     result,
@@ -223,11 +246,26 @@ export default function App() {
     setFolderName,
     setTagsText,
     setCustomImageUrl,
+    setCustomDomain,
+    setUtmSource,
+    setUtmMedium,
+    setUtmCampaign,
+    setUtmContent,
+    setUtmTerm,
+    setShopeeAffiliateParams,
+    setTiktokAffiliateParams,
     setSecondaryUrl,
     setSecondaryTargetType,
     setRedirectDelayMs,
     setExpiresAt,
     setVideoUrl: setLinkCreatorVideoUrl,
+    setAbTestEnabled,
+    setAbVariantBTitle,
+    setAbVariantBDescription,
+    setAbVariantBImageUrl,
+    setAbVariantBVideoUrl,
+    setAbVariantBOriginalUrl,
+    setAbVariantBSecondaryUrl,
     setError,
     handleConvert,
   } = useLinkCreator({
@@ -235,11 +273,16 @@ export default function App() {
     profile,
     currentWorkspaceId,
     fetchWithAuth,
-    canAccessCreate: !!(profile?.subscription_plan && profile.subscription_plan !== "free" || profile?.role === "admin"),
+    canAccessCreate: !!(
+      (profile?.subscription_plan && profile.subscription_plan !== "free") ||
+      profile?.role === "admin"
+    ),
     onSuccess: () => {
       setLinksDirty(true);
       setStatsDirty(true);
       setAnalyticsDirty(true);
+      void refreshLinkQuota();
+      void refreshUserLimits();
     },
   });
 
@@ -250,17 +293,23 @@ export default function App() {
   };
 
   // Payment Hook
-  const { checkoutLoadingPlan, handleCreateZaloPayOrder, handleCheckZaloPayStatus } =
-    usePayment({ user, fetchWithAuth, refreshCurrentProfile });
+  const {
+    checkoutLoadingPlan,
+    handleCreateZaloPayOrder,
+    handleCheckZaloPayStatus,
+  } = usePayment({ user, fetchWithAuth, refreshCurrentProfile });
 
   // Admin Hook
   const {
     allUsers,
     adminLoading,
     onlineUserIds,
+    outputDomains,
+    outputDomainsLoading,
     handleApproveUser,
     handleUpdateSubscription,
     handleDeleteUser,
+    updateOutputDomains,
   } = useAdmin({ user, profile, fetchWithAuth, activeTab });
 
   // Clipboard Hook
@@ -287,19 +336,79 @@ export default function App() {
     activeTab,
   });
 
+  const refreshLinkQuota = React.useCallback(async () => {
+    if (!user) {
+      setLinkQuota(null);
+      return;
+    }
+
+    try {
+      const res = await fetchWithAuth("/api/v1/user/link-quota");
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to load link quota");
+      }
+
+      setLinkQuota(data);
+    } catch {
+      setLinkQuota(null);
+    }
+  }, [fetchWithAuth, user]);
+
+  const refreshUserLimits = React.useCallback(async () => {
+    if (!user) {
+      setUserLimits(null);
+      return;
+    }
+
+    try {
+      const res = await fetchWithAuth("/api/v1/user/limits");
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to load user limits");
+      }
+
+      setUserLimits(data);
+    } catch {
+      setUserLimits(null);
+    }
+  }, [fetchWithAuth, user]);
+
   // Derived state
-  const isAdminRole = profile?.role === "admin" || user?.email === "devluan1996@gmail.com";
-  const hasSub = profile?.subscription_plan && profile.subscription_plan !== "free";
+  const isAdminRole =
+    profile?.role === "admin" || user?.email === "devluan1996@gmail.com";
+  const hasSub =
+    profile?.subscription_plan && profile.subscription_plan !== "free";
+  const canUseCustomDomains =
+    isAdminRole || profile?.subscription_plan === "yearly";
+  const availableOutputDomains = outputDomains.length
+    ? outputDomains
+    : ["hotsnew.click"];
   const canEditCurrentWorkspace =
     currentWorkspace?.role === "owner" || currentWorkspace?.role === "editor";
-  const canAccessCreate = !!(isAdminRole || hasSub) && (!!currentWorkspaceId ? canEditCurrentWorkspace : true);
-  const blockedByWorkspaceRole = !!currentWorkspaceId && !canEditCurrentWorkspace;
-  const bootstrappingAccess = !!user && (authLoading || profileBootstrapLoading);
+  const canAccessCreate =
+    !!(isAdminRole || hasSub) &&
+    (!!currentWorkspaceId ? canEditCurrentWorkspace : true);
+  const blockedByWorkspaceRole =
+    !!currentWorkspaceId && !canEditCurrentWorkspace;
+  const bootstrappingAccess =
+    !!user && (authLoading || profileBootstrapLoading);
 
   useEffect(() => {
     setActiveTab("dashboard");
     setIsSidebarOpen(false);
   }, [user?.id]);
+
+  useEffect(() => {
+    void refreshLinkQuota();
+    void refreshUserLimits();
+  }, [refreshLinkQuota, refreshUserLimits, profile?.subscription_plan, profile?.role]);
+
+  useEffect(() => {
+    void refreshLinkQuota();
+  }, [refreshLinkQuota, profile?.subscription_plan, profile?.role]);
 
   useEffect(() => {
     if (!user) return;
@@ -433,6 +542,7 @@ export default function App() {
               workspaceLoading={workspaceLoading}
               members={members}
               membersLoading={membersLoading}
+              userLimits={userLimits}
               onSelectWorkspace={setCurrentWorkspaceId}
               onCreateWorkspace={createWorkspace}
               onInviteMember={inviteMember}
@@ -444,6 +554,8 @@ export default function App() {
           {activeTab === "pricing" && (
             <Pricing
               userProfile={profile}
+              linkQuota={linkQuota}
+              userLimits={userLimits}
               checkoutLoadingPlan={checkoutLoadingPlan}
               onCheckout={handleCreateZaloPayOrder}
               onCheckPaymentStatus={handleCheckZaloPayStatus}
@@ -469,6 +581,26 @@ export default function App() {
                 setTagsText={setTagsText}
                 customImageUrl={customImageUrl}
                 setCustomImageUrl={setCustomImageUrl}
+                customDomain={customDomain}
+                setCustomDomain={setCustomDomain}
+                availableOutputDomains={availableOutputDomains}
+                canUseCustomDomains={canUseCustomDomains}
+                linkQuota={linkQuota}
+                userLimits={userLimits}
+                utmSource={utmSource}
+                setUtmSource={setUtmSource}
+                utmMedium={utmMedium}
+                setUtmMedium={setUtmMedium}
+                utmCampaign={utmCampaign}
+                setUtmCampaign={setUtmCampaign}
+                utmContent={utmContent}
+                setUtmContent={setUtmContent}
+                utmTerm={utmTerm}
+                setUtmTerm={setUtmTerm}
+                shopeeAffiliateParams={shopeeAffiliateParams}
+                setShopeeAffiliateParams={setShopeeAffiliateParams}
+                tiktokAffiliateParams={tiktokAffiliateParams}
+                setTiktokAffiliateParams={setTiktokAffiliateParams}
                 secondaryUrl={secondaryUrl}
                 setSecondaryUrl={setSecondaryUrl}
                 secondaryTargetType={secondaryTargetType}
@@ -479,6 +611,20 @@ export default function App() {
                 setExpiresAt={setExpiresAt}
                 videoUrl={videoUrl}
                 setVideoUrl={handleSetVideoUrl}
+                abTestEnabled={abTestEnabled}
+                setAbTestEnabled={setAbTestEnabled}
+                abVariantBTitle={abVariantBTitle}
+                setAbVariantBTitle={setAbVariantBTitle}
+                abVariantBDescription={abVariantBDescription}
+                setAbVariantBDescription={setAbVariantBDescription}
+                abVariantBImageUrl={abVariantBImageUrl}
+                setAbVariantBImageUrl={setAbVariantBImageUrl}
+                abVariantBVideoUrl={abVariantBVideoUrl}
+                setAbVariantBVideoUrl={setAbVariantBVideoUrl}
+                abVariantBOriginalUrl={abVariantBOriginalUrl}
+                setAbVariantBOriginalUrl={setAbVariantBOriginalUrl}
+                abVariantBSecondaryUrl={abVariantBSecondaryUrl}
+                setAbVariantBSecondaryUrl={setAbVariantBSecondaryUrl}
                 uploadingVideo={uploadingVideo}
                 videoUploadProgress={videoUploadProgress}
                 videoUploadSuccess={videoUploadSuccess}
@@ -494,32 +640,32 @@ export default function App() {
                 copiedId={copiedId || ""}
               />
             ) : (
-                <div className="p-12 text-center bg-white rounded-[3rem] border border-gray-100 shadow-sm max-w-2xl mx-auto mt-12">
-                  <div className="w-20 h-20 bg-orange-50 rounded-3xl flex items-center justify-center mx-auto mb-6">
-                    <Zap className="text-orange-600 w-10 h-10 fill-current" />
-                  </div>
-                  <h3 className="text-2xl font-black text-gray-900 mb-4">
-                    {blockedByWorkspaceRole
-                      ? "Workspace ch? cho xem"
-                      : "N?ng c?p t?i kho?n"}
-                  </h3>
-                  <p className="text-gray-500 font-medium mb-8">
-                    {blockedByWorkspaceRole
-                      ? "Workspace hi?n t?i c?a b?n ?ang ? role viewer n?n kh?ng th? t?o ho?c ch?nh s?a link. H?y chuy?n sang workspace kh?c ho?c nh? owner n?ng quy?n l?n editor."
-                      : "T?nh n?ng chuy?n ??i link Shopee & TikTok d?nh ri?ng cho t?i kho?n Premium. Vui l?ng li?n h? Admin ?? n?ng c?p g?i c??c!"}
-                  </p>
-                  <button
-                    onClick={() =>
-                      setActiveTab(blockedByWorkspaceRole ? "team" : "dashboard")
-                    }
-                    className="px-8 py-4 bg-gray-900 text-white rounded-2xl font-black uppercase tracking-widest text-xs"
-                  >
-                    {blockedByWorkspaceRole
-                      ? "M? Team Workspace"
-                      : "Quay l?i Dashboard"}
-                  </button>
+              <div className="p-12 text-center bg-white rounded-[3rem] border border-gray-100 shadow-sm max-w-2xl mx-auto mt-12">
+                <div className="w-20 h-20 bg-orange-50 rounded-3xl flex items-center justify-center mx-auto mb-6">
+                  <Zap className="text-orange-600 w-10 h-10 fill-current" />
                 </div>
-              ))}
+                <h3 className="text-2xl font-black text-gray-900 mb-4">
+                  {blockedByWorkspaceRole
+                    ? "Workspace chỉ cho xem"
+                    : "Nâng cấp tài khoản"}
+                </h3>
+                <p className="text-gray-500 font-medium mb-8">
+                  {blockedByWorkspaceRole
+                    ? "Workspace hi?n t?i c?a b?n ?ang ? role viewer n?n kh?ng th? t?o ho?c ch?nh s?a link. H?y chuy?n sang workspace kh?c ho?c nh? owner n?ng quy?n l?n editor."
+                    : "T?nh n?ng chuy?n ??i link Shopee & TikTok d?nh ri?ng cho t?i kho?n Premium. Vui l?ng li?n h? Admin ?? n?ng c?p g?i c??c!"}
+                </p>
+                <button
+                  onClick={() =>
+                    setActiveTab(blockedByWorkspaceRole ? "team" : "dashboard")
+                  }
+                  className="px-8 py-4 bg-gray-900 text-white rounded-2xl font-black uppercase tracking-widest text-xs"
+                >
+                  {blockedByWorkspaceRole
+                    ? "M? Team Workspace"
+                    : "Quay l?i Dashboard"}
+                </button>
+              </div>
+            ))}
 
           {activeTab === "admin" && isAdminRole && (
             <AdminPanel
@@ -530,12 +676,15 @@ export default function App() {
               adminAccessLogs={adminAccessLogs}
               blockedIps={blockedIps}
               adminSecurityLoading={adminSecurityLoading}
+              outputDomains={outputDomains}
+              outputDomainsLoading={outputDomainsLoading}
               onBlockIp={blockIp}
               onUnblockIp={unblockIp}
               onlineUserIds={onlineUserIds}
               handleApproveUser={handleApproveUser}
               handleUpdateSubscription={handleUpdateSubscription}
               handleDeleteUser={handleDeleteUser}
+              onUpdateOutputDomains={updateOutputDomains}
               fetchWithAuth={fetchWithAuth}
             />
           )}

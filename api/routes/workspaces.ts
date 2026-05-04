@@ -3,6 +3,7 @@ import { authenticate } from "../middleware/auth.js";
 import { getSupabase } from "../config/supabase.js";
 import { AuthenticatedRequest } from "../types/index.js";
 import * as workspaceService from "../services/workspaceService.js";
+import * as featureLimitService from "../services/featureLimitService.js";
 
 const router = Router();
 
@@ -37,6 +38,26 @@ router.post(
       const userId = req.authUser?.id;
       if (!userId) {
         return res.status(400).json({ error: "Missing userId" });
+      }
+
+      const limits = featureLimitService.getFeatureLimitsForProfile(
+        req.authProfile || undefined,
+      );
+      if (limits.maxTeamWorkspaces === 0) {
+        return res.status(403).json({
+          error: "Gói hiện tại chưa hỗ trợ Team Workspace.",
+        });
+      }
+      if (limits.maxTeamWorkspaces !== null) {
+        const used = await featureLimitService.getOwnedTeamWorkspaceCount(
+          supabase,
+          userId,
+        );
+        if (used >= limits.maxTeamWorkspaces) {
+          return res.status(429).json({
+            error: `Bạn đã đạt giới hạn ${limits.maxTeamWorkspaces} Team Workspace cho gói hiện tại.`,
+          });
+        }
       }
 
       const workspace = await workspaceService.createWorkspace(supabase, userId, {
@@ -84,6 +105,26 @@ router.post(
       const workspaceId = req.params.workspaceId;
       if (!userId || !workspaceId) {
         return res.status(400).json({ error: "Missing userId or workspaceId" });
+      }
+
+      const limits = featureLimitService.getFeatureLimitsForProfile(
+        req.authProfile || undefined,
+      );
+      if (limits.maxTeamMembersPerWorkspace === 0) {
+        return res.status(403).json({
+          error: "Gói hiện tại chưa hỗ trợ mời thành viên vào workspace.",
+        });
+      }
+      if (limits.maxTeamMembersPerWorkspace !== null) {
+        const members = await featureLimitService.getWorkspaceMemberCount(
+          supabase,
+          workspaceId,
+        );
+        if (members >= limits.maxTeamMembersPerWorkspace) {
+          return res.status(429).json({
+            error: `Workspace này đã đạt giới hạn ${limits.maxTeamMembersPerWorkspace} thành viên cho gói hiện tại.`,
+          });
+        }
       }
 
       const member = await workspaceService.inviteWorkspaceMember(

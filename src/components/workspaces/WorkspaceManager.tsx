@@ -10,7 +10,12 @@ import {
   Users,
 } from "lucide-react";
 import { cn } from "@/src/lib/utils";
-import { Workspace, WorkspaceMember, WorkspaceRole } from "@/src/types";
+import {
+  UserLimits,
+  Workspace,
+  WorkspaceMember,
+  WorkspaceRole,
+} from "@/src/types";
 
 interface WorkspaceManagerProps {
   workspaces: Workspace[];
@@ -18,6 +23,7 @@ interface WorkspaceManagerProps {
   workspaceLoading: boolean;
   members: WorkspaceMember[];
   membersLoading: boolean;
+  userLimits?: UserLimits | null;
   onSelectWorkspace: (workspaceId: string) => void;
   onCreateWorkspace: (payload: {
     name: string;
@@ -42,6 +48,7 @@ export function WorkspaceManager({
   workspaceLoading,
   members,
   membersLoading,
+  userLimits: _userLimits,
   onSelectWorkspace,
   onCreateWorkspace,
   onInviteMember,

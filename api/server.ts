@@ -15,6 +15,7 @@ import { auditAccessLogs, blockBlockedIps } from "./middleware/security.js";
 
 // Routes
 import apiRoutes from "./routes/index.js";
+import { PublicLinkRecord } from "./types/index.js";
 
 // Utils
 import {
@@ -40,6 +41,58 @@ const isSocialPreviewBot = (userAgent: string) => {
   return /facebookexternalhit|Facebot|Twitterbot|LinkedInBot|Slackbot|Discordbot|TelegramBot|WhatsApp|SkypeUriPreview|Pinterest|Zalo|Googlebot|bingbot|embedly/i.test(
     userAgent,
   );
+};
+
+const parseCookieHeader = (cookieHeader?: string) => {
+  const cookieMap = new Map<string, string>();
+  if (!cookieHeader) return cookieMap;
+
+  cookieHeader.split(";").forEach((part) => {
+    const [rawKey, ...rest] = part.trim().split("=");
+    if (!rawKey || !rest.length) return;
+    cookieMap.set(rawKey, decodeURIComponent(rest.join("=")));
+  });
+
+  return cookieMap;
+};
+
+const getAbCookieName = (linkId: string) => `hn_ab_${linkId.slice(0, 8)}`;
+
+const resolveEffectiveAbLink = (
+  baseLink: PublicLinkRecord & Record<string, any>,
+  req: Request,
+  userAgent: string,
+) => {
+  const isPreviewBot = isSocialPreviewBot(userAgent);
+  if (!baseLink.ab_test_enabled || isPreviewBot) {
+    return { effectiveLink: baseLink, abVariant: "a" };
+  }
+
+  const cookieMap = parseCookieHeader(
+    typeof req.headers.cookie === "string" ? req.headers.cookie : undefined,
+  );
+  const abVariant =
+    cookieMap.get(getAbCookieName(baseLink.id)) === "b" ? "b" : "a";
+
+  if (abVariant !== "b") {
+    return { effectiveLink: baseLink, abVariant };
+  }
+
+  return {
+    abVariant,
+    effectiveLink: {
+      ...baseLink,
+      original_url: baseLink.ab_variant_b_original_url || baseLink.original_url,
+      secondary_url:
+        baseLink.ab_variant_b_secondary_url || baseLink.secondary_url,
+      custom_title: baseLink.ab_variant_b_title || baseLink.custom_title,
+      custom_description:
+        baseLink.ab_variant_b_description || baseLink.custom_description,
+      custom_image_url:
+        baseLink.ab_variant_b_image_url || baseLink.custom_image_url,
+      video_url: baseLink.ab_variant_b_video_url || baseLink.video_url,
+    },
+  };
 };
 
 const shouldIgnoreTrackingRequest = (req: Request) => {
@@ -128,7 +181,7 @@ app.get("/s/:shortCode", async (req, res) => {
     const { data: link, error } = await supabase
       .from("links")
       .select(
-        "id, user_id, short_code, original_url, custom_title, custom_description, custom_image_url, video_url, secondary_url, redirect_delay_ms, expires_at",
+        "id, user_id, short_code, original_url, custom_domain, custom_title, custom_description, custom_image_url, video_url, secondary_url, redirect_delay_ms, expires_at, ab_test_enabled, ab_variant_b_title, ab_variant_b_description, ab_variant_b_image_url, ab_variant_b_video_url, ab_variant_b_original_url, ab_variant_b_secondary_url",
       )
       .eq("short_code", shortCode)
       .maybeSingle();
@@ -173,25 +226,64 @@ app.get("/s/:shortCode", async (req, res) => {
     const { source, source_detail, referer } = getTrafficSourceFromRequest(req);
     const userAgent = req.headers["user-agent"] || "";
     const ipAddress = getClientIp(req);
-    const hasVideoLanding = Boolean(link.video_url?.trim());
+    const isPreviewBot = isSocialPreviewBot(
+      typeof userAgent === "string" ? userAgent : "",
+    );
+    let { effectiveLink, abVariant } = resolveEffectiveAbLink(
+      link,
+      req,
+      typeof userAgent === "string" ? userAgent : "",
+    );
+
+    if (link.ab_test_enabled && !isPreviewBot) {
+      const cookieMap = parseCookieHeader(
+        typeof req.headers.cookie === "string" ? req.headers.cookie : undefined,
+      );
+      const abCookieName = getAbCookieName(link.id);
+      if (!cookieMap.has(abCookieName)) {
+        abVariant = Math.random() < 0.5 ? "a" : "b";
+        res.append(
+          "Set-Cookie",
+          `${abCookieName}=${abVariant}; Max-Age=2592000; Path=/; SameSite=Lax`,
+        );
+        if (abVariant === "b") {
+          effectiveLink = {
+            ...link,
+            original_url: link.ab_variant_b_original_url || link.original_url,
+            secondary_url:
+              link.ab_variant_b_secondary_url || link.secondary_url,
+            custom_title: link.ab_variant_b_title || link.custom_title,
+            custom_description:
+              link.ab_variant_b_description || link.custom_description,
+            custom_image_url:
+              link.ab_variant_b_image_url || link.custom_image_url,
+            video_url: link.ab_variant_b_video_url || link.video_url,
+          } as typeof effectiveLink;
+        }
+      }
+    }
+
+    const hasVideoLanding = Boolean(effectiveLink.video_url?.trim());
     const shouldRenderPreviewPage =
       hasVideoLanding ||
-      isSocialPreviewBot(typeof userAgent === "string" ? userAgent : "");
+      isPreviewBot;
 
     if (shouldIgnoreTrackingRequest(req)) {
-      return res.redirect(link.original_url);
+      return res.redirect(effectiveLink.original_url);
     }
 
     if (shouldRenderPreviewPage) {
       const publicBaseUrl =
         getPublicBaseUrl(req) || `${req.protocol}://${req.get("host")}`;
-      const canonicalUrl = `${publicBaseUrl}/s/${encodeURIComponent(link.short_code)}`;
+      const canonicalUrl = `${publicBaseUrl}/s/${encodeURIComponent(
+        effectiveLink.short_code,
+      )}`;
       const clickTrackingUrl = `${publicBaseUrl}/api/v1/links/${link.id}/track`;
 
       return res
         .status(200)
         .type("html")
-        .send(renderLinkLandingPage(link, canonicalUrl, clickTrackingUrl));
+        .send(renderLinkLandingPage(effectiveLink, canonicalUrl, clickTrackingUrl));
     }
 
     let clickInserted = false;
@@ -212,9 +304,9 @@ app.get("/s/:shortCode", async (req, res) => {
     try {
       outboundInserted = await insertOutboundEvent(supabase, {
         link_id: link.id,
-        short_code: link.short_code,
+        short_code: effectiveLink.short_code,
         stage: "primary",
-        destination_url: link.original_url,
+        destination_url: effectiveLink.original_url,
         user_agent: typeof userAgent === "string" ? userAgent : null,
         ip_address: ipAddress,
         source,
@@ -239,7 +331,7 @@ app.get("/s/:shortCode", async (req, res) => {
     if (link.user_id && (clickInserted || outboundInserted)) {
       try {
         handleClickNotification(supabase, link.user_id, link.id, link.short_code, {
-          source: source || "direct",
+          source: abVariant === "b" ? `${source || "direct"}:ab-b` : source || "direct",
           created_at: new Date().toISOString(),
         });
       } catch (notifyError) {
@@ -247,7 +339,7 @@ app.get("/s/:shortCode", async (req, res) => {
       }
     }
 
-    return res.redirect(link.original_url);
+    return res.redirect(effectiveLink.original_url);
   } catch (e: any) {
     console.error("[REDIRECT ERROR]", {
       shortCode,
@@ -280,19 +372,26 @@ app.post("/api/v1/links/:linkId/track", async (req, res) => {
     // Fetch link details to get required fields
     const { data: link, error: linkError } = await supabase
       .from("links")
-      .select("id, user_id, short_code, original_url, secondary_url")
+      .select(
+        "id, user_id, short_code, original_url, secondary_url, ab_test_enabled, ab_variant_b_title, ab_variant_b_description, ab_variant_b_image_url, ab_variant_b_video_url, ab_variant_b_original_url, ab_variant_b_secondary_url",
+      )
       .eq("id", linkId)
       .maybeSingle();
 
     if (linkError || !link) {
       return res.status(404).json({ error: "Link not found" });
     }
+    const { effectiveLink } = resolveEffectiveAbLink(
+      link,
+      req,
+      typeof userAgent === "string" ? userAgent : "",
+    );
 
     // Record real click when user clicks overlay (not just page load)
     let clickInserted = false;
     try {
       clickInserted = await insertClickWithTracking(supabase, {
-        link_id: link.id,
+        link_id: effectiveLink.id,
         user_agent: userAgent,
         ip_address: ipAddress,
         source,
@@ -306,10 +405,10 @@ app.post("/api/v1/links/:linkId/track", async (req, res) => {
     let outboundInserted = false;
     try {
       outboundInserted = await insertOutboundEvent(supabase, {
-        link_id: linkId,
-        short_code: link.short_code,
+        link_id: effectiveLink.id,
+        short_code: effectiveLink.short_code,
         stage: "primary",
-        destination_url: link.original_url,
+        destination_url: effectiveLink.original_url,
         user_agent: userAgent,
         ip_address: ipAddress,
         source,
@@ -335,7 +434,13 @@ app.post("/api/v1/links/:linkId/track", async (req, res) => {
           source: source || "direct",
           created_at: new Date().toISOString(),
         };
-        handleClickNotification(supabase, link.user_id, link.id, link.short_code, clickData);
+        handleClickNotification(
+          supabase,
+          link.user_id,
+          effectiveLink.id,
+          effectiveLink.short_code,
+          clickData,
+        );
       } catch (notifyError) {
         console.error("Notification error:", notifyError);
       }
@@ -371,24 +476,33 @@ app.post("/api/v1/links/:linkId/track-outbound", async (req, res) => {
 
     const { data: link, error: linkError } = await supabase
       .from("links")
-      .select("id, short_code, original_url, secondary_url")
+      .select(
+        "id, short_code, original_url, secondary_url, ab_test_enabled, ab_variant_b_title, ab_variant_b_description, ab_variant_b_image_url, ab_variant_b_video_url, ab_variant_b_original_url, ab_variant_b_secondary_url",
+      )
       .eq("id", linkId)
       .maybeSingle();
 
     if (linkError || !link) {
       return res.status(404).json({ error: "Link not found" });
     }
+    const { effectiveLink } = resolveEffectiveAbLink(
+      link,
+      req,
+      typeof userAgent === "string" ? userAgent : "",
+    );
 
     const destinationUrl =
-      stage === "secondary" ? link.secondary_url : link.original_url;
+      stage === "secondary"
+        ? effectiveLink.secondary_url
+        : effectiveLink.original_url;
 
     if (!destinationUrl) {
       return res.status(400).json({ error: "Missing destination URL" });
     }
 
     const inserted = await insertOutboundEvent(supabase, {
-      link_id: linkId,
-      short_code: link.short_code,
+      link_id: effectiveLink.id,
+      short_code: effectiveLink.short_code,
       stage,
       destination_url: destinationUrl,
       user_agent: typeof userAgent === "string" ? userAgent : null,

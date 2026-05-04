@@ -6,6 +6,7 @@ import paymentRouter from "./payment.js";
 import uploadRouter from "./upload.js";
 import workspacesRouter from "./workspaces.js";
 import securityRouter from "./security.js";
+import settingsRouter from "./settings.js";
 
 const router = Router();
 
@@ -17,5 +18,6 @@ router.use("/api/v1", paymentRouter);
 router.use("/api/v1", uploadRouter);
 router.use("/api/v1", workspacesRouter);
 router.use("/api/v1", securityRouter);
+router.use("/api/v1", settingsRouter);
 
 export default router;

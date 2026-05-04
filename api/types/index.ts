@@ -25,6 +25,7 @@ export interface PublicLinkRecord {
   id: string;
   short_code: string;
   original_url: string;
+  custom_domain?: string | null;
   workspace_id?: string | null;
   folder_name?: string | null;
   tags?: string[] | null;
@@ -34,6 +35,20 @@ export interface PublicLinkRecord {
   custom_description?: string | null;
   custom_image_url?: string | null;
   video_url?: string | null;
+  utm_source?: string | null;
+  utm_medium?: string | null;
+  utm_campaign?: string | null;
+  utm_content?: string | null;
+  utm_term?: string | null;
+  shopee_affiliate_params?: string | null;
+  tiktok_affiliate_params?: string | null;
+  ab_test_enabled?: boolean | null;
+  ab_variant_b_title?: string | null;
+  ab_variant_b_description?: string | null;
+  ab_variant_b_image_url?: string | null;
+  ab_variant_b_video_url?: string | null;
+  ab_variant_b_original_url?: string | null;
+  ab_variant_b_secondary_url?: string | null;
 }
 
 export interface LinkMetaRecord {

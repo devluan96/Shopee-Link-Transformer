@@ -173,7 +173,7 @@ export const Analytics = ({
               </div>
             </div>
 
-            <div className="h-[350px] min-h-[350px] w-full">
+            <div className="h-87.5 min-h-87.5 w-full">
               {history.length > 0 ? (
                 <ResponsiveContainer width="100%" height="100%" minHeight={350}>
                   <AreaChart data={history}>
@@ -289,7 +289,7 @@ export const Analytics = ({
                   Nguồn Lưu Lượng
                 </h3>
               </div>
-              <div className="mb-6 h-[220px] min-h-[220px]">
+              <div className="mb-6 h-55 min-h-55">
                 {trafficSources.length > 0 ? (
                   <ResponsiveContainer
                     width="100%"

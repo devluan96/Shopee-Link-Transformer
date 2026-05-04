@@ -8,6 +8,7 @@ import {
   List,
   Lock,
   LogOut,
+  MessageCircle,
   PlusCircle,
   Tag,
   User,
@@ -83,6 +84,7 @@ export const Sidebar = ({
   isOpen,
   onClose,
 }: SidebarProps) => {
+  const zaloContactUrl = "https://zalo.me/0969361607";
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const userMenuRef = useRef<HTMLDivElement>(null);
 
@@ -252,6 +254,15 @@ export const Sidebar = ({
           <div className="hidden lg:flex justify-center mb-4">
             <ThemeToggle />
           </div>
+          <a
+            href={zaloContactUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="mb-4 flex items-center justify-center gap-2 rounded-2xl border border-sky-100 bg-sky-50 px-4 py-4 text-xs font-black uppercase tracking-widest text-sky-700 transition-all hover:bg-sky-100 dark:border-sky-500/20 dark:bg-sky-500/10 dark:text-sky-200 dark:hover:bg-sky-500/20"
+          >
+            <MessageCircle size={16} />
+            Liên hệ Zalo Admin
+          </a>
           <div className="mb-4">
             <InstallAppButton />
           </div>
