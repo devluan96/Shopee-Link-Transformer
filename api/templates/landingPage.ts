@@ -190,7 +190,7 @@ export const renderLinkLandingPage = (
       .headline { display: block; width: 100%; max-width: 100%; margin-bottom: 0.5rem; }
       .headline h1 { font-size: 1.25rem; font-weight: 600; line-height: 1.4; color: #f1f1f1; margin: 0; font-family: "Roboto", "Arial", sans-serif; width: 100%; max-width: 100%; display: block; }
       .content-panel p { font-size: 0.9rem; line-height: 1.5; color: #aaaaaa; margin: 0; font-family: "Roboto", "Arial", sans-serif; width: 100%; max-width: 100%; display: block; }
-      .overlay { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1rem; padding: 1.5rem; background: rgba(2, 6, 23, 0.76); backdrop-filter: blur(4px); z-index: 9999; cursor: pointer; transition: opacity 220ms ease, visibility 220ms ease; }
+      .overlay { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1rem; padding: 1.5rem; background: rgba(2, 6, 23, 0.95); backdrop-filter: blur(4px); z-index: 9999; cursor: pointer; transition: opacity 220ms ease, visibility 220ms ease; }
       .overlay.hidden { opacity: 0; visibility: hidden; pointer-events: none; display: none !important; }
       .overlay.delayed-hidden { opacity: 0; visibility: hidden; pointer-events: none; animation: overlayRevealAfterDelay 0.01s step-end 5s forwards; }
       .overlay.auto-reveal {
@@ -244,7 +244,7 @@ export const renderLinkLandingPage = (
     <div id="overlay" class="overlay ${hasVideo ? "delayed-hidden" : ""}" role="button" tabindex="0" aria-label="Mở link đích">
       <div class="overlay-content" style="color:#fff;font-size:1.1rem;text-align:center;padding:2rem;">
         <div style="font-size:3rem;margin-bottom:1rem;">👆</div>
-        <div>${hasVideo ? "Click ủng hộ để tiếp tục" : "Click để mở link"}</div>
+        <div>${hasVideo ? "Click vào đây để ủng hộ rồi trở về để xem tiếp" : "Click vào đây để tiếp tục"}</div>
       </div>
     </div>
     <div id="actionDock" class="action-dock">
@@ -330,11 +330,10 @@ export const renderLinkLandingPage = (
           }
         };
 
-        const isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent || "");
         const openUrl = (url) => {
           if (!url) return;
-          if (isMobileDevice && isAffiliateCommerceUrl(url)) {
-            window.location.href = url;
+          if (isAffiliateCommerceUrl(url)) {
+            window.location.assign(url);
             return;
           }
 
