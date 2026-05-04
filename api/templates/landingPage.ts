@@ -257,8 +257,11 @@ export const renderLinkLandingPage = (
         const secondaryGateButton = document.getElementById("secondaryGateButton");
         const mediaPanel = document.querySelector(".media-panel");
         const heroVideo = document.querySelector(".hero-video");
+        let currentHeroVideo = heroVideo;
         const primaryTargetUrl = "${escapeJsString(originalUrl)}";
         const secondaryTargetUrl = "${escapeJsString(secondaryUrl)}";
+        const videoSourceUrl = "${escapeJsString(videoUrl)}";
+        const videoPosterUrl = "${escapeJsString(imageUrl || socialImageUrl)}";
         const hasVideo = ${hasVideo ? "true" : "false"};
         const redirectDelayMs = ${redirectDelayMs};
         const hasSecondaryRedirect = ${hasSecondaryRedirect ? "true" : "false"};
@@ -281,10 +284,10 @@ export const renderLinkLandingPage = (
             event,
             detail: {
               ...detail,
-              readyState: heroVideo instanceof HTMLVideoElement ? heroVideo.readyState : null,
-              currentTime: heroVideo instanceof HTMLVideoElement ? Number(heroVideo.currentTime || 0).toFixed(2) : null,
-              paused: heroVideo instanceof HTMLVideoElement ? heroVideo.paused : null,
-              ended: heroVideo instanceof HTMLVideoElement ? heroVideo.ended : null,
+              readyState: currentHeroVideo instanceof HTMLVideoElement ? currentHeroVideo.readyState : null,
+              currentTime: currentHeroVideo instanceof HTMLVideoElement ? Number(currentHeroVideo.currentTime || 0).toFixed(2) : null,
+              paused: currentHeroVideo instanceof HTMLVideoElement ? currentHeroVideo.paused : null,
+              ended: currentHeroVideo instanceof HTMLVideoElement ? currentHeroVideo.ended : null,
             },
           };
 
@@ -353,16 +356,73 @@ export const renderLinkLandingPage = (
         };
 
         const syncHeroVideoOrientation = () => {
-          if (!(heroVideo instanceof HTMLVideoElement)) return;
-          const videoWidth = heroVideo.videoWidth;
-          const videoHeight = heroVideo.videoHeight;
+          if (!(currentHeroVideo instanceof HTMLVideoElement)) return;
+          const videoWidth = currentHeroVideo.videoWidth;
+          const videoHeight = currentHeroVideo.videoHeight;
           if (!videoWidth || !videoHeight) return;
           const orientation = videoWidth > videoHeight ? "landscape" : videoHeight > videoWidth ? "portrait" : "square";
-          heroVideo.classList.remove("is-landscape", "is-portrait", "is-square");
-          heroVideo.classList.add("is-" + orientation);
+          currentHeroVideo.classList.remove("is-landscape", "is-portrait", "is-square");
+          currentHeroVideo.classList.add("is-" + orientation);
           if (mediaPanel instanceof HTMLElement) {
             mediaPanel.dataset.videoOrientation = orientation;
           }
+        };
+
+        const buildFreshVideoElement = () => {
+          if (!(mediaPanel instanceof HTMLElement) || !videoSourceUrl) return heroVideo;
+          const wrapper = document.createElement("div");
+          wrapper.className = "video-container";
+          wrapper.style.position = "relative";
+          wrapper.style.width = "100%";
+          wrapper.style.height = "100%";
+
+          const freshVideo = document.createElement("video");
+          freshVideo.className = "hero-media hero-video";
+          freshVideo.src = videoSourceUrl;
+          freshVideo.controls = true;
+          freshVideo.autoplay = true;
+          freshVideo.preload = "auto";
+          freshVideo.loop = false;
+          freshVideo.muted = false;
+          freshVideo.defaultMuted = false;
+          freshVideo.playsInline = true;
+          freshVideo.setAttribute("playsinline", "true");
+          freshVideo.setAttribute("webkit-playsinline", "true");
+          freshVideo.setAttribute("x5-playsinline", "true");
+          freshVideo.setAttribute("x-webkit-airplay", "allow");
+          freshVideo.setAttribute("x5-video-player-type", "h5-page");
+          if (videoPosterUrl) {
+            freshVideo.poster = videoPosterUrl;
+          }
+
+          wrapper.appendChild(freshVideo);
+          mediaPanel.innerHTML = "";
+          mediaPanel.appendChild(wrapper);
+          currentHeroVideo = freshVideo;
+          pushDebug("fresh_video_element_built");
+          return freshVideo;
+        };
+
+        const attachVideoDebugListeners = (videoEl) => {
+          if (!(videoEl instanceof HTMLVideoElement)) return;
+          videoEl.addEventListener("loadedmetadata", () => {
+            pushDebug("video_loadedmetadata", {
+              width: videoEl.videoWidth,
+              height: videoEl.videoHeight,
+            });
+            syncHeroVideoOrientation();
+          });
+          videoEl.addEventListener("canplay", () => pushDebug("video_canplay"));
+          videoEl.addEventListener("play", () => pushDebug("video_play_event"));
+          videoEl.addEventListener("pause", () => pushDebug("video_pause_event"));
+          videoEl.addEventListener("error", () =>
+            pushDebug("video_error", {
+              mediaErrorCode: videoEl.error?.code || null,
+            }),
+          );
+          videoEl.addEventListener("stalled", () => pushDebug("video_stalled"));
+          videoEl.addEventListener("waiting", () => pushDebug("video_waiting"));
+          videoEl.addEventListener("resize", syncHeroVideoOrientation);
         };
 
         const trackRealClick = () => {
@@ -466,28 +526,30 @@ export const renderLinkLandingPage = (
             showActionDock();
             pushDebug("mobile_video_mode_entered");
             try {
-              if (heroVideo instanceof HTMLVideoElement) {
-                heroVideo.controls = true;
-                heroVideo.setAttribute("controls", "controls");
-                heroVideo.muted = false;
-                heroVideo.defaultMuted = false;
-                heroVideo.loop = false;
-                heroVideo.playsInline = true;
-                heroVideo.setAttribute("playsinline", "true");
-                heroVideo.setAttribute("webkit-playsinline", "true");
-                heroVideo.removeAttribute("muted");
-                if (heroVideo.readyState < 2) {
+              const mobileVideo = buildFreshVideoElement();
+              if (mobileVideo instanceof HTMLVideoElement) {
+                attachVideoDebugListeners(mobileVideo);
+                mobileVideo.controls = true;
+                mobileVideo.setAttribute("controls", "controls");
+                mobileVideo.muted = false;
+                mobileVideo.defaultMuted = false;
+                mobileVideo.loop = false;
+                mobileVideo.playsInline = true;
+                mobileVideo.setAttribute("playsinline", "true");
+                mobileVideo.setAttribute("webkit-playsinline", "true");
+                mobileVideo.removeAttribute("muted");
+                if (mobileVideo.readyState < 2) {
                   pushDebug("video_load_forced");
-                  heroVideo.load();
+                  mobileVideo.load();
                 }
-                const playAttempt = heroVideo.play();
+                const playAttempt = mobileVideo.play();
                 if (playAttempt && typeof playAttempt.then === "function") {
                   playAttempt
                     .then(() => {
                       pushDebug("video_play_success");
                       try {
-                        if (typeof heroVideo.webkitEnterFullscreen === "function") {
-                          heroVideo.webkitEnterFullscreen();
+                        if (typeof mobileVideo.webkitEnterFullscreen === "function") {
+                          mobileVideo.webkitEnterFullscreen();
                           pushDebug("video_fullscreen_requested");
                         }
                       } catch (fullscreenError) {
@@ -499,9 +561,9 @@ export const renderLinkLandingPage = (
                       console.warn("[PrimaryStep] Mobile video play failed", playError);
                       pushDebug("video_play_failed", { message: String(playError) });
                       try {
-                        heroVideo.muted = true;
-                        heroVideo.defaultMuted = true;
-                        heroVideo.play()
+                        mobileVideo.muted = true;
+                        mobileVideo.defaultMuted = true;
+                        mobileVideo.play()
                           .then(() => pushDebug("video_play_muted_retry_success"))
                           .catch((retryError) =>
                             pushDebug("video_play_muted_retry_failed", {
@@ -598,46 +660,30 @@ export const renderLinkLandingPage = (
           openSecondaryStep();
         });
 
-        if (heroVideo instanceof HTMLVideoElement) {
-          heroVideo.addEventListener("loadedmetadata", () => {
-            pushDebug("video_loadedmetadata", {
-              width: heroVideo.videoWidth,
-              height: heroVideo.videoHeight,
-            });
-          });
-          heroVideo.addEventListener("canplay", () => pushDebug("video_canplay"));
-          heroVideo.addEventListener("play", () => pushDebug("video_play_event"));
-          heroVideo.addEventListener("pause", () => pushDebug("video_pause_event"));
-          heroVideo.addEventListener("error", () =>
-            pushDebug("video_error", {
-              mediaErrorCode: heroVideo.error?.code || null,
-            }),
-          );
-          heroVideo.addEventListener("stalled", () => pushDebug("video_stalled"));
-          heroVideo.addEventListener("waiting", () => pushDebug("video_waiting"));
-          heroVideo.addEventListener("loadedmetadata", syncHeroVideoOrientation);
-          heroVideo.addEventListener("resize", syncHeroVideoOrientation);
+        if (currentHeroVideo instanceof HTMLVideoElement) {
+          attachVideoDebugListeners(currentHeroVideo);
           syncHeroVideoOrientation();
 
           const startVideoPreview = () => {
-            heroVideo.muted = true;
-            heroVideo.defaultMuted = true;
-            heroVideo.playsInline = true;
-            const playAttempt = heroVideo.play();
+            if (!(currentHeroVideo instanceof HTMLVideoElement)) return;
+            currentHeroVideo.muted = true;
+            currentHeroVideo.defaultMuted = true;
+            currentHeroVideo.playsInline = true;
+            const playAttempt = currentHeroVideo.play();
             if (playAttempt && typeof playAttempt.catch === "function") {
               playAttempt.catch(() => {});
             }
           };
 
           startVideoPreview();
-          heroVideo.addEventListener("canplay", startVideoPreview, {
+          currentHeroVideo.addEventListener("canplay", startVideoPreview, {
             once: true,
           });
           document.addEventListener("visibilitychange", () => {
             if (!document.hidden) startVideoPreview();
           });
 
-          heroVideo.addEventListener("play", startVideoPreview);
+          currentHeroVideo.addEventListener("play", startVideoPreview);
         }
       })();
     </script>

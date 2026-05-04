@@ -63,14 +63,14 @@ export const Analytics = ({
       bg: "bg-orange-50",
     },
     {
-      label: "Ra Shopee",
+      label: "Click Shopee",
       value: totalShopeeClicks.toLocaleString(),
       icon: ShoppingBag,
       color: "text-emerald-600",
       bg: "bg-emerald-50",
     },
     {
-      label: "Ra TikTok",
+      label: "Click TikTok",
       value: totalTiktokClicks.toLocaleString(),
       icon: PlaySquare,
       color: "text-cyan-700",
@@ -178,9 +178,23 @@ export const Analytics = ({
                 <ResponsiveContainer width="100%" height="100%" minHeight={350}>
                   <AreaChart data={history}>
                     <defs>
-                      <linearGradient id="colorClicks" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#FB923C" stopOpacity={0.3} />
-                        <stop offset="95%" stopColor="#FB923C" stopOpacity={0} />
+                      <linearGradient
+                        id="colorClicks"
+                        x1="0"
+                        y1="0"
+                        x2="0"
+                        y2="1"
+                      >
+                        <stop
+                          offset="5%"
+                          stopColor="#FB923C"
+                          stopOpacity={0.3}
+                        />
+                        <stop
+                          offset="95%"
+                          stopColor="#FB923C"
+                          stopOpacity={0}
+                        />
                       </linearGradient>
                     </defs>
                     <XAxis
@@ -277,7 +291,11 @@ export const Analytics = ({
               </div>
               <div className="mb-6 h-[220px] min-h-[220px]">
                 {trafficSources.length > 0 ? (
-                  <ResponsiveContainer width="100%" height="100%" minHeight={220}>
+                  <ResponsiveContainer
+                    width="100%"
+                    height="100%"
+                    minHeight={220}
+                  >
                     <BarChart data={trafficSources}>
                       <XAxis
                         dataKey="name"
@@ -288,7 +306,11 @@ export const Analytics = ({
                       <YAxis
                         axisLine={false}
                         tickLine={false}
-                        tick={{ fontSize: 10, fontWeight: 700, fill: "#9CA3AF" }}
+                        tick={{
+                          fontSize: 10,
+                          fontWeight: 700,
+                          fill: "#9CA3AF",
+                        }}
                       />
                       <Tooltip />
                       <Bar dataKey="value" radius={[10, 10, 0, 0]}>
