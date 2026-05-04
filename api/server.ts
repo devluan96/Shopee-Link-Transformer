@@ -42,6 +42,22 @@ const isSocialPreviewBot = (userAgent: string) => {
   );
 };
 
+const shouldIgnoreTrackingRequest = (req: Request) => {
+  if (req.method === "HEAD") return true;
+
+  const purpose = String(req.headers.purpose || "").toLowerCase();
+  const secPurpose = String(req.headers["sec-purpose"] || "").toLowerCase();
+  const xPurpose = String(req.headers["x-purpose"] || "").toLowerCase();
+  const xMoz = String(req.headers["x-moz"] || "").toLowerCase();
+
+  return (
+    purpose.includes("prefetch") ||
+    secPurpose.includes("prefetch") ||
+    xPurpose.includes("preview") ||
+    xMoz.includes("prefetch")
+  );
+};
+
 // A. MIDDLEWARES
 app.use(
   cors({
@@ -162,6 +178,10 @@ app.get("/s/:shortCode", async (req, res) => {
       hasVideoLanding ||
       isSocialPreviewBot(typeof userAgent === "string" ? userAgent : "");
 
+    if (shouldIgnoreTrackingRequest(req)) {
+      return res.redirect(link.original_url);
+    }
+
     if (shouldRenderPreviewPage) {
       const publicBaseUrl =
         getPublicBaseUrl(req) || `${req.protocol}://${req.get("host")}`;
@@ -174,8 +194,9 @@ app.get("/s/:shortCode", async (req, res) => {
         .send(renderLinkLandingPage(link, canonicalUrl, clickTrackingUrl));
     }
 
+    let clickInserted = false;
     try {
-      await insertClickWithTracking(supabase, {
+      clickInserted = await insertClickWithTracking(supabase, {
         link_id: link.id,
         user_agent: userAgent,
         ip_address: ipAddress,
@@ -187,14 +208,9 @@ app.get("/s/:shortCode", async (req, res) => {
       console.error("Direct click tracking error:", trackError);
     }
 
+    let outboundInserted = false;
     try {
-      await supabase.rpc("increment_link_clicks", { link_id: link.id });
-    } catch (rpcError: any) {
-      console.error("Direct increment clicks failed:", rpcError?.message || rpcError);
-    }
-
-    try {
-      await insertOutboundEvent(supabase, {
+      outboundInserted = await insertOutboundEvent(supabase, {
         link_id: link.id,
         short_code: link.short_code,
         stage: "primary",
@@ -209,7 +225,18 @@ app.get("/s/:shortCode", async (req, res) => {
       console.error("Direct outbound tracking error:", trackError);
     }
 
-    if (link.user_id) {
+    if (outboundInserted) {
+      try {
+        await supabase.rpc("increment_link_clicks", { link_id: link.id });
+      } catch (rpcError: any) {
+        console.error(
+          "Direct increment clicks failed:",
+          rpcError?.message || rpcError,
+        );
+      }
+    }
+
+    if (link.user_id && (clickInserted || outboundInserted)) {
       try {
         handleClickNotification(supabase, link.user_id, link.id, link.short_code, {
           source: source || "direct",
@@ -241,6 +268,9 @@ app.post("/api/v1/links/:linkId/track", async (req, res) => {
     if (!linkId) {
       return res.status(400).json({ error: "Missing linkId" });
     }
+    if (shouldIgnoreTrackingRequest(req)) {
+      return res.json({ success: true, ignored: true });
+    }
 
     const supabase = getSupabase();
     const { source, source_detail, referer } = getTrafficSourceFromRequest(req);
@@ -259,8 +289,9 @@ app.post("/api/v1/links/:linkId/track", async (req, res) => {
     }
 
     // Record real click when user clicks overlay (not just page load)
+    let clickInserted = false;
     try {
-      await insertClickWithTracking(supabase, {
+      clickInserted = await insertClickWithTracking(supabase, {
         link_id: link.id,
         user_agent: userAgent,
         ip_address: ipAddress,
@@ -272,15 +303,33 @@ app.post("/api/v1/links/:linkId/track", async (req, res) => {
       console.error("Click tracking error:", trackError);
     }
 
-    // Increment click count
+    let outboundInserted = false;
     try {
-      await supabase.rpc("increment_link_clicks", { link_id: link.id });
-    } catch (e: any) {
-      console.error("Failed to increment clicks:", e.message);
+      outboundInserted = await insertOutboundEvent(supabase, {
+        link_id: linkId,
+        short_code: link.short_code,
+        stage: "primary",
+        destination_url: link.original_url,
+        user_agent: userAgent,
+        ip_address: ipAddress,
+        source,
+        source_detail,
+        referer,
+      });
+    } catch (trackError) {
+      console.error("Outbound tracking error:", trackError);
+    }
+
+    if (outboundInserted) {
+      try {
+        await supabase.rpc("increment_link_clicks", { link_id: link.id });
+      } catch (e: any) {
+        console.error("Failed to increment clicks:", e.message);
+      }
     }
 
     // Send notification (fire and forget)
-    if (link.user_id) {
+    if (link.user_id && (clickInserted || outboundInserted)) {
       try {
         const clickData = {
           source: source || "direct",
@@ -292,19 +341,11 @@ app.post("/api/v1/links/:linkId/track", async (req, res) => {
       }
     }
 
-    await insertOutboundEvent(supabase, {
-      link_id: linkId,
-      short_code: link.short_code,
-      stage: "primary",
-      destination_url: link.original_url,
-      user_agent: userAgent,
-      ip_address: ipAddress,
-      source,
-      source_detail,
-      referer,
+    return res.json({
+      success: true,
+      counted: outboundInserted,
+      deduped: !outboundInserted,
     });
-
-    return res.json({ success: true });
   } catch (e: any) {
     console.error("Track error:", e);
     return res.status(500).json({ error: e.message });
@@ -318,6 +359,9 @@ app.post("/api/v1/links/:linkId/track-outbound", async (req, res) => {
       req.body?.stage === "secondary" ? "secondary" : "primary";
     if (!linkId) {
       return res.status(400).json({ error: "Missing linkId" });
+    }
+    if (shouldIgnoreTrackingRequest(req)) {
+      return res.json({ success: true, ignored: true });
     }
 
     const supabase = getSupabase();
@@ -342,7 +386,7 @@ app.post("/api/v1/links/:linkId/track-outbound", async (req, res) => {
       return res.status(400).json({ error: "Missing destination URL" });
     }
 
-    await insertOutboundEvent(supabase, {
+    const inserted = await insertOutboundEvent(supabase, {
       link_id: linkId,
       short_code: link.short_code,
       stage,
@@ -354,7 +398,7 @@ app.post("/api/v1/links/:linkId/track-outbound", async (req, res) => {
       referer,
     });
 
-    return res.json({ success: true });
+    return res.json({ success: true, counted: inserted, deduped: !inserted });
   } catch (e: any) {
     console.error("Track outbound error:", e);
     return res.status(500).json({ error: e.message });

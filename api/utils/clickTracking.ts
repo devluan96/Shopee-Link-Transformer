@@ -9,6 +9,11 @@ import { chunkArray } from "./helpers.js";
 import { parseDeviceInfo, getGeoInfo } from "./deviceDetection.js";
 import { LinkOutboundEvent } from "../types/index.js";
 
+const TRACKING_DEDUPE_WINDOW_MS = 60 * 1000;
+
+const getRecentIsoTime = () =>
+  new Date(Date.now() - TRACKING_DEDUPE_WINDOW_MS).toISOString();
+
 export const fetchClicksForLinkIds = async (
   supabase: SupabaseClient,
   linkIds: string[],
@@ -114,12 +119,42 @@ export const insertOutboundEvent = async (
     referer?: string | null;
   },
 ) => {
+  const userAgent =
+    typeof payload.user_agent === "string" ? payload.user_agent : null;
+  const ipAddress =
+    typeof payload.ip_address === "string" ? payload.ip_address : null;
+  const recentSince = getRecentIsoTime();
+
+  if (ipAddress || userAgent) {
+    let duplicateQuery = supabase
+      .from("link_outbound_events")
+      .select("id")
+      .eq("link_id", payload.link_id)
+      .eq("stage", payload.stage)
+      .eq("destination_url", payload.destination_url)
+      .gte("created_at", recentSince)
+      .limit(1);
+
+    if (ipAddress) {
+      duplicateQuery = duplicateQuery.eq("ip_address", ipAddress);
+    }
+    if (userAgent) {
+      duplicateQuery = duplicateQuery.eq("user_agent", userAgent);
+    }
+
+    const { data: duplicateEvents, error: duplicateError } = await duplicateQuery;
+    if (duplicateError) throw duplicateError;
+    if (duplicateEvents?.length) {
+      return false;
+    }
+  }
+
   const { error } = await supabase.from("link_outbound_events").insert({
     ...payload,
-    user_agent:
-      typeof payload.user_agent === "string" ? payload.user_agent : null,
+    user_agent: userAgent,
   });
   if (error) throw error;
+  return true;
 };
 
 export const insertClickWithTracking = async (
@@ -156,8 +191,31 @@ export const insertClickWithTracking = async (
     Object.entries(fullPayload).filter(([, value]) => value !== undefined && value !== null),
   );
 
+  if (payload.link_id && (ipAddress || userAgent)) {
+    let duplicateQuery = supabase
+      .from("clicks")
+      .select("id")
+      .eq("link_id", String(payload.link_id))
+      .gte("created_at", getRecentIsoTime())
+      .limit(1);
+
+    if (ipAddress) {
+      duplicateQuery = duplicateQuery.eq("ip_address", ipAddress);
+    }
+    if (userAgent) {
+      duplicateQuery = duplicateQuery.eq("user_agent", userAgent);
+    }
+
+    const { data: duplicateClicks, error: duplicateError } = await duplicateQuery;
+    if (duplicateError) throw duplicateError;
+    if (duplicateClicks?.length) {
+      return false;
+    }
+  }
+
   const { error } = await supabase.from("clicks").insert(sanitizedPayload);
   if (error) throw error;
+  return true;
 };
 
 export const attachTrackedSourcesToLinks = async (
