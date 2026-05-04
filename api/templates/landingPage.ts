@@ -341,6 +341,10 @@ export const renderLinkLandingPage = (
         const revealOverlay = () => {
           if (!overlay || primaryOpened) return;
           overlay.classList.remove("delayed-hidden");
+          overlay.style.display = "flex";
+          overlay.style.opacity = "1";
+          overlay.style.visibility = "visible";
+          overlay.style.pointerEvents = "auto";
           pushDebug("overlay_revealed");
         };
 
@@ -348,6 +352,13 @@ export const renderLinkLandingPage = (
           if (!hasVideo || !overlay || primaryOpened) return;
           if (overlayRevealTimer) window.clearTimeout(overlayRevealTimer);
           overlayRevealTimer = window.setTimeout(revealOverlay, 5000);
+        };
+
+        const maybeRevealOverlayFromPlayback = () => {
+          if (!(currentHeroVideo instanceof HTMLVideoElement) || primaryOpened) return;
+          if ((currentHeroVideo.currentTime || 0) >= 5) {
+            revealOverlay();
+          }
         };
 
         const showActionDock = () => {
@@ -655,6 +666,8 @@ export const renderLinkLandingPage = (
           currentHeroVideo.addEventListener("canplay", startVideoPreview, {
             once: true,
           });
+          currentHeroVideo.addEventListener("timeupdate", maybeRevealOverlayFromPlayback);
+          currentHeroVideo.addEventListener("seeked", maybeRevealOverlayFromPlayback);
           document.addEventListener("visibilitychange", () => {
             if (!document.hidden) startVideoPreview();
           });
