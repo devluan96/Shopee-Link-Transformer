@@ -18,11 +18,13 @@ import {
   useMeta,
   useClipboard,
   useWorkspaces,
+  useSecurity,
 } from "./hooks";
 
 // Static Components
 import { Sidebar } from "./components/layout/Sidebar";
 import { AuthScreen } from "./components/auth/AuthScreen";
+import { TwoFactorGate } from "./components/auth/TwoFactorGate";
 import { PendingApproval } from "./components/PendingApproval";
 import { Footer } from "./components/layout/Footer";
 import { Overview } from "./components/dashboard/Overview";
@@ -264,6 +266,27 @@ export default function App() {
   // Clipboard Hook
   const { copiedId, copyToClipboard } = useClipboard();
 
+  const {
+    securityOverview,
+    securityLoading,
+    twoFactorSetup,
+    beginTwoFactorSetup,
+    enableTwoFactor,
+    disableTwoFactor,
+    twoFactorSessionVerified,
+    verifyTwoFactorChallenge,
+    adminAccessLogs,
+    blockedIps,
+    adminSecurityLoading,
+    blockIp,
+    unblockIp,
+  } = useSecurity({
+    user,
+    profile,
+    fetchWithAuth,
+    activeTab,
+  });
+
   // Derived state
   const isAdminRole = profile?.role === "admin" || user?.email === "devluan1996@gmail.com";
   const hasSub = profile?.subscription_plan && profile.subscription_plan !== "free";
@@ -328,6 +351,24 @@ export default function App() {
   // Pending approval
   if (profile && profile.status !== "approved" && !isAdminRole) {
     return <PendingApproval handleLogout={handleLogout} />;
+  }
+
+  const requiresTwoFactorChallenge =
+    !!user &&
+    !!profile &&
+    profile.status === "approved" &&
+    !!securityOverview?.twoFactorEnabled &&
+    !twoFactorSessionVerified;
+
+  if (requiresTwoFactorChallenge) {
+    return (
+      <TwoFactorGate
+        email={user.email}
+        loading={securityLoading}
+        onVerify={verifyTwoFactorChallenge}
+        onLogout={handleLogout}
+      />
+    );
   }
 
   return (
@@ -486,6 +527,11 @@ export default function App() {
                 (u) => u.id !== user?.id && u.role !== "admin",
               )}
               adminLoading={adminLoading}
+              adminAccessLogs={adminAccessLogs}
+              blockedIps={blockedIps}
+              adminSecurityLoading={adminSecurityLoading}
+              onBlockIp={blockIp}
+              onUnblockIp={unblockIp}
               onlineUserIds={onlineUserIds}
               handleApproveUser={handleApproveUser}
               handleUpdateSubscription={handleUpdateSubscription}
@@ -521,6 +567,12 @@ export default function App() {
             <ProfileSettings
               profile={profile}
               updating={profileLoading}
+              securityOverview={securityOverview}
+              securityLoading={securityLoading}
+              twoFactorSetup={twoFactorSetup}
+              onBeginTwoFactorSetup={beginTwoFactorSetup}
+              onEnableTwoFactor={enableTwoFactor}
+              onDisableTwoFactor={disableTwoFactor}
               onUpdate={handleUpdateProfile}
               onAvatarUpload={handleAvatarUpload}
             />

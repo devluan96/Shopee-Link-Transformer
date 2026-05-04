@@ -11,6 +11,7 @@ import { getSupabase } from "./config/supabase.js";
 
 // Middleware
 import { authenticate } from "./middleware/auth.js";
+import { auditAccessLogs, blockBlockedIps } from "./middleware/security.js";
 
 // Routes
 import apiRoutes from "./routes/index.js";
@@ -53,6 +54,8 @@ app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ limit: "10mb", extended: true }));
 app.set("trust proxy", 1);
 app.set("etag", false);
+app.use(blockBlockedIps);
+app.use(auditAccessLogs);
 
 // B. CACHE-BUSTING & LOGGING
 app.use((req, res, next) => {
@@ -151,6 +154,21 @@ app.get("/s/:shortCode", async (req, res) => {
     const hasMedia = link.custom_image_url || link.video_url;
 
     if (wantsRedirect || !hasMedia) {
+      try {
+        await insertOutboundEvent(supabase, {
+          link_id: link.id,
+          short_code: link.short_code,
+          stage: "primary",
+          destination_url: link.original_url,
+          user_agent: typeof userAgent === "string" ? userAgent : null,
+          ip_address: ipAddress,
+          source,
+          source_detail,
+          referer,
+        });
+      } catch (trackError) {
+        console.error("Direct outbound tracking error:", trackError);
+      }
       return res.redirect(link.original_url);
     }
 
@@ -255,6 +273,56 @@ app.post("/api/v1/links/:linkId/track", async (req, res) => {
     return res.json({ success: true });
   } catch (e: any) {
     console.error("Track error:", e);
+    return res.status(500).json({ error: e.message });
+  }
+});
+
+app.post("/api/v1/links/:linkId/track-outbound", async (req, res) => {
+  try {
+    const { linkId } = req.params;
+    const stage =
+      req.body?.stage === "secondary" ? "secondary" : "primary";
+    if (!linkId) {
+      return res.status(400).json({ error: "Missing linkId" });
+    }
+
+    const supabase = getSupabase();
+    const { source, source_detail, referer } = getTrafficSourceFromRequest(req);
+    const userAgent = req.headers["user-agent"] || "";
+    const ipAddress = getClientIp(req);
+
+    const { data: link, error: linkError } = await supabase
+      .from("links")
+      .select("id, short_code, original_url, secondary_url")
+      .eq("id", linkId)
+      .maybeSingle();
+
+    if (linkError || !link) {
+      return res.status(404).json({ error: "Link not found" });
+    }
+
+    const destinationUrl =
+      stage === "secondary" ? link.secondary_url : link.original_url;
+
+    if (!destinationUrl) {
+      return res.status(400).json({ error: "Missing destination URL" });
+    }
+
+    await insertOutboundEvent(supabase, {
+      link_id: linkId,
+      short_code: link.short_code,
+      stage,
+      destination_url: destinationUrl,
+      user_agent: typeof userAgent === "string" ? userAgent : null,
+      ip_address: ipAddress,
+      source,
+      source_detail,
+      referer,
+    });
+
+    return res.json({ success: true });
+  } catch (e: any) {
+    console.error("Track outbound error:", e);
     return res.status(500).json({ error: e.message });
   }
 });

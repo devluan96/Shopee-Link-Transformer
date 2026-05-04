@@ -4,7 +4,11 @@ import { getSupabase } from "../config/supabase.js";
 import { AuthenticatedRequest } from "../types/index.js";
 import * as linkService from "../services/linkService.js";
 import * as workspaceService from "../services/workspaceService.js";
-import { attachTrackedSourcesToLinks } from "../utils/clickTracking.js";
+import {
+  attachTrackedSourcesToLinks,
+  fetchOutboundEventsForLinkIds,
+  filterRealOutboundEvents,
+} from "../utils/clickTracking.js";
 
 const router = Router();
 
@@ -86,7 +90,7 @@ router.patch(
   },
 );
 
-// GET /api/v1/admin/users/:targetUid/clicks - Get total clicks for all links of a user (admin only)
+// GET /api/v1/admin/users/:targetUid/clicks - Get total outbound clicks for all links of a user (admin only)
 router.get(
   "/admin/users/:targetUid/clicks",
   authenticate,
@@ -110,21 +114,18 @@ router.get(
 
       const linkIds = links.map((l: any) => l.id);
 
-      // Count all clicks for these links
-      const { count, error } = await supabase
-        .from("clicks")
-        .select("*", { count: 'exact', head: true })
-        .in("link_id", linkIds);
+      const outboundEvents = filterRealOutboundEvents(
+        await fetchOutboundEventsForLinkIds(supabase, linkIds),
+      );
 
-      if (error) throw error;
-      return res.json({ clicks: count || 0 });
+      return res.json({ clicks: outboundEvents.length });
     } catch (e: any) {
       return res.status(500).json({ error: e.message });
     }
   },
 );
 
-// GET /api/v1/links/:id/clicks - Get click count for a link
+// GET /api/v1/links/:id/clicks - Get outbound click count for a link
 router.get(
   "/links/:id/clicks",
   authenticate,
@@ -135,16 +136,13 @@ router.get(
 
       console.log("[API] Fetching click count for link:", linkId);
 
-      // Count clicks from clicks table
-      const { count, error } = await supabase
-        .from("clicks")
-        .select("*", { count: 'exact', head: true })
-        .eq("link_id", linkId);
+      const outboundEvents = filterRealOutboundEvents(
+        await fetchOutboundEventsForLinkIds(supabase, [linkId]),
+      );
 
-      console.log("[API] Click count result:", count, "Error:", error);
+      console.log("[API] Click count result:", outboundEvents.length);
 
-      if (error) throw error;
-      return res.json({ clicks: count || 0 });
+      return res.json({ clicks: outboundEvents.length });
     } catch (e: any) {
       console.error("[API] Error fetching click count:", e);
       return res.status(500).json({ error: e.message });

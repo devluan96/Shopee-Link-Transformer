@@ -16,6 +16,7 @@ export interface ConvertedLink {
   expires_at?: string;
   user_id: string;
   clicks?: number;
+  tiktok_clicks?: number;
   tracked_sources?: Array<{
     label: string;
     count: number;
@@ -44,6 +45,40 @@ export interface WorkspaceMember {
   joined_at?: string | null;
 }
 
+export interface AccessLogEntry {
+  id: string;
+  user_id?: string | null;
+  email?: string | null;
+  ip_address?: string | null;
+  method: string;
+  path: string;
+  status_code: number;
+  user_agent?: string | null;
+  referer?: string | null;
+  blocked: boolean;
+  block_reason?: string | null;
+  metadata?: Record<string, unknown>;
+  created_at: string;
+}
+
+export interface SecurityOverview {
+  twoFactorEnabled: boolean;
+  maskedSecret: string | null;
+  lastVerifiedAt: string | null;
+  recentAccessLogs: AccessLogEntry[];
+}
+
+export interface BlockedIpEntry {
+  id: string;
+  ip_address: string;
+  reason?: string | null;
+  blocked_by?: string | null;
+  active: boolean;
+  expires_at?: string | null;
+  created_at: string;
+  updated_at?: string | null;
+}
+
 export interface UserProfile {
   id: string;
   email: string;
@@ -70,6 +105,8 @@ export type Tab =
 export interface LinkStats {
   totalLinks: number;
   totalClicks: number;
+  totalShopeeClicks?: number;
+  totalTiktokClicks?: number;
   recentClicks: Array<{ date: string; clicks: number }>;
   topLinks: Array<{ short_code: string; title: string; clicks: number }>;
   growthPercentage: number;
@@ -80,4 +117,6 @@ export interface AnalyticsData {
   topLinks: Array<{ id: string; short_code: string; title: string; clicks: number }>;
   trafficSources: Array<{ name: string; value: number }>;
   growthPercentage: number;
+  totalShopeeClicks?: number;
+  totalTiktokClicks?: number;
 }

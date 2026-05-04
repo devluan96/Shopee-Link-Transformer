@@ -7,6 +7,8 @@ import {
   TrendingUp,
   MousePointer2,
   Activity,
+  ShoppingBag,
+  PlaySquare,
 } from "lucide-react";
 import { Tab } from "@/src/types";
 
@@ -14,6 +16,8 @@ interface OverviewProps {
   stats: {
     totalLinks: number;
     totalClicks: number;
+    totalShopeeClicks?: number;
+    totalTiktokClicks?: number;
     recentClicks: Array<{ date: string; clicks: number }>;
     topLinks: Array<{ short_code: string; title: string; clicks: number }>;
     growthPercentage: number;
@@ -29,6 +33,8 @@ export const Overview = ({
 }: OverviewProps) => {
   const totalLinks = stats?.totalLinks || 0;
   const totalClicks = stats?.totalClicks || 0;
+  const totalShopeeClicks = stats?.totalShopeeClicks || 0;
+  const totalTiktokClicks = stats?.totalTiktokClicks || 0;
   const growthPercentage = Number.isFinite(stats?.growthPercentage)
     ? stats?.growthPercentage || 0
     : 0;
@@ -55,12 +61,28 @@ export const Overview = ({
       border: "border-orange-100",
     },
     {
-      label: "Tổng lượt click",
+      label: "Click outbound",
       value: totalClicks,
       icon: MousePointer2,
       color: "text-blue-600",
       bg: "bg-blue-50",
       border: "border-blue-100",
+    },
+    {
+      label: "Ra Shopee",
+      value: totalShopeeClicks,
+      icon: ShoppingBag,
+      color: "text-emerald-600",
+      bg: "bg-emerald-50",
+      border: "border-emerald-100",
+    },
+    {
+      label: "Ra TikTok",
+      value: totalTiktokClicks,
+      icon: PlaySquare,
+      color: "text-cyan-700",
+      bg: "bg-cyan-50",
+      border: "border-cyan-100",
     },
     {
       label: "Tăng trưởng (30d)",
@@ -87,15 +109,15 @@ export const Overview = ({
           Chào buổi sáng!
         </h2>
         <p className="font-medium italic text-gray-500 dark:text-slate-400">
-          Đây là tóm tắt nhanh hiệu suất chiến dịch hotsnew của bạn.
+          Đây là tóm tắt nhanh hiệu suất chiến dịch HotsNew của bạn.
         </p>
       </header>
 
-      <div className="mb-12 grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
+      <div className="mb-12 grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">
         {cards.map((card, i) => (
           <div
             key={i}
-            className={`group relative overflow-hidden rounded-[2.5rem] border bg-white/90 dark:bg-slate-800/90 dark:border-slate-700 p-8 shadow-sm backdrop-blur-sm transition-all hover:shadow-xl ${card.border}`}
+            className={`group relative overflow-hidden rounded-[2.5rem] border bg-white/90 p-8 shadow-sm backdrop-blur-sm transition-all hover:shadow-xl dark:border-slate-700 dark:bg-slate-800/90 ${card.border}`}
           >
             <div
               className={`relative z-10 mb-6 flex h-14 w-14 items-center justify-center rounded-2xl shadow-sm transition-transform group-hover:scale-110 ${card.bg} ${card.color}`}
@@ -127,8 +149,8 @@ export const Overview = ({
               Sẵn sàng bùng nổ doanh số của bạn?
             </h3>
             <p className="mb-10 max-w-md font-medium leading-relaxed text-gray-400">
-              Sử dụng công cụ chuyển đổi landing page chuyên nghiệp để tăng tỷ
-              lệ click-through lên đến 300% trên Facebook.
+              Sử dụng công cụ chuyển đổi landing page chuyên nghiệp để tăng tỷ lệ
+              click-through lên đến 300% trên Facebook.
             </p>
             {canAccessCreate ? (
               <button
@@ -153,7 +175,7 @@ export const Overview = ({
           />
         </div>
 
-        <div className="rounded-[3rem] border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-8 shadow-sm">
+        <div className="rounded-[3rem] border border-gray-200 bg-white p-8 shadow-sm dark:border-slate-700 dark:bg-slate-800">
           <h3 className="mb-8 flex items-center gap-2 px-2 text-sm font-black uppercase tracking-[0.2em] text-gray-400 dark:text-slate-500">
             <BarChart3 size={16} /> Link Hiệu Quả Nhất
           </h3>
@@ -164,7 +186,7 @@ export const Overview = ({
                   key={idx}
                   className="group flex cursor-pointer items-center gap-4 rounded-2xl p-4 transition-all hover:bg-gray-50 dark:hover:bg-slate-700"
                 >
-                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gray-100 dark:bg-slate-700 font-mono font-black text-gray-400 dark:text-slate-400 transition-all group-hover:bg-orange-600 group-hover:text-white">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gray-100 font-mono font-black text-gray-400 transition-all group-hover:bg-orange-600 group-hover:text-white dark:bg-slate-700 dark:text-slate-400">
                     {idx + 1}
                   </div>
                   <div className="min-w-0 flex-1">
@@ -172,7 +194,7 @@ export const Overview = ({
                       {tl.title}
                     </p>
                     <p className="text-[10px] font-black uppercase tracking-widest text-orange-500">
-                      {tl.clicks} Clicks
+                      {tl.clicks} Click outbound
                     </p>
                   </div>
                 </div>

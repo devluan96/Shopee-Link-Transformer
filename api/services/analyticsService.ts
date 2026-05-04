@@ -1,7 +1,9 @@
 import { SupabaseClient } from "../config/supabase.js";
 import {
-  fetchClicksForLinkIds,
-  filterRealClicks,
+  fetchOutboundEventsForLinkIds,
+  filterRealOutboundEvents,
+  isShopeeDestinationUrl,
+  isTikTokDestinationUrl,
 } from "../utils/clickTracking.js";
 import { normalizeTrafficSource } from "../utils/normalizers.js";
 import { getAccessibleWorkspaceIds } from "./workspaceService.js";
@@ -58,7 +60,9 @@ export const getUserStats = async (
     ]),
   );
 
-  const clicks = filterRealClicks(await fetchClicksForLinkIds(supabase, linkIds));
+  const clicks = filterRealOutboundEvents(
+    await fetchOutboundEventsForLinkIds(supabase, linkIds),
+  );
 
   const thirtyDaysAgo = new Date();
   thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
@@ -118,6 +122,12 @@ export const getUserStats = async (
   return {
     totalLinks: count,
     totalClicks,
+    totalShopeeClicks: clicks.filter((click: any) =>
+      isShopeeDestinationUrl(click.destination_url),
+    ).length,
+    totalTiktokClicks: clicks.filter((click: any) =>
+      isTikTokDestinationUrl(click.destination_url),
+    ).length,
     recentClicks,
     topLinks,
     growthPercentage,
@@ -141,8 +151,10 @@ export const getUserAnalytics = async (
   }
 
   const linkIds = links.map((l: any) => l.id);
-  const rawClicks = await fetchClicksForLinkIds(supabase, linkIds);
-  const clicks = filterRealClicks(rawClicks);
+  const rawClicks = filterRealOutboundEvents(
+    await fetchOutboundEventsForLinkIds(supabase, linkIds),
+  );
+  const clicks = rawClicks;
 
   const thirtyDaysAgo = new Date();
   thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
@@ -223,5 +235,11 @@ export const getUserAnalytics = async (
     topLinks,
     trafficSources,
     growthPercentage,
+    totalShopeeClicks: clicks.filter((click: any) =>
+      isShopeeDestinationUrl(click.destination_url),
+    ).length,
+    totalTiktokClicks: clicks.filter((click: any) =>
+      isTikTokDestinationUrl(click.destination_url),
+    ).length,
   };
 };

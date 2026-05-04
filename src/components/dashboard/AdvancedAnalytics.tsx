@@ -1,17 +1,15 @@
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import {
   Globe,
   Smartphone,
   Clock,
   Download,
   Bell,
-  ChevronDown,
   MapPin,
   Monitor,
   Eye,
   EyeOff,
   Check,
-  AlertCircle,
 } from "lucide-react";
 import {
   ResponsiveContainer,
@@ -23,8 +21,6 @@ import {
   XAxis,
   YAxis,
   Tooltip,
-  LineChart,
-  Line,
 } from "recharts";
 import { toast } from "sonner";
 
@@ -57,23 +53,41 @@ interface NotificationSettings {
 }
 
 interface AdvancedAnalyticsProps {
-  fetchWithAuth: (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
+  fetchWithAuth: (
+    input: RequestInfo | URL,
+    init?: RequestInit,
+  ) => Promise<Response>;
   currentWorkspaceId?: string;
 }
 
-const COLORS = ["#f97316", "#3b82f6", "#10b981", "#f59e0b", "#8b5cf6", "#ec4899", "#06b6d4", "#84cc16"];
+const COLORS = [
+  "#f97316",
+  "#3b82f6",
+  "#10b981",
+  "#f59e0b",
+  "#8b5cf6",
+  "#ec4899",
+  "#06b6d4",
+  "#84cc16",
+];
+
+const cardClassName =
+  "rounded-[2.5rem] border border-gray-100 bg-white p-8 shadow-sm dark:border-slate-700 dark:bg-slate-800";
+
+const labelClassName = "text-gray-900 dark:text-slate-100";
+const mutedClassName = "text-gray-500 dark:text-slate-400";
 
 export const AdvancedAnalytics = ({
   fetchWithAuth,
   currentWorkspaceId,
 }: AdvancedAnalyticsProps) => {
-  const [activeTab, setActiveTab] = useState<"geo" | "device" | "time" | "notifications">("geo");
+  const [activeTab, setActiveTab] = useState<
+    "geo" | "device" | "time" | "notifications"
+  >("geo");
   const [geoData, setGeoData] = useState<GeographicData | null>(null);
   const [deviceData, setDeviceData] = useState<DeviceData | null>(null);
   const [timeData, setTimeData] = useState<TimeData | null>(null);
   const [loading, setLoading] = useState(false);
-  
-  // Notification settings
   const [settings, setSettings] = useState<NotificationSettings>({
     notify_on_click: true,
     notify_threshold: 0,
@@ -86,62 +100,36 @@ export const AdvancedAnalytics = ({
       ? `workspaceId=${encodeURIComponent(currentWorkspaceId)}`
       : "";
 
-  // Fetch geographic data
   const fetchGeoData = async () => {
-    try {
-      const query = buildWorkspaceQuery();
-      const res = await fetchWithAuth(
-        `/api/v1/user/analytics/geographic${query ? `?${query}` : ""}`,
-      );
-      const data = await res.json();
-      setGeoData(data);
-    } catch (e) {
-      console.error("Failed to fetch geo data:", e);
-    }
+    const query = buildWorkspaceQuery();
+    const res = await fetchWithAuth(
+      `/api/v1/user/analytics/geographic${query ? `?${query}` : ""}`,
+    );
+    setGeoData(await res.json());
   };
 
-  // Fetch device data
   const fetchDeviceData = async () => {
-    try {
-      const query = buildWorkspaceQuery();
-      const res = await fetchWithAuth(
-        `/api/v1/user/analytics/devices${query ? `?${query}` : ""}`,
-      );
-      const data = await res.json();
-      setDeviceData(data);
-    } catch (e) {
-      console.error("Failed to fetch device data:", e);
-    }
+    const query = buildWorkspaceQuery();
+    const res = await fetchWithAuth(
+      `/api/v1/user/analytics/devices${query ? `?${query}` : ""}`,
+    );
+    setDeviceData(await res.json());
   };
 
-  // Fetch time data
   const fetchTimeData = async () => {
-    try {
-      const query = buildWorkspaceQuery();
-      const res = await fetchWithAuth(
-        `/api/v1/user/analytics/time?days=30${query ? `&${query}` : ""}`,
-      );
-      const data = await res.json();
-      setTimeData(data);
-    } catch (e) {
-      console.error("Failed to fetch time data:", e);
-    }
+    const query = buildWorkspaceQuery();
+    const res = await fetchWithAuth(
+      `/api/v1/user/analytics/time?days=30${query ? `&${query}` : ""}`,
+    );
+    setTimeData(await res.json());
   };
 
-  // Fetch notification settings
   const fetchSettings = async () => {
-    try {
-      const res = await fetchWithAuth("/api/v1/user/notifications/settings");
-      const data = await res.json();
-      if (data) {
-        setSettings(data);
-      }
-    } catch (e) {
-      console.error("Failed to fetch settings:", e);
-    }
+    const res = await fetchWithAuth("/api/v1/user/notifications/settings");
+    const data = await res.json();
+    if (data) setSettings(data);
   };
 
-  // Save notification settings
   const saveSettings = async () => {
     setSavingSettings(true);
     try {
@@ -150,19 +138,15 @@ export const AdvancedAnalytics = ({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(settings),
       });
-      if (res.ok) {
-        toast.success("Đã lưu cài đặt thông báo!");
-      } else {
-        throw new Error("Failed to save");
-      }
-    } catch (e) {
+      if (!res.ok) throw new Error("Failed to save");
+      toast.success("Đã lưu cài đặt thông báo.");
+    } catch {
       toast.error("Không thể lưu cài đặt. Vui lòng thử lại.");
     } finally {
       setSavingSettings(false);
     }
   };
 
-  // Export CSV
   const exportCSV = async (format: "clicks" | "summary") => {
     try {
       const query = buildWorkspaceQuery();
@@ -178,8 +162,8 @@ export const AdvancedAnalytics = ({
       a.click();
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
-      toast.success("Đã tải xuống file CSV!");
-    } catch (e) {
+      toast.success("Đã tải xuống file CSV.");
+    } catch {
       toast.error("Không thể xuất dữ liệu. Vui lòng thử lại.");
     }
   };
@@ -191,25 +175,50 @@ export const AdvancedAnalytics = ({
     setLoading(false);
   }, [currentWorkspaceId]);
 
-  // Load data when tab changes
   useEffect(() => {
-    if (activeTab === "geo" && !geoData) {
-      setLoading(true);
-      fetchGeoData().finally(() => setLoading(false));
-    } else if (activeTab === "device" && !deviceData) {
-      setLoading(true);
-      fetchDeviceData().finally(() => setLoading(false));
-    } else if (activeTab === "time" && !timeData) {
-      setLoading(true);
-      fetchTimeData().finally(() => setLoading(false));
-    } else if (activeTab === "notifications") {
-      fetchSettings();
-    }
+    const run = async () => {
+      try {
+        if (activeTab === "geo" && !geoData) {
+          setLoading(true);
+          await fetchGeoData();
+        } else if (activeTab === "device" && !deviceData) {
+          setLoading(true);
+          await fetchDeviceData();
+        } else if (activeTab === "time" && !timeData) {
+          setLoading(true);
+          await fetchTimeData();
+        } else if (activeTab === "notifications") {
+          await fetchSettings();
+        }
+      } catch (e) {
+        console.error("Advanced analytics load failed:", e);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    run();
   }, [activeTab, currentWorkspaceId]);
+
+  const renderLoader = (colorClass: string) => (
+    <div className="flex h-64 items-center justify-center">
+      <div
+        className={`h-8 w-8 animate-spin rounded-full border-4 ${colorClass}`}
+      />
+    </div>
+  );
+
+  const renderEmpty = (icon: React.ReactNode, message: string, short = false) => (
+    <div
+      className={`flex ${short ? "h-48" : "h-64"} flex-col items-center justify-center text-gray-400 dark:text-slate-500`}
+    >
+      <div className="mb-4 opacity-20">{icon}</div>
+      <p className="text-sm font-medium">{message}</p>
+    </div>
+  );
 
   return (
     <div className="space-y-6">
-      {/* Tabs */}
       <div className="flex flex-wrap gap-2 rounded-2xl bg-gray-100 p-1.5 dark:bg-slate-800">
         {[
           { id: "geo", label: "Địa lý", icon: Globe },
@@ -219,7 +228,7 @@ export const AdvancedAnalytics = ({
         ].map((tab) => (
           <button
             key={tab.id}
-            onClick={() => setActiveTab(tab.id as any)}
+            onClick={() => setActiveTab(tab.id as typeof activeTab)}
             className={`flex items-center gap-2 rounded-xl px-4 py-2.5 text-xs font-black uppercase tracking-widest transition-all ${
               activeTab === tab.id
                 ? "bg-white text-orange-600 shadow-sm dark:bg-slate-700"
@@ -232,7 +241,6 @@ export const AdvancedAnalytics = ({
         ))}
       </div>
 
-      {/* Export Buttons */}
       {activeTab !== "notifications" && (
         <div className="flex gap-2">
           <button
@@ -252,23 +260,19 @@ export const AdvancedAnalytics = ({
         </div>
       )}
 
-      {/* Geographic Data */}
       {activeTab === "geo" && (
         <div className="grid gap-6 lg:grid-cols-2">
-          {/* Countries */}
-          <div className="rounded-[2.5rem] border border-gray-100 bg-white p-8 shadow-sm dark:border-slate-700 dark:bg-slate-800">
+          <div className={cardClassName}>
             <div className="mb-6 flex items-center gap-3">
               <Globe size={20} className="text-orange-500" />
-              <h3 className="text-xl font-black text-gray-900">Quốc gia</h3>
+              <h3 className={`text-xl font-black ${labelClassName}`}>Quốc gia</h3>
               <span className="ml-auto rounded-full bg-orange-50 px-3 py-1 text-xs font-bold text-orange-600">
                 {geoData?.totalCountries || 0} quốc gia
               </span>
             </div>
             {loading ? (
-              <div className="flex h-64 items-center justify-center">
-                <div className="h-8 w-8 animate-spin rounded-full border-4 border-orange-200 border-t-orange-500" />
-              </div>
-            ) : geoData?.countries && geoData.countries.length > 0 ? (
+              renderLoader("border-orange-200 border-t-orange-500")
+            ) : geoData?.countries?.length ? (
               <>
                 <div className="mb-6 h-64">
                   <ResponsiveContainer width="100%" height="100%">
@@ -284,7 +288,10 @@ export const AdvancedAnalytics = ({
                         paddingAngle={5}
                       >
                         {geoData.countries.slice(0, 8).map((_, index) => (
-                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                          <Cell
+                            key={`country-${index}`}
+                            fill={COLORS[index % COLORS.length]}
+                          />
                         ))}
                       </Pie>
                       <Tooltip />
@@ -293,78 +300,83 @@ export const AdvancedAnalytics = ({
                 </div>
                 <div className="space-y-2">
                   {geoData.countries.slice(0, 5).map((country, idx) => (
-                    <div key={country.name} className="flex items-center justify-between rounded-xl bg-gray-50 p-3 dark:bg-slate-900">
+                    <div
+                      key={country.name}
+                      className="flex items-center justify-between rounded-xl bg-gray-50 p-3 dark:bg-slate-900"
+                    >
                       <div className="flex items-center gap-3">
                         <span
                           className="h-3 w-3 rounded-full"
                           style={{ backgroundColor: COLORS[idx % COLORS.length] }}
                         />
-                        <span className="font-bold text-gray-900">{country.name}</span>
+                        <span className={`font-bold ${labelClassName}`}>
+                          {country.name}
+                        </span>
                       </div>
-                      <span className="text-sm font-bold text-orange-600">{country.clicks} clicks</span>
+                      <span className="text-sm font-bold text-orange-600">
+                        {country.clicks} clicks
+                      </span>
                     </div>
                   ))}
                 </div>
               </>
             ) : (
-              <div className="flex h-64 flex-col items-center justify-center text-gray-400 dark:text-slate-500">
-                <Globe size={48} className="mb-4 opacity-20" />
-                <p className="text-sm font-medium">Chưa có dữ liệu địa lý</p>
-              </div>
+              renderEmpty(<Globe size={48} />, "Chưa có dữ liệu địa lý")
             )}
           </div>
 
-          {/* Cities */}
-          <div className="rounded-[2.5rem] border border-gray-100 bg-white p-8 shadow-sm dark:border-slate-700 dark:bg-slate-800">
+          <div className={cardClassName}>
             <div className="mb-6 flex items-center gap-3">
               <MapPin size={20} className="text-blue-500" />
-              <h3 className="text-xl font-black text-gray-900">Thành phố</h3>
+              <h3 className={`text-xl font-black ${labelClassName}`}>Thành phố</h3>
               <span className="ml-auto rounded-full bg-blue-50 px-3 py-1 text-xs font-bold text-blue-600">
                 {geoData?.totalCities || 0} thành phố
               </span>
             </div>
             {loading ? (
-              <div className="flex h-64 items-center justify-center">
-                <div className="h-8 w-8 animate-spin rounded-full border-4 border-blue-200 border-t-blue-500" />
-              </div>
-            ) : geoData?.cities && geoData.cities.length > 0 ? (
+              renderLoader("border-blue-200 border-t-blue-500")
+            ) : geoData?.cities?.length ? (
               <div className="max-h-96 space-y-2 overflow-y-auto">
                 {geoData.cities.slice(0, 10).map((city) => (
-                  <div key={`${city.name}-${city.country}`} className="flex items-center justify-between rounded-xl bg-gray-50 p-3 dark:bg-slate-900">
+                  <div
+                    key={`${city.name}-${city.country}`}
+                    className="flex items-center justify-between rounded-xl bg-gray-50 p-3 dark:bg-slate-900"
+                  >
                     <div>
-                      <span className="font-bold text-gray-900">{city.name}</span>
+                      <span className={`font-bold ${labelClassName}`}>
+                        {city.name}
+                      </span>
                       {city.country && (
-                        <span className="ml-2 text-xs text-gray-500">{city.country}</span>
+                        <span className={`ml-2 text-xs ${mutedClassName}`}>
+                          {city.country}
+                        </span>
                       )}
                     </div>
-                    <span className="text-sm font-bold text-blue-600">{city.clicks}</span>
+                    <span className="text-sm font-bold text-blue-600">
+                      {city.clicks}
+                    </span>
                   </div>
                 ))}
               </div>
             ) : (
-              <div className="flex h-64 flex-col items-center justify-center text-gray-400 dark:text-slate-500">
-                <MapPin size={48} className="mb-4 opacity-20" />
-                <p className="text-sm font-medium">Chưa có dữ liệu thành phố</p>
-              </div>
+              renderEmpty(<MapPin size={48} />, "Chưa có dữ liệu thành phố")
             )}
           </div>
         </div>
       )}
 
-      {/* Device Data */}
       {activeTab === "device" && (
         <div className="grid gap-6 lg:grid-cols-3">
-          {/* Device Types */}
-          <div className="rounded-[2.5rem] border border-gray-100 bg-white p-8 shadow-sm dark:border-slate-700 dark:bg-slate-800">
+          <div className={cardClassName}>
             <div className="mb-6 flex items-center gap-3">
               <Smartphone size={20} className="text-green-500" />
-              <h3 className="text-lg font-black text-gray-900">Loại thiết bị</h3>
+              <h3 className={`text-lg font-black ${labelClassName}`}>
+                Loại thiết bị
+              </h3>
             </div>
             {loading ? (
-              <div className="flex h-48 items-center justify-center">
-                <div className="h-8 w-8 animate-spin rounded-full border-4 border-green-200 border-t-green-500" />
-              </div>
-            ) : deviceData?.deviceTypes && deviceData.deviceTypes.length > 0 ? (
+              renderLoader("border-green-200 border-t-green-500")
+            ) : deviceData?.deviceTypes?.length ? (
               <>
                 <div className="mb-4 h-48">
                   <ResponsiveContainer width="100%" height="100%">
@@ -378,7 +390,10 @@ export const AdvancedAnalytics = ({
                         outerRadius={70}
                       >
                         {deviceData.deviceTypes.map((_, index) => (
-                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                          <Cell
+                            key={`device-${index}`}
+                            fill={COLORS[index % COLORS.length]}
+                          />
                         ))}
                       </Pie>
                       <Tooltip />
@@ -387,47 +402,58 @@ export const AdvancedAnalytics = ({
                 </div>
                 <div className="space-y-2">
                   {deviceData.deviceTypes.map((device, idx) => (
-                    <div key={device.type} className="flex items-center justify-between rounded-lg p-2">
+                    <div
+                      key={device.type}
+                      className="flex items-center justify-between rounded-lg p-2"
+                    >
                       <div className="flex items-center gap-2">
                         <span
                           className="h-2.5 w-2.5 rounded-full"
                           style={{ backgroundColor: COLORS[idx % COLORS.length] }}
                         />
-                        <span className="text-sm font-medium capitalize text-gray-700">{device.type}</span>
+                        <span
+                          className={`text-sm font-medium capitalize text-gray-700 dark:text-slate-300`}
+                        >
+                          {device.type}
+                        </span>
                       </div>
                       <div className="text-right">
-                        <span className="block text-sm font-bold text-gray-900">{device.percentage}%</span>
-                        <span className="text-xs text-gray-500">{device.clicks} clicks</span>
+                        <span className={`block text-sm font-bold ${labelClassName}`}>
+                          {device.percentage}%
+                        </span>
+                        <span className={`text-xs ${mutedClassName}`}>
+                          {device.clicks} clicks
+                        </span>
                       </div>
                     </div>
                   ))}
                 </div>
               </>
             ) : (
-              <div className="flex h-48 flex-col items-center justify-center text-gray-400 dark:text-slate-500">
-                <Smartphone size={40} className="mb-3 opacity-20" />
-                <p className="text-sm">Chưa có dữ liệu</p>
-              </div>
+              renderEmpty(<Smartphone size={40} />, "Chưa có dữ liệu", true)
             )}
           </div>
 
-          {/* Browsers */}
-          <div className="rounded-[2.5rem] border border-gray-100 bg-white p-8 shadow-sm dark:border-slate-700 dark:bg-slate-800">
+          <div className={cardClassName}>
             <div className="mb-6 flex items-center gap-3">
               <Monitor size={20} className="text-purple-500" />
-              <h3 className="text-lg font-black text-gray-900">Trình duyệt</h3>
+              <h3 className={`text-lg font-black ${labelClassName}`}>
+                Trình duyệt
+              </h3>
             </div>
             {loading ? (
-              <div className="flex h-48 items-center justify-center">
-                <div className="h-8 w-8 animate-spin rounded-full border-4 border-purple-200 border-t-purple-500" />
-              </div>
-            ) : deviceData?.browsers && deviceData.browsers.length > 0 ? (
+              renderLoader("border-purple-200 border-t-purple-500")
+            ) : deviceData?.browsers?.length ? (
               <div className="space-y-3">
                 {deviceData.browsers.slice(0, 6).map((browser, idx) => (
                   <div key={browser.name}>
                     <div className="mb-1 flex items-center justify-between">
-                      <span className="text-sm font-medium text-gray-700">{browser.name}</span>
-                      <span className="text-sm font-bold text-gray-900">{browser.percentage}%</span>
+                      <span className="text-sm font-medium text-gray-700 dark:text-slate-300">
+                        {browser.name}
+                      </span>
+                      <span className={`text-sm font-bold ${labelClassName}`}>
+                        {browser.percentage}%
+                      </span>
                     </div>
                     <div className="h-2 overflow-hidden rounded-full bg-gray-100 dark:bg-slate-700">
                       <div
@@ -438,35 +464,37 @@ export const AdvancedAnalytics = ({
                         }}
                       />
                     </div>
-                    <span className="text-xs text-gray-500">{browser.clicks} clicks</span>
+                    <span className={`text-xs ${mutedClassName}`}>
+                      {browser.clicks} clicks
+                    </span>
                   </div>
                 ))}
               </div>
             ) : (
-              <div className="flex h-48 flex-col items-center justify-center text-gray-400 dark:text-slate-500">
-                <Monitor size={40} className="mb-3 opacity-20" />
-                <p className="text-sm">Chưa có dữ liệu</p>
-              </div>
+              renderEmpty(<Monitor size={40} />, "Chưa có dữ liệu", true)
             )}
           </div>
 
-          {/* Operating Systems */}
-          <div className="rounded-[2.5rem] border border-gray-100 bg-white p-8 shadow-sm dark:border-slate-700 dark:bg-slate-800">
+          <div className={cardClassName}>
             <div className="mb-6 flex items-center gap-3">
               <Monitor size={20} className="text-cyan-500" />
-              <h3 className="text-lg font-black text-gray-900">Hệ điều hành</h3>
+              <h3 className={`text-lg font-black ${labelClassName}`}>
+                Hệ điều hành
+              </h3>
             </div>
             {loading ? (
-              <div className="flex h-48 items-center justify-center">
-                <div className="h-8 w-8 animate-spin rounded-full border-4 border-cyan-200 border-t-cyan-500" />
-              </div>
-            ) : deviceData?.operatingSystems && deviceData.operatingSystems.length > 0 ? (
+              renderLoader("border-cyan-200 border-t-cyan-500")
+            ) : deviceData?.operatingSystems?.length ? (
               <div className="space-y-3">
                 {deviceData.operatingSystems.slice(0, 6).map((os, idx) => (
                   <div key={os.name}>
                     <div className="mb-1 flex items-center justify-between">
-                      <span className="text-sm font-medium text-gray-700">{os.name}</span>
-                      <span className="text-sm font-bold text-gray-900">{os.percentage}%</span>
+                      <span className="text-sm font-medium text-gray-700 dark:text-slate-300">
+                        {os.name}
+                      </span>
+                      <span className={`text-sm font-bold ${labelClassName}`}>
+                        {os.percentage}%
+                      </span>
                     </div>
                     <div className="h-2 overflow-hidden rounded-full bg-gray-100 dark:bg-slate-700">
                       <div
@@ -477,29 +505,28 @@ export const AdvancedAnalytics = ({
                         }}
                       />
                     </div>
-                    <span className="text-xs text-gray-500">{os.clicks} clicks</span>
+                    <span className={`text-xs ${mutedClassName}`}>
+                      {os.clicks} clicks
+                    </span>
                   </div>
                 ))}
               </div>
             ) : (
-              <div className="flex h-48 flex-col items-center justify-center text-gray-400 dark:text-slate-500">
-                <Monitor size={40} className="mb-3 opacity-20" />
-                <p className="text-sm">Chưa có dữ liệu</p>
-              </div>
+              renderEmpty(<Monitor size={40} />, "Chưa có dữ liệu", true)
             )}
           </div>
         </div>
       )}
 
-      {/* Time Data */}
       {activeTab === "time" && (
         <div className="grid gap-6 lg:grid-cols-2">
-          {/* Hourly Distribution */}
-          <div className="rounded-[2.5rem] border border-gray-100 bg-white p-8 shadow-sm dark:border-slate-700 dark:bg-slate-800">
+          <div className={cardClassName}>
             <div className="mb-6 flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <Clock size={20} className="text-orange-500" />
-                <h3 className="text-lg font-black text-gray-900">Phân bố theo giờ</h3>
+                <h3 className={`text-lg font-black ${labelClassName}`}>
+                  Phân bố theo giờ
+                </h3>
               </div>
               {timeData?.peakHour !== undefined && (
                 <span className="rounded-full bg-orange-50 px-3 py-1 text-xs font-bold text-orange-600">
@@ -508,10 +535,8 @@ export const AdvancedAnalytics = ({
               )}
             </div>
             {loading ? (
-              <div className="flex h-64 items-center justify-center">
-                <div className="h-8 w-8 animate-spin rounded-full border-4 border-orange-200 border-t-orange-500" />
-              </div>
-            ) : timeData?.hourlyDistribution && timeData.hourlyDistribution.length > 0 ? (
+              renderLoader("border-orange-200 border-t-orange-500")
+            ) : timeData?.hourlyDistribution?.length ? (
               <div className="h-64">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={timeData.hourlyDistribution}>
@@ -529,19 +554,17 @@ export const AdvancedAnalytics = ({
                 </ResponsiveContainer>
               </div>
             ) : (
-              <div className="flex h-64 flex-col items-center justify-center text-gray-400 dark:text-slate-500">
-                <Clock size={48} className="mb-4 opacity-20" />
-                <p className="text-sm">Chưa có dữ liệu</p>
-              </div>
+              renderEmpty(<Clock size={48} />, "Chưa có dữ liệu")
             )}
           </div>
 
-          {/* Daily Distribution */}
-          <div className="rounded-[2.5rem] border border-gray-100 bg-white p-8 shadow-sm dark:border-slate-700 dark:bg-slate-800">
+          <div className={cardClassName}>
             <div className="mb-6 flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <Clock size={20} className="text-blue-500" />
-                <h3 className="text-lg font-black text-gray-900">Phân bố theo ngày</h3>
+                <h3 className={`text-lg font-black ${labelClassName}`}>
+                  Phân bố theo ngày
+                </h3>
               </div>
               {timeData?.peakDay && (
                 <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-bold text-blue-600">
@@ -550,14 +573,17 @@ export const AdvancedAnalytics = ({
               )}
             </div>
             {loading ? (
-              <div className="flex h-64 items-center justify-center">
-                <div className="h-8 w-8 animate-spin rounded-full border-4 border-blue-200 border-t-blue-500" />
-              </div>
-            ) : timeData?.dailyDistribution && timeData.dailyDistribution.length > 0 ? (
+              renderLoader("border-blue-200 border-t-blue-500")
+            ) : timeData?.dailyDistribution?.length ? (
               <div className="h-64">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={timeData.dailyDistribution}>
-                    <XAxis dataKey="day" tick={{ fontSize: 10 }} axisLine={false} tickLine={false} />
+                    <XAxis
+                      dataKey="day"
+                      tick={{ fontSize: 10 }}
+                      axisLine={false}
+                      tickLine={false}
+                    />
                     <YAxis hide />
                     <Tooltip formatter={(value) => [`${value} clicks`, "Clicks"]} />
                     <Bar dataKey="clicks" fill="#3b82f6" radius={[4, 4, 0, 0]} />
@@ -565,32 +591,38 @@ export const AdvancedAnalytics = ({
                 </ResponsiveContainer>
               </div>
             ) : (
-              <div className="flex h-64 flex-col items-center justify-center text-gray-400 dark:text-slate-500">
-                <Clock size={48} className="mb-4 opacity-20" />
-                <p className="text-sm">Chưa có dữ liệu</p>
-              </div>
+              renderEmpty(<Clock size={48} />, "Chưa có dữ liệu")
             )}
           </div>
         </div>
       )}
 
-      {/* Notifications Settings */}
       {activeTab === "notifications" && (
-        <div className="rounded-[2.5rem] border border-gray-100 bg-white p-8 shadow-sm dark:border-slate-700 dark:bg-slate-800">
+        <div className={cardClassName}>
           <div className="mb-8 flex items-center gap-3">
             <Bell size={20} className="text-orange-500" />
-            <h3 className="text-xl font-black text-gray-900">Cài đặt thông báo</h3>
+            <h3 className={`text-xl font-black ${labelClassName}`}>
+              Cài đặt thông báo
+            </h3>
           </div>
 
           <div className="space-y-6">
-            {/* Enable notifications */}
             <div className="flex items-center justify-between rounded-2xl border border-gray-100 p-4 dark:border-slate-700 dark:bg-slate-900/70">
               <div>
-                <h4 className="font-bold text-gray-900">Thông báo khi có click</h4>
-                <p className="text-sm text-gray-500">Nhận thông báo qua Webhook hoặc Telegram</p>
+                <h4 className={`font-bold ${labelClassName}`}>
+                  Thông báo khi có click
+                </h4>
+                <p className={`text-sm ${mutedClassName}`}>
+                  Nhận thông báo qua Webhook hoặc Telegram
+                </p>
               </div>
               <button
-                onClick={() => setSettings({ ...settings, notify_on_click: !settings.notify_on_click })}
+                onClick={() =>
+                  setSettings({
+                    ...settings,
+                    notify_on_click: !settings.notify_on_click,
+                  })
+                }
                 className={`relative h-7 w-12 rounded-full transition-colors ${
                   settings.notify_on_click ? "bg-orange-500" : "bg-gray-300"
                 }`}
@@ -603,57 +635,79 @@ export const AdvancedAnalytics = ({
               </button>
             </div>
 
-            {/* Threshold */}
             <div>
-              <label className="mb-2 block text-sm font-bold text-gray-700">
+              <label
+                className={`mb-2 block text-sm font-bold text-gray-700 dark:text-slate-300`}
+              >
                 Ngưỡng thông báo (0 = mọi click)
               </label>
               <input
                 type="number"
                 min={0}
                 value={settings.notify_threshold}
-                onChange={(e) => setSettings({ ...settings, notify_threshold: parseInt(e.target.value) || 0 })}
+                onChange={(e) =>
+                  setSettings({
+                    ...settings,
+                    notify_threshold: parseInt(e.target.value, 10) || 0,
+                  })
+                }
                 className="w-full rounded-xl border-2 border-gray-100 px-4 py-3 font-medium outline-none transition-all focus:border-orange-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
                 placeholder="Ví dụ: 10 (thông báo mỗi 10 click)"
               />
-              <p className="mt-1 text-xs text-gray-500">
-                Đặt 0 để nhận thông báo cho mọi click, hoặc N để nhận thông báo mỗi N clicks
+              <p className={`mt-1 text-xs ${mutedClassName}`}>
+                Đặt 0 để nhận thông báo cho mọi click, hoặc N để nhận thông báo
+                mỗi N clicks
               </p>
             </div>
 
-            {/* Webhook URL */}
             <div>
-              <label className="mb-2 block text-sm font-bold text-gray-700">Webhook URL</label>
+              <label
+                className={`mb-2 block text-sm font-bold text-gray-700 dark:text-slate-300`}
+              >
+                Webhook URL
+              </label>
               <input
                 type="url"
                 value={settings.webhook_url || ""}
-                onChange={(e) => setSettings({ ...settings, webhook_url: e.target.value })}
+                onChange={(e) =>
+                  setSettings({ ...settings, webhook_url: e.target.value })
+                }
                 className="w-full rounded-xl border-2 border-gray-100 px-4 py-3 font-medium outline-none transition-all focus:border-orange-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
                 placeholder="https://your-webhook-endpoint.com/webhook"
               />
-              <p className="mt-1 text-xs text-gray-500">
+              <p className={`mt-1 text-xs ${mutedClassName}`}>
                 URL sẽ nhận POST request khi có click mới
               </p>
             </div>
 
-            {/* Telegram Settings */}
             <div className="rounded-2xl bg-gray-50 p-6 dark:bg-slate-900">
-              <h4 className="mb-4 font-bold text-gray-900">Cài đặt Telegram Bot</h4>
-              
+              <h4 className={`mb-4 font-bold ${labelClassName}`}>
+                Cài đặt Telegram Bot
+              </h4>
+
               <div className="mb-4">
-                <label className="mb-2 block text-sm font-bold text-gray-700">Bot Token</label>
+                <label
+                  className={`mb-2 block text-sm font-bold text-gray-700 dark:text-slate-300`}
+                >
+                  Bot Token
+                </label>
                 <div className="relative">
                   <input
                     type={showTelegramToken ? "text" : "password"}
                     value={settings.telegram_bot_token || ""}
-                    onChange={(e) => setSettings({ ...settings, telegram_bot_token: e.target.value })}
+                    onChange={(e) =>
+                      setSettings({
+                        ...settings,
+                        telegram_bot_token: e.target.value,
+                      })
+                    }
                     className="w-full rounded-xl border-2 border-gray-100 px-4 py-3 pr-12 font-medium outline-none transition-all focus:border-orange-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
                     placeholder="123456789:ABCdefGHIjklMNOpqrsTUVwxyz"
                   />
                   <button
                     type="button"
                     onClick={() => setShowTelegramToken(!showTelegramToken)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:text-slate-400 dark:hover:text-slate-200"
                   >
                     {showTelegramToken ? <EyeOff size={18} /> : <Eye size={18} />}
                   </button>
@@ -661,18 +715,26 @@ export const AdvancedAnalytics = ({
               </div>
 
               <div>
-                <label className="mb-2 block text-sm font-bold text-gray-700">Chat ID</label>
+                <label
+                  className={`mb-2 block text-sm font-bold text-gray-700 dark:text-slate-300`}
+                >
+                  Chat ID
+                </label>
                 <input
                   type="text"
                   value={settings.telegram_chat_id || ""}
-                  onChange={(e) => setSettings({ ...settings, telegram_chat_id: e.target.value })}
+                  onChange={(e) =>
+                    setSettings({
+                      ...settings,
+                      telegram_chat_id: e.target.value,
+                    })
+                  }
                   className="w-full rounded-xl border-2 border-gray-100 px-4 py-3 font-medium outline-none transition-all focus:border-orange-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
                   placeholder="123456789 hoặc @channelusername"
                 />
               </div>
             </div>
 
-            {/* Save Button */}
             <button
               onClick={saveSettings}
               disabled={savingSettings}

@@ -1,8 +1,13 @@
-import { getSupabase, SupabaseClient } from "../config/supabase.js";
-import { CLICK_SELECT_ATTEMPTS } from "../config/constants.js";
+import { SupabaseClient } from "../config/supabase.js";
+import {
+  CLICK_SELECT_ATTEMPTS,
+  SHOPEE_HOST_REGEX,
+  TIKTOK_HOST_REGEX,
+} from "../config/constants.js";
 import { normalizeTrafficSource } from "./normalizers.js";
 import { chunkArray } from "./helpers.js";
-import { parseDeviceInfo, getGeoInfo, DeviceInfo, GeoInfo } from "./deviceDetection.js";
+import { parseDeviceInfo, getGeoInfo } from "./deviceDetection.js";
+import { LinkOutboundEvent } from "../types/index.js";
 
 export const fetchClicksForLinkIds = async (
   supabase: SupabaseClient,
@@ -45,6 +50,55 @@ export const filterRealClicks = (clicks: any[]) => {
     return !botPatterns.some((pattern) => pattern.test(userAgent));
   });
 };
+
+export const isShopeeDestinationUrl = (value: unknown) => {
+  if (typeof value !== "string" || !value.trim()) return false;
+  try {
+    return SHOPEE_HOST_REGEX.test(new URL(value).hostname);
+  } catch {
+    return false;
+  }
+};
+
+export const isTikTokDestinationUrl = (value: unknown) => {
+  if (typeof value !== "string" || !value.trim()) return false;
+  try {
+    return TIKTOK_HOST_REGEX.test(new URL(value).hostname);
+  } catch {
+    return false;
+  }
+};
+
+export const fetchOutboundEventsForLinkIds = async (
+  supabase: SupabaseClient,
+  linkIds: string[],
+) => {
+  if (!linkIds.length) return [];
+  const chunks = chunkArray(linkIds, 100);
+  const allEvents: LinkOutboundEvent[] = [];
+
+  for (const chunk of chunks) {
+    const { data, error } = await supabase
+      .from("link_outbound_events")
+      .select(
+        "id, link_id, short_code, stage, destination_url, source, source_detail, referer, user_agent, ip_address, created_at",
+      )
+      .in("link_id", chunk)
+      .order("created_at", { ascending: false })
+      .limit(10000);
+
+    if (error) throw error;
+    allEvents.push(...((data || []) as LinkOutboundEvent[]));
+  }
+
+  return allEvents;
+};
+
+export const filterRealOutboundEvents = (events: LinkOutboundEvent[]) =>
+  filterRealClicks(events as any[]) as LinkOutboundEvent[];
+
+export const filterShopeeOutboundEvents = (events: LinkOutboundEvent[]) =>
+  events.filter((event) => isShopeeDestinationUrl(event.destination_url));
 
 export const insertOutboundEvent = async (
   supabase: SupabaseClient,
@@ -114,13 +168,13 @@ export const attachTrackedSourcesToLinks = async (
 
   try {
     const linkIds = links.map((link) => link.id).filter(Boolean);
-    const rawClicks = await fetchClicksForLinkIds(supabase, linkIds);
-    const clicks = filterRealClicks(rawClicks);
+    const rawEvents = await fetchOutboundEventsForLinkIds(supabase, linkIds);
+    const outboundEvents = filterShopeeOutboundEvents(
+      filterRealOutboundEvents(rawEvents),
+    );
 
     const sourceMap = new Map<string, Map<string, number>>();
-    const clickCountMap = new Map<string, number>();
-
-    (clicks || []).forEach((click: any) => {
+    outboundEvents.forEach((click: any) => {
       const sourceLabel =
         normalizeTrafficSource(click.source_detail) ||
         normalizeTrafficSource(click.source) ||
@@ -128,8 +182,6 @@ export const attachTrackedSourcesToLinks = async (
         "direct";
       const linkId = click.link_id;
       if (!linkId) return;
-
-      clickCountMap.set(linkId, (clickCountMap.get(linkId) || 0) + 1);
 
       if (!sourceMap.has(linkId)) {
         sourceMap.set(linkId, new Map<string, number>());
@@ -141,14 +193,20 @@ export const attachTrackedSourcesToLinks = async (
 
     return links.map((link) => {
       const linkId = link.id;
-      const clicks = clickCountMap.get(linkId) || 0;
+      const linkEvents = outboundEvents.filter((event) => event.link_id === linkId);
+      const clicks = linkEvents.filter((event) =>
+        isShopeeDestinationUrl(event.destination_url),
+      ).length;
+      const tiktok_clicks = linkEvents.filter((event) =>
+        isTikTokDestinationUrl(event.destination_url),
+      ).length;
       const sources = sourceMap.get(linkId);
       const tracked_sources = sources
         ? Array.from(sources.entries())
             .map(([label, count]) => ({ label, count }))
             .sort((a, b) => b.count - a.count)
         : [];
-      return { ...link, clicks, tracked_sources };
+      return { ...link, clicks, tiktok_clicks, tracked_sources };
     });
   } catch (e) {
     console.error("Failed to attach tracked sources:", e);

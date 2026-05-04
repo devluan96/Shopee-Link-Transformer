@@ -134,7 +134,11 @@ export const clearStoredSession = () => {
   for (let i = sessionStorage.length - 1; i >= 0; i -= 1) {
     const key = sessionStorage.key(i);
     if (!key) continue;
-    if (authKeys.has(key) || key.startsWith('sb-')) {
+    if (
+      authKeys.has(key) ||
+      key.startsWith('sb-') ||
+      key.startsWith('hotsnew.2fa.verified.')
+    ) {
       sessionStorage.removeItem(key);
     }
   }

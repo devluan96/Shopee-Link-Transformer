@@ -381,8 +381,14 @@ export const LinkList = ({
                   <div className="flex flex-wrap items-center justify-center gap-2 sm:justify-start sm:gap-4">
                     <div className="flex items-center gap-1.5 rounded-lg bg-blue-50 px-2 py-0.5 text-[10px] font-black text-blue-600">
                       <MousePointer2 size={10} />
-                      <span>{l.clicks || 0} CLICKS</span>
+                      <span>{l.clicks || 0} CLICK RA SHOPEE</span>
                     </div>
+                    {typeof l.tiktok_clicks === "number" && l.tiktok_clicks > 0 && (
+                      <div className="flex items-center gap-1.5 rounded-lg bg-cyan-50 px-2 py-0.5 text-[10px] font-black text-cyan-700">
+                        <MousePointer2 size={10} />
+                        <span>{l.tiktok_clicks} CLICK RA TIKTOK</span>
+                      </div>
+                    )}
                     <span className="max-w-full truncate rounded-lg border border-gray-100 dark:border-slate-600 bg-gray-50 dark:bg-slate-700 px-2 py-0.5 text-[10px] font-black uppercase tracking-tighter text-gray-400 dark:text-slate-400">
                       {l.short_code}
                     </span>
