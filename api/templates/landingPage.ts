@@ -251,182 +251,58 @@ export const renderLinkLandingPage = (
     <script>
       (() => {
         const overlay = document.getElementById("overlay");
-        const actionDock = document.getElementById("actionDock");
+        const heroVideo = document.querySelector(".hero-video");
         const primaryActionButton = document.getElementById("primaryActionButton");
         const secondaryActionButton = document.getElementById("secondaryActionButton");
         const secondaryGate = document.getElementById("secondaryGate");
         const secondaryGateButton = document.getElementById("secondaryGateButton");
-        const mediaPanel = document.querySelector(".media-panel");
-        const heroVideo = document.querySelector(".hero-video");
-        let currentHeroVideo = heroVideo;
         const primaryTargetUrl = "${escapeJsString(originalUrl)}";
         const secondaryTargetUrl = "${escapeJsString(secondaryUrl)}";
-        const videoSourceUrl = "${escapeJsString(videoUrl)}";
-        const videoPosterUrl = "${escapeJsString(imageUrl || socialImageUrl)}";
         const hasVideo = ${hasVideo ? "true" : "false"};
-        const redirectDelayMs = ${redirectDelayMs};
         const hasSecondaryRedirect = ${hasSecondaryRedirect ? "true" : "false"};
         const clickTrackingUrl = "${escapeJsString(clickTrackingUrl)}";
         const outboundTrackingUrl = clickTrackingUrl.replace(/\/track$/, "/track-outbound");
         let primaryOpened = false;
         let secondaryOpened = false;
-        let secondaryGateTimer = 0;
-        let overlayRevealTimer = 0;
-
-        const userAgent = navigator.userAgent || "";
-        const isInAppBrowser = /FBAN|FBAV|Instagram|Line\\//i.test(userAgent);
-        const isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(userAgent);
-        const debugPanel = document.getElementById("debugPanel");
-        const debugEnabled = new URLSearchParams(window.location.search).get("debug") === "1";
-        const debugUrl = clickTrackingUrl.replace(/\/track$/, "/client-debug");
-
-        const pushDebug = (event, detail = {}) => {
-          if (!debugEnabled) return;
-          const payload = {
-            event,
-            detail: {
-              ...detail,
-              readyState: currentHeroVideo instanceof HTMLVideoElement ? currentHeroVideo.readyState : null,
-              currentTime: currentHeroVideo instanceof HTMLVideoElement ? Number(currentHeroVideo.currentTime || 0).toFixed(2) : null,
-              paused: currentHeroVideo instanceof HTMLVideoElement ? currentHeroVideo.paused : null,
-              ended: currentHeroVideo instanceof HTMLVideoElement ? currentHeroVideo.ended : null,
-            },
-          };
-
-          if (debugPanel) {
-            debugPanel.classList.add("is-visible");
-            const entry = document.createElement("div");
-            entry.className = "debug-entry";
-            entry.textContent = "[" + new Date().toLocaleTimeString() + "] " + event + " " + JSON.stringify(payload.detail);
-            debugPanel.prepend(entry);
-          }
-
-          try {
-            const body = JSON.stringify(payload);
-            if (navigator.sendBeacon) {
-              navigator.sendBeacon(debugUrl, new Blob([body], { type: "application/json" }));
-              return;
-            }
-            fetch(debugUrl, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body,
-              keepalive: true,
-            }).catch(() => {});
-          } catch (error) {
-            console.warn("[Debug] send failed", error);
-          }
-        };
-
-        pushDebug("page_init", {
-          hasVideo,
-          isMobileDevice,
-          isInAppBrowser,
-        });
 
         const hideOverlay = () => {
-          console.log("[Overlay] Hiding overlay");
-          if (!overlay) {
-            console.error("[Overlay] Overlay element not found!");
-            return;
-          }
+          if (!overlay) return;
           overlay.classList.add("hidden");
           overlay.style.display = "none";
           overlay.style.opacity = "0";
           overlay.style.visibility = "hidden";
-          console.log("[Overlay] Hidden successfully");
-          pushDebug("overlay_hidden");
+          overlay.style.pointerEvents = "none";
         };
 
-        const revealOverlay = () => {
+        const showOverlay = () => {
           if (!overlay || primaryOpened) return;
-          overlay.classList.remove("delayed-hidden");
+          overlay.classList.remove("hidden", "delayed-hidden");
           overlay.style.display = "flex";
           overlay.style.opacity = "1";
           overlay.style.visibility = "visible";
           overlay.style.pointerEvents = "auto";
-          pushDebug("overlay_revealed");
         };
 
-        const scheduleOverlayReveal = () => {
-          if (!hasVideo || !overlay || primaryOpened) return;
-          if (overlayRevealTimer) window.clearTimeout(overlayRevealTimer);
-          overlayRevealTimer = window.setTimeout(revealOverlay, 5000);
+        const postJsonKeepalive = (url, payload) => {
+          if (!url) return;
+          const body = JSON.stringify(payload);
+          try {
+            if (navigator.sendBeacon) {
+              navigator.sendBeacon(url, new Blob([body], { type: "application/json" }));
+              return;
+            }
+          } catch {}
+
+          fetch(url, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body,
+            keepalive: true,
+          }).catch(() => {});
         };
 
-        const maybeRevealOverlayFromPlayback = () => {
-          if (!(currentHeroVideo instanceof HTMLVideoElement) || primaryOpened) return;
-          if ((currentHeroVideo.currentTime || 0) >= 5) {
-            revealOverlay();
-          }
-        };
-
-        const showActionDock = () => {
-          if (!actionDock) return;
-          actionDock.classList.add("is-visible");
-          pushDebug("action_dock_visible");
-        };
-
-        const showSecondaryGate = () => {
-          if (!hasSecondaryRedirect || !secondaryGate || secondaryOpened) return;
-          secondaryGate.classList.add("is-visible");
-        };
-
-        const scheduleSecondaryGate = () => {
-          if (!hasSecondaryRedirect || !secondaryGate || secondaryOpened) return;
-          if (secondaryGateTimer) window.clearTimeout(secondaryGateTimer);
-          secondaryGateTimer = window.setTimeout(() => {
-            showSecondaryGate();
-          }, 900);
-        };
-
-        const syncHeroVideoOrientation = () => {
-          if (!(currentHeroVideo instanceof HTMLVideoElement)) return;
-          const videoWidth = currentHeroVideo.videoWidth;
-          const videoHeight = currentHeroVideo.videoHeight;
-          if (!videoWidth || !videoHeight) return;
-          const orientation = videoWidth > videoHeight ? "landscape" : videoHeight > videoWidth ? "portrait" : "square";
-          currentHeroVideo.classList.remove("is-landscape", "is-portrait", "is-square");
-          currentHeroVideo.classList.add("is-" + orientation);
-          if (mediaPanel instanceof HTMLElement) {
-            mediaPanel.dataset.videoOrientation = orientation;
-          }
-        };
-
-        const buildFreshVideoElement = () => {
-          if (!(mediaPanel instanceof HTMLElement) || !videoSourceUrl) return heroVideo;
-          const wrapper = document.createElement("div");
-          wrapper.className = "video-container";
-          wrapper.style.position = "relative";
-          wrapper.style.width = "100%";
-          wrapper.style.height = "100%";
-
-          const freshVideo = document.createElement("video");
-          freshVideo.className = "hero-media hero-video";
-          freshVideo.src = videoSourceUrl;
-          freshVideo.controls = true;
-          freshVideo.autoplay = true;
-          freshVideo.preload = "auto";
-          freshVideo.loop = false;
-          freshVideo.muted = false;
-          freshVideo.defaultMuted = false;
-          freshVideo.playsInline = true;
-          freshVideo.setAttribute("playsinline", "true");
-          freshVideo.setAttribute("webkit-playsinline", "true");
-          freshVideo.setAttribute("x5-playsinline", "true");
-          freshVideo.setAttribute("x-webkit-airplay", "allow");
-          freshVideo.setAttribute("x5-video-player-type", "h5-page");
-          if (videoPosterUrl) {
-            freshVideo.poster = videoPosterUrl;
-          }
-
-          wrapper.appendChild(freshVideo);
-          mediaPanel.innerHTML = "";
-          mediaPanel.appendChild(wrapper);
-          currentHeroVideo = freshVideo;
-          pushDebug("fresh_video_element_built");
-          return freshVideo;
-        };
+        const trackRealClick = () => postJsonKeepalive(clickTrackingUrl, { ts: Date.now() });
+        const trackOutbound = (stage) => postJsonKeepalive(outboundTrackingUrl, { stage, ts: Date.now() });
 
         const isAffiliateCommerceUrl = (url) => {
           if (!url) return false;
@@ -438,241 +314,92 @@ export const renderLinkLandingPage = (
           }
         };
 
-        const shouldUseSameTabOnMobile = (url) =>
-          isMobileDevice && isAffiliateCommerceUrl(url);
-
-        const attachVideoDebugListeners = (videoEl) => {
-          if (!(videoEl instanceof HTMLVideoElement)) return;
-          videoEl.addEventListener("loadedmetadata", () => {
-            pushDebug("video_loadedmetadata", {
-              width: videoEl.videoWidth,
-              height: videoEl.videoHeight,
-            });
-            syncHeroVideoOrientation();
-          });
-          videoEl.addEventListener("canplay", () => pushDebug("video_canplay"));
-          videoEl.addEventListener("play", () => pushDebug("video_play_event"));
-          videoEl.addEventListener("pause", () => pushDebug("video_pause_event"));
-          videoEl.addEventListener("error", () =>
-            pushDebug("video_error", {
-              mediaErrorCode: videoEl.error?.code || null,
-            }),
-          );
-          videoEl.addEventListener("stalled", () => pushDebug("video_stalled"));
-          videoEl.addEventListener("waiting", () => pushDebug("video_waiting"));
-          videoEl.addEventListener("resize", syncHeroVideoOrientation);
-        };
-
-        const trackRealClick = () => {
-          if (!clickTrackingUrl) return;
-          pushDebug("track_real_click");
-          const body = JSON.stringify({ ts: Date.now() });
-          try {
-            if (navigator.sendBeacon) {
-              navigator.sendBeacon(clickTrackingUrl, new Blob([body], { type: "application/json" }));
-              return;
-            }
-          } catch (e) {}
-          fetch(clickTrackingUrl, { method: "POST", headers: { "Content-Type": "application/json" }, body, keepalive: true }).catch(() => {});
-        };
-
-        const trackOutbound = (stage) => {
-          if (!outboundTrackingUrl) return;
-          pushDebug("track_outbound", { stage });
-          const body = JSON.stringify({ stage, ts: Date.now() });
-          try {
-            if (navigator.sendBeacon) {
-              navigator.sendBeacon(outboundTrackingUrl, new Blob([body], { type: "application/json" }));
-              return;
-            }
-          } catch (e) {}
-          fetch(outboundTrackingUrl, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body,
-            keepalive: true,
-          }).catch(() => {});
-        };
-
-        const tryOpenInNewTab = (url) => {
-          if (!url) return false;
-
-          try {
-            const link = document.createElement("a");
-            link.href = url;
-            link.target = "_blank";
-            link.rel = "noopener noreferrer";
-            link.style.display = "none";
-            document.body.appendChild(link);
-            link.click();
-            link.remove();
-            return true;
-          } catch (error) {
-            console.warn("[OpenUrl] Anchor open failed", error);
+        const isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent || "");
+        const openUrl = (url) => {
+          if (!url) return;
+          if (isMobileDevice && isAffiliateCommerceUrl(url)) {
+            window.location.href = url;
+            return;
           }
 
           try {
             const popup = window.open(url, "_blank", "noopener,noreferrer");
-            if (popup) {
-              try {
-                popup.blur?.();
-                window.focus?.();
-              } catch (focusError) {
-                console.warn("[OpenUrl] Focus recovery failed", focusError);
-              }
-              return true;
-            }
-          } catch (error) {
-            console.warn("[OpenUrl] Popup open failed", error);
-          }
-
-          return false;
-        };
-
-        const openUrl = (url, preferNewTab = false) => {
-          if (!url) return false;
-
-          if (shouldUseSameTabOnMobile(url)) {
-            window.location.href = url;
-            return false;
-          }
-
-          if (preferNewTab) {
-            const openedInNewTab = tryOpenInNewTab(url);
-            if (openedInNewTab) {
-              window.setTimeout(() => {
-                try {
-                  window.focus?.();
-                } catch (error) {
-                  console.warn("[OpenUrl] Delayed focus recovery failed", error);
-                }
-              }, 80);
-              return true;
-            }
-          }
+            if (popup) return;
+          } catch {}
 
           window.location.href = url;
-          return false;
         };
 
         const openPrimaryStep = () => {
-          console.log("[PrimaryStep] Called, primaryOpened:", primaryOpened);
-          pushDebug("primary_step_start", { primaryOpened });
-          if (primaryOpened) {
-            console.log("[PrimaryStep] Already opened, returning");
-            pushDebug("primary_step_skip_already_opened");
+          if (primaryOpened) return;
+          primaryOpened = true;
+          trackRealClick();
+          trackOutbound("primary");
+          hideOverlay();
+
+          if (hasSecondaryRedirect && secondaryGate) {
+            secondaryGate.classList.add("is-visible");
             return;
           }
-          primaryOpened = true;
-          console.log("[PrimaryStep] Opening primary URL:", primaryTargetUrl);
-          pushDebug("primary_redirect_launch");
-          launchPrimaryTarget();
+
+          openUrl(primaryTargetUrl);
         };
 
         const openSecondaryStep = () => {
           if (!hasSecondaryRedirect || secondaryOpened) return;
           secondaryOpened = true;
-          pushDebug("secondary_step_start");
-          if (secondaryGate) secondaryGate.classList.remove("is-visible");
-          trackOutbound("secondary");
-          hideOverlay();
-          openUrl(secondaryTargetUrl, true);
+          secondaryGate?.classList.remove("is-visible");
+          openUrl(secondaryTargetUrl);
         };
 
-        const launchPrimaryTarget = () => {
-          pushDebug("primary_target_launch");
-          trackRealClick();
-          hideOverlay();
-          scheduleSecondaryGate();
-          openUrl(primaryTargetUrl, true);
-        };
-        
-        overlay?.addEventListener("click", (e) => {
-          console.log("[Overlay] Click detected", { target: e.target, currentTarget: e.currentTarget, type: e.type });
-          pushDebug("overlay_click", { type: e.type });
-
-          if (!primaryOpened) {
-            console.log("[Overlay] Opening primary step");
+        overlay?.addEventListener("click", openPrimaryStep);
+        overlay?.addEventListener("keydown", (event) => {
+          if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
             openPrimaryStep();
-            return;
-          }
-
-          console.log("[Overlay] Opening secondary step");
-          openSecondaryStep();
-        });
-
-        overlay?.addEventListener("keydown", (e) => {
-          if (e.key === "Enter" || e.key === " " || e.key === "Escape") {
-            e.preventDefault();
-            if (!primaryOpened) {
-              openPrimaryStep();
-              return;
-            }
-            if (hasSecondaryRedirect) {
-              openSecondaryStep();
-              return;
-            }
-            hideOverlay();
           }
         });
 
-        secondaryGateButton?.addEventListener("click", (e) => {
-          e.preventDefault();
-          e.stopPropagation();
+        primaryActionButton?.addEventListener("click", (event) => {
+          event.preventDefault();
+          openPrimaryStep();
+        });
+
+        secondaryActionButton?.addEventListener("click", (event) => {
+          event.preventDefault();
           openSecondaryStep();
         });
 
-        primaryActionButton?.addEventListener("click", (e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          pushDebug("primary_action_button_click");
-          if (!primaryOpened) {
-            primaryOpened = true;
-          }
-          launchPrimaryTarget();
-        });
-
-        secondaryActionButton?.addEventListener("click", (e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          pushDebug("secondary_action_button_click");
+        secondaryGateButton?.addEventListener("click", (event) => {
+          event.preventDefault();
           openSecondaryStep();
         });
 
-        if (currentHeroVideo instanceof HTMLVideoElement) {
-          attachVideoDebugListeners(currentHeroVideo);
-          syncHeroVideoOrientation();
-
+        if (heroVideo instanceof HTMLVideoElement) {
           const startVideoPreview = () => {
-            if (!(currentHeroVideo instanceof HTMLVideoElement)) return;
-            currentHeroVideo.muted = true;
-            currentHeroVideo.defaultMuted = true;
-            currentHeroVideo.playsInline = true;
-            currentHeroVideo.autoplay = true;
-            currentHeroVideo.loop = true;
-            currentHeroVideo.controls = false;
-            const playAttempt = currentHeroVideo.play();
+            heroVideo.muted = true;
+            heroVideo.defaultMuted = true;
+            heroVideo.playsInline = true;
+            heroVideo.autoplay = true;
+            heroVideo.loop = true;
+            heroVideo.controls = true;
+            const playAttempt = heroVideo.play();
             if (playAttempt && typeof playAttempt.catch === "function") {
-              playAttempt.catch((error) => {
-                pushDebug("video_autoplay_blocked", {
-                  message: error?.message || "play_failed",
-                });
-              });
+              playAttempt.catch(() => {});
             }
           };
 
           startVideoPreview();
-          scheduleOverlayReveal();
-          currentHeroVideo.addEventListener("canplay", startVideoPreview, {
-            once: true,
-          });
-          currentHeroVideo.addEventListener("timeupdate", maybeRevealOverlayFromPlayback);
-          currentHeroVideo.addEventListener("seeked", maybeRevealOverlayFromPlayback);
-          document.addEventListener("visibilitychange", () => {
-            if (!document.hidden) startVideoPreview();
+          heroVideo.addEventListener("canplay", startVideoPreview, { once: true });
+          heroVideo.addEventListener("timeupdate", () => {
+            if ((heroVideo.currentTime || 0) >= 5) {
+              showOverlay();
+            }
           });
 
-          currentHeroVideo.addEventListener("play", startVideoPreview);
+          window.setTimeout(showOverlay, 5000);
+        } else if (!hasVideo) {
+          showOverlay();
         }
       })();
     </script>

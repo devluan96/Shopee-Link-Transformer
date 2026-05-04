@@ -35,6 +35,13 @@ const __dirname = path.dirname(__filename);
 
 const app = express();
 
+const isSocialPreviewBot = (userAgent: string) => {
+  if (!userAgent) return false;
+  return /facebookexternalhit|Facebot|Twitterbot|LinkedInBot|Slackbot|Discordbot|TelegramBot|WhatsApp|SkypeUriPreview|Pinterest|Zalo|Googlebot|bingbot|embedly/i.test(
+    userAgent,
+  );
+};
+
 // A. MIDDLEWARES
 app.use(
   cors({
@@ -143,8 +150,11 @@ app.get("/s/:shortCode", async (req, res) => {
     const userAgent = req.headers["user-agent"] || "";
     const ipAddress = getClientIp(req);
     const hasVideoLanding = Boolean(link.video_url?.trim());
+    const shouldRenderPreviewPage =
+      hasVideoLanding ||
+      isSocialPreviewBot(typeof userAgent === "string" ? userAgent : "");
 
-    if (hasVideoLanding) {
+    if (shouldRenderPreviewPage) {
       const publicBaseUrl =
         getPublicBaseUrl(req) || `${req.protocol}://${req.get("host")}`;
       const canonicalUrl = `${publicBaseUrl}/s/${encodeURIComponent(link.short_code)}`;
