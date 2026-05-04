@@ -48,6 +48,7 @@ const titleMap: Record<Tab, string> = {
   create: "Tạo link Shopee - HotsNew Click",
   list: "Danh sách link - HotsNew Click",
   analytics: "Phân tích dữ liệu - HotsNew Click",
+  team: "Team Workspace - HotsNew Click",
   admin: "Quản lý user - HotsNew Click",
   profile: "Hồ sơ cá nhân - HotsNew Click",
 };
@@ -64,6 +65,7 @@ const descriptionMap: Record<Tab, string> = {
   list: "Quản lý toàn bộ link Shopee đã tạo, chỉnh sửa nội dung và theo dõi hiệu quả.",
   analytics:
     "Phân tích lượt click, tăng trưởng và nguồn lưu lượng cho các link Shopee của bạn.",
+  team: "Quản lý workspace, thành viên team, role editor/viewer và tạo link theo chiến dịch.",
   admin: "Trang quản lý người dùng và gói dịch vụ trên HotsNew Click.",
   profile: "Cập nhật thông tin hồ sơ và trạng thái tài khoản HotsNew Click.",
 };
@@ -75,6 +77,7 @@ const validTabs: Tab[] = [
   "create",
   "list",
   "analytics",
+  "team",
   "admin",
   "profile",
 ];

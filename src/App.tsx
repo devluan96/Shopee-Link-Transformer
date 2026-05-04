@@ -17,6 +17,7 @@ import {
   useAdmin,
   useMeta,
   useClipboard,
+  useWorkspaces,
 } from "./hooks";
 
 // Static Components
@@ -52,6 +53,11 @@ const LinkList = lazy(() =>
 const ProfileSettings = lazy(() =>
   import("./components/profile/ProfileSettings").then((m) => ({
     default: m.ProfileSettings,
+  })),
+);
+const WorkspaceManager = lazy(() =>
+  import("./components/workspaces/WorkspaceManager").then((m) => ({
+    default: m.WorkspaceManager,
   })),
 );
 
@@ -102,6 +108,20 @@ export default function App() {
   // Cloudinary Hook
   const { uploadAssetToCloudinary } = useCloudinary({ fetchWithAuth });
 
+  const {
+    workspaces,
+    currentWorkspaceId,
+    currentWorkspace,
+    workspaceLoading,
+    members,
+    membersLoading,
+    setCurrentWorkspaceId,
+    createWorkspace,
+    inviteMember,
+    updateMemberRole,
+    removeMember,
+  } = useWorkspaces({ user, fetchWithAuth });
+
   // Links Hook
   const {
     links,
@@ -114,7 +134,13 @@ export default function App() {
     handleUpdateLink,
     handleDeleteManyLinks,
     refreshLinks,
-  } = useLinks({ user, profile, fetchWithAuth, activeTab });
+  } = useLinks({
+    user,
+    profile,
+    currentWorkspaceId,
+    fetchWithAuth,
+    activeTab,
+  });
 
   // Analytics Hook
   const {
@@ -124,7 +150,14 @@ export default function App() {
     analyticsDirty,
     setStatsDirty,
     setAnalyticsDirty,
-  } = useAnalytics({ user, profile, fetchWithAuth, activeTab, linksLength: links.length });
+  } = useAnalytics({
+    user,
+    profile,
+    currentWorkspaceId,
+    fetchWithAuth,
+    activeTab,
+    linksLength: links.length,
+  });
 
   // Video Upload Hook
   const {
@@ -170,6 +203,8 @@ export default function App() {
     customDescription,
     customShortCode,
     usageContext,
+    folderName,
+    tagsText,
     customImageUrl,
     secondaryUrl,
     secondaryTargetType,
@@ -183,6 +218,8 @@ export default function App() {
     setCustomDescription,
     setCustomShortCode,
     setUsageContext,
+    setFolderName,
+    setTagsText,
     setCustomImageUrl,
     setSecondaryUrl,
     setSecondaryTargetType,
@@ -194,6 +231,7 @@ export default function App() {
   } = useLinkCreator({
     user,
     profile,
+    currentWorkspaceId,
     fetchWithAuth,
     canAccessCreate: !!(profile?.subscription_plan && profile.subscription_plan !== "free" || profile?.role === "admin"),
     onSuccess: () => {
@@ -229,7 +267,10 @@ export default function App() {
   // Derived state
   const isAdminRole = profile?.role === "admin" || user?.email === "devluan1996@gmail.com";
   const hasSub = profile?.subscription_plan && profile.subscription_plan !== "free";
-  const canAccessCreate = !!(isAdminRole || hasSub);
+  const canEditCurrentWorkspace =
+    currentWorkspace?.role === "owner" || currentWorkspace?.role === "editor";
+  const canAccessCreate = !!(isAdminRole || hasSub) && (!!currentWorkspaceId ? canEditCurrentWorkspace : true);
+  const blockedByWorkspaceRole = !!currentWorkspaceId && !canEditCurrentWorkspace;
   const bootstrappingAccess = !!user && (authLoading || profileBootstrapLoading);
 
   useEffect(() => {
@@ -300,6 +341,9 @@ export default function App() {
         }}
         isActuallyAdmin={isAdminRole}
         userProfile={profile}
+        workspaces={workspaces}
+        currentWorkspaceId={currentWorkspaceId}
+        onWorkspaceChange={setCurrentWorkspaceId}
         userEmail={user?.email}
         handleLogout={handleLogout}
         isOpen={isSidebarOpen}
@@ -341,6 +385,21 @@ export default function App() {
 
           {activeTab === "install" && <InstallCenter />}
 
+          {activeTab === "team" && (
+            <WorkspaceManager
+              workspaces={workspaces}
+              currentWorkspace={currentWorkspace}
+              workspaceLoading={workspaceLoading}
+              members={members}
+              membersLoading={membersLoading}
+              onSelectWorkspace={setCurrentWorkspaceId}
+              onCreateWorkspace={createWorkspace}
+              onInviteMember={inviteMember}
+              onUpdateMemberRole={updateMemberRole}
+              onRemoveMember={removeMember}
+            />
+          )}
+
           {activeTab === "pricing" && (
             <Pricing
               userProfile={profile}
@@ -363,6 +422,10 @@ export default function App() {
                 setCustomShortCode={setCustomShortCode}
                 usageContext={usageContext}
                 setUsageContext={setUsageContext}
+                folderName={folderName}
+                setFolderName={setFolderName}
+                tagsText={tagsText}
+                setTagsText={setTagsText}
                 customImageUrl={customImageUrl}
                 setCustomImageUrl={setCustomImageUrl}
                 secondaryUrl={secondaryUrl}
@@ -390,25 +453,32 @@ export default function App() {
                 copiedId={copiedId || ""}
               />
             ) : (
-              <div className="p-12 text-center bg-white rounded-[3rem] border border-gray-100 shadow-sm max-w-2xl mx-auto mt-12">
-                <div className="w-20 h-20 bg-orange-50 rounded-3xl flex items-center justify-center mx-auto mb-6">
-                  <Zap className="text-orange-600 w-10 h-10 fill-current" />
+                <div className="p-12 text-center bg-white rounded-[3rem] border border-gray-100 shadow-sm max-w-2xl mx-auto mt-12">
+                  <div className="w-20 h-20 bg-orange-50 rounded-3xl flex items-center justify-center mx-auto mb-6">
+                    <Zap className="text-orange-600 w-10 h-10 fill-current" />
+                  </div>
+                  <h3 className="text-2xl font-black text-gray-900 mb-4">
+                    {blockedByWorkspaceRole
+                      ? "Workspace ch? cho xem"
+                      : "N?ng c?p t?i kho?n"}
+                  </h3>
+                  <p className="text-gray-500 font-medium mb-8">
+                    {blockedByWorkspaceRole
+                      ? "Workspace hi?n t?i c?a b?n ?ang ? role viewer n?n kh?ng th? t?o ho?c ch?nh s?a link. H?y chuy?n sang workspace kh?c ho?c nh? owner n?ng quy?n l?n editor."
+                      : "T?nh n?ng chuy?n ??i link Shopee & TikTok d?nh ri?ng cho t?i kho?n Premium. Vui l?ng li?n h? Admin ?? n?ng c?p g?i c??c!"}
+                  </p>
+                  <button
+                    onClick={() =>
+                      setActiveTab(blockedByWorkspaceRole ? "team" : "dashboard")
+                    }
+                    className="px-8 py-4 bg-gray-900 text-white rounded-2xl font-black uppercase tracking-widest text-xs"
+                  >
+                    {blockedByWorkspaceRole
+                      ? "M? Team Workspace"
+                      : "Quay l?i Dashboard"}
+                  </button>
                 </div>
-                <h3 className="text-2xl font-black text-gray-900 mb-4">
-                  Nâng cấp tài khoản
-                </h3>
-                <p className="text-gray-500 font-medium mb-8">
-                  Tính năng chuyển đổi link Shopee & TikTok dành riêng cho tài
-                  khoản Premium. Vui lòng liên hệ Admin để nâng cấp gói cước!
-                </p>
-                <button
-                  onClick={() => setActiveTab("dashboard")}
-                  className="px-8 py-4 bg-gray-900 text-white rounded-2xl font-black uppercase tracking-widest text-xs"
-                >
-                  Quay lại Dashboard
-                </button>
-              </div>
-            ))}
+              ))}
 
           {activeTab === "admin" && isAdminRole && (
             <AdminPanel
@@ -441,8 +511,9 @@ export default function App() {
           {activeTab === "analytics" && (
             <Analytics
               analyticsData={analyticsData}
-              linksCount={links.length}
+              linksCount={stats.totalLinks}
               fetchWithAuth={fetchWithAuth}
+              currentWorkspaceId={currentWorkspaceId}
             />
           )}
 

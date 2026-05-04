@@ -1,5 +1,6 @@
 import { SupabaseClient } from "../config/supabase.js";
 import { fetchClicksForLinkIds, filterRealClicks } from "../utils/clickTracking.js";
+import { getAccessibleWorkspaceIds } from "./workspaceService.js";
 
 export interface GeographicStats {
   countries: Array<{ name: string; code?: string; clicks: number }>;
@@ -22,35 +23,51 @@ export interface TimeStats {
   peakDay: string;
 }
 
+interface LinkExportMeta {
+  short_code: string;
+  title: string;
+  url: string;
+}
+
+const getScopedLinks = async (
+  supabase: SupabaseClient,
+  userId: string,
+  linkId?: string,
+  workspaceId?: string,
+) => {
+  const accessibleWorkspaceIds = await getAccessibleWorkspaceIds(supabase, userId);
+  const workspaceIds = workspaceId
+    ? accessibleWorkspaceIds.includes(workspaceId)
+      ? [workspaceId]
+      : []
+    : accessibleWorkspaceIds;
+  if (!workspaceIds.length) {
+    return [];
+  }
+
+  let query = supabase
+    .from("links")
+    .select("id, short_code, custom_title, original_url, workspace_id")
+    .in("workspace_id", workspaceIds);
+
+  if (linkId) {
+    query = query.eq("id", linkId);
+  }
+
+  const { data, error } = await query;
+  if (error) throw error;
+  return data || [];
+};
+
 // Get geographic statistics
 export const getGeographicStats = async (
   supabase: SupabaseClient,
   userId: string,
-  linkId?: string
+  linkId?: string,
+  workspaceId?: string,
 ): Promise<GeographicStats> => {
-  // Get user's links
-  let linkIds: string[] = [];
-  
-  if (linkId) {
-    // Verify link belongs to user
-    const { data: link } = await supabase
-      .from("links")
-      .select("id")
-      .eq("id", linkId)
-      .eq("user_id", userId)
-      .single();
-    
-    if (link) {
-      linkIds = [linkId];
-    }
-  } else {
-    const { data: links } = await supabase
-      .from("links")
-      .select("id")
-      .eq("user_id", userId);
-    
-    linkIds = links?.map((l) => l.id) || [];
-  }
+  const links = await getScopedLinks(supabase, userId, linkId, workspaceId);
+  const linkIds = links.map((l: any) => l.id);
 
   if (linkIds.length === 0) {
     return { countries: [], cities: [], totalCountries: 0, totalCities: 0 };
@@ -112,30 +129,11 @@ export const getGeographicStats = async (
 export const getDeviceStats = async (
   supabase: SupabaseClient,
   userId: string,
-  linkId?: string
+  linkId?: string,
+  workspaceId?: string,
 ): Promise<DeviceStats> => {
-  // Get user's links
-  let linkIds: string[] = [];
-  
-  if (linkId) {
-    const { data: link } = await supabase
-      .from("links")
-      .select("id")
-      .eq("id", linkId)
-      .eq("user_id", userId)
-      .single();
-    
-    if (link) {
-      linkIds = [linkId];
-    }
-  } else {
-    const { data: links } = await supabase
-      .from("links")
-      .select("id")
-      .eq("user_id", userId);
-    
-    linkIds = links?.map((l) => l.id) || [];
-  }
+  const links = await getScopedLinks(supabase, userId, linkId, workspaceId);
+  const linkIds = links.map((l: any) => l.id);
 
   if (linkIds.length === 0) {
     return {
@@ -227,29 +225,11 @@ export const getTimeStats = async (
   supabase: SupabaseClient,
   userId: string,
   days: number = 30,
-  linkId?: string
+  linkId?: string,
+  workspaceId?: string,
 ): Promise<TimeStats> => {
-  let linkIds: string[] = [];
-  
-  if (linkId) {
-    const { data: link } = await supabase
-      .from("links")
-      .select("id")
-      .eq("id", linkId)
-      .eq("user_id", userId)
-      .single();
-    
-    if (link) {
-      linkIds = [linkId];
-    }
-  } else {
-    const { data: links } = await supabase
-      .from("links")
-      .select("id")
-      .eq("user_id", userId);
-    
-    linkIds = links?.map((l) => l.id) || [];
-  }
+  const links = await getScopedLinks(supabase, userId, linkId, workspaceId);
+  const linkIds = links.map((l: any) => l.id);
 
   if (linkIds.length === 0) {
     return {
@@ -331,39 +311,18 @@ export const exportAnalyticsToCSV = async (
   userId: string,
   format: "clicks" | "summary" = "clicks",
   linkId?: string,
+  workspaceId?: string,
   startDate?: string,
   endDate?: string
 ): Promise<string> => {
-  let linkIds: string[] = [];
-  let linksData: any[] = [];
-  
-  if (linkId) {
-    const { data: link } = await supabase
-      .from("links")
-      .select("id, short_code, custom_title, original_url")
-      .eq("id", linkId)
-      .eq("user_id", userId)
-      .single();
-    
-    if (link) {
-      linkIds = [linkId];
-      linksData = [link];
-    }
-  } else {
-    const { data: links } = await supabase
-      .from("links")
-      .select("id, short_code, custom_title, original_url")
-      .eq("user_id", userId);
-    
-    linkIds = links?.map((l) => l.id) || [];
-    linksData = links || [];
-  }
+  const linksData = await getScopedLinks(supabase, userId, linkId, workspaceId);
+  const linkIds = linksData.map((l: any) => l.id);
 
   if (linkIds.length === 0) {
     return "No data available";
   }
 
-  const linkMetaMap = new Map(
+  const linkMetaMap = new Map<string, LinkExportMeta>(
     linksData.map((l) => [
       l.id,
       { short_code: l.short_code, title: l.custom_title || l.short_code, url: l.original_url },

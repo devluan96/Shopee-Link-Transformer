@@ -8,6 +8,30 @@ import {
   normalizeRedirectDelayMs,
 } from "../utils/normalizers.js";
 import { TIKTOK_HOST_REGEX, MAX_SHORT_CODE_LENGTH } from "../config/constants.js";
+import {
+  assertWorkspaceWriteAccessForLink,
+  getAccessibleWorkspaceIds,
+  resolveWritableWorkspaceId,
+} from "./workspaceService.js";
+
+const normalizeFolderName = (value?: string | null) => {
+  const trimmed = value?.trim();
+  return trimmed ? trimmed.slice(0, 120) : null;
+};
+
+const normalizeTags = (value?: string[] | null) => {
+  if (!Array.isArray(value)) return [];
+
+  const uniqueTags = new Set<string>();
+  for (const rawTag of value) {
+    const nextTag = rawTag?.trim().toLowerCase();
+    if (!nextTag) continue;
+    uniqueTags.add(nextTag.slice(0, 40));
+    if (uniqueTags.size >= 12) break;
+  }
+
+  return Array.from(uniqueTags);
+};
 
 export const createLink = async (
   supabase: SupabaseClient,
@@ -24,6 +48,9 @@ export const createLink = async (
     redirectDelayMs?: number;
     usageContext?: string;
     expiresAt?: string;
+    folderName?: string;
+    tags?: string[];
+    workspaceId?: string;
   },
 ) => {
   const primaryUrl = normalizeProtectedPrimaryUrl(data.url, "Link gốc");
@@ -71,6 +98,13 @@ export const createLink = async (
   }
 
   const delayMs = normalizeRedirectDelayMs(data.redirectDelayMs);
+  const workspaceId = await resolveWritableWorkspaceId(
+    supabase,
+    userId,
+    data.workspaceId,
+  );
+  const folderName = normalizeFolderName(data.folderName);
+  const tags = normalizeTags(data.tags);
 
   // Validate and normalize expires_at
   let expiresAt: string | null = null;
@@ -88,6 +122,9 @@ export const createLink = async (
       user_id: userId,
       original_url: primaryUrl,
       short_code: shortCode,
+      workspace_id: workspaceId,
+      folder_name: folderName,
+      tags,
       custom_title: data.customTitle?.trim() || null,
       custom_description: data.customDescription?.trim() || null,
       custom_image_url: data.customImageUrl?.trim() || null,
@@ -124,13 +161,24 @@ export const getLinkByShortCode = async (
   return data;
 };
 
-export const getUserLinks = async (supabase: SupabaseClient, userId: string) => {
+export const getUserLinks = async (
+  supabase: SupabaseClient,
+  userId: string,
+  workspaceId?: string,
+) => {
+  const workspaceIds = await getAccessibleWorkspaceIds(supabase, userId);
+  if (!workspaceIds.length) return [];
+  const filteredWorkspaceIds = workspaceId
+    ? workspaceIds.filter((id) => id === workspaceId)
+    : workspaceIds;
+  if (!filteredWorkspaceIds.length) return [];
+
   const { data, error } = await supabase
     .from("links")
     .select(
-      "id, short_code, original_url, custom_title, custom_description, custom_image_url, video_url, created_at, expires_at, secondary_url, redirect_delay_ms, usage_context",
+      "id, short_code, original_url, workspace_id, folder_name, tags, custom_title, custom_description, custom_image_url, video_url, created_at, expires_at, secondary_url, redirect_delay_ms, usage_context, user_id",
     )
-    .eq("user_id", userId)
+    .in("workspace_id", filteredWorkspaceIds)
     .order("created_at", { ascending: false });
 
   if (error) throw error;
@@ -150,13 +198,24 @@ export const updateLink = async (
     redirect_delay_ms: number;
     usage_context: string;
     expires_at: string;
+    folder_name: string | null;
+    tags: string[];
   }>,
 ) => {
+  await assertWorkspaceWriteAccessForLink(supabase, userId, linkId);
+
+  const normalizedData = { ...data };
+  if ("folder_name" in normalizedData) {
+    normalizedData.folder_name = normalizeFolderName(normalizedData.folder_name);
+  }
+  if ("tags" in normalizedData) {
+    normalizedData.tags = normalizeTags(normalizedData.tags);
+  }
+
   const { data: link, error } = await supabase
     .from("links")
-    .update(data)
+    .update(normalizedData)
     .eq("id", linkId)
-    .eq("user_id", userId)
     .select()
     .single();
 
@@ -169,11 +228,12 @@ export const deleteLink = async (
   linkId: string,
   userId: string,
 ) => {
+  await assertWorkspaceWriteAccessForLink(supabase, userId, linkId);
+
   const { error } = await supabase
     .from("links")
     .delete()
-    .eq("id", linkId)
-    .eq("user_id", userId);
+    .eq("id", linkId);
 
   if (error) throw error;
 };

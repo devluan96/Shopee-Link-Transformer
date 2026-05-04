@@ -1,6 +1,8 @@
 import React, { useEffect, useRef, useState } from "react";
 import {
   BarChart3,
+  Building2,
+  ChevronDown,
   Download,
   LayoutDashboard,
   List,
@@ -12,7 +14,7 @@ import {
   Users as UsersIcon,
 } from "lucide-react";
 import { cn } from "@/src/lib/utils";
-import { Tab, UserProfile } from "@/src/types";
+import { Tab, UserProfile, Workspace } from "@/src/types";
 import { InstallAppButton } from "@/src/components/common/InstallAppButton";
 import { ThemeToggle } from "@/src/components/common/ThemeToggle";
 
@@ -21,6 +23,9 @@ interface SidebarProps {
   setActiveTab: (tab: Tab) => void;
   isActuallyAdmin: boolean;
   userProfile: UserProfile | null;
+  workspaces: Workspace[];
+  currentWorkspaceId: string;
+  onWorkspaceChange: (workspaceId: string) => void;
   userEmail: string | undefined;
   handleLogout: () => void;
   isOpen?: boolean;
@@ -70,6 +75,9 @@ export const Sidebar = ({
   setActiveTab,
   isActuallyAdmin,
   userProfile,
+  workspaces,
+  currentWorkspaceId,
+  onWorkspaceChange,
   userEmail,
   handleLogout,
   isOpen,
@@ -156,6 +164,31 @@ export const Sidebar = ({
         </div>
 
         <nav className="flex-1 space-y-2 overflow-y-auto">
+          <div className="mb-5 rounded-2xl border border-gray-100 bg-gray-50/80 p-3 dark:border-slate-700 dark:bg-slate-800/80">
+            <label className="mb-2 flex items-center gap-2 px-1 text-[10px] font-black uppercase tracking-widest text-gray-400 dark:text-slate-500">
+              <Building2 size={12} className="text-orange-500" />
+              Workspace hiện tại
+            </label>
+            <div className="relative">
+              <select
+                value={currentWorkspaceId}
+                onChange={(e) => onWorkspaceChange(e.target.value)}
+                className="w-full appearance-none rounded-xl border border-transparent bg-white dark:bg-slate-900 px-4 py-3 pr-10 text-sm font-bold text-gray-900 outline-none transition-all focus:border-orange-500/20 focus:ring-4 focus:ring-orange-500/10 dark:text-slate-100"
+              >
+                {workspaces.map((workspace) => (
+                  <option key={workspace.id} value={workspace.id}>
+                    {workspace.name}
+                    {workspace.role ? ` · ${workspace.role}` : ""}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown
+                size={16}
+                className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-gray-400"
+              />
+            </div>
+          </div>
+
           <div className="mb-4 px-4 text-[10px] font-black uppercase tracking-widest text-gray-400 dark:text-slate-500">
             Menu chính
           </div>
@@ -191,6 +224,12 @@ export const Sidebar = ({
             label="Phân tích dữ liệu"
             active={activeTab === "analytics"}
             onClick={() => handleTabClick("analytics")}
+          />
+          <SidebarItem
+            icon={UsersIcon}
+            label="Team Workspace"
+            active={activeTab === "team"}
+            onClick={() => handleTabClick("team")}
           />
 
           {isActuallyAdmin && (

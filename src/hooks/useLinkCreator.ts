@@ -9,6 +9,7 @@ const MAX_SHORT_CODE_LENGTH = 50;
 interface UseLinkCreatorProps {
   user: User | null;
   profile: UserProfile | null;
+  currentWorkspaceId?: string;
   fetchWithAuth: (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
   canAccessCreate: boolean;
   onSuccess: () => void;
@@ -20,6 +21,8 @@ export interface LinkCreatorState {
   customDescription: string;
   customShortCode: string;
   usageContext: string;
+  folderName: string;
+  tagsText: string;
   customImageUrl: string;
   secondaryUrl: string;
   secondaryTargetType: "shopee" | "tiktok";
@@ -37,6 +40,8 @@ export interface LinkCreatorActions {
   setCustomDescription: (v: string) => void;
   setCustomShortCode: (v: string) => void;
   setUsageContext: (v: string) => void;
+  setFolderName: (v: string) => void;
+  setTagsText: (v: string) => void;
   setCustomImageUrl: (v: string) => void;
   setSecondaryUrl: (v: string) => void;
   setSecondaryTargetType: (v: "shopee" | "tiktok") => void;
@@ -52,6 +57,7 @@ export interface LinkCreatorActions {
 export function useLinkCreator({
   user,
   profile,
+  currentWorkspaceId,
   fetchWithAuth,
   canAccessCreate,
   onSuccess,
@@ -61,6 +67,8 @@ export function useLinkCreator({
   const [customDescription, setCustomDescription] = useState("");
   const [customShortCode, setCustomShortCode] = useState("");
   const [usageContext, setUsageContext] = useState("");
+  const [folderName, setFolderName] = useState("");
+  const [tagsText, setTagsText] = useState("");
   const [customImageUrl, setCustomImageUrl] = useState("");
   const [secondaryUrl, setSecondaryUrl] = useState("");
   const [secondaryTargetType, setSecondaryTargetType] = useState<"shopee" | "tiktok">("shopee");
@@ -101,6 +109,12 @@ export function useLinkCreator({
           customTitle,
           customDescription,
           usageContext,
+          workspaceId: currentWorkspaceId || undefined,
+          folderName,
+          tags: tagsText
+            .split(",")
+            .map((tag) => tag.trim())
+            .filter(Boolean),
           customImageUrl,
           secondaryUrl: secondaryUrl.trim(),
           secondaryTargetType,
@@ -128,8 +142,8 @@ export function useLinkCreator({
     }
   }, [
     url, user, canAccessCreate, customShortCode, customTitle, customDescription,
-    usageContext, customImageUrl, secondaryUrl, secondaryTargetType,
-    redirectDelayMs, expiresAt, videoUrl, fetchWithAuth, onSuccess
+    usageContext, folderName, tagsText, customImageUrl, secondaryUrl, secondaryTargetType,
+    redirectDelayMs, expiresAt, videoUrl, currentWorkspaceId, fetchWithAuth, onSuccess
   ]);
 
   const resetForm = useCallback(() => {
@@ -138,6 +152,8 @@ export function useLinkCreator({
     setCustomDescription("");
     setCustomShortCode("");
     setUsageContext("");
+    setFolderName("");
+    setTagsText("");
     setCustomImageUrl("");
     setSecondaryUrl("");
     setSecondaryTargetType("shopee");
@@ -154,6 +170,8 @@ export function useLinkCreator({
     customDescription,
     customShortCode,
     usageContext,
+    folderName,
+    tagsText,
     customImageUrl,
     secondaryUrl,
     secondaryTargetType,
@@ -168,6 +186,8 @@ export function useLinkCreator({
     setCustomDescription,
     setCustomShortCode,
     setUsageContext,
+    setFolderName,
+    setTagsText,
     setCustomImageUrl,
     setSecondaryUrl,
     setSecondaryTargetType,

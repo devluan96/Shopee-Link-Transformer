@@ -25,11 +25,17 @@ interface AnalyticsProps {
   analyticsData: AnalyticsData;
   linksCount: number;
   fetchWithAuth?: (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
+  currentWorkspaceId?: string;
 }
 
 const TRAFFIC_COLORS = ["#3b82f6", "#ef4444", "#10b981", "#f59e0b", "#8b5cf6"];
 
-export const Analytics = ({ analyticsData, linksCount, fetchWithAuth }: AnalyticsProps) => {
+export const Analytics = ({
+  analyticsData,
+  linksCount,
+  fetchWithAuth,
+  currentWorkspaceId,
+}: AnalyticsProps) => {
   const [activeView, setActiveView] = useState<"basic" | "advanced">("basic");
   const history = analyticsData?.history || [];
   const topLinks = analyticsData?.topLinks || [];
@@ -115,7 +121,10 @@ export const Analytics = ({ analyticsData, linksCount, fetchWithAuth }: Analytic
       )}
 
       {activeView === "advanced" && fetchWithAuth ? (
-        <AdvancedAnalytics fetchWithAuth={fetchWithAuth} />
+        <AdvancedAnalytics
+          fetchWithAuth={fetchWithAuth}
+          currentWorkspaceId={currentWorkspaceId}
+        />
       ) : (
         <>
           <div className="rounded-[2.5rem] border border-gray-100 dark:border-slate-700 bg-white dark:bg-slate-800 p-8 shadow-sm">

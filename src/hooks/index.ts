@@ -9,3 +9,4 @@ export { usePayment, type PaymentState, type PaymentActions } from "./usePayment
 export { useMeta } from "./useMeta";
 export { useLinkCreator, type LinkCreatorState, type LinkCreatorActions } from "./useLinkCreator";
 export { useClipboard, type ClipboardState, type ClipboardActions } from "./useClipboard";
+export { useWorkspaces } from "./useWorkspaces";

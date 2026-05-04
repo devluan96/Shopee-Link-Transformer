@@ -58,11 +58,15 @@ interface NotificationSettings {
 
 interface AdvancedAnalyticsProps {
   fetchWithAuth: (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
+  currentWorkspaceId?: string;
 }
 
 const COLORS = ["#f97316", "#3b82f6", "#10b981", "#f59e0b", "#8b5cf6", "#ec4899", "#06b6d4", "#84cc16"];
 
-export const AdvancedAnalytics = ({ fetchWithAuth }: AdvancedAnalyticsProps) => {
+export const AdvancedAnalytics = ({
+  fetchWithAuth,
+  currentWorkspaceId,
+}: AdvancedAnalyticsProps) => {
   const [activeTab, setActiveTab] = useState<"geo" | "device" | "time" | "notifications">("geo");
   const [geoData, setGeoData] = useState<GeographicData | null>(null);
   const [deviceData, setDeviceData] = useState<DeviceData | null>(null);
@@ -77,10 +81,18 @@ export const AdvancedAnalytics = ({ fetchWithAuth }: AdvancedAnalyticsProps) => 
   const [savingSettings, setSavingSettings] = useState(false);
   const [showTelegramToken, setShowTelegramToken] = useState(false);
 
+  const buildWorkspaceQuery = () =>
+    currentWorkspaceId
+      ? `workspaceId=${encodeURIComponent(currentWorkspaceId)}`
+      : "";
+
   // Fetch geographic data
   const fetchGeoData = async () => {
     try {
-      const res = await fetchWithAuth("/api/v1/user/analytics/geographic");
+      const query = buildWorkspaceQuery();
+      const res = await fetchWithAuth(
+        `/api/v1/user/analytics/geographic${query ? `?${query}` : ""}`,
+      );
       const data = await res.json();
       setGeoData(data);
     } catch (e) {
@@ -91,7 +103,10 @@ export const AdvancedAnalytics = ({ fetchWithAuth }: AdvancedAnalyticsProps) => 
   // Fetch device data
   const fetchDeviceData = async () => {
     try {
-      const res = await fetchWithAuth("/api/v1/user/analytics/devices");
+      const query = buildWorkspaceQuery();
+      const res = await fetchWithAuth(
+        `/api/v1/user/analytics/devices${query ? `?${query}` : ""}`,
+      );
       const data = await res.json();
       setDeviceData(data);
     } catch (e) {
@@ -102,7 +117,10 @@ export const AdvancedAnalytics = ({ fetchWithAuth }: AdvancedAnalyticsProps) => 
   // Fetch time data
   const fetchTimeData = async () => {
     try {
-      const res = await fetchWithAuth("/api/v1/user/analytics/time?days=30");
+      const query = buildWorkspaceQuery();
+      const res = await fetchWithAuth(
+        `/api/v1/user/analytics/time?days=30${query ? `&${query}` : ""}`,
+      );
       const data = await res.json();
       setTimeData(data);
     } catch (e) {
@@ -147,7 +165,10 @@ export const AdvancedAnalytics = ({ fetchWithAuth }: AdvancedAnalyticsProps) => 
   // Export CSV
   const exportCSV = async (format: "clicks" | "summary") => {
     try {
-      const res = await fetchWithAuth(`/api/v1/user/analytics/export?format=${format}`);
+      const query = buildWorkspaceQuery();
+      const res = await fetchWithAuth(
+        `/api/v1/user/analytics/export?format=${format}${query ? `&${query}` : ""}`,
+      );
       const blob = await res.blob();
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement("a");
@@ -163,6 +184,13 @@ export const AdvancedAnalytics = ({ fetchWithAuth }: AdvancedAnalyticsProps) => 
     }
   };
 
+  useEffect(() => {
+    setGeoData(null);
+    setDeviceData(null);
+    setTimeData(null);
+    setLoading(false);
+  }, [currentWorkspaceId]);
+
   // Load data when tab changes
   useEffect(() => {
     if (activeTab === "geo" && !geoData) {
@@ -177,7 +205,7 @@ export const AdvancedAnalytics = ({ fetchWithAuth }: AdvancedAnalyticsProps) => 
     } else if (activeTab === "notifications") {
       fetchSettings();
     }
-  }, [activeTab]);
+  }, [activeTab, currentWorkspaceId]);
 
   return (
     <div className="space-y-6">

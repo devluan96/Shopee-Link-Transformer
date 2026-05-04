@@ -4,25 +4,42 @@ import {
   filterRealClicks,
 } from "../utils/clickTracking.js";
 import { normalizeTrafficSource } from "../utils/normalizers.js";
+import { getAccessibleWorkspaceIds } from "./workspaceService.js";
 
-export const getUserStats = async (supabase: SupabaseClient, userId: string) => {
-  const { count, error } = await supabase
+const getFilteredLinks = async (
+  supabase: SupabaseClient,
+  userId: string,
+  workspaceId?: string,
+) => {
+  const accessibleWorkspaceIds = await getAccessibleWorkspaceIds(supabase, userId);
+  const workspaceIds = workspaceId
+    ? accessibleWorkspaceIds.includes(workspaceId)
+      ? [workspaceId]
+      : []
+    : accessibleWorkspaceIds;
+  if (!workspaceIds.length) return [];
+
+  let query = supabase
     .from("links")
-    .select("*", { count: "exact", head: true })
-    .eq("user_id", userId);
+    .select("id, short_code, custom_title, workspace_id")
+    .in("workspace_id", workspaceIds);
 
+  const { data, error } = await query;
   if (error) throw error;
+  return data || [];
+};
 
-  const { data: links, error: linksError } = await supabase
-    .from("links")
-    .select("id, short_code, custom_title")
-    .eq("user_id", userId);
+export const getUserStats = async (
+  supabase: SupabaseClient,
+  userId: string,
+  workspaceId?: string,
+) => {
+  const links = await getFilteredLinks(supabase, userId, workspaceId);
+  const count = links.length;
 
-  if (linksError) throw linksError;
-
-  if (!links || links.length === 0) {
+  if (!links.length) {
     return {
-      totalLinks: count || 0,
+      totalLinks: count,
       totalClicks: 0,
       recentClicks: [],
       topLinks: [],
@@ -56,10 +73,7 @@ export const getUserStats = async (supabase: SupabaseClient, userId: string) => 
   clicks.forEach((click: any) => {
     if (!click?.link_id) return;
 
-    linkClickMap.set(
-      click.link_id,
-      (linkClickMap.get(click.link_id) || 0) + 1,
-    );
+    linkClickMap.set(click.link_id, (linkClickMap.get(click.link_id) || 0) + 1);
 
     if (!click.created_at) return;
     const createdAt = new Date(click.created_at);
@@ -76,7 +90,10 @@ export const getUserStats = async (supabase: SupabaseClient, userId: string) => 
     }
   });
 
-  const totalClicks = Array.from(linkClickMap.values()).reduce((sum, value) => sum + value, 0);
+  const totalClicks = Array.from(linkClickMap.values()).reduce(
+    (sum, value) => sum + value,
+    0,
+  );
   const recentClicks = Object.entries(historyMap)
     .map(([date, total]) => ({ date, clicks: total }))
     .sort((a, b) => a.date.localeCompare(b.date));
@@ -94,11 +111,12 @@ export const getUserStats = async (supabase: SupabaseClient, userId: string) => 
     previousWindowClicks === 0
       ? 100
       : Math.round(
-          ((currentWindowClicks - previousWindowClicks) / previousWindowClicks) * 100,
+          ((currentWindowClicks - previousWindowClicks) / previousWindowClicks) *
+            100,
         );
 
   return {
-    totalLinks: count || 0,
+    totalLinks: count,
     totalClicks,
     recentClicks,
     topLinks,
@@ -106,15 +124,14 @@ export const getUserStats = async (supabase: SupabaseClient, userId: string) => 
   };
 };
 
-export const getUserAnalytics = async (supabase: SupabaseClient, userId: string) => {
-  const { data: links, error } = await supabase
-    .from("links")
-    .select("id")
-    .eq("user_id", userId);
+export const getUserAnalytics = async (
+  supabase: SupabaseClient,
+  userId: string,
+  workspaceId?: string,
+) => {
+  const links = await getFilteredLinks(supabase, userId, workspaceId);
 
-  if (error) throw error;
-
-  if (!links?.length) {
+  if (!links.length) {
     return {
       history: [],
       topLinks: [],
@@ -138,7 +155,6 @@ export const getUserAnalytics = async (supabase: SupabaseClient, userId: string)
   let previousWindowClicks = 0;
   let currentWindowClicks = 0;
 
-  // Calculate traffic sources from ALL clicks (not filtered)
   rawClicks.forEach((click: any) => {
     const source =
       normalizeTrafficSource(click.source_detail) ||
@@ -148,14 +164,11 @@ export const getUserAnalytics = async (supabase: SupabaseClient, userId: string)
     sourceMap.set(source, (sourceMap.get(source) || 0) + 1);
   });
 
-  // Calculate other metrics from filtered clicks only
   clicks.forEach((click: any) => {
-    // Track clicks per link for top links
     if (click.link_id) {
       linkClickMap.set(click.link_id, (linkClickMap.get(click.link_id) || 0) + 1);
     }
 
-    // Track history and growth (only last 60 days)
     if (!click.created_at) return;
     const createdAt = new Date(click.created_at);
     if (Number.isNaN(createdAt.getTime()) || createdAt < sixtyDaysAgo) return;
@@ -177,28 +190,15 @@ export const getUserAnalytics = async (supabase: SupabaseClient, userId: string)
     .map(([name, value]) => ({ name, value }))
     .sort((a, b) => b.value - a.value);
 
-  // Fetch link metadata for top links
-  const topLinkIds = Array.from(linkClickMap.keys());
-  let linkMetaMap = new Map<string, { short_code: string; title: string }>();
-  
-  if (topLinkIds.length > 0) {
-    const { data: linksData } = await supabase
-      .from("links")
-      .select("id, short_code, custom_title")
-      .in("id", topLinkIds);
-    
-    if (linksData) {
-      linkMetaMap = new Map(
-        linksData.map((l: any) => [
-          l.id,
-          { 
-            short_code: l.short_code, 
-            title: l.custom_title || l.short_code 
-          }
-        ])
-      );
-    }
-  }
+  const linkMetaMap = new Map<string, { short_code: string; title: string }>(
+    links.map((link: any) => [
+      link.id,
+      {
+        short_code: link.short_code,
+        title: link.custom_title || link.short_code,
+      },
+    ]),
+  );
 
   const topLinks = Array.from(linkClickMap.entries())
     .map(([id, clicks]) => ({
@@ -214,7 +214,8 @@ export const getUserAnalytics = async (supabase: SupabaseClient, userId: string)
     previousWindowClicks === 0
       ? 100
       : Math.round(
-          ((currentWindowClicks - previousWindowClicks) / previousWindowClicks) * 100,
+          ((currentWindowClicks - previousWindowClicks) / previousWindowClicks) *
+            100,
         );
 
   return {

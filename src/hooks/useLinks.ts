@@ -7,6 +7,7 @@ import { toast } from "sonner";
 interface UseLinksProps {
   user: User | null;
   profile: UserProfile | null;
+  currentWorkspaceId?: string;
   fetchWithAuth: (
     input: RequestInfo | URL,
     init?: RequestInit,
@@ -34,6 +35,7 @@ export interface LinksActions {
 export function useLinks({
   user,
   profile,
+  currentWorkspaceId,
   fetchWithAuth,
   activeTab,
 }: UseLinksProps): LinksState & LinksActions {
@@ -46,7 +48,10 @@ export function useLinks({
     if (!user) return;
     setListLoading(true);
     try {
-      const response = await fetchWithAuth("/api/v1/user/links");
+      const query = currentWorkspaceId
+        ? `?workspaceId=${encodeURIComponent(currentWorkspaceId)}`
+        : "";
+      const response = await fetchWithAuth(`/api/v1/user/links${query}`);
       const data = await response.json();
       setLinks(data);
       setLinksDirty(false);
@@ -55,7 +60,7 @@ export function useLinks({
     } finally {
       setListLoading(false);
     }
-  }, [user, fetchWithAuth]);
+  }, [user, fetchWithAuth, currentWorkspaceId]);
 
   const handleDeleteLink = useCallback(
     async (id: string) => {
@@ -127,7 +132,7 @@ export function useLinks({
     setSearchTerm("");
     setListLoading(false);
     setLinksDirty(!!user);
-  }, [user?.id]);
+  }, [user?.id, currentWorkspaceId]);
 
   // Auto-fetch when tab is list and data is dirty
   useEffect(() => {

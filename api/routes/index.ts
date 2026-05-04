@@ -4,6 +4,7 @@ import usersRouter from "./users.js";
 import analyticsRouter from "./analytics.js";
 import paymentRouter from "./payment.js";
 import uploadRouter from "./upload.js";
+import workspacesRouter from "./workspaces.js";
 
 const router = Router();
 
@@ -13,5 +14,6 @@ router.use("/api/v1", usersRouter);
 router.use("/api/v1", analyticsRouter);
 router.use("/api/v1", paymentRouter);
 router.use("/api/v1", uploadRouter);
+router.use("/api/v1", workspacesRouter);
 
 export default router;

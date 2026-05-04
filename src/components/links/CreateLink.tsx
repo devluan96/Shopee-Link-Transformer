@@ -26,6 +26,8 @@ type FormField =
   | "customDescription"
   | "customShortCode"
   | "usageContext"
+  | "folderName"
+  | "tagsText"
   | "customImageUrl"
   | "videoUrl"
   | "secondaryUrl"
@@ -43,6 +45,10 @@ interface CreateLinkProps {
   setCustomShortCode: (v: string) => void;
   usageContext: string;
   setUsageContext: (v: string) => void;
+  folderName: string;
+  setFolderName: (v: string) => void;
+  tagsText: string;
+  setTagsText: (v: string) => void;
   customImageUrl: string;
   setCustomImageUrl: (v: string) => void;
   secondaryUrl: string;
@@ -92,6 +98,10 @@ export const CreateLink = ({
   setCustomShortCode,
   usageContext,
   setUsageContext,
+  folderName,
+  setFolderName,
+  tagsText,
+  setTagsText,
   customImageUrl,
   setCustomImageUrl,
   secondaryUrl,
@@ -510,6 +520,57 @@ export const CreateLink = ({
                   ))}
                 </select>
                 {renderFieldError("usageContext")}
+              </div>
+
+              <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+                <div>
+                  <label className="mb-3 flex items-center gap-2 px-1 text-[11px] font-black uppercase tracking-widest text-gray-400">
+                    <Type size={14} className="text-orange-500" /> Folder chiến
+                    dịch
+                  </label>
+                  <input
+                    data-field="folderName"
+                    type="text"
+                    value={folderName}
+                    onChange={(e) => {
+                      setFolderName(e.target.value);
+                      clearFieldError("folderName");
+                    }}
+                    placeholder="sale-6-6, remarketing, koc..."
+                    className={inputClass(
+                      "folderName",
+                      "w-full rounded-2xl bg-gray-50 px-6 py-4 font-medium text-gray-900 dark:bg-slate-700 dark:text-slate-100 focus:bg-white dark:focus:bg-slate-700",
+                    )}
+                  />
+                  {renderFieldError("folderName")}
+                  <p className="mt-2 px-1 text-[11px] font-medium text-gray-400">
+                    Nhóm link theo chiến dịch, team hoặc mùa bán hàng.
+                  </p>
+                </div>
+
+                <div>
+                  <label className="mb-3 flex items-center gap-2 px-1 text-[11px] font-black uppercase tracking-widest text-gray-400">
+                    <Type size={14} className="text-orange-500" /> Tags
+                  </label>
+                  <input
+                    data-field="tagsText"
+                    type="text"
+                    value={tagsText}
+                    onChange={(e) => {
+                      setTagsText(e.target.value);
+                      clearFieldError("tagsText");
+                    }}
+                    placeholder="facebook, retarget, campaign-a"
+                    className={inputClass(
+                      "tagsText",
+                      "w-full rounded-2xl bg-gray-50 px-6 py-4 font-medium text-gray-900 dark:bg-slate-700 dark:text-slate-100 focus:bg-white dark:focus:bg-slate-700",
+                    )}
+                  />
+                  {renderFieldError("tagsText")}
+                  <p className="mt-2 px-1 text-[11px] font-medium text-gray-400">
+                    Nhiều tag cách nhau bằng dấu phẩy để tìm/lọc sau này.
+                  </p>
+                </div>
               </div>
 
               <div>
@@ -932,7 +993,7 @@ export const CreateLink = ({
 
       {/* QR Code Modal */}
       {showQrModal && result && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-100 flex items-center justify-center p-4">
           <div
             onClick={() => setShowQrModal(false)}
             className="absolute inset-0 bg-black/60 backdrop-blur-sm"

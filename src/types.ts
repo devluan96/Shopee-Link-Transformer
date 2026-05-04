@@ -2,6 +2,9 @@ export interface ConvertedLink {
   id?: string;
   short_code: string;
   original_url: string;
+  workspace_id?: string;
+  folder_name?: string;
+  tags?: string[];
   secondary_url?: string;
   redirect_delay_ms?: number;
   custom_title?: string;
@@ -17,6 +20,28 @@ export interface ConvertedLink {
     label: string;
     count: number;
   }>;
+}
+
+export type WorkspaceRole = "owner" | "editor" | "viewer";
+
+export interface Workspace {
+  id: string;
+  owner_id: string;
+  name: string;
+  slug?: string | null;
+  description?: string | null;
+  is_personal: boolean;
+  role: WorkspaceRole;
+}
+
+export interface WorkspaceMember {
+  workspace_id: string;
+  user_id: string;
+  role: WorkspaceRole;
+  full_name?: string | null;
+  email?: string | null;
+  avatar_url?: string | null;
+  joined_at?: string | null;
 }
 
 export interface UserProfile {
@@ -38,6 +63,7 @@ export type Tab =
   | "create"
   | "list"
   | "analytics"
+  | "team"
   | "admin"
   | "profile";
 

@@ -65,6 +65,8 @@ export const LinkList = ({
     title: "",
     desc: "",
     usage: "",
+    folder: "",
+    tagsText: "",
     img: "",
     original: "",
     secondary: "",
@@ -149,6 +151,8 @@ export const LinkList = ({
       title: link.custom_title || "",
       desc: link.custom_description || "",
       usage: link.usage_context || "",
+      folder: link.folder_name || "",
+      tagsText: (link.tags || []).join(", "),
       img: link.custom_image_url || "",
       original: link.original_url || "",
       secondary: link.secondary_url || "",
@@ -167,6 +171,11 @@ export const LinkList = ({
         custom_title: editForm.title,
         custom_description: editForm.desc,
         usage_context: editForm.usage,
+        folder_name: editForm.folder.trim() || null,
+        tags: editForm.tagsText
+          .split(",")
+          .map((tag) => tag.trim())
+          .filter(Boolean),
         custom_image_url: editForm.img,
         original_url: editForm.original,
         secondary_url: editForm.secondary,
@@ -289,209 +298,228 @@ export const LinkList = ({
             const linkId = l.id ?? l.short_code;
 
             return (
-            <div
-              key={linkId}
-              className={`group flex flex-col gap-5 rounded-[2.5rem] border p-5 shadow-sm transition-all hover:shadow-xl sm:flex-row sm:items-start sm:p-6 ${
-                selectedIds.has(linkId)
-                  ? "border-orange-300 bg-orange-50/30 dark:bg-orange-900/20"
-                  : "border-gray-100 dark:border-slate-700 bg-white dark:bg-slate-800"
-              }`}
-            >
-              {/* Checkbox for bulk selection */}
-              {onDeleteManyLinks && (
-                <div className="flex items-start pt-1">
-                  <button
-                    onClick={() => toggleSelect(linkId)}
-                    className="rounded-lg p-1 transition-all hover:bg-gray-100"
-                  >
-                    {selectedIds.has(linkId) ? (
-                      <CheckSquare size={20} className="text-orange-500" />
-                    ) : (
-                      <Square size={20} className="text-gray-300" />
-                    )}
-                  </button>
-                </div>
-              )}
-
-              <div className="relative mx-auto flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-gray-50 sm:mx-0">
-                {l.custom_image_url ? (
-                  <img
-                    src={l.custom_image_url}
-                    alt={l.custom_title || l.short_code}
-                    className="h-full w-full object-cover"
-                  />
-                ) : l.video_url ? (
-                  <div className="flex h-full w-full items-center justify-center bg-gray-900 text-white">
-                    <VideoIcon size={24} />
+              <div
+                key={linkId}
+                className={`group flex flex-col gap-5 rounded-[2.5rem] border p-5 shadow-sm transition-all hover:shadow-xl sm:flex-row sm:items-start sm:p-6 ${
+                  selectedIds.has(linkId)
+                    ? "border-orange-300 bg-orange-50/30 dark:bg-orange-900/20"
+                    : "border-gray-100 dark:border-slate-700 bg-white dark:bg-slate-800"
+                }`}
+              >
+                {/* Checkbox for bulk selection */}
+                {onDeleteManyLinks && (
+                  <div className="flex items-start pt-1">
+                    <button
+                      onClick={() => toggleSelect(linkId)}
+                      className="rounded-lg p-1 transition-all hover:bg-gray-100"
+                    >
+                      {selectedIds.has(linkId) ? (
+                        <CheckSquare size={20} className="text-orange-500" />
+                      ) : (
+                        <Square size={20} className="text-gray-300" />
+                      )}
+                    </button>
                   </div>
-                ) : (
-                  <ImageIcon size={24} className="text-gray-200" />
                 )}
 
-                {l.video_url && l.custom_image_url && (
-                  <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-black/20">
-                    <VideoIcon
-                      size={16}
-                      className="text-white drop-shadow-md"
+                <div className="relative mx-auto flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-gray-50 sm:mx-0">
+                  {l.custom_image_url ? (
+                    <img
+                      src={l.custom_image_url}
+                      alt={l.custom_title || l.short_code}
+                      className="h-full w-full object-cover"
                     />
-                  </div>
-                )}
-              </div>
-
-              <div className="min-w-0 flex-1 sm:pr-4">
-                <h4 className="mb-1 line-clamp-2 text-center font-bold text-gray-900 sm:text-left">
-                  {l.custom_title || "Untitled link"}
-                </h4>
-                <p className="mb-2 line-clamp-2 text-center text-xs font-medium text-gray-400 sm:text-left">
-                  {l.custom_description || "No description provided"}
-                </p>
-                {l.usage_context && (
-                  <p className="mb-2 text-center text-[11px] font-bold text-orange-600 sm:text-left">
-                    Được dùng ở: {l.usage_context}
-                  </p>
-                )}
-
-                <div className="flex flex-wrap items-center justify-center gap-2 sm:justify-start sm:gap-4">
-                  <div className="flex items-center gap-1.5 rounded-lg bg-blue-50 px-2 py-0.5 text-[10px] font-black text-blue-600">
-                    <MousePointer2 size={10} />
-                    <span>{l.clicks || 0} CLICKS</span>
-                  </div>
-                  <span className="max-w-full truncate rounded-lg border border-gray-100 dark:border-slate-600 bg-gray-50 dark:bg-slate-700 px-2 py-0.5 text-[10px] font-black uppercase tracking-tighter text-gray-400 dark:text-slate-400">
-                    {l.short_code}
-                  </span>
-                  <span className="text-[10px] font-medium uppercase tracking-tighter text-gray-400">
-                    {l.created_at &&
-                      formatDistanceToNow(new Date(l.created_at))}{" "}
-                    ago
-                  </span>
-                </div>
-
-                <div className="mt-3 flex flex-wrap items-center gap-2">
-                  <span className="rounded-full border border-orange-100 bg-orange-50 px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-orange-700">
-                    Shopee Protected
-                  </span>
-                  {isLinkExpired(l.expires_at) && (
-                    <span className="rounded-full border border-red-200 bg-red-100 px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-red-700">
-                      ⏰ Đã hết hạn
-                    </span>
+                  ) : l.video_url ? (
+                    <div className="flex h-full w-full items-center justify-center bg-gray-900 text-white">
+                      <VideoIcon size={24} />
+                    </div>
+                  ) : (
+                    <ImageIcon size={24} className="text-gray-200" />
                   )}
-                  {!isLinkExpired(l.expires_at) &&
-                    isLinkExpiringSoon(l.expires_at) && (
-                      <span className="rounded-full border border-amber-200 bg-amber-100 px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-amber-700">
-                        ⏰ Sắp hết hạn
-                      </span>
-                    )}
-                  {l.expires_at &&
-                    !isLinkExpired(l.expires_at) &&
-                    !isLinkExpiringSoon(l.expires_at) && (
-                      <span className="rounded-full border border-blue-100 bg-blue-50 px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-blue-600">
-                        ⏰ Hết hạn {formatDistanceToNow(new Date(l.expires_at))}
-                      </span>
-                    )}
+
+                  {l.video_url && l.custom_image_url && (
+                    <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-black/20">
+                      <VideoIcon
+                        size={16}
+                        className="text-white drop-shadow-md"
+                      />
+                    </div>
+                  )}
                 </div>
 
-                {l.secondary_url &&
-                  (() => {
-                    const flowBadge = getSecondaryFlowBadge(l.secondary_url);
-                    if (!flowBadge) return null;
+                <div className="min-w-0 flex-1 sm:pr-4">
+                  <h4 className="mb-1 line-clamp-2 text-center font-bold text-gray-900 sm:text-left">
+                    {l.custom_title || "Untitled link"}
+                  </h4>
+                  <p className="mb-2 line-clamp-2 text-center text-xs font-medium text-gray-400 sm:text-left">
+                    {l.custom_description || "No description provided"}
+                  </p>
+                  {l.usage_context && (
+                    <p className="mb-2 text-center text-[11px] font-bold text-orange-600 sm:text-left">
+                      Được dùng ở: {l.usage_context}
+                    </p>
+                  )}
 
-                    return (
-                      <div className="mt-3 flex flex-wrap items-center gap-2">
-                        <span className={flowBadge.className}>
-                          {flowBadge.label}
+                  {(l.folder_name || (l.tags && l.tags.length > 0)) && (
+                    <div className="mb-2 flex flex-wrap items-center justify-center gap-2 sm:justify-start">
+                      {l.folder_name && (
+                        <span className="rounded-full border border-violet-100 bg-violet-50 px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-violet-700">
+                          Folder · {l.folder_name}
                         </span>
-                      </div>
-                    );
-                  })()}
+                      )}
+                      {l.tags?.map((tag) => (
+                        <span
+                          key={`${linkId}-tag-${tag}`}
+                          className="rounded-full border border-slate-200 bg-slate-100 px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-slate-700"
+                        >
+                          #{tag}
+                        </span>
+                      ))}
+                    </div>
+                  )}
 
-                {l.tracked_sources && l.tracked_sources.length > 0 && (
-                  <div className="mt-3 flex flex-wrap items-center gap-2">
-                    {l.tracked_sources.map((source) => (
-                      <span
-                        key={`${linkId}-${source.label}`}
-                        className="rounded-full border border-emerald-100 bg-emerald-50 px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-emerald-700"
-                      >
-                        {source.label} · {source.count}
-                      </span>
-                    ))}
+                  <div className="flex flex-wrap items-center justify-center gap-2 sm:justify-start sm:gap-4">
+                    <div className="flex items-center gap-1.5 rounded-lg bg-blue-50 px-2 py-0.5 text-[10px] font-black text-blue-600">
+                      <MousePointer2 size={10} />
+                      <span>{l.clicks || 0} CLICKS</span>
+                    </div>
+                    <span className="max-w-full truncate rounded-lg border border-gray-100 dark:border-slate-600 bg-gray-50 dark:bg-slate-700 px-2 py-0.5 text-[10px] font-black uppercase tracking-tighter text-gray-400 dark:text-slate-400">
+                      {l.short_code}
+                    </span>
+                    <span className="text-[10px] font-medium uppercase tracking-tighter text-gray-400">
+                      {l.created_at &&
+                        formatDistanceToNow(new Date(l.created_at))}{" "}
+                      ago
+                    </span>
                   </div>
-                )}
 
-                <div className="mt-3 flex flex-wrap items-center gap-2">
+                  <div className="mt-3 flex flex-wrap items-center gap-2">
+                    <span className="rounded-full border border-orange-100 bg-orange-50 px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-orange-700">
+                      Shopee Protected
+                    </span>
+                    {isLinkExpired(l.expires_at) && (
+                      <span className="rounded-full border border-red-200 bg-red-100 px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-red-700">
+                        ⏰ Đã hết hạn
+                      </span>
+                    )}
+                    {!isLinkExpired(l.expires_at) &&
+                      isLinkExpiringSoon(l.expires_at) && (
+                        <span className="rounded-full border border-amber-200 bg-amber-100 px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-amber-700">
+                          ⏰ Sắp hết hạn
+                        </span>
+                      )}
+                    {l.expires_at &&
+                      !isLinkExpired(l.expires_at) &&
+                      !isLinkExpiringSoon(l.expires_at) && (
+                        <span className="rounded-full border border-blue-100 bg-blue-50 px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-blue-600">
+                          ⏰ Hết hạn{" "}
+                          {formatDistanceToNow(new Date(l.expires_at))}
+                        </span>
+                      )}
+                  </div>
+
+                  {l.secondary_url &&
+                    (() => {
+                      const flowBadge = getSecondaryFlowBadge(l.secondary_url);
+                      if (!flowBadge) return null;
+
+                      return (
+                        <div className="mt-3 flex flex-wrap items-center gap-2">
+                          <span className={flowBadge.className}>
+                            {flowBadge.label}
+                          </span>
+                        </div>
+                      );
+                    })()}
+
+                  {l.tracked_sources && l.tracked_sources.length > 0 && (
+                    <div className="mt-3 flex flex-wrap items-center gap-2">
+                      {l.tracked_sources.map((source) => (
+                        <span
+                          key={`${linkId}-${source.label}`}
+                          className="rounded-full border border-emerald-100 bg-emerald-50 px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-emerald-700"
+                        >
+                          {source.label} · {source.count}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+
+                  <div className="mt-3 flex flex-wrap items-center gap-2">
+                    <button
+                      onClick={() =>
+                        copyToClipboard(
+                          buildTrackedLink(l.short_code, "facebook"),
+                          `${linkId}-facebook`,
+                        )
+                      }
+                      className="inline-flex items-center gap-1.5 rounded-full border border-blue-100 bg-blue-50 px-3 py-1.5 text-[10px] font-black uppercase tracking-wider text-blue-700 transition-all hover:bg-blue-100"
+                    >
+                      <Link2 size={11} /> Facebook
+                    </button>
+                    <button
+                      onClick={() =>
+                        copyToClipboard(
+                          buildTrackedLink(l.short_code, "tiktok"),
+                          `${linkId}-tiktok`,
+                        )
+                      }
+                      className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-100 px-3 py-1.5 text-[10px] font-black uppercase tracking-wider text-slate-700 transition-all hover:bg-slate-200"
+                    >
+                      <Link2 size={11} /> TikTok
+                    </button>
+                    <button
+                      onClick={() =>
+                        copyToClipboard(
+                          buildTrackedLink(l.short_code, "zalo"),
+                          `${linkId}-zalo`,
+                        )
+                      }
+                      className="inline-flex items-center gap-1.5 rounded-full border border-cyan-100 bg-cyan-50 px-3 py-1.5 text-[10px] font-black uppercase tracking-wider text-cyan-700 transition-all hover:bg-cyan-100"
+                    >
+                      <Link2 size={11} /> Zalo
+                    </button>
+                  </div>
+                </div>
+
+                <div className="flex w-full flex-wrap items-center justify-center gap-2 sm:w-auto sm:justify-end">
                   <button
-                    onClick={() =>
-                      copyToClipboard(
-                        buildTrackedLink(l.short_code, "facebook"),
-                        `${linkId}-facebook`,
-                      )
-                    }
-                    className="inline-flex items-center gap-1.5 rounded-full border border-blue-100 bg-blue-50 px-3 py-1.5 text-[10px] font-black uppercase tracking-wider text-blue-700 transition-all hover:bg-blue-100"
+                    onClick={() => startEdit(l)}
+                    className="rounded-xl bg-gray-50 p-3 text-gray-400 transition-all hover:bg-blue-50 hover:text-blue-600"
+                    title="Chỉnh sửa"
                   >
-                    <Link2 size={11} /> Facebook
+                    <Pencil size={18} />
+                  </button>
+                  <button
+                    onClick={() => setDeletingLink(l)}
+                    className="rounded-xl bg-gray-50 p-3 text-gray-400 transition-all hover:bg-red-50 hover:text-red-600"
+                    title="Xóa link"
+                  >
+                    <Trash2 size={18} />
                   </button>
                   <button
                     onClick={() =>
                       copyToClipboard(
-                        buildTrackedLink(l.short_code, "tiktok"),
-                        `${linkId}-tiktok`,
+                        `https://hotsnew.click/s/${l.short_code}`,
+                        linkId,
                       )
                     }
-                    className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-100 px-3 py-1.5 text-[10px] font-black uppercase tracking-wider text-slate-700 transition-all hover:bg-slate-200"
+                    className="min-w-27.5 flex-1 shrink-0 rounded-xl bg-gray-900 px-6 py-3 text-xs font-black uppercase tracking-widest text-white transition-all hover:scale-105 active:scale-95 sm:mx-1 sm:flex-none"
                   >
-                    <Link2 size={11} /> TikTok
+                    {copiedId === linkId ? "DONE" : "COPY"}
                   </button>
                   <button
-                    onClick={() =>
-                      copyToClipboard(
-                        buildTrackedLink(l.short_code, "zalo"),
-                        `${linkId}-zalo`,
-                      )
-                    }
-                    className="inline-flex items-center gap-1.5 rounded-full border border-cyan-100 bg-cyan-50 px-3 py-1.5 text-[10px] font-black uppercase tracking-wider text-cyan-700 transition-all hover:bg-cyan-100"
+                    onClick={() => setQrLink(l)}
+                    className="min-w-32.5 flex-1 shrink-0 rounded-xl border border-purple-100 bg-white px-6 py-3 text-xs font-black uppercase tracking-widest text-purple-600 transition-all hover:bg-purple-50 active:scale-95 sm:flex-none"
+                    title="Mã QR"
                   >
-                    <Link2 size={11} /> Zalo
+                    <span className="flex items-center justify-center gap-2">
+                      <QrCode size={18} />
+                      QR CODE
+                    </span>
                   </button>
                 </div>
               </div>
-
-              <div className="flex w-full flex-wrap items-center justify-center gap-2 sm:w-auto sm:justify-end">
-                <button
-                  onClick={() => startEdit(l)}
-                  className="rounded-xl bg-gray-50 p-3 text-gray-400 transition-all hover:bg-blue-50 hover:text-blue-600"
-                  title="Chỉnh sửa"
-                >
-                  <Pencil size={18} />
-                </button>
-                <button
-                  onClick={() => setDeletingLink(l)}
-                  className="rounded-xl bg-gray-50 p-3 text-gray-400 transition-all hover:bg-red-50 hover:text-red-600"
-                  title="Xóa link"
-                >
-                  <Trash2 size={18} />
-                </button>
-                <button
-                  onClick={() =>
-                    copyToClipboard(
-                      `https://hotsnew.click/s/${l.short_code}`,
-                      linkId,
-                    )
-                  }
-                  className="min-w-27.5 flex-1 shrink-0 rounded-xl bg-gray-900 px-6 py-3 text-xs font-black uppercase tracking-widest text-white transition-all hover:scale-105 active:scale-95 sm:mx-1 sm:flex-none"
-                >
-                  {copiedId === linkId ? "DONE" : "COPY"}
-                </button>
-                <button
-                  onClick={() => setQrLink(l)}
-                  className="min-w-32.5 flex-1 shrink-0 rounded-xl border border-purple-100 bg-white px-6 py-3 text-xs font-black uppercase tracking-widest text-purple-600 transition-all hover:bg-purple-50 active:scale-95 sm:flex-none"
-                  title="Mã QR"
-                >
-                  <span className="flex items-center justify-center gap-2">
-                    <QrCode size={18} />
-                    QR CODE
-                  </span>
-                </button>
-              </div>
-            </div>
             );
           })
         )}
@@ -578,6 +606,39 @@ export const LinkList = ({
                     </option>
                   ))}
                 </select>
+              </div>
+
+              <div className="space-y-1 lg:col-start-1 lg:row-start-5">
+                <label className="ml-1 text-[10px] font-black uppercase tracking-widest text-gray-400">
+                  Folder chiến dịch
+                </label>
+                <input
+                  type="text"
+                  value={editForm.folder}
+                  onChange={(e) =>
+                    setEditForm({ ...editForm, folder: e.target.value })
+                  }
+                  placeholder="sale-6-6, remarketing..."
+                  className="w-full rounded-2xl border-2 border-transparent bg-gray-50 px-6 py-4 text-sm font-medium text-gray-900 outline-none transition-all focus:border-orange-500 dark:bg-slate-700 dark:text-slate-100"
+                />
+              </div>
+
+              <div className="space-y-1 lg:col-start-2 lg:row-start-4">
+                <label className="ml-1 text-[10px] font-black uppercase tracking-widest text-gray-400">
+                  Tags
+                </label>
+                <input
+                  type="text"
+                  value={editForm.tagsText}
+                  onChange={(e) =>
+                    setEditForm({ ...editForm, tagsText: e.target.value })
+                  }
+                  placeholder="facebook, retarget, campaign-a"
+                  className="w-full rounded-2xl border-2 border-transparent bg-gray-50 px-6 py-4 text-sm font-medium text-gray-900 outline-none transition-all focus:border-orange-500 dark:bg-slate-700 dark:text-slate-100"
+                />
+                <p className="px-1 text-[9px] font-medium text-gray-400 dark:text-slate-500">
+                  Phân tách nhiều tag bằng dấu phẩy.
+                </p>
               </div>
 
               <div className="space-y-1 lg:col-start-2 lg:row-start-2">

@@ -13,11 +13,16 @@ router.get("/user/stats", authenticate, async (req: AuthenticatedRequest, res) =
   try {
     const supabase = getSupabase();
     const userId = req.authUser?.id;
+    const workspaceId = req.query.workspaceId as string | undefined;
     if (!userId) {
       return res.status(400).json({ error: "Missing userId" });
     }
 
-    const stats = await analyticsService.getUserStats(supabase, userId);
+    const stats = await analyticsService.getUserStats(
+      supabase,
+      userId,
+      workspaceId,
+    );
     return res.json(stats);
   } catch (e: any) {
     return res.status(500).json({ error: e.message });
@@ -29,11 +34,16 @@ router.get("/user/analytics", authenticate, async (req: AuthenticatedRequest, re
   try {
     const supabase = getSupabase();
     const userId = req.authUser?.id;
+    const workspaceId = req.query.workspaceId as string | undefined;
     if (!userId) {
       return res.status(400).json({ error: "Missing userId" });
     }
 
-    const analytics = await analyticsService.getUserAnalytics(supabase, userId);
+    const analytics = await analyticsService.getUserAnalytics(
+      supabase,
+      userId,
+      workspaceId,
+    );
     return res.json(analytics);
   } catch (e: any) {
     return res.status(500).json({ error: e.message });
@@ -50,7 +60,13 @@ router.get("/user/analytics/geographic", authenticate, async (req: Authenticated
     }
 
     const linkId = req.query.link_id as string | undefined;
-    const geoStats = await advancedAnalytics.getGeographicStats(supabase, userId, linkId);
+    const workspaceId = req.query.workspaceId as string | undefined;
+    const geoStats = await advancedAnalytics.getGeographicStats(
+      supabase,
+      userId,
+      linkId,
+      workspaceId,
+    );
     return res.json(geoStats);
   } catch (e: any) {
     return res.status(500).json({ error: e.message });
@@ -67,7 +83,13 @@ router.get("/user/analytics/devices", authenticate, async (req: AuthenticatedReq
     }
 
     const linkId = req.query.link_id as string | undefined;
-    const deviceStats = await advancedAnalytics.getDeviceStats(supabase, userId, linkId);
+    const workspaceId = req.query.workspaceId as string | undefined;
+    const deviceStats = await advancedAnalytics.getDeviceStats(
+      supabase,
+      userId,
+      linkId,
+      workspaceId,
+    );
     return res.json(deviceStats);
   } catch (e: any) {
     return res.status(500).json({ error: e.message });
@@ -84,8 +106,15 @@ router.get("/user/analytics/time", authenticate, async (req: AuthenticatedReques
     }
 
     const linkId = req.query.link_id as string | undefined;
+    const workspaceId = req.query.workspaceId as string | undefined;
     const days = parseInt(req.query.days as string) || 30;
-    const timeStats = await advancedAnalytics.getTimeStats(supabase, userId, days, linkId);
+    const timeStats = await advancedAnalytics.getTimeStats(
+      supabase,
+      userId,
+      days,
+      linkId,
+      workspaceId,
+    );
     return res.json(timeStats);
   } catch (e: any) {
     return res.status(500).json({ error: e.message });
@@ -103,6 +132,7 @@ router.get("/user/analytics/export", authenticate, async (req: AuthenticatedRequ
 
     const format = (req.query.format as "clicks" | "summary") || "clicks";
     const linkId = req.query.link_id as string | undefined;
+    const workspaceId = req.query.workspaceId as string | undefined;
     const startDate = req.query.start_date as string | undefined;
     const endDate = req.query.end_date as string | undefined;
 
@@ -111,6 +141,7 @@ router.get("/user/analytics/export", authenticate, async (req: AuthenticatedRequ
       userId,
       format,
       linkId,
+      workspaceId,
       startDate,
       endDate
     );

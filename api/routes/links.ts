@@ -3,6 +3,7 @@ import { authenticate, checkAdmin } from "../middleware/auth.js";
 import { getSupabase } from "../config/supabase.js";
 import { AuthenticatedRequest } from "../types/index.js";
 import * as linkService from "../services/linkService.js";
+import * as workspaceService from "../services/workspaceService.js";
 import { attachTrackedSourcesToLinks } from "../utils/clickTracking.js";
 
 const router = Router();
@@ -33,7 +34,9 @@ router.get("/user/links", authenticate, async (req: AuthenticatedRequest, res) =
       return res.status(400).json({ error: "Missing userId" });
     }
 
-    const links = await linkService.getUserLinks(supabase, userId);
+    const workspaceId =
+      typeof req.query.workspaceId === "string" ? req.query.workspaceId : undefined;
+    const links = await linkService.getUserLinks(supabase, userId, workspaceId);
     const linksWithSources = await attachTrackedSourcesToLinks(supabase, links);
     return res.json(linksWithSources);
   } catch (e: any) {
@@ -64,6 +67,8 @@ router.patch(
         "redirect_delay_ms",
         "usage_context",
         "expires_at",
+        "folder_name",
+        "tags",
       ];
 
       const updates: any = {};
@@ -188,10 +193,27 @@ router.post(
       }
 
       // Delete all links that belong to this user and match the ids
+      const workspaceIds = await workspaceService.getAccessibleWorkspaceIds(
+        supabase,
+        userId,
+      );
+      const writableWorkspaceMap = await workspaceService.getWorkspaceAccessMap(
+        supabase,
+        userId,
+      );
+      const writableWorkspaceIds = workspaceIds.filter((workspaceId) => {
+        const role = writableWorkspaceMap.get(workspaceId);
+        return role === "owner" || role === "editor";
+      });
+
+      if (writableWorkspaceIds.length === 0) {
+        return res.json({ success: true, deleted: 0 });
+      }
+
       const { error, count } = await supabase
         .from("links")
         .delete({ count: "exact" })
-        .eq("user_id", userId)
+        .in("workspace_id", writableWorkspaceIds)
         .in("id", ids);
 
       if (error) throw error;

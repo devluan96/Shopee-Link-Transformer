@@ -6,7 +6,11 @@ import { toast } from "sonner";
 interface UseAnalyticsProps {
   user: User | null;
   profile: UserProfile | null;
-  fetchWithAuth: (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
+  currentWorkspaceId?: string;
+  fetchWithAuth: (
+    input: RequestInfo | URL,
+    init?: RequestInit,
+  ) => Promise<Response>;
   activeTab: string;
   linksLength: number;
 }
@@ -27,58 +31,67 @@ export interface AnalyticsActions {
   refreshAnalytics: () => void;
 }
 
-export function useAnalytics({ 
-  user, 
-  profile, 
-  fetchWithAuth, 
-  activeTab,
-  linksLength 
-}: UseAnalyticsProps): AnalyticsState & AnalyticsActions {
-  const emptyStats: LinkStats = {
-    totalLinks: 0,
-    totalClicks: 0,
-    recentClicks: [],
-    topLinks: [],
-    growthPercentage: 0,
-  };
-  const emptyAnalyticsData: AnalyticsData = {
-    history: [],
-    topLinks: [],
-    trafficSources: [],
-    growthPercentage: 0,
-  };
+const emptyStats: LinkStats = {
+  totalLinks: 0,
+  totalClicks: 0,
+  recentClicks: [],
+  topLinks: [],
+  growthPercentage: 0,
+};
 
+const emptyAnalyticsData: AnalyticsData = {
+  history: [],
+  topLinks: [],
+  trafficSources: [],
+  growthPercentage: 0,
+};
+
+export function useAnalytics({
+  user,
+  profile,
+  currentWorkspaceId,
+  fetchWithAuth,
+  activeTab,
+}: UseAnalyticsProps): AnalyticsState & AnalyticsActions {
   const [stats, setStats] = useState<LinkStats>(emptyStats);
-  
-  const [analyticsData, setAnalyticsData] = useState<AnalyticsData>(emptyAnalyticsData);
-  
+  const [analyticsData, setAnalyticsData] =
+    useState<AnalyticsData>(emptyAnalyticsData);
   const [statsDirty, setStatsDirty] = useState(true);
   const [analyticsDirty, setAnalyticsDirty] = useState(true);
+
+  const buildWorkspaceQuery = useCallback(() => {
+    if (!currentWorkspaceId) return "";
+    return `?workspaceId=${encodeURIComponent(currentWorkspaceId)}`;
+  }, [currentWorkspaceId]);
 
   const fetchStats = useCallback(async () => {
     if (!user) return;
     try {
-      const response = await fetchWithAuth("/api/v1/user/stats");
+      const response = await fetchWithAuth(
+        `/api/v1/user/stats${buildWorkspaceQuery()}`,
+      );
       const data = await response.json();
       setStats(data);
       setStatsDirty(false);
     } catch (e) {
       console.error(e);
     }
-  }, [user, fetchWithAuth]);
+  }, [user, fetchWithAuth, buildWorkspaceQuery]);
 
   const fetchAnalytics = useCallback(async () => {
     if (!user) return;
     try {
-      const res = await fetchWithAuth("/api/v1/user/analytics");
+      const res = await fetchWithAuth(
+        `/api/v1/user/analytics${buildWorkspaceQuery()}`,
+      );
       const data = await res.json();
       setAnalyticsData(data);
       setAnalyticsDirty(false);
     } catch (e: any) {
       console.error("Fetch analytics fail:", e?.message || e);
-      toast.error("Không thể tải dữ liệu phân tích. Vui lòng thử lại sau.");
+      toast.error("KhÃ´ng thá»ƒ táº£i dá»¯ liá»‡u phÃ¢n tÃ­ch. Vui lÃ²ng thá»­ láº¡i sau.");
     }
-  }, [user, fetchWithAuth]);
+  }, [user, fetchWithAuth, buildWorkspaceQuery]);
 
   const refreshStats = useCallback(() => setStatsDirty(true), []);
   const refreshAnalytics = useCallback(() => setAnalyticsDirty(true), []);
@@ -88,19 +101,23 @@ export function useAnalytics({
     setAnalyticsData(emptyAnalyticsData);
     setStatsDirty(!!user);
     setAnalyticsDirty(!!user);
-  }, [user?.id]);
+  }, [user?.id, currentWorkspaceId]);
 
-  // Auto-fetch stats when on dashboard
   useEffect(() => {
-    const isAdminRole = profile?.role === "admin" || user?.email === "devluan1996@gmail.com";
+    const isAdminRole =
+      profile?.role === "admin" || user?.email === "devluan1996@gmail.com";
     const isApproved = profile?.status === "approved" || isAdminRole;
 
-    if (user && isApproved && activeTab === "dashboard" && statsDirty) {
+    if (
+      user &&
+      isApproved &&
+      (activeTab === "dashboard" || activeTab === "analytics") &&
+      statsDirty
+    ) {
       fetchStats();
     }
   }, [user, profile, activeTab, statsDirty, fetchStats]);
 
-  // Auto-fetch analytics when on analytics tab
   useEffect(() => {
     if (activeTab === "analytics" && analyticsDirty && user) {
       fetchAnalytics();

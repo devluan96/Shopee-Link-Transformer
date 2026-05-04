@@ -2,6 +2,7 @@ import { Request } from "express";
 
 export type SubscriptionPlan = "free" | "monthly" | "yearly";
 export type PaidSubscriptionPlan = Exclude<SubscriptionPlan, "free">;
+export type WorkspaceRole = "owner" | "editor" | "viewer";
 
 export interface AuthenticatedRequest extends Request {
   authUser?: {
@@ -24,6 +25,9 @@ export interface PublicLinkRecord {
   id: string;
   short_code: string;
   original_url: string;
+  workspace_id?: string | null;
+  folder_name?: string | null;
+  tags?: string[] | null;
   secondary_url?: string | null;
   redirect_delay_ms?: number | null;
   custom_title?: string | null;
