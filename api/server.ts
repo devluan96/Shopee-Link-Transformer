@@ -23,18 +23,11 @@ import {
   getTrafficSourceFromRequest,
   getClientIp,
 } from "./utils/helpers.js";
-import { normalizeTrafficSource } from "./utils/normalizers.js";
 import {
   insertClickWithTracking,
   insertOutboundEvent,
 } from "./utils/clickTracking.js";
 import { handleClickNotification } from "./services/notificationService.js";
-
-// Templates
-import { renderLinkLandingPage } from "./templates/landingPage.js";
-
-// Types
-import { PublicLinkRecord } from "./types/index.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -103,7 +96,7 @@ app.get("/s/:shortCode", async (req, res) => {
     const { data: link, error } = await supabase
       .from("links")
       .select(
-        "id, short_code, original_url, custom_title, custom_description, custom_image_url, video_url, secondary_url, redirect_delay_ms, expires_at",
+        "id, user_id, short_code, original_url, custom_title, custom_description, custom_image_url, video_url, secondary_url, redirect_delay_ms, expires_at",
       )
       .eq("short_code", shortCode)
       .maybeSingle();
@@ -149,44 +142,53 @@ app.get("/s/:shortCode", async (req, res) => {
     const userAgent = req.headers["user-agent"] || "";
     const ipAddress = getClientIp(req);
 
-    // Redirect or render landing page
-    const wantsRedirect = req.query.redirect === "true";
-    const hasMedia = link.custom_image_url || link.video_url;
-
-    if (wantsRedirect || !hasMedia) {
-      try {
-        await insertOutboundEvent(supabase, {
-          link_id: link.id,
-          short_code: link.short_code,
-          stage: "primary",
-          destination_url: link.original_url,
-          user_agent: typeof userAgent === "string" ? userAgent : null,
-          ip_address: ipAddress,
-          source,
-          source_detail,
-          referer,
-        });
-      } catch (trackError) {
-        console.error("Direct outbound tracking error:", trackError);
-      }
-      return res.redirect(link.original_url);
+    try {
+      await insertClickWithTracking(supabase, {
+        link_id: link.id,
+        user_agent: userAgent,
+        ip_address: ipAddress,
+        source,
+        source_detail,
+        referer,
+      });
+    } catch (trackError) {
+      console.error("Direct click tracking error:", trackError);
     }
 
-    // Render landing page
-    const publicBaseUrl =
-      getPublicBaseUrl(req) || `${req.protocol}://${req.get("host")}`;
-    const canonicalUrl = `${publicBaseUrl}/s/${shortCode}`;
-    const clickTrackingUrl = `${publicBaseUrl}/api/v1/links/${link.id}/track`;
+    try {
+      await supabase.rpc("increment_link_clicks", { link_id: link.id });
+    } catch (rpcError: any) {
+      console.error("Direct increment clicks failed:", rpcError?.message || rpcError);
+    }
 
-    const html = renderLinkLandingPage(
-      link as PublicLinkRecord,
-      canonicalUrl,
-      clickTrackingUrl,
-    );
+    try {
+      await insertOutboundEvent(supabase, {
+        link_id: link.id,
+        short_code: link.short_code,
+        stage: "primary",
+        destination_url: link.original_url,
+        user_agent: typeof userAgent === "string" ? userAgent : null,
+        ip_address: ipAddress,
+        source,
+        source_detail,
+        referer,
+      });
+    } catch (trackError) {
+      console.error("Direct outbound tracking error:", trackError);
+    }
 
-    res.setHeader("Content-Type", "text/html; charset=utf-8");
-    res.setHeader("Cache-Control", "public, max-age=300");
-    return res.send(html);
+    if (link.user_id) {
+      try {
+        handleClickNotification(supabase, link.user_id, link.id, link.short_code, {
+          source: source || "direct",
+          created_at: new Date().toISOString(),
+        });
+      } catch (notifyError) {
+        console.error("Direct notification error:", notifyError);
+      }
+    }
+
+    return res.redirect(link.original_url);
   } catch (e: any) {
     console.error("[REDIRECT ERROR]", {
       shortCode,
@@ -216,7 +218,7 @@ app.post("/api/v1/links/:linkId/track", async (req, res) => {
     // Fetch link details to get required fields
     const { data: link, error: linkError } = await supabase
       .from("links")
-      .select("id, short_code, original_url, secondary_url")
+      .select("id, user_id, short_code, original_url, secondary_url")
       .eq("id", linkId)
       .maybeSingle();
 

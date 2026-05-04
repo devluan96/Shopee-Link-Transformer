@@ -403,6 +403,19 @@ export const renderLinkLandingPage = (
           return freshVideo;
         };
 
+        const isAffiliateCommerceUrl = (url) => {
+          if (!url) return false;
+          try {
+            const hostname = new URL(url).hostname.toLowerCase();
+            return /(^|\.)shopee\.[a-z.]+$/i.test(hostname) || /(^|\.)tiktok\.com$|(^|\.)vt\.tiktok\.com$|(^|\.)vm\.tiktok\.com$/i.test(hostname);
+          } catch {
+            return false;
+          }
+        };
+
+        const shouldUseSameTabOnMobile = (url) =>
+          isMobileDevice && isAffiliateCommerceUrl(url);
+
         const attachVideoDebugListeners = (videoEl) => {
           if (!(videoEl instanceof HTMLVideoElement)) return;
           videoEl.addEventListener("loadedmetadata", () => {
@@ -494,6 +507,11 @@ export const renderLinkLandingPage = (
         const openUrl = (url, preferNewTab = false) => {
           if (!url) return false;
 
+          if (shouldUseSameTabOnMobile(url)) {
+            window.location.href = url;
+            return false;
+          }
+
           if (preferNewTab) {
             const openedInNewTab = tryOpenInNewTab(url);
             if (openedInNewTab) {
@@ -520,69 +538,6 @@ export const renderLinkLandingPage = (
             pushDebug("primary_step_skip_already_opened");
             return;
           }
-          if (hasVideo && isMobileDevice) {
-            primaryOpened = true;
-            hideOverlay();
-            showActionDock();
-            pushDebug("mobile_video_mode_entered");
-            try {
-              const mobileVideo = buildFreshVideoElement();
-              if (mobileVideo instanceof HTMLVideoElement) {
-                attachVideoDebugListeners(mobileVideo);
-                mobileVideo.controls = true;
-                mobileVideo.setAttribute("controls", "controls");
-                mobileVideo.muted = false;
-                mobileVideo.defaultMuted = false;
-                mobileVideo.loop = false;
-                mobileVideo.playsInline = true;
-                mobileVideo.setAttribute("playsinline", "true");
-                mobileVideo.setAttribute("webkit-playsinline", "true");
-                mobileVideo.removeAttribute("muted");
-                if (mobileVideo.readyState < 2) {
-                  pushDebug("video_load_forced");
-                  mobileVideo.load();
-                }
-                const playAttempt = mobileVideo.play();
-                if (playAttempt && typeof playAttempt.then === "function") {
-                  playAttempt
-                    .then(() => {
-                      pushDebug("video_play_success");
-                      try {
-                        if (typeof mobileVideo.webkitEnterFullscreen === "function") {
-                          mobileVideo.webkitEnterFullscreen();
-                          pushDebug("video_fullscreen_requested");
-                        }
-                      } catch (fullscreenError) {
-                        console.warn("[PrimaryStep] Fullscreen failed", fullscreenError);
-                        pushDebug("video_fullscreen_failed", { message: String(fullscreenError) });
-                      }
-                    })
-                    .catch((playError) => {
-                      console.warn("[PrimaryStep] Mobile video play failed", playError);
-                      pushDebug("video_play_failed", { message: String(playError) });
-                      try {
-                        mobileVideo.muted = true;
-                        mobileVideo.defaultMuted = true;
-                        mobileVideo.play()
-                          .then(() => pushDebug("video_play_muted_retry_success"))
-                          .catch((retryError) =>
-                            pushDebug("video_play_muted_retry_failed", {
-                              message: String(retryError),
-                            }),
-                          );
-                      } catch (mutedRetryError) {
-                        console.warn("[PrimaryStep] Muted retry failed", mutedRetryError);
-                        pushDebug("video_play_muted_retry_exception", { message: String(mutedRetryError) });
-                      }
-                    });
-                }
-              }
-            } catch (error) {
-              console.warn("[PrimaryStep] Mobile video resume failed", error);
-              pushDebug("mobile_video_resume_exception", { message: String(error) });
-            }
-            return;
-          }
           primaryOpened = true;
           console.log("[PrimaryStep] Opening primary URL:", primaryTargetUrl);
           pushDebug("primary_redirect_launch");
@@ -603,7 +558,6 @@ export const renderLinkLandingPage = (
           pushDebug("primary_target_launch");
           trackRealClick();
           hideOverlay();
-          showActionDock();
           scheduleSecondaryGate();
           openUrl(primaryTargetUrl, true);
         };
@@ -666,6 +620,14 @@ export const renderLinkLandingPage = (
 
           const startVideoPreview = () => {
             if (!(currentHeroVideo instanceof HTMLVideoElement)) return;
+            if (isMobileDevice) {
+              currentHeroVideo.autoplay = false;
+              currentHeroVideo.loop = false;
+              currentHeroVideo.controls = false;
+              currentHeroVideo.pause();
+              pushDebug("mobile_preview_paused");
+              return;
+            }
             currentHeroVideo.muted = true;
             currentHeroVideo.defaultMuted = true;
             currentHeroVideo.playsInline = true;
