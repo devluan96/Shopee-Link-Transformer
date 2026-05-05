@@ -664,6 +664,39 @@ export const CreateLink = ({
                   {renderFieldError("customDescription")}
                 </div>
               </div>
+              <div>
+                <label className="mb-3 flex items-center gap-2 px-1 text-[11px] font-black uppercase tracking-widest text-gray-400">
+                  <Type size={14} className="text-orange-500" /> Mã rút gọn
+                  tùy chỉnh
+                </label>
+                <input
+                  data-field="customShortCode"
+                  type="text"
+                  value={customShortCode}
+                  onChange={(e) => {
+                    setCustomShortCode(e.target.value);
+                    clearFieldError("customShortCode");
+                  }}
+                  maxLength={MAX_SHORT_CODE_LENGTH}
+                  placeholder="Ví dụ: toi-yeu-em"
+                  className={inputClass(
+                    "customShortCode",
+                    "w-full rounded-2xl bg-gray-50 px-6 py-4 font-medium text-gray-900 dark:bg-slate-700 dark:text-slate-100 focus:bg-white dark:focus:bg-slate-700",
+                  )}
+                />
+                {renderFieldError("customShortCode")}
+                <p className="mt-2 px-1 text-[11px] font-medium text-gray-400">
+                  Link sẽ thành:{" "}
+                  <span className="font-black text-orange-600">
+                    {normalizedShortCodePreview
+                      ? `https://${customDomain || "hotsnew.click"}/s/${normalizedShortCodePreview}`
+                      : `https://${customDomain || "hotsnew.click"}/s/ma-rut-gon-cua-ban`}
+                  </span>
+                </p>
+                <p className="mt-1 px-1 text-[11px] font-medium text-gray-400">
+                  Tối đa {MAX_SHORT_CODE_LENGTH} ký tự.
+                </p>
+              </div>
 
               <button
                 type="button"
@@ -675,8 +708,8 @@ export const CreateLink = ({
                     Cài đặt nâng cao
                   </p>
                   <p className="mt-1 text-xs font-medium text-gray-500 dark:text-slate-400">
-                    Domain đầu ra, UTM, affiliate, short code, A/B test, thời
-                    hạn và flow bước 2.
+                    Domain đầu ra, UTM, affiliate, A/B test, thời hạn và
+                    flow bước 2.
                   </p>
                 </div>
                 <ChevronDown
@@ -833,40 +866,6 @@ export const CreateLink = ({
 
                   <div>
                     <label className="mb-3 flex items-center gap-2 px-1 text-[11px] font-black uppercase tracking-widest text-gray-400">
-                      <Type size={14} className="text-orange-500" /> Mã rút gọn
-                      tùy chỉnh
-                    </label>
-                    <input
-                      data-field="customShortCode"
-                      type="text"
-                      value={customShortCode}
-                      onChange={(e) => {
-                        setCustomShortCode(e.target.value);
-                        clearFieldError("customShortCode");
-                      }}
-                      maxLength={MAX_SHORT_CODE_LENGTH}
-                      placeholder="Ví dụ: toi-yeu-em"
-                      className={inputClass(
-                        "customShortCode",
-                        "w-full rounded-2xl bg-gray-50 px-6 py-4 font-medium text-gray-900 dark:bg-slate-700 dark:text-slate-100 focus:bg-white dark:focus:bg-slate-700",
-                      )}
-                    />
-                    {renderFieldError("customShortCode")}
-                    <p className="mt-2 px-1 text-[11px] font-medium text-gray-400">
-                      Link sẽ thành:{" "}
-                      <span className="font-black text-orange-600">
-                        {normalizedShortCodePreview
-                          ? `https://${customDomain || "hotsnew.click"}/s/${normalizedShortCodePreview}`
-                          : `https://${customDomain || "hotsnew.click"}/s/ma-rut-gon-cua-ban`}
-                      </span>
-                    </p>
-                    <p className="mt-1 px-1 text-[11px] font-medium text-gray-400">
-                      Tối đa {MAX_SHORT_CODE_LENGTH} ký tự.
-                    </p>
-                  </div>
-
-                  <div>
-                    <label className="mb-3 flex items-center gap-2 px-1 text-[11px] font-black uppercase tracking-widest text-gray-400">
                       <Type size={14} className="text-orange-500" /> Dùng ở đâu
                     </label>
                     <select
@@ -940,6 +939,7 @@ export const CreateLink = ({
                       </p>
                     </div>
                   </div>
+
 
                   <div>
                     <label className="mb-3 flex items-center gap-2 px-1 text-[11px] font-black uppercase tracking-widest text-gray-400">
