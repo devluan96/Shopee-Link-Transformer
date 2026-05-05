@@ -16,11 +16,16 @@
   },
   "action": {
     "default_title": "Create HotsNew link",
-    "default_popup": "popup.html"
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "logo-app-192.png",
+      "48": "logo-app-192.png",
+      "128": "logo-app-192.png"
+    }
   },
   "icons": {
-    "16": "icon.svg",
-    "48": "icon.svg",
-    "128": "icon.svg"
+    "16": "logo-app-192.png",
+    "48": "logo-app-192.png",
+    "128": "logo-app-192.png"
   }
 }

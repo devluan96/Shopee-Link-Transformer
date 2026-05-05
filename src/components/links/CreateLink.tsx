@@ -210,6 +210,10 @@ export const CreateLink = ({
   const [videoPreviewOrientation, setVideoPreviewOrientation] = React.useState<
     "landscape" | "portrait" | "square"
   >("landscape");
+  const [
+    thumbnailPreviewOrientation,
+    setThumbnailPreviewOrientation,
+  ] = React.useState<"landscape" | "portrait" | "square">("landscape");
   const [isDraggingVideo, setIsDraggingVideo] = React.useState(false);
   const [showQrModal, setShowQrModal] = React.useState(false);
   const [qrDownloading, setQrDownloading] = React.useState(false);
@@ -454,6 +458,21 @@ export const CreateLink = ({
       videoWidth > videoHeight
         ? "landscape"
         : videoHeight > videoWidth
+          ? "portrait"
+          : "square",
+    );
+  };
+
+  const handleThumbnailPreviewLoad = (
+    event: React.SyntheticEvent<HTMLImageElement>,
+  ) => {
+    const { naturalWidth, naturalHeight } = event.currentTarget;
+    if (!naturalWidth || !naturalHeight) return;
+
+    setThumbnailPreviewOrientation(
+      naturalWidth > naturalHeight
+        ? "landscape"
+        : naturalHeight > naturalWidth
           ? "portrait"
           : "square",
     );
@@ -1309,11 +1328,26 @@ export const CreateLink = ({
                   {renderFieldError("customImageUrl")}
 
                   {customImageUrl && (
-                    <div className="relative mt-auto aspect-video overflow-hidden rounded-3xl bg-gray-100 shadow-xl ring-4 ring-white dark:bg-slate-700 dark:ring-slate-700">
+                    <div
+                      className={cn(
+                        "relative mt-auto overflow-hidden rounded-3xl bg-gray-100 shadow-xl ring-4 ring-white dark:bg-slate-700 dark:ring-slate-700",
+                        thumbnailPreviewOrientation === "portrait"
+                          ? "mx-auto aspect-9/16 w-full max-w-[18rem]"
+                          : thumbnailPreviewOrientation === "square"
+                            ? "mx-auto aspect-square w-full max-w-[24rem]"
+                            : "aspect-video w-full",
+                      )}
+                    >
                       <img
                         src={customImageUrl}
                         alt="Thumbnail preview"
-                        className="h-full w-full object-cover"
+                        onLoad={handleThumbnailPreviewLoad}
+                        className={cn(
+                          "h-full w-full bg-black",
+                          thumbnailPreviewOrientation === "portrait"
+                            ? "object-contain"
+                            : "object-cover",
+                        )}
                       />
                     </div>
                   )}
@@ -1336,7 +1370,13 @@ export const CreateLink = ({
               {customImageUrl ? (
                 <img
                   src={customImageUrl}
-                  className="h-full w-full object-cover"
+                  onLoad={handleThumbnailPreviewLoad}
+                  className={cn(
+                    "h-full w-full bg-black",
+                    thumbnailPreviewOrientation === "portrait"
+                      ? "object-contain"
+                      : "object-cover",
+                  )}
                   alt="Preview cover"
                 />
               ) : (

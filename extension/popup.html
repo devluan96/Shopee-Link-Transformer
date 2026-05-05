@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="vi">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -18,16 +18,8 @@
         margin: 0;
         width: 380px;
         background:
-          radial-gradient(
-            circle at top right,
-            rgba(249, 115, 22, 0.24),
-            transparent 34%
-          ),
-          radial-gradient(
-            circle at bottom left,
-            rgba(14, 165, 233, 0.14),
-            transparent 30%
-          ),
+          radial-gradient(circle at top right, rgba(249, 115, 22, 0.24), transparent 34%),
+          radial-gradient(circle at bottom left, rgba(14, 165, 233, 0.14), transparent 30%),
           #0f172a;
         color: #e2e8f0;
       }
@@ -37,11 +29,11 @@
       }
 
       .shell {
+        overflow: hidden;
         border: 1px solid rgba(148, 163, 184, 0.16);
         border-radius: 24px;
-        background: rgba(15, 23, 42, 0.88);
+        background: rgba(15, 23, 42, 0.92);
         box-shadow: 0 18px 40px rgba(2, 6, 23, 0.4);
-        overflow: hidden;
       }
 
       .header {
@@ -49,8 +41,27 @@
         border-bottom: 1px solid rgba(148, 163, 184, 0.12);
       }
 
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 10px;
+      }
+
+      .brand img {
+        width: 42px;
+        height: 42px;
+        border-radius: 14px;
+        object-fit: cover;
+        box-shadow: 0 10px 22px rgba(249, 115, 22, 0.28);
+      }
+
+      .brand-copy {
+        min-width: 0;
+      }
+
       .eyebrow {
-        margin: 0 0 10px;
+        margin: 0 0 6px;
         color: #fb923c;
         font-size: 10px;
         font-weight: 800;
@@ -59,7 +70,7 @@
       }
 
       h1 {
-        margin: 0 0 8px;
+        margin: 0;
         font-size: 20px;
         line-height: 1.1;
       }
@@ -96,6 +107,11 @@
       .badge[data-tone="info"] {
         background: rgba(14, 165, 233, 0.16);
         color: #7dd3fc;
+      }
+
+      .badge[data-tone="muted"] {
+        background: rgba(51, 65, 85, 0.55);
+        color: #cbd5e1;
       }
 
       .url {
@@ -142,10 +158,7 @@
         letter-spacing: 0.08em;
         text-transform: uppercase;
         cursor: pointer;
-        transition:
-          transform 0.15s ease,
-          opacity 0.15s ease,
-          background 0.15s ease;
+        transition: transform 0.15s ease, opacity 0.15s ease, background 0.15s ease;
       }
 
       button:hover:not(:disabled) {
@@ -188,66 +201,47 @@
     <main>
       <div class="shell">
         <div class="header">
-          <div class="eyebrow">HotsNew Quick Link</div>
-          <h1>Điều khiển nhanh</h1>
-          <p>
-            Mở tạo link, danh sách link, bảng giá và liên hệ admin ngay trong
-            popup.
-          </p>
+          <div class="brand">
+            <img src="logo-app-192.png" alt="HotsNew logo" />
+            <div class="brand-copy">
+              <div class="eyebrow">HotsNew Quick Link</div>
+              <h1>Điều khiển nhanh</h1>
+            </div>
+          </div>
+          <p>Mở tạo link, danh sách link, bảng giá và liên hệ admin ngay trong popup.</p>
         </div>
 
         <div class="content">
-          <div id="supportBadge" class="badge" data-tone="muted">
-            Đang kiểm tra tab hiện tại...
-          </div>
-          <div id="quotaBadge" class="badge" data-tone="info">
-            Đang đồng bộ quota...
-          </div>
+          <div id="supportBadge" class="badge" data-tone="muted">Đang kiểm tra tab hiện tại...</div>
+          <div id="quotaBadge" class="badge" data-tone="info">Đang đồng bộ quota...</div>
           <div id="currentUrl" class="url">Đang lấy URL hiện tại...</div>
           <div id="status" class="status"></div>
 
           <div class="grid">
-            <button id="openCreate" class="primary" type="button">
-              ạo link từ tab hiện tại
-            </button>
+            <button id="openCreate" class="primary" type="button">Tạo link từ tab hiện tại</button>
           </div>
 
           <div class="grid two" style="margin-top: 10px">
-            <button id="copyUrl" class="secondary" type="button">
-              Copy URL
-            </button>
-            <button id="pasteClipboard" class="secondary" type="button">
-              Dán từ clipboard
-            </button>
+            <button id="copyUrl" class="secondary" type="button">Copy URL</button>
+            <button id="pasteClipboard" class="secondary" type="button">Dán từ clipboard</button>
           </div>
 
           <div class="grid two" style="margin-top: 10px">
-            <button id="openRoot" class="secondary" type="button">
-              Mở HotsNew
-            </button>
-            <button id="openList" class="secondary" type="button">
-              Danh sách link
-            </button>
+            <button id="openRoot" class="secondary" type="button">Mở HotsNew</button>
+            <button id="openList" class="secondary" type="button">Danh sách link</button>
           </div>
 
           <div class="grid two" style="margin-top: 10px">
-            <button id="openPricing" class="secondary" type="button">
-              Bảng giá
-            </button>
-            <button id="openInstall" class="secondary" type="button">
-              Cài app
-            </button>
+            <button id="openPricing" class="secondary" type="button">Bảng giá</button>
+            <button id="openInstall" class="secondary" type="button">Cài app</button>
           </div>
 
           <div class="grid" style="margin-top: 10px">
-            <button id="openZalo" class="accent" type="button">
-              Zalo admin
-            </button>
+            <button id="openZalo" class="accent" type="button">Zalo admin</button>
           </div>
+
           <div class="hint">
-            ẹo: bạn có thể right-click vào page hoặc vào liên kết để gửi nhanh
-            sang HotsNew. Muốn xem quota thật trong popup, hãy mở sẵn một tab
-            HotsNew và đăng nhập trong đó.
+            Mẹo: bạn có thể right-click vào page hoặc vào liên kết để gửi nhanh sang HotsNew. Muốn xem quota thật trong popup, hãy mở sẵn một tab HotsNew và đăng nhập trong đó.
           </div>
         </div>
       </div>

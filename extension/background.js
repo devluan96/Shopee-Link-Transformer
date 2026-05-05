@@ -59,7 +59,9 @@ async function readQuotaFromAppTab() {
     target: { tabId: appTab.id },
     func: async () => {
       const authKey = Object.keys(window.localStorage).find(
-        (key) => key === "supabase.auth.token" || key.startsWith("sb-"),
+        (key) =>
+          key === "supabase.auth.token" ||
+          /^sb-.*-auth-token$/.test(key),
       );
 
       if (!authKey) {

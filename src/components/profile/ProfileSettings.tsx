@@ -407,8 +407,8 @@ export const ProfileSettings = ({
           </div>
         </div>
 
-        <section className="space-y-8 rounded-[2.5rem] border border-gray-100 bg-white p-10 shadow-sm dark:border-slate-700 dark:bg-slate-800 md:p-12">
-          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+        <section className="space-y-8 overflow-hidden rounded-[2.5rem] border border-gray-100 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-800 sm:p-8 md:p-12">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
             <div>
               <h3 className="flex items-center gap-3 text-2xl font-black text-gray-900 dark:text-slate-100">
                 <ShieldCheck className="text-orange-500" size={22} />
@@ -432,17 +432,17 @@ export const ProfileSettings = ({
             </span>
           </div>
 
-          <div className="grid gap-8 lg:grid-cols-[1.05fr_0.95fr]">
-            <div className="rounded-3xl border border-gray-100 bg-gray-50 p-6 dark:border-slate-700 dark:bg-slate-900">
+          <div className="grid gap-8 xl:grid-cols-[1.05fr_0.95fr]">
+            <div className="min-w-0 overflow-hidden rounded-3xl border border-gray-100 bg-gray-50 p-5 dark:border-slate-700 dark:bg-slate-900 sm:p-6">
               <div className="flex items-start gap-4">
                 <div className="rounded-2xl bg-white p-3 text-orange-500 shadow-sm dark:bg-slate-800">
                   <Smartphone size={20} />
                 </div>
-                <div className="flex-1">
-                  <h4 className="font-black text-gray-900 dark:text-slate-100">
+                <div className="min-w-0 flex-1">
+                  <h4 className="break-words font-black text-gray-900 dark:text-slate-100">
                     Xác thực 2 lớp (TOTP)
                   </h4>
-                  <p className="mt-1 text-sm text-gray-500 dark:text-slate-400">
+                  <p className="mt-1 break-words text-sm text-gray-500 dark:text-slate-400">
                     Dùng Google Authenticator, 1Password hoặc Authy để tạo mã 6
                     số.
                   </p>
@@ -452,8 +452,8 @@ export const ProfileSettings = ({
               <div className="mt-6 space-y-4">
                 {twoFactorSetup && (
                   <div className="rounded-2xl border border-orange-100 bg-white p-4 dark:border-orange-500/20 dark:bg-slate-800">
-                    <div className="grid gap-5 lg:grid-cols-[220px_1fr] lg:items-start">
-                      <div className="rounded-2xl border border-gray-100 bg-gray-50 p-3 text-center dark:border-slate-700 dark:bg-slate-900">
+                    <div className="grid gap-5 xl:grid-cols-[220px_1fr] xl:items-start">
+                      <div className="min-w-0 rounded-2xl border border-gray-100 bg-gray-50 p-3 text-center dark:border-slate-700 dark:bg-slate-900">
                         <div className="mb-2 flex items-center justify-center gap-2 text-[11px] font-black uppercase tracking-widest text-orange-500">
                           <QrCode size={14} />
                           QR Setup
@@ -461,29 +461,29 @@ export const ProfileSettings = ({
                         <img
                           src={twoFactorQrUrl}
                           alt="2FA QR code"
-                          className="mx-auto h-45 w-45 rounded-xl bg-white object-contain p-2"
+                          className="mx-auto h-[180px] w-[180px] max-w-full rounded-xl bg-white object-contain p-2 sm:h-[220px] sm:w-[220px]"
                         />
                         <p className="mt-2 text-[11px] font-medium text-gray-500 dark:text-slate-400">
                           Quét mã này bằng Google Authenticator.
                         </p>
                       </div>
 
-                      <div>
-                        <p className="text-[11px] font-black uppercase tracking-widest text-orange-500">
+                      <div className="min-w-0">
+                        <p className="break-words text-[11px] font-black uppercase tracking-widest text-orange-500">
                           Secret setup
                         </p>
-                        <p className="mt-2 text-sm font-medium text-gray-500 dark:text-slate-400">
+                        <p className="mt-2 break-words text-sm font-medium text-gray-500 dark:text-slate-400">
                           Nếu không quét QR, bạn có thể nhập secret thủ công vào
                           Google Authenticator.
                         </p>
-                        <div className="mt-3 flex items-start gap-3 rounded-2xl border border-gray-100 bg-gray-50 p-4 dark:border-slate-700 dark:bg-slate-900">
+                        <div className="mt-3 flex flex-col gap-3 rounded-2xl border border-gray-100 bg-gray-50 p-4 dark:border-slate-700 dark:bg-slate-900 sm:flex-row sm:items-start">
                           <p className="flex-1 break-all font-mono text-sm font-black text-gray-900 dark:text-slate-100">
                             {twoFactorSetup.secret}
                           </p>
                           <button
                             type="button"
                             onClick={handleCopySecret}
-                            className="inline-flex shrink-0 items-center gap-2 rounded-xl bg-white px-3 py-2 text-[11px] font-black uppercase tracking-widest text-gray-700 transition-all hover:bg-gray-100 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+                            className="inline-flex w-full shrink-0 items-center justify-center gap-2 rounded-xl bg-white px-3 py-2 text-[11px] font-black uppercase tracking-widest text-gray-700 transition-all hover:bg-gray-100 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700 sm:w-auto"
                           >
                             <Copy size={14} />
                             Copy
@@ -492,13 +492,13 @@ export const ProfileSettings = ({
                         <button
                           type="button"
                           onClick={handleCopyOtpAuthUri}
-                          className="mt-3 inline-flex items-center gap-2 rounded-xl bg-white px-3 py-2 text-[11px] font-black uppercase tracking-widest text-gray-700 transition-all hover:bg-gray-100 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+                          className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-white px-3 py-2 text-[11px] font-black uppercase tracking-widest text-gray-700 transition-all hover:bg-gray-100 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700 sm:w-auto"
                         >
                           <Copy size={14} />
                           Copy URI
                         </button>
-                        <div className="mt-4 rounded-2xl bg-orange-50 px-4 py-4 text-sm text-orange-800 dark:bg-orange-500/10 dark:text-orange-200">
-                          <p className="text-[11px] font-black uppercase tracking-widest">
+                        <div className="mt-4 min-w-0 rounded-2xl bg-orange-50 px-4 py-4 text-sm text-orange-800 dark:bg-orange-500/10 dark:text-orange-200">
+                          <p className="break-words text-[11px] font-black uppercase tracking-widest">
                             Cách bật 2FA
                           </p>
                           <p className="mt-2">1. Bấm tạo secret 2FA.</p>
@@ -529,8 +529,8 @@ export const ProfileSettings = ({
                 )}
 
                 <div>
-                  <div className="mb-2 flex items-center justify-between gap-3">
-                    <label className="flex items-center gap-2 text-[11px] font-black uppercase tracking-widest text-gray-400 dark:text-slate-500">
+                  <div className="mb-2 flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <label className="flex min-w-0 items-center gap-2 text-[11px] font-black uppercase tracking-widest text-gray-400 dark:text-slate-500">
                       <KeyRound size={14} className="text-orange-500" />
                       Mã xác thực 6 số
                     </label>
@@ -567,9 +567,9 @@ export const ProfileSettings = ({
                     disabled={
                       !twoFactorSetup && !securityOverview?.twoFactorEnabled
                     }
-                    className="w-full rounded-2xl border-2 border-transparent bg-white px-5 py-4 font-mono text-lg font-black tracking-[0.3em] text-gray-900 outline-none transition-all focus:border-orange-500/20 focus:ring-4 focus:ring-orange-500/10 disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-400 dark:bg-slate-800 dark:text-slate-100 dark:disabled:bg-slate-900 dark:disabled:text-slate-500"
+                    className="w-full rounded-2xl border-2 border-transparent bg-white px-4 py-4 font-mono text-base font-black tracking-[0.2em] text-gray-900 outline-none transition-all focus:border-orange-500/20 focus:ring-4 focus:ring-orange-500/10 disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-400 dark:bg-slate-800 dark:text-slate-100 dark:disabled:bg-slate-900 dark:disabled:text-slate-500 sm:px-5 sm:text-lg sm:tracking-[0.3em]"
                   />
-                  <p className="mt-2 text-xs text-gray-500 dark:text-slate-400">
+                  <p className="mt-2 break-words text-xs text-gray-500 dark:text-slate-400">
                     {securityOverview?.twoFactorEnabled
                       ? "Đây là mã 6 số hiện tại trong Google Authenticator để xác nhận thao tác tắt 2FA hoặc để vượt qua bước xác minh khi đăng nhập."
                       : twoFactorSetup
@@ -583,13 +583,13 @@ export const ProfileSettings = ({
                   )}
                 </div>
 
-                <div className="flex flex-wrap gap-3">
+                <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
                   {!securityOverview?.twoFactorEnabled && (
                     <button
                       type="button"
                       onClick={handleSetupTwoFactor}
                       disabled={twoFactorBusy}
-                      className="rounded-2xl bg-gray-900 px-5 py-3 text-xs font-black uppercase tracking-widest text-white transition-all hover:bg-black disabled:opacity-60"
+                      className="w-full rounded-2xl bg-gray-900 px-5 py-3 text-xs font-black uppercase tracking-widest text-white transition-all hover:bg-black disabled:opacity-60 sm:w-auto"
                     >
                       Tạo secret 2FA
                     </button>
@@ -599,7 +599,7 @@ export const ProfileSettings = ({
                       type="button"
                       onClick={handleEnableTwoFactor}
                       disabled={twoFactorBusy || twoFactorCode.length !== 6}
-                      className="rounded-2xl bg-orange-600 px-5 py-3 text-xs font-black uppercase tracking-widest text-white transition-all hover:bg-orange-700 disabled:opacity-60"
+                      className="w-full rounded-2xl bg-orange-600 px-5 py-3 text-xs font-black uppercase tracking-widest text-white transition-all hover:bg-orange-700 disabled:opacity-60 sm:w-auto"
                     >
                       Xác minh và bật 2FA
                     </button>
@@ -609,7 +609,7 @@ export const ProfileSettings = ({
                       type="button"
                       onClick={handleDisableTwoFactor}
                       disabled={twoFactorBusy || twoFactorCode.length !== 6}
-                      className="rounded-2xl bg-red-600 px-5 py-3 text-xs font-black uppercase tracking-widest text-white transition-all hover:bg-red-700 disabled:opacity-60"
+                      className="w-full rounded-2xl bg-red-600 px-5 py-3 text-xs font-black uppercase tracking-widest text-white transition-all hover:bg-red-700 disabled:opacity-60 sm:w-auto"
                     >
                       Tắt 2FA
                     </button>
@@ -626,14 +626,14 @@ export const ProfileSettings = ({
               </div>
             </div>
 
-            <div className="rounded-3xl border border-gray-100 bg-gray-50 p-6 dark:border-slate-700 dark:bg-slate-900">
-              <div className="mb-4 flex items-center gap-3">
+            <div className="min-w-0 overflow-hidden rounded-3xl border border-gray-100 bg-gray-50 p-5 dark:border-slate-700 dark:bg-slate-900 sm:p-6">
+              <div className="mb-4 flex items-start gap-3">
                 <History size={20} className="text-blue-500" />
-                <div>
-                  <h4 className="font-black text-gray-900 dark:text-slate-100">
+                <div className="min-w-0">
+                  <h4 className="break-words font-black text-gray-900 dark:text-slate-100">
                     Access Logs
                   </h4>
-                  <p className="text-sm text-gray-500 dark:text-slate-400">
+                  <p className="break-words text-sm text-gray-500 dark:text-slate-400">
                     Truy cập gần đây của chính bạn.
                   </p>
                 </div>
@@ -650,13 +650,18 @@ export const ProfileSettings = ({
                       key={log.id}
                       className="rounded-2xl bg-white px-4 py-4 dark:bg-slate-800"
                     >
-                      <div className="flex items-center justify-between gap-3">
-                        <p className="font-black text-gray-900 dark:text-slate-100">
-                          {log.method} {log.path}
-                        </p>
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-black uppercase tracking-widest text-gray-900 dark:text-slate-100">
+                            {log.method}
+                          </p>
+                          <p className="mt-1 break-all font-black text-gray-900 dark:text-slate-100">
+                            {log.path}
+                          </p>
+                        </div>
                         <span
                           className={cn(
-                            "rounded-full px-2.5 py-1 text-[10px] font-black uppercase tracking-widest",
+                            "shrink-0 rounded-full px-2.5 py-1 text-[10px] font-black uppercase tracking-widest",
                             log.status_code >= 400
                               ? "bg-red-100 text-red-600"
                               : "bg-green-100 text-green-600",
@@ -665,7 +670,7 @@ export const ProfileSettings = ({
                           {log.status_code}
                         </span>
                       </div>
-                      <p className="mt-1 text-xs text-gray-500 dark:text-slate-400">
+                      <p className="mt-2 break-words text-xs text-gray-500 dark:text-slate-400">
                         {log.ip_address || "Unknown IP"} ·{" "}
                         {new Date(log.created_at).toLocaleString("vi-VN")}
                       </p>
@@ -688,3 +693,4 @@ export const ProfileSettings = ({
 const AnimatePresence = ({ children }: { children: React.ReactNode }) => {
   return <>{children}</>;
 };
+

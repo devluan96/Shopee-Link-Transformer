@@ -520,11 +520,11 @@ export const AdminPanel = ({
       </div>
 
       <div className="overflow-hidden rounded-[3rem] border border-gray-100 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-800">
-        <div className="flex items-center justify-between border-b border-gray-100 bg-gray-50/50 p-8 dark:border-slate-700 dark:bg-slate-900/70">
+        <div className="flex flex-col gap-3 border-b border-gray-100 bg-gray-50/50 p-6 dark:border-slate-700 dark:bg-slate-900/70 sm:flex-row sm:items-center sm:justify-between sm:p-8">
           <h3 className="flex items-center gap-2 text-sm font-black uppercase tracking-widest">
             <UsersIcon size={18} /> Thành viên hệ thống
           </h3>
-          <span className="rounded-full bg-gray-900 px-3 py-1 text-[10px] font-bold text-white">
+          <span className="w-fit rounded-full bg-gray-900 px-3 py-1 text-[10px] font-bold text-white">
             {filteredUsers.length} Users
           </span>
         </div>
@@ -542,10 +542,10 @@ export const AdminPanel = ({
             filteredUsers.map((u) => (
               <div
                 key={u.id}
-                className="flex cursor-pointer items-center justify-between gap-6 p-6 transition-all hover:bg-gray-50 dark:hover:bg-slate-900/70"
+                className="flex cursor-pointer flex-col gap-4 p-4 transition-all hover:bg-gray-50 dark:hover:bg-slate-900/70 sm:gap-6 sm:p-6 xl:flex-row xl:items-center xl:justify-between"
                 onClick={() => setSelectedUser(u)}
               >
-                <div className="flex flex-1 items-center gap-4">
+                <div className="flex w-full flex-1 items-start gap-4 sm:items-center">
                   <div className="relative h-12 w-12">
                     {u.avatar_url ? (
                       <img
@@ -583,7 +583,7 @@ export const AdminPanel = ({
                     <p className="text-sm text-gray-500 dark:text-slate-400">
                       {u.email}
                     </p>
-                    <div className="mt-1 flex items-center gap-2">
+                    <div className="mt-1 flex flex-wrap items-center gap-2">
                       <span
                         className={cn(
                           "rounded-full px-2 py-0.5 text-[10px] font-black uppercase tracking-widest",
@@ -626,11 +626,11 @@ export const AdminPanel = ({
                 </div>
 
                 <div
-                  className="flex items-center gap-3"
+                  className="flex w-full flex-wrap items-center gap-2 sm:gap-3 xl:w-auto xl:justify-end"
                   onClick={(e) => e.stopPropagation()}
                 >
                   <select
-                    className="cursor-pointer rounded-lg border border-gray-200 bg-gray-50 px-2 py-1.5 text-[10px] font-bold focus:outline-none focus:ring-2 focus:ring-orange-500/20 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+                    className="min-w-0 flex-1 cursor-pointer rounded-lg border border-gray-200 bg-gray-50 px-2 py-2 text-[10px] font-bold focus:outline-none focus:ring-2 focus:ring-orange-500/20 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 sm:flex-none"
                     value={u.subscription_plan || "free"}
                     onChange={(e) =>
                       handleUpdateSubscription(u.id, e.target.value as any)
@@ -647,7 +647,7 @@ export const AdminPanel = ({
                         e.stopPropagation();
                         handleApproveUser(u.id);
                       }}
-                      className="flex items-center gap-2 rounded-2xl bg-orange-600 px-6 py-3 text-[11px] font-black uppercase tracking-widest text-white transition-all hover:bg-orange-700 active:scale-95"
+                      className="flex flex-1 items-center justify-center gap-2 rounded-2xl bg-orange-600 px-4 py-3 text-[11px] font-black uppercase tracking-widest text-white transition-all hover:bg-orange-700 active:scale-95 sm:flex-none sm:px-6"
                     >
                       <UserCheck size={16} /> Duyệt Ngay
                     </button>

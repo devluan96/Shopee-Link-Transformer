@@ -8,15 +8,39 @@ interface CloudinarySignedUpload {
   signature: string;
 }
 
+interface CloudinaryUploadResponse {
+  secure_url?: string;
+  public_id?: string;
+  version?: number | string;
+  resource_type?: string;
+  error?: {
+    message?: string;
+  };
+  message?: string;
+}
+
 interface UseCloudinaryProps {
   fetchWithAuth: (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
 }
 
 export function useCloudinary({ fetchWithAuth }: UseCloudinaryProps) {
-  const getCloudinarySignedUpload = useCallback(async (): Promise<CloudinarySignedUpload> => {
+  const buildSafariSafeVideoUrl = useCallback(
+    (signedUpload: CloudinarySignedUpload, data: CloudinaryUploadResponse) => {
+      if (!data.public_id || !data.version) {
+        return data.secure_url || "";
+      }
+
+      return `https://res.cloudinary.com/${signedUpload.cloudName}/video/upload/f_mp4,vc_h264,ac_aac,q_auto:good/v${data.version}/${data.public_id}.mp4`;
+    },
+    [],
+  );
+
+  const getCloudinarySignedUpload = useCallback(async (
+    resourceType: "image" | "video" | "auto" = "auto",
+  ): Promise<CloudinarySignedUpload> => {
     const response = await fetchWithAuth("/api/v1/cloudinary/sign-upload", {
       method: "POST",
-      body: JSON.stringify({}),
+      body: JSON.stringify({ resourceType }),
     });
     return response.json();
   }, [fetchWithAuth]);
@@ -27,7 +51,7 @@ export function useCloudinary({ fetchWithAuth }: UseCloudinaryProps) {
     fileName?: string,
     onProgress?: (progress: number) => void,
   ): Promise<string> => {
-    const signedUpload = await getCloudinarySignedUpload();
+    const signedUpload = await getCloudinarySignedUpload(resourceType);
     const uploadFormData = new FormData();
 
     uploadFormData.append("file", file, fileName);
@@ -51,10 +75,15 @@ export function useCloudinary({ fetchWithAuth }: UseCloudinaryProps) {
       };
 
       xhr.onload = () => {
-        const data = JSON.parse(xhr.responseText || "null");
-        if (xhr.status >= 200 && xhr.status < 300 && data?.secure_url) {
+        const data = JSON.parse(xhr.responseText || "null") as CloudinaryUploadResponse;
+        const uploadedUrl =
+          resourceType === "video"
+            ? buildSafariSafeVideoUrl(signedUpload, data)
+            : data?.secure_url || "";
+
+        if (xhr.status >= 200 && xhr.status < 300 && uploadedUrl) {
           if (onProgress) onProgress(100);
-          resolve(data.secure_url as string);
+          resolve(uploadedUrl);
           return;
         }
 
@@ -70,7 +99,7 @@ export function useCloudinary({ fetchWithAuth }: UseCloudinaryProps) {
       xhr.onerror = () => reject(new Error("Cloudinary upload failed"));
       xhr.send(uploadFormData);
     });
-  }, [getCloudinarySignedUpload]);
+  }, [buildSafariSafeVideoUrl, getCloudinarySignedUpload]);
 
   return {
     getCloudinarySignedUpload,

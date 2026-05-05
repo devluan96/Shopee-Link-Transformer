@@ -16,50 +16,44 @@ import { usePWAInstall } from "@/src/hooks/usePWAInstall";
 
 const extensionSteps = [
   {
-    title: "Mo trang quan ly extension",
-    body: "Dung Chrome: chrome://extensions. Dung Coc Coc: coccoc://extensions.",
+    title: "Mở trang quản lý extension",
+    body: "Dùng chrome://extensions. Dùng Cốc Cốc: coccoc://extensions.",
   },
   {
-    title: "Bat Che do nha phat trien",
-    body: "Bat Developer mode de trinh duyet cho phep nap ban extension local.",
+    title: "Bật chế độ nhà phát triển",
+    body: "Bật Developer mode để trình duyệt cho phép tải bản extension local.",
   },
   {
-    title: "Nap thu muc extension/",
-    body: "Bam Tai tien ich da giai nen va tro toi thu muc extension trong project.",
+    title: "Nạp thư mục extension/",
+    body: "Bấm Nạp extension và chọn thư mục extension trong project.",
   },
   {
-    title: "Ghim extension len thanh cong cu",
-    body: "Ghim HotsNew Quick Link de lay link tab hien tai nhanh hon.",
+    title: "Ghim extension lên thanh công cụ",
+    body: "Ghim HotsNew Quick Link để lấy link tab hiện tại nhanh hơn.",
   },
 ];
 
 const extensionBenefits = [
-  "Lay link TikTok/Shopee ngay tren tab dang xem",
-  "Right-click vao link de gui URL sang HotsNew",
-  "Mo thang man tao link voi URL da duoc dien san",
-  "Neu HotsNew da mo san, extension se focus lai tab do",
+  "Lấy link TikTok/Shopee ngay trên tab đang xem",
+  "Right-click vào link để gửi thẳng sang HotsNew mà không cần copy-paste",
+  "Mở thẳng màn tạo link mà không cần vào dashboard",
+  "Nếu HotsNew đã mở sẵn extension, extension sẽ focus lại tab đó thay vì mở tab mới",
 ];
 
 const troubleshooting = [
-  "Khong thay nut Cai app: mo site bang Chrome/Coc Coc ban moi nhat roi thu lai.",
-  "Khong nap duoc extension: kiem tra ban da chon dung thu muc extension/ chua.",
-  "Popup extension khong lay duoc link: dam bao tab hien tai la TikTok hoac Shopee.",
-  "Cap nhat extension local: vao trang extensions va bam Reload sau khi sua code.",
+  "Không thấy nút Cài app: mở site bằng Chrome/Coc Coc bản mới nhất rồi thử lại.",
+  "Không nạp được extension: kiểm tra bạn đã chọn đúng thư mục extension/ chưa.",
+  "Popup extension không lấy được link: đảm bảo tab hiện tại là TikTok hoặc Shopee.",
+  "Cập nhật extension local: vào trang extensions và bấm Reload sau khi sửa code.",
 ];
 
 const browserLinks = [
   { label: "Chrome extensions", value: "chrome://extensions" },
-  { label: "Coc Coc extensions", value: "coccoc://extensions" },
-  { label: "Thu muc extension", value: "extension/" },
+  { label: "Cốc Cốc extensions", value: "coccoc://extensions" },
+  { label: "Thư mục extension", value: "extension/" },
 ];
 
-function CopyChip({
-  label,
-  value,
-}: {
-  label: string;
-  value: string;
-}) {
+function CopyChip({ label, value }: { label: string; value: string }) {
   const [copied, setCopied] = React.useState(false);
 
   const handleCopy = async () => {
@@ -78,7 +72,10 @@ function CopyChip({
       onClick={() => void handleCopy()}
       className="flex items-center gap-2 rounded-2xl border border-gray-100 bg-white px-4 py-3 text-left text-xs font-bold text-gray-700 transition-all hover:border-orange-200 hover:bg-orange-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-orange-500/20 dark:hover:bg-slate-800"
     >
-      <Copy size={14} className={copied ? "text-emerald-500" : "text-orange-500"} />
+      <Copy
+        size={14}
+        className={copied ? "text-emerald-500" : "text-orange-500"}
+      />
       <span className="font-black">{label}:</span>
       <code className="truncate text-[11px]">{copied ? "Da copy" : value}</code>
     </button>
@@ -93,16 +90,16 @@ export function InstallCenter() {
       <header className="space-y-4">
         <div className="inline-flex items-center gap-2 rounded-full border border-orange-200 bg-orange-50 px-4 py-2 text-[11px] font-black uppercase tracking-[0.2em] text-orange-600 dark:border-orange-500/20 dark:bg-orange-500/10 dark:text-orange-300">
           <Download size={14} />
-          Cai app / Extension
+          Cài app / Extension
         </div>
         <div className="max-w-4xl space-y-3">
           <h2 className="text-3xl font-black tracking-tight text-gray-900 dark:text-slate-100 md:text-4xl">
-            Cai 1 lan, lay link nhanh hon moi ngay
+            Cài 1 lần, lấy link nhanh hơn mỗi ngày
           </h2>
           <p className="text-sm font-medium leading-relaxed text-gray-500 dark:text-slate-400">
-            Tab nay duoc lam lai theo huong thuc dung: co lo trinh cai app,
-            cai extension, copy nhanh duong dan, va checklist de user tu cai
-            xong trong vai phut.
+            Tab này được làm lại theo hướng thực dụng: có lộ trình cài app, cài
+            extension, copy nhanh đường dẫn, và checklist để người dùng tự cài
+            xong trong vài phút.
           </p>
         </div>
       </header>
@@ -115,12 +112,12 @@ export function InstallCenter() {
             </div>
             <div>
               <h3 className="text-xl font-black text-gray-900 dark:text-slate-100">
-                Cai app HotsNew
+                Cài app HotsNew
               </h3>
               <p className="mt-2 text-sm font-medium leading-relaxed text-gray-500 dark:text-slate-400">
-                Phu hop khi can mo dashboard nhu app rieng, ghim ra desktop,
-                vao nhanh bang 1 cham tren mobile, hoac dung full-screen de van
-                hanh lien tuc.
+                Phù hợp khi cần mở dashboard như app riêng, ghim ra desktop, vào
+                nhanh bằng 1 chạm trên mobile, hoặc dùng full-screen để vận hành
+                liên tục.
               </p>
             </div>
           </div>
@@ -129,14 +126,18 @@ export function InstallCenter() {
             <div className="flex items-start gap-3">
               <CheckCircle2
                 size={18}
-                className={isInstalled ? "mt-0.5 text-emerald-500" : "mt-0.5 text-orange-500"}
+                className={
+                  isInstalled
+                    ? "mt-0.5 text-emerald-500"
+                    : "mt-0.5 text-orange-500"
+                }
               />
               <div className="text-sm font-medium leading-relaxed text-gray-700 dark:text-slate-300">
                 {isInstalled
-                  ? "App da duoc cai tren thiet bi nay. Ban co the mo nhu mot app rieng ma khong can vao lai trinh duyet."
+                  ? "App đã được cài trên thiết bị này. Bạn có thể mở như một app riêng mà không cần vào lại trình duyệt."
                   : canInstall
-                    ? "Trinh duyet hien tai dang ho tro cai app truc tiep. Bam nut ben duoi de cai ngay."
-                    : "Neu chua thay nut cai, hay mo site bang Chrome/Coc Coc ban moi hon, vao menu trinh duyet va chon Cai dat ung dung."}
+                    ? "Trình duyệt hiện tại đang hỗ trợ cài app trực tiếp. Bấm nút bên dưới để cài ngay."
+                    : "ếu chưa thấy nút cài, hãy mở site bằng Chrome/Coc Coc bản mới hơn, vào menu trình duyệt và chọn Cài đặt ứng dụng."}
               </div>
             </div>
 
@@ -148,8 +149,8 @@ export function InstallCenter() {
                   Desktop
                 </p>
                 <p className="mt-2 text-sm font-medium text-gray-600 dark:text-slate-300">
-                  Mo nhanh dashboard, tach khoi browser, phu hop cho user van
-                  hanh nhieu link moi ngay.
+                  Mở nhanh dashboard, tách khỏi browser, phù hợp cho user vận
+                  hành nhiều link mỗi ngày.
                 </p>
               </div>
               <div className="rounded-2xl border border-gray-100 bg-white p-4 dark:border-slate-700 dark:bg-slate-800">
@@ -157,8 +158,8 @@ export function InstallCenter() {
                   Mobile
                 </p>
                 <p className="mt-2 text-sm font-medium text-gray-600 dark:text-slate-300">
-                  Ghim ra man hinh chinh de mo thang HotsNew nhu app, khong can
-                  tim lai trong browser.
+                  Ghim ra màn hình chính để mở HotsNew như app, không cần tìm
+                  lại trong browser.
                 </p>
               </div>
             </div>
@@ -172,11 +173,11 @@ export function InstallCenter() {
             </div>
             <div>
               <h3 className="text-xl font-black text-gray-900 dark:text-slate-100">
-                Cai extension trinh duyet
+                Cài extension trinh duyệt
               </h3>
               <p className="mt-2 text-sm font-medium leading-relaxed text-gray-500 dark:text-slate-400">
-                Danh cho user can rut gon link ngay trong luc dang xem TikTok,
-                Shopee, hoac can right-click de gui URL sang HotsNew.
+                Dành cho user cần rút gọn link ngay trong lúc đang xem TikTok,
+                Shopee, hoặc cần right-click để gửi URL sang HotsNew.
               </p>
             </div>
           </div>
@@ -204,7 +205,11 @@ export function InstallCenter() {
 
           <div className="mt-5 grid gap-3">
             {browserLinks.map((item) => (
-              <CopyChip key={item.label} label={item.label} value={item.value} />
+              <CopyChip
+                key={item.label}
+                label={item.label}
+                value={item.value}
+              />
             ))}
           </div>
         </section>
@@ -214,7 +219,7 @@ export function InstallCenter() {
         <div className="mb-6 flex items-center gap-3">
           <Sparkles size={20} className="text-orange-500" />
           <h3 className="text-xl font-black text-gray-900 dark:text-slate-100">
-            Extension se giup gi sau khi cai
+            Extension sẽ giúp gì sau khi cài đặt
           </h3>
         </div>
 
@@ -222,7 +227,7 @@ export function InstallCenter() {
           {extensionBenefits.map((benefit) => (
             <div
               key={benefit}
-              className="rounded-[1.5rem] border border-gray-100 bg-gray-50 p-5 dark:border-slate-700 dark:bg-slate-900/70"
+              className="rounded-3xl border border-gray-100 bg-gray-50 p-5 dark:border-slate-700 dark:bg-slate-900/70"
             >
               <div className="mb-3 inline-flex rounded-full bg-orange-50 p-2 text-orange-600 dark:bg-orange-500/10 dark:text-orange-300">
                 <MousePointerClick size={16} />
@@ -240,7 +245,7 @@ export function InstallCenter() {
           <div className="mb-6 flex items-center gap-3">
             <ShieldCheck size={20} className="text-emerald-500" />
             <h3 className="text-xl font-black text-gray-900 dark:text-slate-100">
-              Neu bi loi khi cai
+              Nếu có lỗi khi cài đặt
             </h3>
           </div>
 
@@ -260,7 +265,7 @@ export function InstallCenter() {
           <div className="mb-6 flex items-center gap-3">
             <FolderOpen size={20} className="text-blue-500" />
             <h3 className="text-xl font-black text-gray-900 dark:text-slate-100">
-              Nhanh tay bat dau
+              Nhanh tay bắt đầu thôi!
             </h3>
           </div>
 
@@ -271,23 +276,23 @@ export function InstallCenter() {
               rel="noreferrer"
               className="flex items-center justify-between rounded-2xl bg-gray-900 px-5 py-4 text-sm font-black text-white transition-all hover:bg-black dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-white"
             >
-              <span>Mo HotsNew trong tab moi</span>
+              <span>Mở HotsNew trong tab mới</span>
               <ExternalLink size={16} />
             </a>
 
             <div className="rounded-[1.75rem] border border-orange-100 bg-orange-50/70 p-5 dark:border-orange-500/20 dark:bg-orange-500/10">
               <p className="text-[11px] font-black uppercase tracking-widest text-orange-600 dark:text-orange-300">
-                Goi y workflow
+                Gợi ý workflow
               </p>
               <div className="mt-4 space-y-3">
                 <p className="text-sm font-medium text-gray-700 dark:text-slate-300">
-                  1. Cai app neu ban mo dashboard thuong xuyen.
+                  1. Cài app nếu bạn mở dashboard thường xuyên.
                 </p>
                 <p className="text-sm font-medium text-gray-700 dark:text-slate-300">
-                  2. Cai extension neu ban lay link ngay tren TikTok/Shopee.
+                  2. Cài extension nếu bạn lấy link ngay trên TikTok/Shopee.
                 </p>
                 <p className="text-sm font-medium text-gray-700 dark:text-slate-300">
-                  3. Ghim extension + ghim app de toi uu thao tac hang ngay.
+                  3. Ghim extension + ghim app để tối ưu thao tác hàng ngày.
                 </p>
               </div>
             </div>
