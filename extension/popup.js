@@ -54,8 +54,8 @@ function setStatus(message, tone = "default") {
 
 function setSupportState(isSupported) {
   supportBadgeEl.textContent = isSupported
-    ? "Tab nay hop le de tao link"
-    : "Tab nay khong phai Shopee/TikTok";
+    ? "Tab này để tạo link"
+    : "Tab này không phải là Shopee/TikTok";
   supportBadgeEl.dataset.tone = isSupported ? "success" : "muted";
 }
 
@@ -69,61 +69,67 @@ async function init() {
   const url = tab?.url || "";
   const supported = isSupportedUrl(url);
 
-  currentUrlEl.textContent = url || "Khong lay duoc URL cua tab hien tai.";
+  currentUrlEl.textContent = url || "Không lấy được URL của tab hiện tại.";
   setSupportState(supported);
 
   copyButton.disabled = !url;
   openCreateButton.disabled = !supported;
 
   try {
-    const quota = await chrome.runtime.sendMessage({ type: "getQuotaSnapshot" });
+    const quota = await chrome.runtime.sendMessage({
+      type: "getQuotaSnapshot",
+    });
     if (!quota?.ok) {
-      setQuotaState(quota?.error || "Mo HotsNew de dong bo quota", "muted");
+      setQuotaState(quota?.error || "Mở HotsNew để đồng bộ quota", "muted");
     } else if (quota.data?.linkQuota) {
       const quotaText =
         quota.data.linkQuota.dailyLimit === null
-          ? "Link hom nay: khong gioi han"
-          : `Link hom nay: ${quota.data.linkQuota.usedToday}/${quota.data.linkQuota.dailyLimit}`;
-      const videoText = quota.data.userLimits?.dailyVideoUploads === null
-        ? " | Video: khong gioi han"
-        : quota.data.userLimits?.dailyVideoUploads
-          ? ` | Video: ${quota.data.userLimits.videoUploadsUsedToday}/${quota.data.userLimits.dailyVideoUploads}`
-          : "";
+          ? "Link hôm nay: không giới hạn"
+          : `Link hôm nay: ${quota.data.linkQuota.usedToday}/${quota.data.linkQuota.dailyLimit}`;
+      const videoText =
+        quota.data.userLimits?.dailyVideoUploads === null
+          ? " | Video: không giới hạn"
+          : quota.data.userLimits?.dailyVideoUploads
+            ? ` | Video: ${quota.data.userLimits.videoUploadsUsedToday}/${quota.data.userLimits.dailyVideoUploads}`
+            : "";
       setQuotaState(`${quotaText}${videoText}`, "info");
     } else {
-      setQuotaState("Mo HotsNew de dong bo quota", "muted");
+      setQuotaState("Mở HotsNew để đồng bộ quota", "muted");
     }
   } catch {
-    setQuotaState("Khong doc duoc quota", "muted");
+    setQuotaState("Không đọc được quota", "muted");
   }
 
   if (!supported && url) {
-    setStatus("Chi nen tao link tu tab Shopee hoac TikTok.", "warning");
+    setStatus("Chỉ có thể tạo link từ tab Shopee hoặc TikTok.", "warning");
   }
 
   copyButton.addEventListener("click", async () => {
     if (!url) return;
     await navigator.clipboard.writeText(url);
-    setStatus("Da copy link hien tai.", "success");
+    setStatus("Đã copy link hiện tại.", "success");
   });
 
   pasteClipboardButton.addEventListener("click", async () => {
     try {
       const clipboardText = (await navigator.clipboard.readText()).trim();
       if (!clipboardText) {
-        setStatus("Clipboard dang trong.", "warning");
+        setStatus("Clipboard đang trống.", "warning");
         return;
       }
 
       if (!isSupportedUrl(clipboardText)) {
-        setStatus("Clipboard khong phai link Shopee/TikTok hop le.", "warning");
+        setStatus(
+          "Clipboard không phải là link Shopee/TikTok hợp lệ.",
+          "warning",
+        );
         return;
       }
 
       await sendToApp("create", { url: clipboardText });
       window.close();
     } catch {
-      setStatus("Khong doc duoc clipboard. Hay copy link truoc.", "warning");
+      setStatus("Không đọc được clipboard. Hay copy link trước.", "warning");
     }
   });
 

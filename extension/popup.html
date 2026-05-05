@@ -18,8 +18,16 @@
         margin: 0;
         width: 380px;
         background:
-          radial-gradient(circle at top right, rgba(249, 115, 22, 0.24), transparent 34%),
-          radial-gradient(circle at bottom left, rgba(14, 165, 233, 0.14), transparent 30%),
+          radial-gradient(
+            circle at top right,
+            rgba(249, 115, 22, 0.24),
+            transparent 34%
+          ),
+          radial-gradient(
+            circle at bottom left,
+            rgba(14, 165, 233, 0.14),
+            transparent 30%
+          ),
           #0f172a;
         color: #e2e8f0;
       }
@@ -134,7 +142,10 @@
         letter-spacing: 0.08em;
         text-transform: uppercase;
         cursor: pointer;
-        transition: transform 0.15s ease, opacity 0.15s ease, background 0.15s ease;
+        transition:
+          transform 0.15s ease,
+          opacity 0.15s ease,
+          background 0.15s ease;
       }
 
       button:hover:not(:disabled) {
@@ -178,42 +189,65 @@
       <div class="shell">
         <div class="header">
           <div class="eyebrow">HotsNew Quick Link</div>
-          <h1>Dieu khien nhanh</h1>
-          <p>Mo tao link, danh sach link, bang gia va lien he admin ngay trong popup.</p>
+          <h1>Điều khiển nhanh</h1>
+          <p>
+            Mở tạo link, danh sách link, bảng giá và liên hệ admin ngay trong
+            popup.
+          </p>
         </div>
 
         <div class="content">
-          <div id="supportBadge" class="badge" data-tone="muted">Dang kiem tra tab hien tai...</div>
-          <div id="quotaBadge" class="badge" data-tone="info">Dang dong bo quota...</div>
-          <div id="currentUrl" class="url">Dang lay URL hien tai...</div>
+          <div id="supportBadge" class="badge" data-tone="muted">
+            Đang kiểm tra tab hiện tại...
+          </div>
+          <div id="quotaBadge" class="badge" data-tone="info">
+            Đang đồng bộ quota...
+          </div>
+          <div id="currentUrl" class="url">Đang lấy URL hiện tại...</div>
           <div id="status" class="status"></div>
 
           <div class="grid">
             <button id="openCreate" class="primary" type="button">
-              Tao link tu tab hien tai
+              ạo link từ tab hiện tại
             </button>
           </div>
 
-          <div class="grid two" style="margin-top: 10px;">
-            <button id="copyUrl" class="secondary" type="button">Copy URL</button>
-            <button id="pasteClipboard" class="secondary" type="button">Lay tu clipboard</button>
+          <div class="grid two" style="margin-top: 10px">
+            <button id="copyUrl" class="secondary" type="button">
+              Copy URL
+            </button>
+            <button id="pasteClipboard" class="secondary" type="button">
+              Dán từ clipboard
+            </button>
           </div>
 
-          <div class="grid two" style="margin-top: 10px;">
-            <button id="openRoot" class="secondary" type="button">Mo HotsNew</button>
-            <button id="openList" class="secondary" type="button">Danh sach link</button>
+          <div class="grid two" style="margin-top: 10px">
+            <button id="openRoot" class="secondary" type="button">
+              Mở HotsNew
+            </button>
+            <button id="openList" class="secondary" type="button">
+              Danh sách link
+            </button>
           </div>
 
-          <div class="grid two" style="margin-top: 10px;">
-            <button id="openPricing" class="secondary" type="button">Bang gia</button>
-            <button id="openInstall" class="secondary" type="button">Cai app</button>
+          <div class="grid two" style="margin-top: 10px">
+            <button id="openPricing" class="secondary" type="button">
+              Bảng giá
+            </button>
+            <button id="openInstall" class="secondary" type="button">
+              Cài app
+            </button>
           </div>
 
-          <div class="grid" style="margin-top: 10px;">
-            <button id="openZalo" class="accent" type="button">Zalo admin</button>
+          <div class="grid" style="margin-top: 10px">
+            <button id="openZalo" class="accent" type="button">
+              Zalo admin
+            </button>
           </div>
           <div class="hint">
-            Meo: ban co the right-click vao page hoac vao lien ket de gui nhanh sang HotsNew. Muon thay quota that trong popup, hay mo san mot tab HotsNew va dang nhap trong do.
+            ẹo: bạn có thể right-click vào page hoặc vào liên kết để gửi nhanh
+            sang HotsNew. Muốn xem quota thật trong popup, hãy mở sẵn một tab
+            HotsNew và đăng nhập trong đó.
           </div>
         </div>
       </div>

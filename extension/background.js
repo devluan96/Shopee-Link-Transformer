@@ -52,7 +52,7 @@ async function openOrFocusApp(action, rawUrl) {
 async function readQuotaFromAppTab() {
   const appTab = await getAppTab();
   if (!appTab?.id) {
-    throw new Error("Mo HotsNew truoc de dong bo quota");
+    throw new Error("Mở HotsNew trước để đồng bộ quota");
   }
 
   const [result] = await chrome.scripting.executeScript({
@@ -63,7 +63,7 @@ async function readQuotaFromAppTab() {
       );
 
       if (!authKey) {
-        return { ok: false, error: "Chua co phien dang nhap tren tab HotsNew" };
+        return { ok: false, error: "Chưa có phiên đăng nhập trên tab HotsNew" };
       }
 
       let accessToken = null;
@@ -85,7 +85,7 @@ async function readQuotaFromAppTab() {
       }
 
       if (!accessToken) {
-        return { ok: false, error: "Khong doc duoc token tren HotsNew" };
+        return { ok: false, error: "Không đọc được token trên HotsNew" };
       }
 
       const headers = {
@@ -103,7 +103,7 @@ async function readQuotaFromAppTab() {
       if (!linkQuotaRes.ok) {
         return {
           ok: false,
-          error: linkQuota?.error || "Khong lay duoc quota link",
+          error: linkQuota?.error || "Không lấy được quota link",
         };
       }
 
@@ -117,7 +117,7 @@ async function readQuotaFromAppTab() {
     },
   });
 
-  return result?.result || { ok: false, error: "Khong doc duoc du lieu quota" };
+  return result?.result || { ok: false, error: "Không đọc được dữ liệu quota" };
 }
 
 function isSupportedUrl(rawUrl) {
@@ -134,19 +134,19 @@ function isSupportedUrl(rawUrl) {
 chrome.runtime.onInstalled.addListener(() => {
   chrome.contextMenus.create({
     id: MENU_PAGE,
-    title: "Gui trang nay sang HotsNew",
+    title: "Gửi trang này đến HotsNew",
     contexts: ["page"],
   });
 
   chrome.contextMenus.create({
     id: MENU_LINK,
-    title: "Tao link HotsNew tu lien ket nay",
+    title: "Tạo link HotsNew từ liên kết này",
     contexts: ["link"],
   });
 
   chrome.contextMenus.create({
     id: MENU_OPEN_LIST,
-    title: "Mo danh sach link HotsNew",
+    title: "Mở danh sách link HotsNew",
     contexts: ["action"],
   });
 });

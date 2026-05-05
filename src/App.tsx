@@ -404,7 +404,12 @@ export default function App() {
   useEffect(() => {
     void refreshLinkQuota();
     void refreshUserLimits();
-  }, [refreshLinkQuota, refreshUserLimits, profile?.subscription_plan, profile?.role]);
+  }, [
+    refreshLinkQuota,
+    refreshUserLimits,
+    profile?.subscription_plan,
+    profile?.role,
+  ]);
 
   useEffect(() => {
     if (!user) return;
@@ -670,8 +675,8 @@ export default function App() {
                 </h3>
                 <p className="text-gray-500 font-medium mb-8">
                   {blockedByWorkspaceRole
-                    ? "Workspace hi?n t?i c?a b?n ?ang ? role viewer n?n kh?ng th? t?o ho?c ch?nh s?a link. H?y chuy?n sang workspace kh?c ho?c nh? owner n?ng quy?n l?n editor."
-                    : "T?nh n?ng chuy?n ??i link Shopee & TikTok d?nh ri?ng cho t?i kho?n Premium. Vui l?ng li?n h? Admin ?? n?ng c?p g?i c??c!"}
+                    ? "Workspace hiện tại của bạn đang ở role viewer nên không thể tạo hoặc chỉnh sửa link. Hãy chuyển sang workspace khác hoặc hỏi owner nâng quyền lên editor."
+                    : "Tính năng chuyển đổi link Shopee & TikTok dành riêng cho tài khoản Premium. Vui lòng liên hệ Admin để nâng cấp gói cước!"}
                 </p>
                 <button
                   onClick={() =>
@@ -680,8 +685,8 @@ export default function App() {
                   className="px-8 py-4 bg-gray-900 text-white rounded-2xl font-black uppercase tracking-widest text-xs"
                 >
                   {blockedByWorkspaceRole
-                    ? "M? Team Workspace"
-                    : "Quay l?i Dashboard"}
+                    ? "Mở team Workspace"
+                    : "Quay lại Dashboard"}
                 </button>
               </div>
             ))}
