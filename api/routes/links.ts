@@ -363,15 +363,39 @@ router.post(
         return res.json({ success: true, deleted: 0 });
       }
 
-      const { error, count } = await supabase
+      const { data: writableLinks, error: selectError } = await supabase
         .from("links")
-        .delete({ count: "exact" })
+        .select("id")
         .in("workspace_id", writableWorkspaceIds)
         .in("id", ids);
 
+      if (selectError) throw selectError;
+
+      const deletableIds = (writableLinks || [])
+        .map((link: any) => link.id)
+        .filter(Boolean);
+
+      if (deletableIds.length === 0) {
+        return res.json({ success: true, deleted: 0 });
+      }
+
+      await Promise.all([
+        supabase.from("clicks").delete().in("link_id", deletableIds),
+        supabase
+          .from("link_outbound_events")
+          .delete()
+          .in("link_id", deletableIds),
+        supabase.from("notification_logs").delete().in("link_id", deletableIds),
+      ]);
+
+      const { error, count } = await supabase
+        .from("links")
+        .delete({ count: "exact" })
+        .in("id", deletableIds);
+
       if (error) throw error;
 
-      return res.json({ success: true, deleted: count || ids.length });
+      return res.json({ success: true, deleted: count || deletableIds.length });
     } catch (e: any) {
       return res.status(400).json({ error: e.message });
     }

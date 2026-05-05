@@ -413,6 +413,21 @@ export const deleteLink = async (
 ) => {
   await assertWorkspaceWriteAccessForLink(supabase, userId, linkId);
 
-  const { error } = await supabase.from("links").delete().eq("id", linkId);
+  await Promise.all([
+    supabase.from("clicks").delete().eq("link_id", linkId),
+    supabase.from("link_outbound_events").delete().eq("link_id", linkId),
+    supabase.from("notification_logs").delete().eq("link_id", linkId),
+  ]);
+
+  const { data, error } = await supabase
+    .from("links")
+    .delete()
+    .eq("id", linkId)
+    .select("id")
+    .maybeSingle();
+
   if (error) throw error;
+  if (!data) {
+    throw new Error("Xóa link không thành công trong cơ sở dữ liệu.");
+  }
 };

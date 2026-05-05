@@ -7,7 +7,17 @@
     <style>
       :root {
         color-scheme: dark;
-        font-family: "Segoe UI", Arial, sans-serif;
+        font-family: "Segoe UI", Inter, system-ui, sans-serif;
+        --bg: #0b1220;
+        --panel: #121b2f;
+        --panel-2: #182338;
+        --line: rgba(148, 163, 184, 0.14);
+        --text: #f8fafc;
+        --muted: #93a4bc;
+        --orange: #f97316;
+        --cyan: #22d3ee;
+        --green: #4ade80;
+        --yellow: #fbbf24;
       }
 
       * {
@@ -16,36 +26,43 @@
 
       body {
         margin: 0;
-        width: 380px;
+        width: 388px;
         background:
-          radial-gradient(circle at top right, rgba(249, 115, 22, 0.24), transparent 34%),
-          radial-gradient(circle at bottom left, rgba(14, 165, 233, 0.14), transparent 30%),
-          #0f172a;
-        color: #e2e8f0;
-      }
-
-      main {
-        padding: 18px;
+          radial-gradient(circle at 12% 14%, rgba(34, 211, 238, 0.18), transparent 24%),
+          radial-gradient(circle at 88% 20%, rgba(249, 115, 22, 0.18), transparent 28%),
+          linear-gradient(165deg, #09111f 0%, #0f172a 52%, #111827 100%);
+        color: var(--text);
       }
 
       .shell {
-        overflow: hidden;
-        border: 1px solid rgba(148, 163, 184, 0.16);
-        border-radius: 24px;
-        background: rgba(15, 23, 42, 0.92);
-        box-shadow: 0 18px 40px rgba(2, 6, 23, 0.4);
+        padding: 16px;
       }
 
-      .header {
-        padding: 18px 18px 14px;
-        border-bottom: 1px solid rgba(148, 163, 184, 0.12);
+      .panel {
+        overflow: hidden;
+        border: 1px solid var(--line);
+        border-radius: 26px;
+        background: rgba(12, 19, 33, 0.94);
+        box-shadow: 0 22px 48px rgba(2, 6, 23, 0.4);
+      }
+
+      .hero {
+        padding: 18px;
+        border-bottom: 1px solid var(--line);
+      }
+
+      .hero-top {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
       }
 
       .brand {
         display: flex;
         align-items: center;
         gap: 12px;
-        margin-bottom: 10px;
+        min-width: 0;
       }
 
       .brand img {
@@ -53,50 +70,58 @@
         height: 42px;
         border-radius: 14px;
         object-fit: cover;
-        box-shadow: 0 10px 22px rgba(249, 115, 22, 0.28);
-      }
-
-      .brand-copy {
-        min-width: 0;
+        box-shadow: 0 10px 24px rgba(249, 115, 22, 0.3);
       }
 
       .eyebrow {
-        margin: 0 0 6px;
+        margin: 0 0 4px;
         color: #fb923c;
         font-size: 10px;
-        font-weight: 800;
-        letter-spacing: 0.22em;
+        font-weight: 900;
+        letter-spacing: 0.2em;
         text-transform: uppercase;
       }
 
-      h1 {
-        margin: 0;
-        font-size: 20px;
-        line-height: 1.1;
-      }
-
+      h1,
+      h2,
+      h3,
       p {
         margin: 0;
-        color: #94a3b8;
-        font-size: 13px;
-        line-height: 1.5;
       }
 
-      .content {
-        padding: 18px;
+      h1 {
+        font-size: 20px;
+        line-height: 1.1;
+        font-weight: 900;
+      }
+
+      .hero-sub {
+        margin-top: 12px;
+        color: var(--muted);
+        font-size: 13px;
+        line-height: 1.55;
+      }
+
+      .hero-badges {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 14px;
       }
 
       .badge {
         display: inline-flex;
-        margin-bottom: 12px;
+        align-items: center;
+        gap: 6px;
         border-radius: 999px;
-        padding: 8px 10px;
+        padding: 7px 11px;
         font-size: 10px;
-        font-weight: 800;
-        letter-spacing: 0.12em;
+        font-weight: 900;
+        letter-spacing: 0.08em;
         text-transform: uppercase;
-        background: rgba(51, 65, 85, 0.55);
-        color: #cbd5e1;
+        border: 1px solid rgba(255, 255, 255, 0.06);
+        background: rgba(30, 41, 59, 0.82);
+        color: #dbe6f5;
       }
 
       .badge[data-tone="success"] {
@@ -104,59 +129,91 @@
         color: #86efac;
       }
 
-      .badge[data-tone="info"] {
-        background: rgba(14, 165, 233, 0.16);
-        color: #7dd3fc;
+      .badge[data-tone="warning"] {
+        background: rgba(251, 191, 36, 0.14);
+        color: #fde68a;
       }
 
       .badge[data-tone="muted"] {
-        background: rgba(51, 65, 85, 0.55);
+        background: rgba(51, 65, 85, 0.72);
         color: #cbd5e1;
       }
 
-      .url {
-        margin: 0 0 12px;
+      .content {
+        padding: 16px;
+        display: grid;
+        gap: 14px;
+      }
+
+      .source-card,
+      .quota-card,
+      .hint-card {
+        border: 1px solid var(--line);
+        border-radius: 20px;
+        background: linear-gradient(180deg, rgba(23, 33, 53, 0.96), rgba(17, 24, 39, 0.92));
+      }
+
+      .source-card {
         padding: 14px;
+      }
+
+      .source-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        margin-bottom: 10px;
+      }
+
+      .section-kicker {
+        color: #8fa2bc;
+        font-size: 10px;
+        font-weight: 900;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+      }
+
+      .source-host {
+        color: var(--text);
+        font-size: 15px;
+        font-weight: 800;
+      }
+
+      .source-url {
         border-radius: 16px;
-        background: rgba(51, 65, 85, 0.4);
-        border: 1px solid rgba(148, 163, 184, 0.12);
+        padding: 12px 14px;
+        background: rgba(51, 65, 85, 0.34);
+        color: #9fb0c8;
         font-size: 12px;
+        line-height: 1.5;
         word-break: break-word;
       }
 
-      .status {
-        margin: 0 0 12px;
-        min-height: 18px;
+      .source-help {
+        margin-top: 10px;
+        color: #8fa2bc;
         font-size: 12px;
-        color: #94a3b8;
+        line-height: 1.5;
+      }
+
+      .status {
+        min-height: 18px;
+        color: var(--muted);
+        font-size: 12px;
+        line-height: 1.45;
       }
 
       .status[data-tone="success"] {
-        color: #4ade80;
+        color: var(--green);
       }
 
       .status[data-tone="warning"] {
-        color: #fbbf24;
-      }
-
-      .grid {
-        display: grid;
-        gap: 10px;
-      }
-
-      .grid.two {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
+        color: var(--yellow);
       }
 
       button {
-        width: 100%;
+        appearance: none;
         border: 0;
-        border-radius: 14px;
-        padding: 13px 14px;
-        font-size: 12px;
-        font-weight: 800;
-        letter-spacing: 0.08em;
-        text-transform: uppercase;
         cursor: pointer;
         transition: transform 0.15s ease, opacity 0.15s ease, background 0.15s ease;
       }
@@ -170,81 +227,173 @@
         cursor: not-allowed;
       }
 
-      .primary {
+      .cta {
+        width: 100%;
+        border-radius: 18px;
+        padding: 15px 18px;
         background: linear-gradient(135deg, #f97316, #fb923c);
         color: white;
+        font-size: 13px;
+        font-weight: 900;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        box-shadow: 0 14px 28px rgba(249, 115, 22, 0.28);
       }
 
-      .secondary {
-        background: #1e293b;
-        color: #e2e8f0;
-        border: 1px solid rgba(148, 163, 184, 0.16);
+      .grid {
+        display: grid;
+        gap: 10px;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
       }
 
-      .accent {
-        background: #0ea5e9;
+      .action {
+        min-height: 74px;
+        border-radius: 18px;
+        padding: 14px;
+        border: 1px solid var(--line);
+        background: rgba(30, 41, 59, 0.82);
+        color: var(--text);
+        text-align: left;
+      }
+
+      .action .title {
+        display: block;
+        font-size: 12px;
+        font-weight: 900;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+      }
+
+      .action .sub {
+        display: block;
+        margin-top: 6px;
+        color: var(--muted);
+        font-size: 11px;
+        line-height: 1.45;
+      }
+
+      .quota-card,
+      .hint-card {
+        padding: 14px;
+      }
+
+      .mini-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 10px;
+      }
+
+      .mini {
+        flex: 1 1 calc(33.333% - 8px);
+        min-width: 100px;
+        border-radius: 14px;
+        padding: 11px 12px;
+        border: 1px solid var(--line);
+        background: rgba(15, 23, 42, 0.78);
+        color: #dbe6f5;
+        font-size: 11px;
+        font-weight: 800;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+      }
+
+      .mini.accent {
+        background: linear-gradient(135deg, #0ea5e9, #38bdf8);
         color: white;
       }
 
-      .hint {
-        margin-top: 14px;
-        padding: 14px;
-        border-radius: 16px;
-        background: rgba(249, 115, 22, 0.08);
-        color: #cbd5e1;
+      .footer-note {
+        margin-top: 8px;
+        color: #8fa2bc;
         font-size: 12px;
-        line-height: 1.5;
+        line-height: 1.55;
       }
     </style>
   </head>
   <body>
-    <main>
-      <div class="shell">
-        <div class="header">
-          <div class="brand">
-            <img src="logo-app-192.png" alt="HotsNew logo" />
-            <div class="brand-copy">
-              <div class="eyebrow">HotsNew Quick Link</div>
-              <h1>Điều khiển nhanh</h1>
+    <main class="shell">
+      <section class="panel">
+        <header class="hero">
+          <div class="hero-top">
+            <div class="brand">
+              <img src="logo-app-192.png" alt="HotsNew logo" />
+              <div>
+                <div class="eyebrow">HotsNew Extension</div>
+                <h1>Tạo link nhanh</h1>
+              </div>
             </div>
           </div>
-          <p>Mở tạo link, danh sách link, bảng giá và liên hệ admin ngay trong popup.</p>
-        </div>
+          <p class="hero-sub">
+            Lấy link từ tab hiện tại, gửi thẳng vào HotsNew và mở đúng màn hình cần dùng.
+          </p>
+          <div class="hero-badges">
+            <div id="supportBadge" class="badge" data-tone="muted">
+              Đang kiểm tra nguồn link
+            </div>
+            <div id="quotaBadge" class="badge" data-tone="muted">
+              Đang đồng bộ quota
+            </div>
+          </div>
+        </header>
 
         <div class="content">
-          <div id="supportBadge" class="badge" data-tone="muted">Đang kiểm tra tab hiện tại...</div>
-          <div id="quotaBadge" class="badge" data-tone="info">Đang đồng bộ quota...</div>
-          <div id="currentUrl" class="url">Đang lấy URL hiện tại...</div>
+          <section class="source-card">
+            <div class="source-head">
+              <div>
+                <div class="section-kicker">Nguồn hiện tại</div>
+                <div id="sourceHost" class="source-host">Chưa đọc được tab</div>
+              </div>
+            </div>
+            <div id="currentUrl" class="source-url">Đang lấy URL hiện tại...</div>
+            <p id="sourceHint" class="source-help">
+              Chỉ hỗ trợ tab Shopee hoặc TikTok để tạo link một chạm.
+            </p>
+          </section>
+
           <div id="status" class="status"></div>
 
+          <button id="openCreate" class="cta" type="button">
+            Tạo link từ tab hiện tại
+          </button>
+
           <div class="grid">
-            <button id="openCreate" class="primary" type="button">Tạo link từ tab hiện tại</button>
+            <button id="copyUrl" class="action" type="button">
+              <span class="title">Copy URL</span>
+              <span class="sub">Sao chép link tab hiện tại</span>
+            </button>
+            <button id="pasteClipboard" class="action" type="button">
+              <span class="title">Dán Clipboard</span>
+              <span class="sub">Nhận link đã copy trước đó</span>
+            </button>
+            <button id="openRoot" class="action" type="button">
+              <span class="title">Mở HotsNew</span>
+              <span class="sub">Vào dashboard chính</span>
+            </button>
+            <button id="openList" class="action" type="button">
+              <span class="title">Danh sách link</span>
+              <span class="sub">Kiểm tra các link đã tạo</span>
+            </button>
           </div>
 
-          <div class="grid two" style="margin-top: 10px">
-            <button id="copyUrl" class="secondary" type="button">Copy URL</button>
-            <button id="pasteClipboard" class="secondary" type="button">Dán từ clipboard</button>
-          </div>
+          <section class="quota-card">
+            <div class="section-kicker">Công cụ phụ</div>
+            <div class="mini-row">
+              <button id="openPricing" class="mini" type="button">Bảng giá</button>
+              <button id="openInstall" class="mini" type="button">Cài app</button>
+              <button id="openZalo" class="mini accent" type="button">Zalo admin</button>
+            </div>
+          </section>
 
-          <div class="grid two" style="margin-top: 10px">
-            <button id="openRoot" class="secondary" type="button">Mở HotsNew</button>
-            <button id="openList" class="secondary" type="button">Danh sách link</button>
-          </div>
-
-          <div class="grid two" style="margin-top: 10px">
-            <button id="openPricing" class="secondary" type="button">Bảng giá</button>
-            <button id="openInstall" class="secondary" type="button">Cài app</button>
-          </div>
-
-          <div class="grid" style="margin-top: 10px">
-            <button id="openZalo" class="accent" type="button">Zalo admin</button>
-          </div>
-
-          <div class="hint">
-            Mẹo: bạn có thể right-click vào page hoặc vào liên kết để gửi nhanh sang HotsNew. Muốn xem quota thật trong popup, hãy mở sẵn một tab HotsNew và đăng nhập trong đó.
-          </div>
+          <section class="hint-card">
+            <div class="section-kicker">Gợi ý dùng nhanh</div>
+            <p class="footer-note">
+              Muốn popup hiển thị quota thật, hãy mở sẵn một tab HotsNew đã đăng nhập.
+              Nếu đang ở tab không phải Shopee hoặc TikTok, bạn vẫn có thể dán link từ clipboard.
+            </p>
+          </section>
         </div>
-      </div>
+      </section>
     </main>
     <script src="popup.js"></script>
   </body>

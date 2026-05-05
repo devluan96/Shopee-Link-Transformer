@@ -9,6 +9,8 @@ const SUPPORTED_HOSTS = [
 
 const statusEl = document.getElementById("status");
 const currentUrlEl = document.getElementById("currentUrl");
+const sourceHostEl = document.getElementById("sourceHost");
+const sourceHintEl = document.getElementById("sourceHint");
 const supportBadgeEl = document.getElementById("supportBadge");
 const quotaBadgeEl = document.getElementById("quotaBadge");
 const copyButton = document.getElementById("copyUrl");
@@ -37,6 +39,23 @@ function isSupportedUrl(rawUrl) {
   }
 }
 
+function getHostLabel(rawUrl) {
+  if (!rawUrl) return "Không có URL";
+
+  try {
+    const parsed = new URL(rawUrl);
+    return parsed.hostname.replace(/^www\./i, "");
+  } catch {
+    return "URL không hợp lệ";
+  }
+}
+
+function formatCurrentUrl(rawUrl) {
+  if (!rawUrl) return "Không lấy được URL của tab hiện tại.";
+  if (rawUrl.length <= 170) return rawUrl;
+  return `${rawUrl.slice(0, 167)}...`;
+}
+
 async function sendToApp(action, payload = {}) {
   return chrome.runtime.sendMessage({
     type: "openHotsNew",
@@ -54,9 +73,9 @@ function setStatus(message, tone = "default") {
 
 function setSupportState(isSupported) {
   supportBadgeEl.textContent = isSupported
-    ? "Tab này để tạo link"
-    : "Tab này không phải là Shopee/TikTok";
-  supportBadgeEl.dataset.tone = isSupported ? "success" : "muted";
+    ? "Nguồn hợp lệ để tạo link"
+    : "Tab này không phải Shopee/TikTok";
+  supportBadgeEl.dataset.tone = isSupported ? "success" : "warning";
 }
 
 function setQuotaState(message, tone = "info") {
@@ -69,16 +88,25 @@ async function init() {
   const url = tab?.url || "";
   const supported = isSupportedUrl(url);
 
-  currentUrlEl.textContent = url || "Không lấy được URL của tab hiện tại.";
+  currentUrlEl.textContent = formatCurrentUrl(url);
+  sourceHostEl.textContent = getHostLabel(url);
   setSupportState(supported);
 
   copyButton.disabled = !url;
   openCreateButton.disabled = !supported;
+  openCreateButton.textContent = supported
+    ? "Tạo link từ tab hiện tại"
+    : "Chỉ tạo được từ Shopee/TikTok";
+
+  sourceHintEl.textContent = supported
+    ? "Tab hiện tại hợp lệ. Bấm nút cam để mở thẳng màn tạo link với URL đã điền sẵn."
+    : "Nếu không đứng ở Shopee hoặc TikTok, hãy dùng nút dán từ clipboard hoặc tự mở app.";
 
   try {
     const quota = await chrome.runtime.sendMessage({
       type: "getQuotaSnapshot",
     });
+
     if (!quota?.ok) {
       setQuotaState(quota?.error || "Mở HotsNew để đồng bộ quota", "muted");
     } else if (quota.data?.linkQuota) {
@@ -92,7 +120,7 @@ async function init() {
           : quota.data.userLimits?.dailyVideoUploads
             ? ` | Video: ${quota.data.userLimits.videoUploadsUsedToday}/${quota.data.userLimits.dailyVideoUploads}`
             : "";
-      setQuotaState(`${quotaText}${videoText}`, "info");
+      setQuotaState(`${quotaText}${videoText}`, "muted");
     } else {
       setQuotaState("Mở HotsNew để đồng bộ quota", "muted");
     }
@@ -101,7 +129,7 @@ async function init() {
   }
 
   if (!supported && url) {
-    setStatus("Chỉ có thể tạo link từ tab Shopee hoặc TikTok.", "warning");
+    setStatus("Chỉ có thể tạo link trực tiếp từ tab Shopee hoặc TikTok.", "warning");
   }
 
   copyButton.addEventListener("click", async () => {
@@ -119,17 +147,14 @@ async function init() {
       }
 
       if (!isSupportedUrl(clipboardText)) {
-        setStatus(
-          "Clipboard không phải là link Shopee/TikTok hợp lệ.",
-          "warning",
-        );
+        setStatus("Clipboard không phải link Shopee/TikTok hợp lệ.", "warning");
         return;
       }
 
       await sendToApp("create", { url: clipboardText });
       window.close();
     } catch {
-      setStatus("Không đọc được clipboard. Hay copy link trước.", "warning");
+      setStatus("Không đọc được clipboard. Hãy copy link trước.", "warning");
     }
   });
 
