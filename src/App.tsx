@@ -407,18 +407,37 @@ export default function App() {
   }, [refreshLinkQuota, refreshUserLimits, profile?.subscription_plan, profile?.role]);
 
   useEffect(() => {
-    void refreshLinkQuota();
-  }, [refreshLinkQuota, profile?.subscription_plan, profile?.role]);
-
-  useEffect(() => {
     if (!user) return;
 
     const params = new URLSearchParams(window.location.search);
     const prefilledUrl = params.get("url");
     const openCreate = params.get("create") === "1";
+    const requestedTab = params.get("tab");
+    const tabMap: Record<string, Tab> = {
+      dashboard: "dashboard",
+      install: "install",
+      pricing: "pricing",
+      create: "create",
+      list: "list",
+      analytics: "analytics",
+      team: "team",
+      profile: "profile",
+    };
 
     if (prefilledUrl) {
       setUrl(prefilledUrl);
+    }
+
+    if (requestedTab && tabMap[requestedTab]) {
+      const nextTab = tabMap[requestedTab];
+      if (nextTab === "create") {
+        if (canAccessCreate) {
+          setActiveTab("create");
+        }
+      } else {
+        setActiveTab(nextTab);
+      }
+      return;
     }
 
     if (openCreate && canAccessCreate) {

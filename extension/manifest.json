@@ -5,7 +5,11 @@
   "description": "Open HotsNew Click with TikTok or Shopee links prefilled for fast creation.",
   "permissions": [
     "contextMenus",
-    "tabs"
+    "tabs",
+    "scripting"
+  ],
+  "host_permissions": [
+    "https://hotsnew.click/*"
   ],
   "background": {
     "service_worker": "background.js"

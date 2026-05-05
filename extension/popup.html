@@ -16,13 +16,10 @@
 
       body {
         margin: 0;
-        width: 360px;
+        width: 380px;
         background:
-          radial-gradient(
-            circle at top right,
-            rgba(249, 115, 22, 0.28),
-            transparent 36%
-          ),
+          radial-gradient(circle at top right, rgba(249, 115, 22, 0.24), transparent 34%),
+          radial-gradient(circle at bottom left, rgba(14, 165, 233, 0.14), transparent 30%),
           #0f172a;
         color: #e2e8f0;
       }
@@ -33,9 +30,9 @@
 
       .shell {
         border: 1px solid rgba(148, 163, 184, 0.16);
-        border-radius: 22px;
-        background: rgba(15, 23, 42, 0.82);
-        box-shadow: 0 18px 40px rgba(2, 6, 23, 0.35);
+        border-radius: 24px;
+        background: rgba(15, 23, 42, 0.88);
+        box-shadow: 0 18px 40px rgba(2, 6, 23, 0.4);
         overflow: hidden;
       }
 
@@ -70,6 +67,29 @@
         padding: 18px;
       }
 
+      .badge {
+        display: inline-flex;
+        margin-bottom: 12px;
+        border-radius: 999px;
+        padding: 8px 10px;
+        font-size: 10px;
+        font-weight: 800;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        background: rgba(51, 65, 85, 0.55);
+        color: #cbd5e1;
+      }
+
+      .badge[data-tone="success"] {
+        background: rgba(16, 185, 129, 0.16);
+        color: #86efac;
+      }
+
+      .badge[data-tone="info"] {
+        background: rgba(14, 165, 233, 0.16);
+        color: #7dd3fc;
+      }
+
       .url {
         margin: 0 0 12px;
         padding: 14px;
@@ -91,9 +111,17 @@
         color: #4ade80;
       }
 
+      .status[data-tone="warning"] {
+        color: #fbbf24;
+      }
+
       .grid {
         display: grid;
         gap: 10px;
+      }
+
+      .grid.two {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
       }
 
       button {
@@ -106,10 +134,7 @@
         letter-spacing: 0.08em;
         text-transform: uppercase;
         cursor: pointer;
-        transition:
-          transform 0.15s ease,
-          opacity 0.15s ease,
-          background 0.15s ease;
+        transition: transform 0.15s ease, opacity 0.15s ease, background 0.15s ease;
       }
 
       button:hover:not(:disabled) {
@@ -132,6 +157,11 @@
         border: 1px solid rgba(148, 163, 184, 0.16);
       }
 
+      .accent {
+        background: #0ea5e9;
+        color: white;
+      }
+
       .hint {
         margin-top: 14px;
         padding: 14px;
@@ -148,30 +178,42 @@
       <div class="shell">
         <div class="header">
           <div class="eyebrow">HotsNew Quick Link</div>
-          <h1>Lấy Link Nhanh</h1>
-          <p>Giúp bạn lấy URL hiện tại và mở nhanh</p>
+          <h1>Dieu khien nhanh</h1>
+          <p>Mo tao link, danh sach link, bang gia va lien he admin ngay trong popup.</p>
         </div>
 
         <div class="content">
-          <div id="currentUrl" class="url">Đang lấy URL hiện tại...</div>
+          <div id="supportBadge" class="badge" data-tone="muted">Dang kiem tra tab hien tai...</div>
+          <div id="quotaBadge" class="badge" data-tone="info">Dang dong bo quota...</div>
+          <div id="currentUrl" class="url">Dang lay URL hien tai...</div>
           <div id="status" class="status"></div>
 
           <div class="grid">
-            <button id="openApp" class="primary" type="button">
-              Mở màn hình tạo Link
-            </button>
-            <button id="copyUrl" class="secondary" type="button">
-              Copy URL hiện tại
-            </button>
-            <button id="openRoot" class="secondary" type="button">
-              Mở trang chủ HotsNew
+            <button id="openCreate" class="primary" type="button">
+              Tao link tu tab hien tai
             </button>
           </div>
 
+          <div class="grid two" style="margin-top: 10px;">
+            <button id="copyUrl" class="secondary" type="button">Copy URL</button>
+            <button id="pasteClipboard" class="secondary" type="button">Lay tu clipboard</button>
+          </div>
+
+          <div class="grid two" style="margin-top: 10px;">
+            <button id="openRoot" class="secondary" type="button">Mo HotsNew</button>
+            <button id="openList" class="secondary" type="button">Danh sach link</button>
+          </div>
+
+          <div class="grid two" style="margin-top: 10px;">
+            <button id="openPricing" class="secondary" type="button">Bang gia</button>
+            <button id="openInstall" class="secondary" type="button">Cai app</button>
+          </div>
+
+          <div class="grid" style="margin-top: 10px;">
+            <button id="openZalo" class="accent" type="button">Zalo admin</button>
+          </div>
           <div class="hint">
-            Meo: Bạn có thể mở menu trình duyệt (thường là biểu tượng 3 chấm
-            hoặc 3 gạch ở góc trên bên phải) và chọn "HotsNew Quick Link" để
-            truy cập nhanh vào popup này bất cứ lúc nào nhé!
+            Meo: ban co the right-click vao page hoac vao lien ket de gui nhanh sang HotsNew. Muon thay quota that trong popup, hay mo san mot tab HotsNew va dang nhap trong do.
           </div>
         </div>
       </div>
