@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, type ChangeEvent, type RefObject } from "react";
 import { toast } from "sonner";
 
 interface UseVideoUploadProps {
@@ -16,13 +16,13 @@ export interface VideoUploadState {
   uploadingVideo: boolean;
   videoUploadProgress: number;
   videoUploadSuccess: boolean;
-  videoInputRef: React.RefObject<HTMLInputElement | null>;
+  videoInputRef: RefObject<HTMLInputElement | null>;
 }
 
 export interface VideoUploadActions {
   setVideoUrl: (v: string) => void;
   handleVideoUpload: (
-    e: React.ChangeEvent<HTMLInputElement>,
+    e: ChangeEvent<HTMLInputElement>,
   ) => Promise<{ videoUrl: string | null; thumbnailUrl: string | null } | void>;
   handleVideoFileUpload: (
     file: File,
@@ -146,9 +146,11 @@ export function useVideoUpload({
 
           return { videoUrl: secureUrl, thumbnailUrl: null };
         }
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error("Video upload failed", err);
-        toast.error(`Loi tai video: ${err.message || "Khong xac dinh"}`);
+        toast.error(
+          `Lỗi tải video: ${err instanceof Error ? err.message : "Không xác định"}`,
+        );
       } finally {
         setUploadingVideo(false);
         setTimeout(() => setVideoUploadProgress(0), 600);
@@ -160,7 +162,7 @@ export function useVideoUpload({
   );
 
   const handleVideoUpload = useCallback(
-    async (e: React.ChangeEvent<HTMLInputElement>) => {
+    async (e: ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0];
       if (!file) return;
 

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import {
   Search,
   Image as ImageIcon,
@@ -14,12 +14,13 @@ import {
   CheckSquare,
   Square,
 } from "lucide-react";
-import { ConvertedLink } from "@/src/types";
+import { ConvertedLink, LinkUpdatePayload } from "@/src/types";
 import { formatDistanceToNow } from "date-fns";
 import { QRCodeCanvas } from "qrcode.react";
 
 const TIKTOK_HOST_REGEX =
   /(^|\.)tiktok\.com$|(^|\.)vt\.tiktok\.com$|(^|\.)vm\.tiktok\.com$/i;
+const DAY_IN_MS = 1000 * 60 * 60 * 24;
 
 const usageOptions = [
   { value: "", label: "Chọn vị trí sử dụng" },
@@ -40,7 +41,7 @@ interface LinkListProps {
   copyToClipboard: (text: string, id: string) => void;
   copiedId: string;
   onDeleteLink: (id: string) => Promise<void>;
-  onUpdateLink: (id: string, data: Partial<ConvertedLink>) => Promise<void>;
+  onUpdateLink: (id: string, data: LinkUpdatePayload) => Promise<void>;
   onDeleteManyLinks?: (ids: string[]) => Promise<void>;
 }
 
@@ -75,6 +76,10 @@ export const LinkList = ({
   });
   const [isUpdating, setIsUpdating] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [selectedExpirePresetDays, setSelectedExpirePresetDays] = useState<
+    number | null
+  >(null);
+  const qrCanvasRef = useRef<React.ElementRef<"canvas"> | null>(null);
 
   const toggleSelect = (id: string) => {
     const newSet = new Set(selectedIds);
@@ -147,6 +152,17 @@ export const LinkList = ({
 
   const startEdit = (link: ConvertedLink) => {
     setEditingLink(link);
+    if (link.expires_at) {
+      const expiresMs = new Date(link.expires_at).getTime();
+      const diffMs = expiresMs - Date.now();
+      setSelectedExpirePresetDays(
+        Number.isFinite(expiresMs) && diffMs > 0
+          ? Math.round(diffMs / DAY_IN_MS)
+          : null,
+      );
+    } else {
+      setSelectedExpirePresetDays(null);
+    }
     setEditForm({
       title: link.custom_title || "",
       desc: link.custom_description || "",
@@ -167,7 +183,7 @@ export const LinkList = ({
     if (!editingLink?.id) return;
     setIsUpdating(true);
     try {
-      const updates: any = {
+      const updates: LinkUpdatePayload = {
         custom_title: editForm.title,
         custom_description: editForm.desc,
         usage_context: editForm.usage,
@@ -189,6 +205,7 @@ export const LinkList = ({
       }
       await onUpdateLink(editingLink.id, updates);
       setEditingLink(null);
+      setSelectedExpirePresetDays(null);
     } finally {
       setIsUpdating(false);
     }
@@ -383,12 +400,13 @@ export const LinkList = ({
                       <MousePointer2 size={10} />
                       <span>{l.clicks || 0} CLICK RA SHOPEE</span>
                     </div>
-                    {typeof l.tiktok_clicks === "number" && l.tiktok_clicks > 0 && (
-                      <div className="flex items-center gap-1.5 rounded-lg bg-cyan-50 px-2 py-0.5 text-[10px] font-black text-cyan-700">
-                        <MousePointer2 size={10} />
-                        <span>{l.tiktok_clicks} CLICK RA TIKTOK</span>
-                      </div>
-                    )}
+                    {typeof l.tiktok_clicks === "number" &&
+                      l.tiktok_clicks > 0 && (
+                        <div className="flex items-center gap-1.5 rounded-lg bg-cyan-50 px-2 py-0.5 text-[10px] font-black text-cyan-700">
+                          <MousePointer2 size={10} />
+                          <span>{l.tiktok_clicks} CLICK RA TIKTOK</span>
+                        </div>
+                      )}
                     <span className="max-w-full truncate rounded-lg border border-gray-100 dark:border-slate-600 bg-gray-50 dark:bg-slate-700 px-2 py-0.5 text-[10px] font-black uppercase tracking-tighter text-gray-400 dark:text-slate-400">
                       {l.short_code}
                     </span>
@@ -669,7 +687,10 @@ export const LinkList = ({
                 <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-2">
                   <button
                     type="button"
-                    onClick={() => setEditForm({ ...editForm, expiresAt: "" })}
+                    onClick={() => {
+                      setEditForm({ ...editForm, expiresAt: "" });
+                      setSelectedExpirePresetDays(null);
+                    }}
                     className={`rounded-xl px-2 py-2 text-[9px] font-black uppercase tracking-wider transition-all ${
                       editForm.expiresAt === ""
                         ? "bg-orange-500 text-white"
@@ -685,13 +706,7 @@ export const LinkList = ({
                     { days: 15, label: "15 ngày" },
                     { days: 30, label: "30 ngày" },
                   ].map(({ days, label }) => {
-                    const isSelected =
-                      editForm.expiresAt &&
-                      new Date(editForm.expiresAt).getTime() > Date.now() &&
-                      Math.round(
-                        (new Date(editForm.expiresAt).getTime() - Date.now()) /
-                          (1000 * 60 * 60 * 24),
-                      ) === days;
+                    const isSelected = selectedExpirePresetDays === days;
                     return (
                       <button
                         key={days}
@@ -703,6 +718,7 @@ export const LinkList = ({
                             ...editForm,
                             expiresAt: future.toISOString(),
                           });
+                          setSelectedExpirePresetDays(days);
                         }}
                         className={`rounded-xl px-2 py-2 text-[9px] font-black uppercase tracking-wider transition-all ${
                           isSelected
@@ -826,6 +842,7 @@ export const LinkList = ({
                   size={200}
                   level="H"
                   includeMargin={false}
+                  ref={qrCanvasRef}
                 />
               </div>
               <div className="mb-10 text-center">
@@ -838,7 +855,7 @@ export const LinkList = ({
               </div>
               <button
                 onClick={() => {
-                  const canvas = document.querySelector("canvas");
+                  const canvas = qrCanvasRef.current;
                   if (canvas) {
                     const url = canvas.toDataURL("image/png");
                     const link = document.createElement("a");

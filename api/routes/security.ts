@@ -193,7 +193,7 @@ router.post(
 
       const ipAddress = normalizeClientIp(req.body?.ipAddress);
       if (!ipAddress) {
-        return res.status(400).json({ error: "IP address khÃ´ng há»£p lá»‡" });
+        return res.status(400).json({ error: "IP address không hợp lệ" });
       }
 
       const supabase = getSupabase();

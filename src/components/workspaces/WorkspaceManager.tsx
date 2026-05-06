@@ -48,7 +48,7 @@ export function WorkspaceManager({
   workspaceLoading,
   members,
   membersLoading,
-  userLimits: _userLimits,
+  userLimits,
   onSelectWorkspace,
   onCreateWorkspace,
   onInviteMember,
@@ -64,10 +64,21 @@ export function WorkspaceManager({
   const [memberBusyId, setMemberBusyId] = React.useState<string>("");
 
   const canManageMembers = currentWorkspace?.role === "owner";
+  const ownedTeamWorkspaces = userLimits?.ownedTeamWorkspaces ?? 0;
+  const maxTeamWorkspaces = userLimits?.maxTeamWorkspaces ?? null;
+  const canCreateMoreWorkspaces =
+    maxTeamWorkspaces === null ? true : ownedTeamWorkspaces < maxTeamWorkspaces;
+  const maxMembersPerWorkspace = userLimits?.maxTeamMembersPerWorkspace ?? null;
+  const canInviteMoreMembers =
+    maxMembersPerWorkspace === null
+      ? true
+      : members.length < maxMembersPerWorkspace;
+  const createWorkspaceBlocked = !canCreateMoreWorkspaces;
+  const inviteMembersBlocked = !canInviteMoreMembers;
 
   const handleCreateWorkspace = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!workspaceName.trim()) return;
+    if (!workspaceName.trim() || createWorkspaceBlocked) return;
 
     setCreatingWorkspace(true);
     try {
@@ -84,7 +95,9 @@ export function WorkspaceManager({
 
   const handleInviteMember = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!currentWorkspace?.id || !inviteEmail.trim()) return;
+    if (!currentWorkspace?.id || !inviteEmail.trim() || inviteMembersBlocked) {
+      return;
+    }
 
     setInvitingMember(true);
     try {
@@ -126,8 +139,25 @@ export function WorkspaceManager({
           Team Workspace
         </h2>
         <p className="mt-2 font-medium italic text-gray-500 dark:text-slate-400">
-          Chọn workspace đang làm việc, tạo team mới và phân quyền editor/viewer.
+          Chọn workspace đang làm việc, tạo team mới và phân quyền
+          editor/viewer.
         </p>
+        {userLimits && (
+          <div className="mt-4 flex flex-wrap gap-3">
+            <div className="rounded-full border border-sky-100 bg-sky-50 px-4 py-2 text-[11px] font-black uppercase tracking-widest text-sky-700 dark:border-sky-500/20 dark:bg-sky-500/10 dark:text-sky-200">
+              Workspace team:{" "}
+              {maxTeamWorkspaces === null
+                ? "Không giới hạn"
+                : `${ownedTeamWorkspaces}/${maxTeamWorkspaces}`}
+            </div>
+            <div className="rounded-full border border-violet-100 bg-violet-50 px-4 py-2 text-[11px] font-black uppercase tracking-widest text-violet-700 dark:border-violet-500/20 dark:bg-violet-500/10 dark:text-violet-200">
+              Member / workspace:{" "}
+              {maxMembersPerWorkspace === null
+                ? "Không giới hạn"
+                : `${members.length}/${maxMembersPerWorkspace}`}
+            </div>
+          </div>
+        )}
       </header>
 
       <div className="grid grid-cols-1 gap-8 xl:grid-cols-[0.95fr_1.25fr]">
@@ -171,7 +201,8 @@ export function WorkspaceManager({
                         {workspace.name}
                       </p>
                       <p className="mt-1 text-[11px] font-bold uppercase tracking-widest text-gray-400 dark:text-slate-500">
-                        {workspace.is_personal ? "Personal" : "Team"} · {workspace.role}
+                        {workspace.is_personal ? "Personal" : "Team"} ·{" "}
+                        {workspace.role}
                       </p>
                     </div>
                     <ShieldCheck
@@ -193,7 +224,18 @@ export function WorkspaceManager({
             )}
           </div>
 
-          <form onSubmit={handleCreateWorkspace} className="space-y-4 border-t border-gray-100 pt-6 dark:border-slate-700">
+          {userLimits && createWorkspaceBlocked && (
+            <div className="rounded-2xl border border-amber-100 bg-amber-50 px-4 py-4 text-sm font-medium text-amber-700 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-200">
+              {maxTeamWorkspaces === 0
+                ? "Gói hiện tại chưa hỗ trợ Team Workspace."
+                : `Bạn đã dùng hết ${maxTeamWorkspaces} Team Workspace cho gói hiện tại.`}
+            </div>
+          )}
+
+          <form
+            onSubmit={handleCreateWorkspace}
+            className="space-y-4 border-t border-gray-100 pt-6 dark:border-slate-700"
+          >
             <div>
               <label className="mb-2 block text-[11px] font-black uppercase tracking-widest text-gray-400">
                 Tạo workspace mới
@@ -215,7 +257,7 @@ export function WorkspaceManager({
             />
             <button
               type="submit"
-              disabled={creatingWorkspace}
+              disabled={creatingWorkspace || createWorkspaceBlocked}
               className="flex w-full items-center justify-center gap-2 rounded-2xl bg-orange-600 py-4 text-xs font-black uppercase tracking-widest text-white transition-all hover:bg-orange-700 disabled:opacity-60"
             >
               {creatingWorkspace ? (
@@ -271,7 +313,7 @@ export function WorkspaceManager({
               </select>
               <button
                 type="submit"
-                disabled={invitingMember}
+                disabled={invitingMember || inviteMembersBlocked}
                 className="flex items-center justify-center gap-2 rounded-2xl bg-gray-900 px-6 py-4 text-xs font-black uppercase tracking-widest text-white transition-all hover:bg-black disabled:opacity-60"
               >
                 {invitingMember ? (
@@ -284,9 +326,21 @@ export function WorkspaceManager({
             </form>
           )}
 
+          {currentWorkspace &&
+            canManageMembers &&
+            userLimits &&
+            inviteMembersBlocked && (
+              <div className="rounded-2xl border border-amber-100 bg-amber-50 px-4 py-4 text-sm font-medium text-amber-700 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-200">
+                {maxMembersPerWorkspace === 0
+                  ? "Gói hiện tại chưa hỗ trợ mời thành viên vào workspace."
+                  : `Workspace này đã dùng hết ${maxMembersPerWorkspace} slot thành viên.`}
+              </div>
+            )}
+
           {currentWorkspace && !canManageMembers && (
             <div className="rounded-3xl border border-amber-100 bg-amber-50 px-5 py-4 text-sm font-medium text-amber-700 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-200">
-              Chỉ owner mới có thể thêm hoặc đổi role thành viên. Bạn hiện là {currentWorkspace.role}.
+              Chỉ owner mới có thể thêm hoặc đổi role thành viên. Bạn hiện là{" "}
+              {currentWorkspace.role}.
             </div>
           )}
 
@@ -310,7 +364,9 @@ export function WorkspaceManager({
                       {member.avatar_url ? (
                         <img
                           src={member.avatar_url}
-                          alt={member.full_name || member.email || "Member avatar"}
+                          alt={
+                            member.full_name || member.email || "Member avatar"
+                          }
                           className="h-12 w-12 rounded-2xl object-cover"
                         />
                       ) : (
@@ -323,7 +379,10 @@ export function WorkspaceManager({
                           {member.full_name || member.email || member.user_id}
                         </p>
                         <p className="truncate text-sm text-gray-500 dark:text-slate-400">
-                          <Mail size={13} className="mr-1 inline-block align-[-2px]" />
+                          <Mail
+                            size={13}
+                            className="mr-1 inline-block align-[-2px]"
+                          />
                           {member.email || "Không có email"}
                         </p>
                       </div>

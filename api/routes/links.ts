@@ -90,6 +90,95 @@ async function getDailyLinkQuota(
   };
 }
 
+type LinkRouteDeps = {
+  getSupabase: typeof getSupabase;
+  getDailyLinkQuota: typeof getDailyLinkQuota;
+  getFeatureLimitsForProfile: typeof featureLimitService.getFeatureLimitsForProfile;
+  createLink: typeof linkService.createLink;
+  deleteLink: typeof linkService.deleteLink;
+};
+
+const defaultLinkRouteDeps: LinkRouteDeps = {
+  getSupabase,
+  getDailyLinkQuota,
+  getFeatureLimitsForProfile: featureLimitService.getFeatureLimitsForProfile,
+  createLink: linkService.createLink,
+  deleteLink: linkService.deleteLink,
+};
+
+export const createConvertHandler = (
+  deps: Partial<LinkRouteDeps> = {},
+) => {
+  const resolvedDeps = { ...defaultLinkRouteDeps, ...deps };
+
+  return async (req: AuthenticatedRequest, res: any) => {
+    try {
+      const supabase = resolvedDeps.getSupabase();
+      const userId = req.authUser?.id;
+      const canUseCustomDomain =
+        req.authProfile?.role === "admin" ||
+        req.authProfile?.subscription_plan === "yearly";
+      if (!userId) {
+        return res.status(400).json({ error: "Missing userId" });
+      }
+
+      const quota = await resolvedDeps.getDailyLinkQuota(supabase, req, userId);
+      if (!quota.canCreate) {
+        return res.status(429).json({
+          error:
+            quota.dailyLimit === 0
+              ? "Gói hiện tại chưa được phép tạo link."
+              : `Bạn đã dùng hết ${quota.dailyLimit} lượt tạo link hôm nay.`,
+          quota,
+        });
+      }
+
+      const payload = {
+        ...req.body,
+        customDomain: canUseCustomDomain ? req.body?.customDomain : undefined,
+      };
+
+      const featureLimits = resolvedDeps.getFeatureLimitsForProfile(
+        req.authProfile || undefined,
+      );
+      if (payload.abTestEnabled && !featureLimits.canUseAbTesting) {
+        return res.status(403).json({
+          error: "A/B testing chỉ mở cho gói năm hoặc admin.",
+        });
+      }
+
+      const link = await resolvedDeps.createLink(supabase, userId, payload);
+      return res.json(link);
+    } catch (e: any) {
+      console.error("❌ Convert error:", e);
+      return res.status(400).json({ error: e.message || "Convert failed" });
+    }
+  };
+};
+
+export const createDeleteLinkHandler = (
+  deps: Partial<LinkRouteDeps> = {},
+) => {
+  const resolvedDeps = { ...defaultLinkRouteDeps, ...deps };
+
+  return async (req: AuthenticatedRequest, res: any) => {
+    try {
+      const supabase = resolvedDeps.getSupabase();
+      const userId = req.authUser?.id;
+      const linkId = req.params.id;
+
+      if (!userId || !linkId) {
+        return res.status(400).json({ error: "Missing userId or linkId" });
+      }
+
+      await resolvedDeps.deleteLink(supabase, linkId, userId);
+      return res.json({ success: true });
+    } catch (e: any) {
+      return res.status(400).json({ error: e.message });
+    }
+  };
+};
+
 // POST /api/v1/convert - Create new link
 router.post("/convert", authenticate, async (req: AuthenticatedRequest, res) => {
   try {

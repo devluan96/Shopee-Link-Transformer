@@ -10,9 +10,10 @@
     "build": "vite build",
     "preview": "vite preview",
     "clean": "rm -rf dist",
-    "lint:ts": "tsc --noEmit",
+    "lint:ts": "node ./scripts/run-tsc.cjs",
     "lint:eslint": "eslint --config .eslintrc.cjs . --ext .ts,.tsx",
-    "lint": "npm run lint:ts"
+    "lint": "node ./scripts/run-tsc.cjs",
+    "test": "node ./scripts/run-tests.cjs"
   },
   "dependencies": {
     "@google/genai": "^1.29.0",

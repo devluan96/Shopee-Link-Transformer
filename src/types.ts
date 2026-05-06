@@ -39,6 +39,14 @@ export interface ConvertedLink {
   }>;
 }
 
+export type LinkUpdatePayload = Omit<
+  Partial<ConvertedLink>,
+  "folder_name" | "expires_at"
+> & {
+  folder_name?: string | null;
+  expires_at?: string | null;
+};
+
 export type WorkspaceRole = "owner" | "editor" | "viewer";
 
 export interface Workspace {

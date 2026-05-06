@@ -1,7 +1,6 @@
 import { useState, useCallback, useEffect } from "react";
 import { User } from "@supabase/supabase-js";
-import { UserProfile } from "@/src/types";
-import { ConvertedLink } from "@/src/types";
+import { UserProfile, ConvertedLink, LinkUpdatePayload } from "@/src/types";
 import { toast } from "sonner";
 
 interface UseLinksProps {
@@ -27,7 +26,7 @@ export interface LinksActions {
   setLinksDirty: (v: boolean) => void;
   fetchLinks: () => Promise<void>;
   handleDeleteLink: (id: string) => Promise<void>;
-  handleUpdateLink: (id: string, data: Partial<ConvertedLink>) => Promise<void>;
+  handleUpdateLink: (id: string, data: LinkUpdatePayload) => Promise<void>;
   handleDeleteManyLinks: (ids: string[]) => Promise<void>;
   refreshLinks: () => void;
 }
@@ -80,7 +79,7 @@ export function useLinks({
   );
 
   const handleUpdateLink = useCallback(
-    async (id: string, data: Partial<ConvertedLink>) => {
+    async (id: string, data: LinkUpdatePayload) => {
       try {
         const res = await fetchWithAuth(`/api/v1/user/links/${id}`, {
           method: "PATCH",

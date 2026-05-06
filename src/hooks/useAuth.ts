@@ -1,4 +1,10 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+﻿import {
+  useState,
+  useEffect,
+  useRef,
+  useCallback,
+  type FormEvent,
+} from "react";
 import { User, Session } from "@supabase/supabase-js";
 import {
   supabase,
@@ -24,10 +30,13 @@ export interface AuthActions {
   setIsRegistering: (v: boolean) => void;
   setAuthError: (v: string | null) => void;
   setAuthNotice: (v: string | null) => void;
-  handleEmailAuth: (e: React.FormEvent) => Promise<void>;
+  handleEmailAuth: (e: FormEvent) => Promise<void>;
   handleLogout: () => Promise<void>;
   getAccessToken: () => Promise<string | null>;
-  fetchWithAuth: (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
+  fetchWithAuth: (
+    input: RequestInfo | URL,
+    init?: RequestInit,
+  ) => Promise<Response>;
 }
 
 export function useAuth(): AuthState & AuthActions {
@@ -38,7 +47,7 @@ export function useAuth(): AuthState & AuthActions {
   const [isRegistering, setIsRegistering] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
   const [authNotice, setAuthNotice] = useState<string | null>(null);
-  
+
   const sessionRef = useRef<Session | null>(null);
   const isLoggingOutRef = useRef(false);
   const userRef = useRef<User | null>(null);
@@ -54,11 +63,16 @@ export function useAuth(): AuthState & AuthActions {
 
     const nowInSeconds = Math.floor(Date.now() / 1000);
     const cachedSession = sessionRef.current;
+    const currentUserId = userRef.current.id;
 
     if (cachedSession?.access_token) {
-      const expiresAt = cachedSession.expires_at ?? 0;
-      if (expiresAt - nowInSeconds > 60) {
-        return cachedSession.access_token;
+      if (cachedSession.user?.id !== currentUserId) {
+        sessionRef.current = null;
+      } else {
+        const expiresAt = cachedSession.expires_at ?? 0;
+        if (expiresAt - nowInSeconds > 60) {
+          return cachedSession.access_token;
+        }
       }
     }
 
@@ -66,7 +80,7 @@ export function useAuth(): AuthState & AuthActions {
       data: { session },
     } = await supabase.auth.getSession();
     sessionRef.current = session ?? null;
-    if (!session?.user || session.user.id !== userRef.current?.id) {
+    if (!session?.user || session.user.id !== currentUserId) {
       return null;
     }
     if (session?.access_token) {
@@ -85,7 +99,10 @@ export function useAuth(): AuthState & AuthActions {
       return null;
     }
 
-    if (!refreshed.session?.user || refreshed.session.user.id !== userRef.current?.id) {
+    if (
+      !refreshed.session?.user ||
+      refreshed.session.user.id !== userRef.current?.id
+    ) {
       sessionRef.current = null;
       return null;
     }
@@ -94,70 +111,73 @@ export function useAuth(): AuthState & AuthActions {
     return refreshed.session?.access_token ?? null;
   }, []);
 
-  const fetchWithAuth = useCallback(async (
-    input: RequestInfo | URL,
-    init: RequestInit = {},
-  ): Promise<Response> => {
-    const token = await getAccessToken();
-    if (!token) {
-      throw new Error("Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.");
-    }
-
-    const headers = new Headers(init.headers ?? {});
-    headers.set("Authorization", `Bearer ${token}`);
-
-    if (
-      !(init.body instanceof FormData) &&
-      init.body &&
-      !headers.has("Content-Type")
-    ) {
-      headers.set("Content-Type", "application/json");
-    }
-
-    let response = await fetch(input, {
-      ...init,
-      headers,
-    });
-
-    if (response.status === 401) {
-      const { data: refreshed, error: refreshError } =
-        await supabase.auth.refreshSession();
-      const refreshedToken = refreshed.session?.access_token;
-
-      if (!refreshError && refreshedToken) {
-        headers.set("Authorization", `Bearer ${refreshedToken}`);
-        response = await fetch(input, {
-          ...init,
-          headers,
-        });
+  const fetchWithAuth = useCallback(
+    async (
+      input: RequestInfo | URL,
+      init: RequestInit = {},
+    ): Promise<Response> => {
+      const token = await getAccessToken();
+      if (!token) {
+        throw new Error("Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.");
       }
-    }
 
-    if (!response.ok) {
-      let errorMessage = `Request failed with status ${response.status}`;
-      const contentType = response.headers.get("content-type") ?? "";
+      const headers = new Headers(init.headers ?? {});
+      headers.set("Authorization", `Bearer ${token}`);
 
-      if (contentType.includes("application/json")) {
-        const errorData = await response.json().catch(() => null);
-        errorMessage = errorData?.error || errorData?.message || errorMessage;
-      } else {
-        const text = await response.text().catch(() => "");
-        if (text) errorMessage = text;
+      if (
+        !(init.body instanceof FormData) &&
+        init.body &&
+        !headers.has("Content-Type")
+      ) {
+        headers.set("Content-Type", "application/json");
       }
+
+      let response = await fetch(input, {
+        ...init,
+        headers,
+      });
 
       if (response.status === 401) {
-        clearStoredSession();
-        sessionRef.current = null;
-        setUser(null);
+        const { data: refreshed, error: refreshError } =
+          await supabase.auth.refreshSession();
+        const refreshedToken = refreshed.session?.access_token;
+
+        if (!refreshError && refreshedToken) {
+          headers.set("Authorization", `Bearer ${refreshedToken}`);
+          response = await fetch(input, {
+            ...init,
+            headers,
+          });
+        }
       }
 
-      const error = new Error(errorMessage) as Error & { status?: number };
-      error.status = response.status;
-      throw error;
-    }
+      if (!response.ok) {
+        let errorMessage = `Request failed with status ${response.status}`;
+        const contentType = response.headers.get("content-type") ?? "";
 
-    return response;
-  }, [getAccessToken]);
+        if (contentType.includes("application/json")) {
+          const errorData = await response.json().catch(() => null);
+          errorMessage = errorData?.error || errorData?.message || errorMessage;
+        } else {
+          const text = await response.text().catch(() => "");
+          if (text) errorMessage = text;
+        }
+
+        if (response.status === 401) {
+          clearStoredSession();
+          sessionRef.current = null;
+          setUser(null);
+        }
+
+        const error = new Error(errorMessage) as Error & { status?: number };
+        error.status = response.status;
+        throw error;
+      }
+
+      return response;
+    },
+    [getAccessToken],
+  );
 
   const handleLogout = useCallback(async () => {
     if (isLoggingOutRef.current) return;
@@ -167,7 +187,7 @@ export function useAuth(): AuthState & AuthActions {
     userRef.current = null;
     sessionRef.current = null;
     clearStoredSession();
-    
+
     try {
       setAuthLoading(false);
       await logout();
@@ -181,76 +201,85 @@ export function useAuth(): AuthState & AuthActions {
     }
   }, []);
 
-  const handleEmailAuth = useCallback(async (e: React.FormEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    // Persist event for async handling
-    if ('persist' in e) {
-      e.persist();
-    }
-    if (authLoading) return;
+  const handleEmailAuth = useCallback(
+    async (e: FormEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (authLoading) return;
 
-    setAuthError(null);
-    setAuthNotice(null);
-    setAuthLoading(true);
+      setAuthError(null);
+      setAuthNotice(null);
+      setAuthLoading(true);
+      sessionRef.current = null;
+      clearStoredSession();
 
-    const safetyTimer = setTimeout(() => {
-      setAuthLoading((prev) => {
-        if (prev) {
-          console.warn("⚠️ [Auth] Login taking too long, resetting spinner");
-          return false;
+      const safetyTimer = setTimeout(() => {
+        setAuthLoading((prev) => {
+          if (prev) {
+            console.warn("⚠️ [Auth] Login taking too long, resetting spinner");
+            return false;
+          }
+          return prev;
+        });
+      }, 15000);
+
+      try {
+        if (isRegistering) {
+          const newUser = await registerWithEmail(email, password);
+          const existingAccount = newUser?.identities?.length === 0;
+          if (existingAccount) {
+            setAuthError(
+              "Email này đã được sử dụng. Hãy đăng nhập hoặc đổi email khác.",
+            );
+            return;
+          }
+
+          const notice =
+            "Đăng ký thành công. Supabase đã gửi email xác nhận. Vui lòng mở hộp thư và bấm vào liên kết xác nhận trước khi đăng nhập.";
+          setAuthNotice(notice);
+          setIsRegistering(false);
+          setPassword("");
+        } else {
+          await loginWithEmail(email, password);
+          setAuthNotice(null);
         }
-        return prev;
-      });
-    }, 15000);
-
-    try {
-      if (isRegistering) {
-        const newUser = await registerWithEmail(email, password);
-        const existingAccount = newUser?.identities?.length === 0;
-        if (existingAccount) {
+      } catch (err: unknown) {
+        console.error("❌ [Auth] Email auth error:", err);
+        const errorMessage =
+          err instanceof Error
+            ? err.message
+            : "Đăng nhập thất bại. Vui lòng thử lại.";
+        const rawMessage = String(errorMessage || "");
+        // Translate common error messages to Vietnamese
+        if (rawMessage.toLowerCase().includes("invalid login credentials")) {
           setAuthError(
-            "Email này đã được sử dụng. Hãy đăng nhập hoặc đổi email khác.",
+            "Email hoặc mật khẩu không đúng. Vui lòng kiểm tra lại.",
           );
-          return;
+        } else if (
+          rawMessage.toLowerCase().includes("email rate limit exceeded")
+        ) {
+          setAuthError(
+            "Supabase đang chậm giới hạn gửi email xác nhận. Email này chưa chắc đã tồn tại. Hãy đổi trong vài phút rồi thử đăng ký lại.",
+          );
+        } else if (rawMessage.toLowerCase().includes("user not found")) {
+          setAuthError("Không tìm thấy tài khoản với email này.");
+        } else if (rawMessage.toLowerCase().includes("invalid email")) {
+          setAuthError("Email không hợp lệ. Vui lòng kiểm tra lại.");
+        } else {
+          setAuthError(errorMessage);
         }
-
-        const notice =
-          "Đăng ký thành công. Supabase đã gửi email xác nhận. Vui lòng mở hộp thư và bấm vào liên kết xác nhận trước khi đăng nhập.";
-        setAuthNotice(notice);
-        setIsRegistering(false);
-        setPassword("");
-      } else {
-        await loginWithEmail(email, password);
-        setAuthNotice(null);
+        // Reset loading state immediately when error occurs
+        setAuthLoading(false);
+        // Ensure we don't continue execution after error
+        return;
+      } finally {
+        clearTimeout(safetyTimer);
+        // Also reset in finally as backup
+        setAuthLoading(false);
       }
-    } catch (err: any) {
-      console.error("❌ [Auth] Email auth error:", err);
-      const rawMessage = String(err?.message || "");
-      // Translate common error messages to Vietnamese
-      if (rawMessage.toLowerCase().includes("invalid login credentials")) {
-        setAuthError("Email hoặc mật khẩu không đúng. Vui lòng kiểm tra lại.");
-      } else if (rawMessage.toLowerCase().includes("email rate limit exceeded")) {
-        setAuthError(
-          "Supabase đang chạm giới hạn gửi email xác nhận. Email này chưa chắc đã tồn tại. Hãy đợi vài phút rồi thử đăng ký lại.",
-        );
-      } else if (rawMessage.toLowerCase().includes("user not found")) {
-        setAuthError("Không tìm thấy tài khoản với email này.");
-      } else if (rawMessage.toLowerCase().includes("invalid email")) {
-        setAuthError("Email không hợp lệ. Vui lòng kiểm tra lại.");
-      } else {
-        setAuthError(err.message || "Đăng nhập thất bại. Vui lòng thử lại.");
-      }
-      // Reset loading state immediately when error occurs
-      setAuthLoading(false);
-      // Ensure we don't continue execution after error
-      return;
-    } finally {
-      clearTimeout(safetyTimer);
-      // Also reset in finally as backup
-      setAuthLoading(false);
-    }
-  }, [email, password, isRegistering, authLoading]);
+    },
+    [email, password, isRegistering, authLoading],
+  );
 
   // Auth state change listener
   useEffect(() => {
@@ -258,7 +287,7 @@ export function useAuth(): AuthState & AuthActions {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
       sessionRef.current = session ?? null;
-      
+
       if (event === "SIGNED_OUT") {
         isLoggingOutRef.current = false;
         sessionRef.current = null;
@@ -266,7 +295,7 @@ export function useAuth(): AuthState & AuthActions {
         setAuthLoading(false);
         return;
       }
-      
+
       if (event === "INITIAL_SESSION" && !session) {
         setUser(null);
         setAuthLoading(false);
@@ -275,8 +304,10 @@ export function useAuth(): AuthState & AuthActions {
 
       const currentUser = session?.user ?? null;
       setUser(currentUser);
-      
+
       if (!currentUser) {
+        setAuthLoading(false);
+      } else {
         setAuthLoading(false);
       }
     });
@@ -286,9 +317,8 @@ export function useAuth(): AuthState & AuthActions {
       sessionRef.current = session ?? null;
       if (session?.user) {
         setUser(session.user);
-      } else {
-        setAuthLoading(false);
       }
+      setAuthLoading(false);
     });
 
     // Safety timeout
@@ -321,7 +351,7 @@ export function useAuth(): AuthState & AuthActions {
       );
     };
     window.onunhandledrejection = (event) => {
-      console.error("🟠 [Unhandled Rejection]:", event.reason);
+      console.error("🔴 [Unhandled Rejection]:", event.reason);
     };
   }, []);
 

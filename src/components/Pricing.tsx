@@ -1,6 +1,5 @@
-import React, { useEffect, useRef, useState } from "react";
-import { Check, Crown, LoaderCircle, Sparkles, Zap } from "lucide-react";
-import { toast } from "sonner";
+import React, { useEffect, useState } from "react";
+import { Check, Crown, Sparkles, Zap } from "lucide-react";
 import { cn } from "@/src/lib/utils";
 import { LinkQuota, UserLimits, UserProfile } from "@/src/types";
 
@@ -8,20 +7,12 @@ interface PricingProps {
   userProfile: UserProfile | null;
   linkQuota: LinkQuota | null;
   userLimits: UserLimits | null;
-  checkoutLoadingPlan: "monthly" | "yearly" | null;
-  onCheckout: (plan: "monthly" | "yearly") => Promise<void>;
-  onCheckPaymentStatus: (
-    appTransId: string,
-  ) => Promise<{ paid: boolean; processing: boolean }>;
 }
 
 export const Pricing = ({
   userProfile,
   linkQuota,
   userLimits,
-  checkoutLoadingPlan,
-  onCheckout,
-  onCheckPaymentStatus,
 }: PricingProps) => {
   const zaloContactUrl = "https://zalo.me/0969361607";
   const currentPlan = userProfile?.subscription_plan || "free";
@@ -32,37 +23,9 @@ export const Pricing = ({
     expiryTimestamp && Number.isFinite(expiryTimestamp)
       ? new Date(expiryTimestamp).toLocaleDateString("vi-VN")
       : null;
-  const handledReturnRef = useRef(false);
   const [remainingMs, setRemainingMs] = useState(() =>
     expiryTimestamp ? Math.max(0, expiryTimestamp - Date.now()) : 0,
   );
-
-  useEffect(() => {
-    if (handledReturnRef.current) return;
-
-    const currentUrl = new URL(window.location.href);
-    const payment = currentUrl.searchParams.get("payment");
-    const appTransId = currentUrl.searchParams.get("app_trans_id");
-    const tab = currentUrl.searchParams.get("tab");
-
-    if (payment !== "return" || !appTransId || tab !== "pricing") {
-      return;
-    }
-
-    handledReturnRef.current = true;
-
-    void onCheckPaymentStatus(appTransId).finally(() => {
-      currentUrl.searchParams.delete("payment");
-      currentUrl.searchParams.delete("app_trans_id");
-      currentUrl.searchParams.delete("plan");
-      currentUrl.searchParams.delete("tab");
-      window.history.replaceState(
-        {},
-        document.title,
-        `${currentUrl.pathname}${currentUrl.search}${currentUrl.hash}`,
-      );
-    });
-  }, [onCheckPaymentStatus]);
 
   useEffect(() => {
     if (!expiryTimestamp || !Number.isFinite(expiryTimestamp)) {
@@ -91,7 +54,7 @@ export const Pricing = ({
         "Tạo landing page không giới hạn",
         "Upload video và thumbnail",
         "Quản lý link và theo dõi thống kê",
-        "Thanh toán qua ZaloPay Gateway và VietQR",
+        "Kích hoạt thủ công qua QR ngân hàng hoặc admin",
       ],
       highlight: true,
       badge: "LINH HOẠT",
@@ -106,7 +69,7 @@ export const Pricing = ({
         "Tạo landing page không giới hạn",
         "Upload video và thumbnail",
         "Quản lý link và theo dõi thống kê",
-        "Thanh toán qua ZaloPay Gateway và VietQR",
+        "Kích hoạt thủ công qua QR ngân hàng hoặc admin",
       ],
       highlight: false,
       badge: "TIẾT KIỆM HƠN",
@@ -120,8 +83,7 @@ export const Pricing = ({
     remainingMs > 0;
   const canRenewCurrentPlan =
     currentPlan !== "free" && hasValidExpiry && remainingDays <= 7;
-  const hasYearlyPlan = currentPlan === "yearly";
-  const isYearlyPlanActive = hasYearlyPlan;
+  const isYearlyPlanActive = currentPlan === "yearly";
 
   const formatCountdown = (durationMs: number) => {
     const totalSeconds = Math.max(0, Math.floor(durationMs / 1000));
@@ -133,29 +95,24 @@ export const Pricing = ({
     return `${days} ngày ${hours} giờ ${minutes} phút ${seconds} giây`;
   };
 
-  const handleCheckout = async (plan: "monthly" | "yearly") => {
-    try {
-      await onCheckout(plan);
-    } catch (error: any) {
-      toast.error(error?.message || "Không thể chuyển sang cổng thanh toán.");
-    }
+  const handleContactAdmin = () => {
+    window.open(zaloContactUrl, "_blank", "noopener,noreferrer");
   };
 
   const getButtonState = (planId: "monthly" | "yearly") => {
     const isCurrentPlan = currentPlan === planId;
     const disableByActiveYearly = isYearlyPlanActive && planId !== "yearly";
     const disableRenew = isCurrentPlan && !canRenewCurrentPlan;
-    const disabled =
-      checkoutLoadingPlan !== null || disableByActiveYearly || disableRenew;
+    const disabled = disableByActiveYearly || disableRenew;
 
-    let buttonText = "THANH TOÁN NGAY";
+    let buttonText = "LIÊN HỆ KÍCH HOẠT";
     if (isCurrentPlan) {
-      buttonText = "GIA HẠN NGAY";
+      buttonText = "LIÊN HỆ GIA HẠN";
     }
 
     let helperText = "";
     if (disableByActiveYearly) {
-      helperText = "Gói năm đang hoạt động nên tạm khóa thanh toán mới.";
+      helperText = "Gói năm đang hoạt động nên tạm khóa việc mở gói thấp hơn.";
     } else if (disableRenew) {
       helperText = "Gia hạn chỉ mở khi gói còn 7 ngày hoặc ít hơn.";
     }
@@ -179,7 +136,8 @@ export const Pricing = ({
           Bảng giá dịch vụ
         </h2>
         <p className="font-medium italic text-gray-500 dark:text-slate-400">
-          Nâng cấp tài khoản để mở khóa toàn bộ tính năng chuyển đổi link.
+          ZaloPay đã được gỡ khỏi luồng thanh toán. Hiện tại app dùng hình thức
+          liên hệ admin hoặc nhận QR chuyển khoản để kích hoạt gói.
         </p>
       </header>
 
@@ -230,7 +188,7 @@ export const Pricing = ({
           {userLimits && (
             <p className="text-center text-sm font-bold text-violet-600 dark:text-violet-300">
               {userLimits.dailyVideoUploads === null
-                ? "Không giới hạn upload video / ngày."
+                ? "Không giới hạn upload video mỗi ngày."
                 : `Video hôm nay: ${userLimits.videoUploadsUsedToday}/${userLimits.dailyVideoUploads}`}
             </p>
           )}
@@ -277,8 +235,20 @@ export const Pricing = ({
                 <p className="text-sm font-medium leading-relaxed text-gray-500 dark:text-slate-400">
                   {plan.description}
                 </p>
-                <div className="mt-4 inline-flex rounded-full border border-sky-100 bg-sky-50 px-4 py-2 text-[11px] font-black uppercase tracking-widest text-sky-700 dark:border-sky-500/20 dark:bg-sky-500/10 dark:text-sky-200">
-                  Tạo tối đa {getPlanDailyLimit(plan.id)} link / ngày
+
+                <div className="mt-4 grid grid-cols-2 gap-3 text-[11px] font-black uppercase tracking-widest text-gray-600 dark:text-slate-300">
+                  <div className="rounded-2xl border border-sky-100 bg-sky-50 px-4 py-3 text-sky-700 dark:border-sky-500/20 dark:bg-sky-500/10 dark:text-sky-200">
+                    {getPlanDailyLimit(plan.id)} link / ngày
+                  </div>
+                  <div className="rounded-2xl border border-violet-100 bg-violet-50 px-4 py-3 text-violet-700 dark:border-violet-500/20 dark:bg-violet-500/10 dark:text-violet-200">
+                    {getPlanVideoLimit(plan.id)} video / ngày
+                  </div>
+                  <div className="rounded-2xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-emerald-700 dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-200">
+                    {getPlanWorkspaceLimit(plan.id)} workspace
+                  </div>
+                  <div className="rounded-2xl border border-amber-100 bg-amber-50 px-4 py-3 text-amber-700 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-200">
+                    {getPlanMemberLimit(plan.id)} thành viên
+                  </div>
                 </div>
               </div>
 
@@ -296,7 +266,7 @@ export const Pricing = ({
               </div>
 
               <button
-                onClick={() => handleCheckout(plan.id)}
+                onClick={handleContactAdmin}
                 disabled={buttonState.disabled}
                 className={cn(
                   "flex w-full items-center justify-center gap-2 rounded-3xl py-5 text-xs font-black uppercase tracking-widest transition-all active:scale-95 disabled:cursor-not-allowed disabled:opacity-60",
@@ -305,17 +275,8 @@ export const Pricing = ({
                     : "bg-gray-900 text-white hover:bg-black dark:bg-slate-700 dark:hover:bg-slate-600",
                 )}
               >
-                {checkoutLoadingPlan === plan.id ? (
-                  <>
-                    <LoaderCircle size={16} className="animate-spin" />
-                    ĐANG CHUYỂN ĐẾN ZALOPAY
-                  </>
-                ) : (
-                  <>
-                    {buttonState.buttonText}
-                    <span>{"->"}</span>
-                  </>
-                )}
+                <span>{buttonState.buttonText}</span>
+                <span>{"->"}</span>
               </button>
 
               {buttonState.helperText && (
@@ -330,10 +291,11 @@ export const Pricing = ({
 
       <div className="mt-8 rounded-4xl border border-sky-100 bg-sky-50/80 p-6 text-center dark:border-sky-500/20 dark:bg-sky-500/10">
         <p className="text-sm font-bold text-sky-900 dark:text-sky-100">
-          Cần mở gói nhanh hoặc cần admin kích hoạt thủ công?
+          Không dùng ZaloPay nữa. Cần mở gói nhanh hoặc nhận QR chuyển khoản?
         </p>
         <p className="mt-2 text-sm font-medium text-sky-700/80 dark:text-sky-200/80">
-          Liên hệ Zalo admin `0969361607` để được hỗ trợ nhanh hơn.
+          Liên hệ Zalo admin `0969361607` để nhận QR ngân hàng và kích hoạt gói
+          thủ công.
         </p>
         <a
           href={zaloContactUrl}

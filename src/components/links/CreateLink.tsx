@@ -1,4 +1,4 @@
-import React from "react";
+import React, { type ChangeEvent, type FormEvent, type RefObject } from "react";
 import {
   AlertCircle,
   ArrowRight,
@@ -15,9 +15,11 @@ import {
   X,
 } from "lucide-react";
 import { cn, normalizeVietnameseSlug } from "@/src/lib/utils";
-import { UserLimits } from "@/src/types";
+import { ConvertedLink, UserLimits } from "@/src/types";
+import { QRCodeCanvas } from "qrcode.react";
 
 const MAX_SHORT_CODE_LENGTH = 50;
+const DAY_IN_MS = 1000 * 60 * 60 * 24;
 const SHOPEE_HOST_REGEX = /(^|\.)shopee\.[a-z.]+$/i;
 const TIKTOK_HOST_REGEX =
   /(^|\.)tiktok\.com$|(^|\.)vt\.tiktok\.com$|(^|\.)vm\.tiktok\.com$/i;
@@ -106,14 +108,20 @@ interface CreateLinkProps {
   uploadingVideo: boolean;
   videoUploadProgress: number;
   videoUploadSuccess: boolean;
-  videoInputRef: React.RefObject<HTMLInputElement | null>;
-  handleVideoUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  videoInputRef: RefObject<HTMLInputElement | null>;
+  handleVideoUpload: (e: ChangeEvent<HTMLInputElement>) => void;
   handleVideoFileUpload: (file: File) => Promise<void>;
-  handleConvert: (e: React.FormEvent) => void;
+  thumbnailInputRef: RefObject<HTMLInputElement | null>;
+  uploadingThumbnail: boolean;
+  thumbnailUploadProgress: number;
+  thumbnailUploadSuccess: boolean;
+  handleThumbnailUpload: (e: ChangeEvent<HTMLInputElement>) => Promise<void>;
+  handleThumbnailFileUpload: (file: File) => Promise<void>;
+  handleConvert: (e: FormEvent) => void;
   loading: boolean;
   error: string | null;
   setError: (v: string | null) => void;
-  result: any;
+  result: Pick<ConvertedLink, "short_code" | "converted_url"> | null;
   copyToClipboard: (text: string, id: string) => void;
   copiedId: string;
 }
@@ -150,7 +158,7 @@ export const CreateLink = ({
   availableOutputDomains,
   canUseCustomDomains,
   linkQuota,
-  userLimits: _userLimits,
+  userLimits,
   utmSource,
   setUtmSource,
   utmMedium,
@@ -184,7 +192,6 @@ export const CreateLink = ({
   secondaryTargetType,
   setSecondaryTargetType,
   redirectDelayMs,
-  setRedirectDelayMs,
   expiresAt,
   setExpiresAt,
   videoUrl,
@@ -195,6 +202,12 @@ export const CreateLink = ({
   videoInputRef,
   handleVideoUpload,
   handleVideoFileUpload,
+  thumbnailInputRef,
+  uploadingThumbnail,
+  thumbnailUploadProgress,
+  thumbnailUploadSuccess,
+  handleThumbnailUpload,
+  handleThumbnailFileUpload,
   handleConvert,
   loading,
   error,
@@ -210,14 +223,13 @@ export const CreateLink = ({
   const [videoPreviewOrientation, setVideoPreviewOrientation] = React.useState<
     "landscape" | "portrait" | "square"
   >("landscape");
-  const [
-    thumbnailPreviewOrientation,
-    setThumbnailPreviewOrientation,
-  ] = React.useState<"landscape" | "portrait" | "square">("landscape");
+  const [thumbnailPreviewOrientation, setThumbnailPreviewOrientation] =
+    React.useState<"landscape" | "portrait" | "square">("landscape");
   const [isDraggingVideo, setIsDraggingVideo] = React.useState(false);
   const [showQrModal, setShowQrModal] = React.useState(false);
-  const [qrDownloading, setQrDownloading] = React.useState(false);
   const [showAdvancedSettings, setShowAdvancedSettings] = React.useState(false);
+  const [selectedExpirePresetDays, setSelectedExpirePresetDays] =
+    React.useState<number | null>(null);
   const [campaignTrackingEnabled, setCampaignTrackingEnabled] = React.useState(
     Boolean(
       utmSource.trim() ||
@@ -236,6 +248,11 @@ export const CreateLink = ({
       ? `https://hotsnew.click/s/${result.short_code}`
       : "https://hotsnew.click/s/########";
   const uploadProgressOffset = 87.96 - (87.96 * videoUploadProgress) / 100;
+  const canUseAbTesting = userLimits?.canUseAbTesting ?? true;
+  const videoUploadsRemainingToday =
+    userLimits?.videoUploadsRemainingToday ?? null;
+  const videoUploadBlocked =
+    userLimits?.dailyVideoUploads === 0 || videoUploadsRemainingToday === 0;
 
   const clearFieldError = (field: FormField) => {
     setFieldErrors((prev) => {
@@ -252,6 +269,22 @@ export const CreateLink = ({
       clearFieldError("videoUrl");
     }
   }, [customImageUrl, videoUrl]);
+
+  React.useEffect(() => {
+    if (!expiresAt) {
+      setSelectedExpirePresetDays(null);
+      return;
+    }
+
+    const expiresMs = new Date(expiresAt).getTime();
+    const diffMs = expiresMs - Date.now();
+    if (!Number.isFinite(expiresMs) || diffMs <= 0) {
+      setSelectedExpirePresetDays(null);
+      return;
+    }
+
+    setSelectedExpirePresetDays(Math.round(diffMs / DAY_IN_MS));
+  }, [expiresAt]);
 
   const inferTrackingSource = React.useCallback(() => {
     const normalizedUsage = usageContext.trim().toLowerCase();
@@ -293,10 +326,12 @@ export const CreateLink = ({
     campaignTrackingEnabled,
     inferTrackingSource,
     normalizedShortCodePreview,
+    setUtmCampaign,
     setUtmContent,
     setUtmMedium,
     setUtmSource,
     setUtmTerm,
+    utmCampaign,
     utmContent,
     utmMedium,
     utmSource,
@@ -404,7 +439,7 @@ export const CreateLink = ({
     return nextErrors;
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = (e: FormEvent) => {
     const nextErrors = validateForm();
     setFieldErrors(nextErrors);
 
@@ -478,7 +513,7 @@ export const CreateLink = ({
     );
   };
 
-  const handleVideoDrop = async (event: React.DragEvent<HTMLButtonElement>) => {
+  const handleVideoDrop = async (event: React.DragEvent<HTMLElement>) => {
     event.preventDefault();
     setIsDraggingVideo(false);
 
@@ -492,6 +527,22 @@ export const CreateLink = ({
 
     clearFieldError("videoUrl");
     await handleVideoFileUpload(file);
+  };
+
+  const handleThumbnailDrop = async (event: React.DragEvent<HTMLElement>) => {
+    event.preventDefault();
+
+    const file = event.dataTransfer.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      setError("Vui lòng thả đúng file ảnh cho thumbnail.");
+      return;
+    }
+
+    clearFieldError("customImageUrl");
+    clearFieldError("videoUrl");
+    await handleThumbnailFileUpload(file);
   };
 
   return (
@@ -519,6 +570,13 @@ export const CreateLink = ({
                 ? "Không giới hạn số link tạo mỗi ngày."
                 : `Hôm nay đã dùng ${linkQuota.usedToday}/${linkQuota.dailyLimit} link, còn lại ${linkQuota.remainingToday}.`}
             </span>
+            {userLimits && (
+              <span className="rounded-full bg-white px-3 py-1 text-[10px] font-black uppercase tracking-widest text-violet-700 dark:bg-slate-800 dark:text-violet-200">
+                {userLimits.dailyVideoUploads === null
+                  ? "Video: không giới hạn"
+                  : `Video: ${userLimits.videoUploadsUsedToday}/${userLimits.dailyVideoUploads}`}
+              </span>
+            )}
             {(!linkQuota.canCreate || linkQuota.plan === "free") && (
               <a
                 href={zaloContactUrl}
@@ -578,8 +636,7 @@ export const CreateLink = ({
                 {loading ? (
                   <div className="h-5 w-5 animate-spin rounded-full border-2 border-white/30 border-t-white" />
                 ) : linkQuota && !linkQuota.canCreate ? (
-                  <>Hết lượt hôm nay
-                  </>
+                  <>Hết lượt hôm nay</>
                 ) : (
                   <>
                     Rút gọn link <ArrowRight size={18} />
@@ -666,8 +723,8 @@ export const CreateLink = ({
               </div>
               <div>
                 <label className="mb-3 flex items-center gap-2 px-1 text-[11px] font-black uppercase tracking-widest text-gray-400">
-                  <Type size={14} className="text-orange-500" /> Mã rút gọn
-                  tùy chỉnh
+                  <Type size={14} className="text-orange-500" /> Mã rút gọn tùy
+                  chỉnh
                 </label>
                 <input
                   data-field="customShortCode"
@@ -708,8 +765,8 @@ export const CreateLink = ({
                     Cài đặt nâng cao
                   </p>
                   <p className="mt-1 text-xs font-medium text-gray-500 dark:text-slate-400">
-                    Domain đầu ra, UTM, affiliate, A/B test, thời hạn và
-                    flow bước 2.
+                    Domain đầu ra, UTM, affiliate, A/B test, thời hạn và flow
+                    bước 2.
                   </p>
                 </div>
                 <ChevronDown
@@ -940,7 +997,6 @@ export const CreateLink = ({
                     </div>
                   </div>
 
-
                   <div>
                     <label className="mb-3 flex items-center gap-2 px-1 text-[11px] font-black uppercase tracking-widest text-gray-400">
                       <Type size={14} className="text-orange-500" /> Thời hạn
@@ -978,12 +1034,7 @@ export const CreateLink = ({
                             clearFieldError("expiresAt");
                           }}
                           className={`rounded-xl px-3 py-3 text-[10px] font-black uppercase tracking-wider transition-all ${
-                            expiresAt &&
-                            new Date(expiresAt).getTime() > Date.now() &&
-                            Math.round(
-                              (new Date(expiresAt).getTime() - Date.now()) /
-                                (1000 * 60 * 60 * 24),
-                            ) === days
+                            selectedExpirePresetDays === days
                               ? "bg-orange-500 text-white shadow-lg shadow-orange-200"
                               : "bg-gray-50 text-gray-500 hover:bg-gray-100 dark:bg-slate-700 dark:text-slate-300 dark:hover:bg-slate-600"
                           }`}
@@ -1088,9 +1139,15 @@ export const CreateLink = ({
                       </div>
                       <button
                         type="button"
-                        onClick={() => setAbTestEnabled(!abTestEnabled)}
+                        disabled={!canUseAbTesting}
+                        onClick={() => {
+                          if (!canUseAbTesting) return;
+                          setAbTestEnabled(!abTestEnabled);
+                        }}
                         className={cn(
                           "rounded-full px-4 py-2 text-[10px] font-black uppercase tracking-widest transition-all",
+                          !canUseAbTesting &&
+                            "cursor-not-allowed opacity-50 grayscale",
                           abTestEnabled
                             ? "bg-emerald-600 text-white"
                             : "bg-white text-emerald-700",
@@ -1099,6 +1156,12 @@ export const CreateLink = ({
                         {abTestEnabled ? "A/B On" : "A/B Off"}
                       </button>
                     </div>
+
+                    {!canUseAbTesting && (
+                      <p className="text-xs font-bold text-emerald-800/80">
+                        A/B testing hiện chỉ mở cho gói năm hoặc admin.
+                      </p>
+                    )}
 
                     {abTestEnabled && (
                       <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
@@ -1169,14 +1232,13 @@ export const CreateLink = ({
                   <input
                     type="file"
                     accept="video/*"
-                    ref={(el) => {
-                      if (videoInputRef) (videoInputRef as any).current = el;
-                    }}
+                    ref={videoInputRef}
                     onChange={handleVideoUpload}
                     className="hidden"
                   />
                   <button
                     type="button"
+                    disabled={videoUploadBlocked}
                     onClick={() => videoInputRef?.current?.click()}
                     onDragEnter={(event) => {
                       event.preventDefault();
@@ -1199,6 +1261,8 @@ export const CreateLink = ({
                     data-field="videoUrl"
                     className={cn(
                       "group flex min-h-21 w-full flex-col items-start gap-4 rounded-2xl border-2 border-dashed px-5 py-5 text-left transition-all sm:flex-row sm:items-center sm:justify-between sm:px-6",
+                      videoUploadBlocked &&
+                        "cursor-not-allowed opacity-60 saturate-0",
                       isDraggingVideo
                         ? "border-orange-400 bg-orange-100/80 shadow-lg shadow-orange-100"
                         : "border-orange-100 bg-orange-50/30 hover:border-orange-300 hover:bg-orange-50/50",
@@ -1263,6 +1327,20 @@ export const CreateLink = ({
                   <p className="px-1 text-[11px] font-medium text-gray-500">
                     Drag and drop a video here, or click to browse.
                   </p>
+                  {userLimits && (
+                    <p className="px-1 text-[11px] font-bold text-violet-600 dark:text-violet-300">
+                      {userLimits.dailyVideoUploads === null
+                        ? "Gói hiện tại được upload video không giới hạn / ngày."
+                        : `Hôm nay còn ${videoUploadsRemainingToday} / ${userLimits.dailyVideoUploads} lượt upload video.`}
+                    </p>
+                  )}
+                  {videoUploadBlocked && (
+                    <p className="px-1 text-[11px] font-bold text-amber-600 dark:text-amber-300">
+                      {userLimits?.dailyVideoUploads === 0
+                        ? "Gói hiện tại chưa hỗ trợ upload video."
+                        : "Bạn đã dùng hết quota upload video hôm nay."}
+                    </p>
+                  )}
                   {renderFieldError("videoUrl")}
 
                   {videoUploadSuccess && (
@@ -1308,8 +1386,88 @@ export const CreateLink = ({
                 <div className="flex flex-col space-y-4">
                   <label className="flex items-center gap-2 px-1 text-[11px] font-black uppercase tracking-widest text-gray-400">
                     <ImageIcon size={14} className="text-orange-500" />
-                    Thumbnail URL
+                    Thumbnail
                   </label>
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    ref={thumbnailInputRef}
+                    onChange={handleThumbnailUpload}
+                    className="hidden"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => thumbnailInputRef.current?.click()}
+                    onDragOver={(event) => event.preventDefault()}
+                    onDrop={handleThumbnailDrop}
+                    className="group flex min-h-18 w-full items-center justify-between gap-4 rounded-2xl border-2 border-dashed border-sky-100 bg-sky-50/40 px-5 py-4 text-left transition-all hover:border-sky-300 hover:bg-sky-50/70 dark:border-sky-900/50 dark:bg-sky-950/20 dark:hover:border-sky-700 dark:hover:bg-sky-950/30 sm:px-6"
+                  >
+                    <div className="flex items-center gap-3 font-bold text-sky-500 group-hover:text-sky-700 dark:text-sky-300 dark:group-hover:text-sky-200">
+                      <div className="relative flex h-10 w-10 items-center justify-center rounded-xl bg-white shadow-sm dark:bg-slate-800">
+                        {uploadingThumbnail ? (
+                          <svg
+                            className="h-10 w-10 -rotate-90"
+                            viewBox="0 0 36 36"
+                            aria-hidden="true"
+                          >
+                            <circle
+                              cx="18"
+                              cy="18"
+                              r="14"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeOpacity="0.15"
+                              strokeWidth="3"
+                            />
+                            <circle
+                              cx="18"
+                              cy="18"
+                              r="14"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="3"
+                              strokeLinecap="round"
+                              strokeDasharray="87.96"
+                              strokeDashoffset={
+                                87.96 - (87.96 * thumbnailUploadProgress) / 100
+                              }
+                            />
+                          </svg>
+                        ) : (
+                          <UploadCloud size={20} />
+                        )}
+                        {uploadingThumbnail && (
+                          <span className="absolute inset-0 flex items-center justify-center text-[9px] font-black text-sky-600 dark:text-sky-200">
+                            {thumbnailUploadProgress > 0
+                              ? `${thumbnailUploadProgress}%`
+                              : "..."}
+                          </span>
+                        )}
+                      </div>
+                      <span className="text-[11px] uppercase tracking-wider sm:text-xs">
+                        {uploadingThumbnail
+                          ? "Dang tai anh thumbnail..."
+                          : "Chon anh thumbnail tu may"}
+                      </span>
+                    </div>
+                    {customImageUrl && (
+                      <div className="rounded-full bg-green-100 p-1 dark:bg-green-900/40">
+                        <Check
+                          className="text-green-600 dark:text-green-300"
+                          size={14}
+                        />
+                      </div>
+                    )}
+                  </button>
+                  <p className="px-1 text-[11px] font-medium text-gray-500 dark:text-slate-400">
+                    Có thể keo thả ảnh vào đây, hoặc bấm để chọn ảnh từ thư mục
+                    trên máy.
+                  </p>
+                  {thumbnailUploadSuccess && (
+                    <div className="flex items-center gap-2 rounded-xl border border-green-100 bg-green-50 px-4 py-2 text-[10px] font-black uppercase tracking-widest text-green-600 dark:border-green-900/50 dark:bg-green-950/30 dark:text-green-300">
+                      <ShieldCheck size={14} /> Tải thumbnail thành công
+                    </div>
+                  )}
                   <input
                     data-field="customImageUrl"
                     type="url"
@@ -1471,11 +1629,14 @@ export const CreateLink = ({
             </p>
 
             <div className="flex justify-center mb-6">
-              <img
-                src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(convertedResultUrl)}`}
-                alt="QR Code"
-                className="w-48 h-48 rounded-2xl shadow-lg"
-              />
+              <div className="rounded-2xl bg-white p-3 shadow-lg">
+                <QRCodeCanvas
+                  value={convertedResultUrl}
+                  size={192}
+                  level="H"
+                  includeMargin={false}
+                />
+              </div>
             </div>
 
             <div className="flex gap-3">

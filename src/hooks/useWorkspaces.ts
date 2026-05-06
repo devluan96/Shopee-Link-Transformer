@@ -11,12 +11,14 @@ interface UseWorkspacesProps {
   ) => Promise<Response>;
 }
 
-const STORAGE_KEY = "hotsnew.currentWorkspaceId";
+const getWorkspaceStorageKey = (userId?: string) =>
+  userId ? `hotsnew.currentWorkspaceId.${userId}` : "hotsnew.currentWorkspaceId";
 
 export function useWorkspaces({ user, fetchWithAuth }: UseWorkspacesProps) {
   const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
   const [currentWorkspaceId, setCurrentWorkspaceId] = useState<string>("");
   const [workspaceLoading, setWorkspaceLoading] = useState(false);
+  const [workspaceResolved, setWorkspaceResolved] = useState(false);
   const [members, setMembers] = useState<WorkspaceMember[]>([]);
   const [membersLoading, setMembersLoading] = useState(false);
 
@@ -29,6 +31,7 @@ export function useWorkspaces({ user, fetchWithAuth }: UseWorkspacesProps) {
     if (!user) return;
 
     setWorkspaceLoading(true);
+    setWorkspaceResolved(false);
     try {
       const res = await fetchWithAuth("/api/v1/user/workspaces");
       const data = await res.json();
@@ -39,7 +42,8 @@ export function useWorkspaces({ user, fetchWithAuth }: UseWorkspacesProps) {
       const nextWorkspaces = data as Workspace[];
       setWorkspaces(nextWorkspaces);
 
-      const storedWorkspaceId = window.localStorage.getItem(STORAGE_KEY) || "";
+      const storedWorkspaceId =
+        window.localStorage.getItem(getWorkspaceStorageKey(user.id)) || "";
       const fallbackWorkspaceId =
         nextWorkspaces.find((workspace) => workspace.id === storedWorkspaceId)?.id ||
         nextWorkspaces[0]?.id ||
@@ -49,6 +53,7 @@ export function useWorkspaces({ user, fetchWithAuth }: UseWorkspacesProps) {
       toast.error(e.message || "Lỗi tải workspace");
     } finally {
       setWorkspaceLoading(false);
+      setWorkspaceResolved(true);
     }
   }, [user, fetchWithAuth]);
 
@@ -166,7 +171,9 @@ export function useWorkspaces({ user, fetchWithAuth }: UseWorkspacesProps) {
     if (!user) {
       setWorkspaces([]);
       setCurrentWorkspaceId("");
+      setWorkspaceResolved(false);
       setMembers([]);
+      window.localStorage.removeItem(getWorkspaceStorageKey());
       return;
     }
     fetchWorkspaces();
@@ -174,18 +181,22 @@ export function useWorkspaces({ user, fetchWithAuth }: UseWorkspacesProps) {
 
   useEffect(() => {
     if (currentWorkspaceId) {
-      window.localStorage.setItem(STORAGE_KEY, currentWorkspaceId);
+      window.localStorage.setItem(
+        getWorkspaceStorageKey(user?.id),
+        currentWorkspaceId,
+      );
       fetchMembers(currentWorkspaceId);
     } else {
       setMembers([]);
     }
-  }, [currentWorkspaceId, fetchMembers]);
+  }, [currentWorkspaceId, fetchMembers, user?.id]);
 
   return {
     workspaces,
     currentWorkspaceId,
     currentWorkspace,
     workspaceLoading,
+    workspaceResolved,
     members,
     membersLoading,
     setCurrentWorkspaceId,

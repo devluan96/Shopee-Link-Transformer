@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+﻿import { useState, useEffect, useCallback, useRef } from "react";
 import { User } from "@supabase/supabase-js";
 import { supabase } from "@/src/lib/supabase";
 import { UserProfile } from "@/src/types";
@@ -9,22 +9,24 @@ const AVATAR_MAX_FILE_SIZE = 2 * 1024 * 1024;
 const AVATAR_OUTPUT_TYPE = "image/webp";
 const AVATAR_OUTPUT_QUALITY = 0.82;
 
+type ProfileFetchResponse = UserProfile | { is_new: true } | null;
+
 const resizeAvatarFile = async (file: File): Promise<File> => {
   if (!file.type.startsWith("image/")) {
-    throw new Error("File avatar phải là ảnh");
+    throw new Error("File avatar pháº£i lÃ  áº£nh");
   }
 
   if (file.type === "image/gif") {
-    throw new Error("Avatar không hỗ trợ GIF. Hãy dùng JPG, PNG hoặc WebP.");
+    throw new Error("Avatar khÃ´ng há»— trá»£ GIF. HÃ£y dÃ¹ng JPG, PNG hoáº·c WebP.");
   }
 
   const objectUrl = URL.createObjectURL(file);
 
   try {
     const image = await new Promise<HTMLImageElement>((resolve, reject) => {
-      const img = new Image();
+      const img = new window.Image();
       img.onload = () => resolve(img);
-      img.onerror = () => reject(new Error("Không đọc được ảnh avatar"));
+      img.onerror = () => reject(new Error("KhÃ´ng Ä‘á»c Ä‘Æ°á»£c áº£nh avatar"));
       img.src = objectUrl;
     });
 
@@ -41,7 +43,7 @@ const resizeAvatarFile = async (file: File): Promise<File> => {
 
     const context = canvas.getContext("2d");
     if (!context) {
-      throw new Error("Không khởi tạo được bộ nén avatar");
+      throw new Error("KhÃ´ng khá»Ÿi táº¡o Ä‘Æ°á»£c bá»™ nÃ©n avatar");
     }
 
     context.drawImage(image, 0, 0, width, height);
@@ -50,7 +52,7 @@ const resizeAvatarFile = async (file: File): Promise<File> => {
       canvas.toBlob(
         (result) => {
           if (result) resolve(result);
-          else reject(new Error("Không nén được avatar"));
+          else reject(new Error("KhÃ´ng nÃ©n Ä‘Æ°á»£c avatar"));
         },
         AVATAR_OUTPUT_TYPE,
         AVATAR_OUTPUT_QUALITY,
@@ -58,7 +60,7 @@ const resizeAvatarFile = async (file: File): Promise<File> => {
     });
 
     if (blob.size > AVATAR_MAX_FILE_SIZE) {
-      throw new Error("Ảnh sau khi nén vẫn quá lớn. Hãy chọn ảnh nhỏ hơn.");
+      throw new Error("áº¢nh sau khi nÃ©n váº«n quÃ¡ lá»›n. HÃ£y chá»n áº£nh nhá» hÆ¡n.");
     }
 
     const outputName = file.name.replace(/\.[^.]+$/, "") || "avatar";
@@ -94,7 +96,6 @@ export function useProfile({ user, fetchWithAuth }: UseProfileProps): ProfileSta
   const [profileLoading, setProfileLoading] = useState(false);
   const [profileBootstrapLoading, setProfileBootstrapLoading] = useState(false);
   
-  const profileChannelRef = useRef<any>(null);
   const bootstrappedUserIdRef = useRef<string | null>(null);
 
   const shouldRetryProfileFetch = useCallback((err: unknown) => {
@@ -128,7 +129,7 @@ export function useProfile({ user, fetchWithAuth }: UseProfileProps): ProfileSta
 
   const handleUpdateProfile = useCallback(async (data: { full_name: string; avatar_url: string }) => {
     if (!user) {
-      toast.error("Bạn chưa đăng nhập!");
+      toast.error("Báº¡n chÆ°a Ä‘Äƒng nháº­p!");
       return;
     }
 
@@ -145,13 +146,13 @@ export function useProfile({ user, fetchWithAuth }: UseProfileProps): ProfileSta
       const resultData = await res.json();
 
       if (!res.ok) {
-        throw new Error(resultData.error || "Lỗi cập nhật hồ sơ");
+        throw new Error(resultData.error || "Lá»—i cáº­p nháº­t há»“ sÆ¡");
       }
 
       setProfile(resultData as UserProfile);
-      toast.success("Cập nhật thông tin thành công!");
-    } catch (e: any) {
-      toast.error(e.message || "Lỗi hệ thống");
+      toast.success("Cáº­p nháº­t thÃ´ng tin thÃ nh cÃ´ng!");
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : "Loi he thong");
     } finally {
       setProfileLoading(false);
     }
@@ -159,7 +160,7 @@ export function useProfile({ user, fetchWithAuth }: UseProfileProps): ProfileSta
 
   const handleAvatarUpload = useCallback(async (file: File): Promise<string | null> => {
     if (!user) {
-      console.error("❌ Avatar upload failed: No authenticated user found");
+      console.error("âŒ Avatar upload failed: No authenticated user found");
       return null;
     }
 
@@ -176,7 +177,7 @@ export function useProfile({ user, fetchWithAuth }: UseProfileProps): ProfileSta
       const contentType = res.headers.get("content-type");
       if (!contentType || !contentType.includes("application/json")) {
         const text = await res.text();
-        console.error("❌ Server returned non-JSON response:", text.slice(0, 500));
+        console.error("âŒ Server returned non-JSON response:", text.slice(0, 500));
         throw new Error(`Server returned ${res.status} ${res.statusText}`);
       }
 
@@ -187,9 +188,12 @@ export function useProfile({ user, fetchWithAuth }: UseProfileProps): ProfileSta
       }
 
       return data.secure_url;
-    } catch (e: any) {
-      console.error("❌ Proxy Avatar upload catch:", e);
-      alert("Lỗi tải ảnh qua Server: " + (e.message || "Lỗi không xác định"));
+    } catch (e: unknown) {
+      console.error("âŒ Proxy Avatar upload catch:", e);
+      toast.error(
+        "Loi tai anh qua server: " +
+          (e instanceof Error ? e.message : "Loi khong xac dinh"),
+      );
       return null;
     }
   }, [user, fetchWithAuth]);
@@ -204,7 +208,6 @@ export function useProfile({ user, fetchWithAuth }: UseProfileProps): ProfileSta
   // Profile bootstrap and realtime sync
   useEffect(() => {
     let isActive = true;
-    let profileChannel: any = null;
 
     const bootstrapProfile = async () => {
       if (!user || !isActive) {
@@ -225,32 +228,35 @@ export function useProfile({ user, fetchWithAuth }: UseProfileProps): ProfileSta
 
       try {
         // Fetch existing profile with retries
-        let existingProfile = null;
+        let existingProfile: ProfileFetchResponse = null;
         
         const fetchWithRetry = async (
           url: string,
           retries = 3,
           delay = 1000,
-        ): Promise<any> => {
+        ): Promise<ProfileFetchResponse> => {
           for (let i = 0; i < retries; i++) {
             if (!isActive) return null;
             try {
               const res = await fetchWithAuth(url);
-              if (res.ok) return await res.json();
+              if (res.ok) {
+                return (await res.json()) as ProfileFetchResponse;
+              }
               if (res.status === 404) return null;
             } catch (err) {
               if (i === retries - 1 || !shouldRetryProfileFetch(err)) throw err;
-              console.warn(`⏳ Fetch failed, retrying in ${delay}ms... (${i + 1}/${retries})`);
+              console.warn(`â³ Fetch failed, retrying in ${delay}ms... (${i + 1}/${retries})`);
               await new Promise((r) => setTimeout(r, delay));
             }
           }
+          return null;
         };
 
         try {
           const profileUrl = `${window.location.origin}/api/v1/user/profile`;
           existingProfile = await fetchWithRetry(profileUrl);
-        } catch (fetchError: any) {
-          console.error("❌ Error fetching profile via proxy:", fetchError);
+        } catch (fetchError: unknown) {
+          console.error("âŒ Error fetching profile via proxy:", fetchError);
           // Fallback to direct supabase
           if (isActive) {
             try {
@@ -260,15 +266,19 @@ export function useProfile({ user, fetchWithAuth }: UseProfileProps): ProfileSta
                 .eq("id", user.id)
                 .maybeSingle();
               if (data) existingProfile = data;
-            } catch (fallbackError) {
-              console.error("❌ Fallback profile fetch also failed");
+            } catch {
+              console.error("âŒ Fallback profile fetch also failed");
             }
           }
         }
 
         if (!isActive) return;
 
-        if (!existingProfile || existingProfile.is_new) {
+        const needsProfileBootstrap =
+          !existingProfile ||
+          ("is_new" in existingProfile && existingProfile.is_new);
+
+        if (needsProfileBootstrap) {
           // Create new profile
           const defaultName =
             user.user_metadata?.full_name ||
@@ -305,12 +315,8 @@ export function useProfile({ user, fetchWithAuth }: UseProfileProps): ProfileSta
 
     return () => {
       isActive = false;
-      if (profileChannel) {
-        supabase.removeChannel(profileChannel);
-        profileChannel = null;
-      }
     };
-  }, [user?.id, fetchWithAuth, shouldRetryProfileFetch]);
+  }, [user, fetchWithAuth, shouldRetryProfileFetch]);
 
   // Separate effect for realtime subscription to avoid race conditions
   useEffect(() => {
@@ -335,7 +341,7 @@ export function useProfile({ user, fetchWithAuth }: UseProfileProps): ProfileSta
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [user?.id]);
+  }, [user]);
 
   return {
     profile,
@@ -348,8 +354,3 @@ export function useProfile({ user, fetchWithAuth }: UseProfileProps): ProfileSta
   };
 }
 
-// Helper to set auth loading externally (passed from useAuth)
-let setAuthLoading: ((v: boolean) => void) | null = null;
-export const setProfileAuthLoadingSetter = (setter: (v: boolean) => void) => {
-  setAuthLoading = setter;
-};

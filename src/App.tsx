@@ -1,7 +1,7 @@
-import React, { useEffect, useState, Suspense, lazy } from "react";
+import React, { useEffect, useRef, useState, Suspense, lazy } from "react";
 import { Menu, Zap } from "lucide-react";
 import { ThemeToggle } from "./components/common/ThemeToggle";
-import { Toaster } from "sonner";
+import { toast, Toaster } from "sonner";
 import { LinkQuota, Tab, UserLimits } from "./types";
 
 // Hooks
@@ -13,7 +13,6 @@ import {
   useCloudinary,
   useVideoUpload,
   useLinkCreator,
-  usePayment,
   useAdmin,
   useMeta,
   useClipboard,
@@ -30,34 +29,66 @@ import { Footer } from "./components/layout/Footer";
 import { Overview } from "./components/dashboard/Overview";
 import { InstallCenter } from "./components/InstallCenter";
 
+const CHUNK_RELOAD_KEY = "hotsnew.chunk-reload";
+
+const lazyWithChunkRetry = <T extends React.ComponentType<any>>(
+  importer: () => Promise<{ default: T }>,
+) =>
+  lazy(async () => {
+    try {
+      const module = await importer();
+      sessionStorage.removeItem(CHUNK_RELOAD_KEY);
+      return module;
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : String(error || "");
+      const isChunkLoadError =
+        /Failed to fetch dynamically imported module/i.test(message) ||
+        /Importing a module script failed/i.test(message) ||
+        /Loading chunk/i.test(message);
+
+      if (
+        isChunkLoadError &&
+        !sessionStorage.getItem(CHUNK_RELOAD_KEY)
+      ) {
+        sessionStorage.setItem(CHUNK_RELOAD_KEY, "1");
+        window.location.reload();
+        return new Promise<never>(() => {});
+      }
+
+      sessionStorage.removeItem(CHUNK_RELOAD_KEY);
+      throw error;
+    }
+  });
+
 // Lazy Loaded Components
-const Pricing = lazy(() =>
+const Pricing = lazyWithChunkRetry(() =>
   import("./components/Pricing").then((m) => ({ default: m.Pricing })),
 );
-const AdminPanel = lazy(() =>
+const AdminPanel = lazyWithChunkRetry(() =>
   import("./components/admin/AdminPanel").then((m) => ({
     default: m.AdminPanel,
   })),
 );
-const Analytics = lazy(() =>
+const Analytics = lazyWithChunkRetry(() =>
   import("./components/dashboard/Analytics").then((m) => ({
     default: m.Analytics,
   })),
 );
-const CreateLink = lazy(() =>
+const CreateLink = lazyWithChunkRetry(() =>
   import("./components/links/CreateLink").then((m) => ({
     default: m.CreateLink,
   })),
 );
-const LinkList = lazy(() =>
+const LinkList = lazyWithChunkRetry(() =>
   import("./components/links/LinkList").then((m) => ({ default: m.LinkList })),
 );
-const ProfileSettings = lazy(() =>
+const ProfileSettings = lazyWithChunkRetry(() =>
   import("./components/profile/ProfileSettings").then((m) => ({
     default: m.ProfileSettings,
   })),
 );
-const WorkspaceManager = lazy(() =>
+const WorkspaceManager = lazyWithChunkRetry(() =>
   import("./components/workspaces/WorkspaceManager").then((m) => ({
     default: m.WorkspaceManager,
   })),
@@ -101,7 +132,6 @@ export default function App() {
     profileLoading,
     profileBootstrapLoading,
     setProfile,
-    refreshCurrentProfile,
     handleUpdateProfile,
     handleAvatarUpload,
   } = useProfile({ user, fetchWithAuth });
@@ -117,6 +147,7 @@ export default function App() {
     currentWorkspaceId,
     currentWorkspace,
     workspaceLoading,
+    workspaceResolved,
     members,
     membersLoading,
     setCurrentWorkspaceId,
@@ -158,6 +189,7 @@ export default function App() {
     user,
     profile,
     currentWorkspaceId,
+    workspaceResolved,
     fetchWithAuth,
     activeTab,
     linksLength: links.length,
@@ -180,6 +212,10 @@ export default function App() {
     ),
     uploadAssetToCloudinary,
   });
+  const thumbnailInputRef = useRef<HTMLInputElement>(null);
+  const [uploadingThumbnail, setUploadingThumbnail] = useState(false);
+  const [thumbnailUploadProgress, setThumbnailUploadProgress] = useState(0);
+  const [thumbnailUploadSuccess, setThumbnailUploadSuccess] = useState(false);
 
   // Wrapper to handle thumbnail auto-set and sync videoUrl to link creator
   const handleVideoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -204,6 +240,51 @@ export default function App() {
         setLinkCreatorVideoUrl(result.videoUrl);
       }
     }
+  };
+
+  const handleThumbnailFileUpload = async (file: File) => {
+    if (!file.type.startsWith("image/")) {
+      toast.error("Vui lòng chọn file ảnh JPG, PNG hoặc WebP.");
+      return;
+    }
+
+    setUploadingThumbnail(true);
+    setThumbnailUploadProgress(0);
+    setThumbnailUploadSuccess(false);
+
+    try {
+      const secureUrl = await uploadAssetToCloudinary(
+        file,
+        "image",
+        file.name,
+        setThumbnailUploadProgress,
+      );
+      if (!secureUrl) {
+        throw new Error("Không upload được ảnh thumbnail.");
+      }
+      setCustomImageUrl(secureUrl);
+      setThumbnailUploadSuccess(true);
+      setTimeout(() => setThumbnailUploadSuccess(false), 5000);
+    } catch (error: unknown) {
+      toast.error(
+        `Lỗi tải ảnh thumbnail: ${
+          error instanceof Error ? error.message : "Không xác định"
+        }`,
+      );
+    } finally {
+      setUploadingThumbnail(false);
+      setTimeout(() => setThumbnailUploadProgress(0), 600);
+    }
+  };
+
+  const handleThumbnailUpload = async (
+    e: React.ChangeEvent<HTMLInputElement>,
+  ) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    await handleThumbnailFileUpload(file);
+    e.target.value = "";
   };
 
   // Link Creator Hook
@@ -291,13 +372,6 @@ export default function App() {
     setVideoUrl(v);
     setLinkCreatorVideoUrl(v);
   };
-
-  // Payment Hook
-  const {
-    checkoutLoadingPlan,
-    handleCreateZaloPayOrder,
-    handleCheckZaloPayStatus,
-  } = usePayment({ user, fetchWithAuth, refreshCurrentProfile });
 
   // Admin Hook
   const {
@@ -389,8 +463,7 @@ export default function App() {
   const canEditCurrentWorkspace =
     currentWorkspace?.role === "owner" || currentWorkspace?.role === "editor";
   const canAccessCreate =
-    !!(isAdminRole || hasSub) &&
-    (!!currentWorkspaceId ? canEditCurrentWorkspace : true);
+    (isAdminRole || hasSub) && (currentWorkspaceId ? canEditCurrentWorkspace : true);
   const blockedByWorkspaceRole =
     !!currentWorkspaceId && !canEditCurrentWorkspace;
   const bootstrappingAccess =
@@ -580,9 +653,6 @@ export default function App() {
               userProfile={profile}
               linkQuota={linkQuota}
               userLimits={userLimits}
-              checkoutLoadingPlan={checkoutLoadingPlan}
-              onCheckout={handleCreateZaloPayOrder}
-              onCheckPaymentStatus={handleCheckZaloPayStatus}
             />
           )}
 
@@ -655,6 +725,12 @@ export default function App() {
                 videoInputRef={videoInputRef}
                 handleVideoUpload={handleVideoUpload}
                 handleVideoFileUpload={handleVideoFileUpload}
+                thumbnailInputRef={thumbnailInputRef}
+                uploadingThumbnail={uploadingThumbnail}
+                thumbnailUploadProgress={thumbnailUploadProgress}
+                thumbnailUploadSuccess={thumbnailUploadSuccess}
+                handleThumbnailUpload={handleThumbnailUpload}
+                handleThumbnailFileUpload={handleThumbnailFileUpload}
                 handleConvert={handleConvert}
                 loading={loading}
                 error={error}

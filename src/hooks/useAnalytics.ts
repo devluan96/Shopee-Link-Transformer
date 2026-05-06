@@ -7,6 +7,7 @@ interface UseAnalyticsProps {
   user: User | null;
   profile: UserProfile | null;
   currentWorkspaceId?: string;
+  workspaceResolved?: boolean;
   fetchWithAuth: (
     input: RequestInfo | URL,
     init?: RequestInit,
@@ -50,6 +51,7 @@ export function useAnalytics({
   user,
   profile,
   currentWorkspaceId,
+  workspaceResolved = false,
   fetchWithAuth,
   activeTab,
 }: UseAnalyticsProps): AnalyticsState & AnalyticsActions {
@@ -89,7 +91,7 @@ export function useAnalytics({
       setAnalyticsDirty(false);
     } catch (e: any) {
       console.error("Fetch analytics fail:", e?.message || e);
-      toast.error("KhÃ´ng thá»ƒ táº£i dá»¯ liá»‡u phÃ¢n tÃ­ch. Vui lÃ²ng thá»­ láº¡i sau.");
+      toast.error("Không thể tải dữ liệu phân tích. Vui lòng thử lại sau.");
     }
   }, [user, fetchWithAuth, buildWorkspaceQuery]);
 
@@ -110,19 +112,20 @@ export function useAnalytics({
 
     if (
       user &&
+      workspaceResolved &&
       isApproved &&
       (activeTab === "dashboard" || activeTab === "analytics") &&
       statsDirty
     ) {
       fetchStats();
     }
-  }, [user, profile, activeTab, statsDirty, fetchStats]);
+  }, [user, profile, workspaceResolved, activeTab, statsDirty, fetchStats]);
 
   useEffect(() => {
-    if (activeTab === "analytics" && analyticsDirty && user) {
+    if (activeTab === "analytics" && analyticsDirty && user && workspaceResolved) {
       fetchAnalytics();
     }
-  }, [activeTab, analyticsDirty, user?.id, fetchAnalytics]);
+  }, [activeTab, analyticsDirty, user?.id, workspaceResolved, fetchAnalytics]);
 
   return {
     stats,
@@ -137,3 +140,4 @@ export function useAnalytics({
     refreshAnalytics,
   };
 }
+

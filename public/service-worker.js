@@ -44,6 +44,15 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
+  if (
+    url.pathname.startsWith("/assets/") ||
+    request.destination === "script" ||
+    request.destination === "style"
+  ) {
+    event.respondWith(fetch(request));
+    return;
+  }
+
   event.respondWith(
     caches.match(request).then((cachedResponse) => {
       if (cachedResponse) {

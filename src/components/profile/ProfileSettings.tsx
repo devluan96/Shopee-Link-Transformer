@@ -19,6 +19,7 @@ import {
 import { SecurityOverview, UserProfile } from "@/src/types";
 import { cn } from "@/src/lib/utils";
 import { toast } from "sonner";
+import { QRCodeCanvas } from "qrcode.react";
 
 interface ProfileSettingsProps {
   profile: UserProfile | null;
@@ -59,11 +60,6 @@ export const ProfileSettings = ({
     return remainder === 0 ? 30 : 30 - remainder;
   });
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const twoFactorQrUrl = twoFactorSetup
-    ? `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(
-        twoFactorSetup.otpauthUri,
-      )}`
-    : "";
 
   const formatFileSize = (bytes: number) => {
     if (bytes < 1024) return `${bytes} B`;
@@ -439,10 +435,10 @@ export const ProfileSettings = ({
                   <Smartphone size={20} />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <h4 className="break-words font-black text-gray-900 dark:text-slate-100">
+                  <h4 className="wrap-break-word font-black text-gray-900 dark:text-slate-100">
                     Xác thực 2 lớp (TOTP)
                   </h4>
-                  <p className="mt-1 break-words text-sm text-gray-500 dark:text-slate-400">
+                  <p className="mt-1 wrap-break-word text-sm text-gray-500 dark:text-slate-400">
                     Dùng Google Authenticator, 1Password hoặc Authy để tạo mã 6
                     số.
                   </p>
@@ -458,21 +454,24 @@ export const ProfileSettings = ({
                           <QrCode size={14} />
                           QR Setup
                         </div>
-                        <img
-                          src={twoFactorQrUrl}
-                          alt="2FA QR code"
-                          className="mx-auto h-[180px] w-[180px] max-w-full rounded-xl bg-white object-contain p-2 sm:h-[220px] sm:w-[220px]"
-                        />
+                        <div className="mx-auto rounded-xl bg-white p-2">
+                          <QRCodeCanvas
+                            value={twoFactorSetup.otpauthUri}
+                            size={220}
+                            level="M"
+                            includeMargin={false}
+                          />
+                        </div>
                         <p className="mt-2 text-[11px] font-medium text-gray-500 dark:text-slate-400">
                           Quét mã này bằng Google Authenticator.
                         </p>
                       </div>
 
                       <div className="min-w-0">
-                        <p className="break-words text-[11px] font-black uppercase tracking-widest text-orange-500">
+                        <p className="wrap-break-word text-[11px] font-black uppercase tracking-widest text-orange-500">
                           Secret setup
                         </p>
-                        <p className="mt-2 break-words text-sm font-medium text-gray-500 dark:text-slate-400">
+                        <p className="mt-2 wrap-break-word text-sm font-medium text-gray-500 dark:text-slate-400">
                           Nếu không quét QR, bạn có thể nhập secret thủ công vào
                           Google Authenticator.
                         </p>
@@ -498,7 +497,7 @@ export const ProfileSettings = ({
                           Copy URI
                         </button>
                         <div className="mt-4 min-w-0 rounded-2xl bg-orange-50 px-4 py-4 text-sm text-orange-800 dark:bg-orange-500/10 dark:text-orange-200">
-                          <p className="break-words text-[11px] font-black uppercase tracking-widest">
+                          <p className="wrap-break-word text-[11px] font-black uppercase tracking-widest">
                             Cách bật 2FA
                           </p>
                           <p className="mt-2">1. Bấm tạo secret 2FA.</p>
@@ -569,7 +568,7 @@ export const ProfileSettings = ({
                     }
                     className="w-full rounded-2xl border-2 border-transparent bg-white px-4 py-4 font-mono text-base font-black tracking-[0.2em] text-gray-900 outline-none transition-all focus:border-orange-500/20 focus:ring-4 focus:ring-orange-500/10 disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-400 dark:bg-slate-800 dark:text-slate-100 dark:disabled:bg-slate-900 dark:disabled:text-slate-500 sm:px-5 sm:text-lg sm:tracking-[0.3em]"
                   />
-                  <p className="mt-2 break-words text-xs text-gray-500 dark:text-slate-400">
+                  <p className="mt-2 wrap-break-word text-xs text-gray-500 dark:text-slate-400">
                     {securityOverview?.twoFactorEnabled
                       ? "Đây là mã 6 số hiện tại trong Google Authenticator để xác nhận thao tác tắt 2FA hoặc để vượt qua bước xác minh khi đăng nhập."
                       : twoFactorSetup
@@ -630,10 +629,10 @@ export const ProfileSettings = ({
               <div className="mb-4 flex items-start gap-3">
                 <History size={20} className="text-blue-500" />
                 <div className="min-w-0">
-                  <h4 className="break-words font-black text-gray-900 dark:text-slate-100">
+                  <h4 className="wrap-break-word font-black text-gray-900 dark:text-slate-100">
                     Access Logs
                   </h4>
-                  <p className="break-words text-sm text-gray-500 dark:text-slate-400">
+                  <p className="wrap-break-word text-sm text-gray-500 dark:text-slate-400">
                     Truy cập gần đây của chính bạn.
                   </p>
                 </div>
@@ -670,7 +669,7 @@ export const ProfileSettings = ({
                           {log.status_code}
                         </span>
                       </div>
-                      <p className="mt-2 break-words text-xs text-gray-500 dark:text-slate-400">
+                      <p className="mt-2 wrap-break-word text-xs text-gray-500 dark:text-slate-400">
                         {log.ip_address || "Unknown IP"} ·{" "}
                         {new Date(log.created_at).toLocaleString("vi-VN")}
                       </p>
@@ -693,4 +692,3 @@ export const ProfileSettings = ({
 const AnimatePresence = ({ children }: { children: React.ReactNode }) => {
   return <>{children}</>;
 };
-
