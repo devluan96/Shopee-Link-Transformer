@@ -394,6 +394,11 @@ export const renderChoiceLandingPage = (
           writeSecondaryState({ primaryOpenedAt: Date.now() });
         };
 
+        const persistSecondaryOpened = () => {
+          if (!hasSecondaryRedirect) return;
+          writeSecondaryState({ secondaryOpenedAt: Date.now() });
+        };
+
         const clearSecondaryState = () => {
           awaitingSecondaryPlay = false;
           removeSecondaryState();
@@ -413,6 +418,21 @@ export const renderChoiceLandingPage = (
             }
 
             const parsedState = JSON.parse(rawState);
+            const secondaryOpenedAt = Number(parsedState?.secondaryOpenedAt || 0);
+            const secondaryAgeMs = Date.now() - secondaryOpenedAt;
+
+            if (
+              Number.isFinite(secondaryOpenedAt) &&
+              secondaryOpenedAt > 0 &&
+              secondaryAgeMs >= 0 &&
+              secondaryAgeMs <= ${PRIMARY_RETURN_WINDOW_MS}
+            ) {
+              awaitingSecondaryPlay = false;
+              overlayHandled = true;
+              hideOverlay();
+              return;
+            }
+
             const primaryOpenedAt = Number(parsedState?.primaryOpenedAt || 0);
             const ageMs = Date.now() - primaryOpenedAt;
 
@@ -452,7 +472,9 @@ export const renderChoiceLandingPage = (
 
         const handleSecondaryPlayIntent = () => {
           if (!awaitingSecondaryPlay || !secondaryTargetUrl) return;
-          clearSecondaryState();
+          awaitingSecondaryPlay = false;
+          overlayHandled = true;
+          persistSecondaryOpened();
           try {
             if (heroVideo instanceof HTMLVideoElement) {
               heroVideo.pause();
