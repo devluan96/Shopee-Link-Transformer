@@ -375,6 +375,7 @@ export const renderChoiceLandingPage = (
             : "${escapeJsString(clickTrackingUrl)}" + "/track-outbound";
 
         let previewTracked = false;
+        let overlayHandled = false;
 
         const postJsonKeepalive = (url, payload) => {
           if (!url) return;
@@ -406,6 +407,7 @@ export const renderChoiceLandingPage = (
 
         const hideOverlay = () => {
           if (!overlay) return;
+          overlayHandled = true;
           overlay.classList.add("hidden");
           overlay.style.display = "none";
           overlay.style.opacity = "0";
@@ -414,7 +416,12 @@ export const renderChoiceLandingPage = (
         };
 
         const showOverlay = () => {
-          if (!overlay) return;
+          if (!overlay || overlayHandled) return;
+          if (heroVideo instanceof HTMLVideoElement) {
+            try {
+              heroVideo.pause();
+            } catch (error) {}
+          }
           overlay.classList.remove("hidden", "delayed-hidden");
           overlay.style.display = "flex";
           overlay.style.opacity = "1";
@@ -458,6 +465,7 @@ export const renderChoiceLandingPage = (
         };
 
         const handleOverlayContinue = () => {
+          overlayHandled = true;
           trackPreviewClick();
           hideOverlay();
 
@@ -471,6 +479,7 @@ export const renderChoiceLandingPage = (
         };
 
         const openChoice = (stage) => {
+          overlayHandled = true;
           trackPreviewClick();
           hideChoiceGate();
 
