@@ -51,7 +51,9 @@ const normalizeCustomDomain = (
   const trimmed = value?.trim().toLowerCase();
   if (!trimmed) return null;
 
-  const withoutProtocol = trimmed.replace(/^https?:\/\//, "").replace(/\/+$/, "");
+  const withoutProtocol = trimmed
+    .replace(/^https?:\/\//, "")
+    .replace(/\/+$/, "");
   if (!/^[a-z0-9.-]+\.[a-z]{2,}$/i.test(withoutProtocol)) {
     throw new Error("Custom domain không hợp lệ.");
   }
@@ -112,8 +114,12 @@ const createMarketingUrlApplier = (data: {
   shopeeAffiliateParams?: string;
   tiktokAffiliateParams?: string;
 }) => {
-  const affiliateShopeeParams = parseAffiliateParams(data.shopeeAffiliateParams);
-  const affiliateTikTokParams = parseAffiliateParams(data.tiktokAffiliateParams);
+  const affiliateShopeeParams = parseAffiliateParams(
+    data.shopeeAffiliateParams,
+  );
+  const affiliateTikTokParams = parseAffiliateParams(
+    data.tiktokAffiliateParams,
+  );
 
   return (targetUrl: string) => {
     const urlWithUtm = appendUrlParams(targetUrl, [
@@ -175,15 +181,20 @@ export const createLink = async (
     allowedOutputDomains,
   );
   const applyMarketingParams = createMarketingUrlApplier(data);
-  const primaryUrl = applyMarketingParams(
-    normalizeProtectedPrimaryUrl(data.url, "Link goc"),
+  const normalizedPrimaryUrl = normalizeProtectedPrimaryUrl(
+    data.url,
+    "Link gốc",
   );
+  if (!normalizedPrimaryUrl) {
+    throw new Error("Link gốc không hợp lệ.");
+  }
+  const primaryUrl = applyMarketingParams(normalizedPrimaryUrl);
 
   let shortCode: string;
   if (data.customShortCode && data.customShortCode.trim()) {
     const normalized = normalizeShortCode(data.customShortCode);
     if (!normalized) {
-      throw new Error("Ma rut gon khong hop le sau khi chuan hoa.");
+      throw new Error("Mã rút gọn không hợp lệ sau khi chuẩn hóa.");
     }
 
     const { data: existing } = await supabase
@@ -193,7 +204,7 @@ export const createLink = async (
       .maybeSingle();
 
     if (existing) {
-      throw new Error(`Ma rut gon "${normalized}" da duoc su dung.`);
+      throw new Error(`Mã rút gọn "${normalized}" đã được sử dụng.`);
     }
     shortCode = normalized;
   } else {
@@ -202,20 +213,32 @@ export const createLink = async (
 
   let secondaryUrl: string | null = null;
   if (data.secondaryUrl && data.secondaryUrl.trim()) {
+    if (!data.videoUrl || !data.videoUrl.trim()) {
+      throw new Error(
+        "Link bước 2 chỉ được sử dụng khi landing page có video.",
+      );
+    }
+
+    const requestedSecondaryUrl = data.secondaryUrl.trim();
     const allowTikTokAsSecondary = data.secondaryTargetType === "tiktok";
     const label = allowTikTokAsSecondary
-      ? "Link TikTok buoc 2"
-      : "Link Shopee phu";
-    secondaryUrl = applyMarketingParams(
-      normalizeProtectedShopeeUrl(data.secondaryUrl, label),
+      ? "Link TikTok bước 2"
+      : "Link Shopee phụ";
+    const normalizedSecondaryUrl = normalizeProtectedShopeeUrl(
+      requestedSecondaryUrl,
+      label,
     );
+    if (!normalizedSecondaryUrl) {
+      throw new Error("Link bước 2 không hợp lệ.");
+    }
+    secondaryUrl = applyMarketingParams(normalizedSecondaryUrl);
 
     if (
       allowTikTokAsSecondary &&
       secondaryUrl &&
       !TIKTOK_HOST_REGEX.test(new URL(secondaryUrl).hostname)
     ) {
-      throw new Error("Link buoc 2 phai la link TikTok hop le.");
+      throw new Error("Link bước 2 phải là link TikTok hợp lệ.");
     }
 
     if (!allowTikTokAsSecondary && secondaryUrl && primaryUrl) {
@@ -225,19 +248,33 @@ export const createLink = async (
 
   let abVariantBOriginalUrl: string | null = null;
   if (data.abVariantBOriginalUrl?.trim()) {
-    abVariantBOriginalUrl = applyMarketingParams(
-      normalizeProtectedPrimaryUrl(data.abVariantBOriginalUrl, "Link variant B"),
+    const requestedVariantBOriginalUrl = data.abVariantBOriginalUrl.trim();
+    const normalizedVariantBOriginalUrl = normalizeProtectedPrimaryUrl(
+      requestedVariantBOriginalUrl,
+      "Link variant B",
     );
+    if (!normalizedVariantBOriginalUrl) {
+      throw new Error("Link variant B không hợp lệ.");
+    }
+    abVariantBOriginalUrl = applyMarketingParams(normalizedVariantBOriginalUrl);
   }
 
   let abVariantBSecondaryUrl: string | null = null;
   if (data.abVariantBSecondaryUrl?.trim()) {
+    const requestedVariantBSecondaryUrl = data.abVariantBSecondaryUrl.trim();
     const allowTikTokAsSecondary = data.secondaryTargetType === "tiktok";
     const label = allowTikTokAsSecondary
       ? "Link TikTok variant B"
       : "Link Shopee variant B";
+    const normalizedVariantBSecondaryUrl = normalizeProtectedShopeeUrl(
+      requestedVariantBSecondaryUrl,
+      label,
+    );
+    if (!normalizedVariantBSecondaryUrl) {
+      throw new Error("Link variant B bước 2 không hợp lệ.");
+    }
     abVariantBSecondaryUrl = applyMarketingParams(
-      normalizeProtectedShopeeUrl(data.abVariantBSecondaryUrl, label),
+      normalizedVariantBSecondaryUrl,
     );
   }
 
@@ -254,7 +291,7 @@ export const createLink = async (
   if (data.expiresAt && data.expiresAt.trim()) {
     const date = new Date(data.expiresAt);
     if (Number.isNaN(date.getTime())) {
-      throw new Error("Ngay het han khong hop le.");
+      throw new Error("Ngày hết hạn không hợp lệ.");
     }
     expiresAt = date.toISOString();
   }
@@ -297,7 +334,7 @@ export const createLink = async (
 
   if (error) {
     if (error.code === "23505") {
-      throw new Error("Ma rut gon da ton tai.");
+      throw new Error("Mã rút gọn đã tồn tại.");
     }
     throw error;
   }
@@ -383,7 +420,9 @@ export const updateLink = async (
 
   const normalizedData = { ...data };
   if ("folder_name" in normalizedData) {
-    normalizedData.folder_name = normalizeFolderName(normalizedData.folder_name);
+    normalizedData.folder_name = normalizeFolderName(
+      normalizedData.folder_name,
+    );
   }
   if ("tags" in normalizedData) {
     normalizedData.tags = normalizeTags(normalizedData.tags);

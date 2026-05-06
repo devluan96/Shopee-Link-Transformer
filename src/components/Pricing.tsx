@@ -289,23 +289,6 @@ export const Pricing = ({
         })}
       </div>
 
-      <div className="mt-8 rounded-4xl border border-sky-100 bg-sky-50/80 p-6 text-center dark:border-sky-500/20 dark:bg-sky-500/10">
-        <p className="text-sm font-bold text-sky-900 dark:text-sky-100">
-          Không dùng ZaloPay nữa. Cần mở gói nhanh hoặc nhận QR chuyển khoản?
-        </p>
-        <p className="mt-2 text-sm font-medium text-sky-700/80 dark:text-sky-200/80">
-          Liên hệ Zalo admin để nhận QR ngân hàng và kích hoạt gói thủ công.
-        </p>
-        <a
-          href={zaloContactUrl}
-          target="_blank"
-          rel="noreferrer"
-          className="mt-4 inline-flex items-center justify-center rounded-2xl bg-sky-600 px-6 py-4 text-xs font-black uppercase tracking-widest text-white transition-all hover:bg-sky-700"
-        >
-          Liên hệ Zalo Admin
-        </a>
-      </div>
-
       <footer className="mt-12 text-center">
         <p className="text-[10px] font-black uppercase tracking-widest text-gray-300 dark:text-slate-600">
           (c) 2026 HOTSNEW.CLICK INFRASTRUCTURE

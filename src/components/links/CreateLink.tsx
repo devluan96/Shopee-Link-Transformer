@@ -253,22 +253,42 @@ export const CreateLink = ({
     userLimits?.videoUploadsRemainingToday ?? null;
   const videoUploadBlocked =
     userLimits?.dailyVideoUploads === 0 || videoUploadsRemainingToday === 0;
+  const canUseSecondaryFlow = Boolean(videoUrl.trim());
 
-  const clearFieldError = (field: FormField) => {
+  const clearFieldError = React.useCallback((field: FormField) => {
     setFieldErrors((prev) => {
       if (!prev[field]) return prev;
       const next = { ...prev };
       delete next[field];
       return next;
     });
-  };
+  }, []);
 
   React.useEffect(() => {
     if (customImageUrl.trim() || videoUrl.trim()) {
       clearFieldError("customImageUrl");
       clearFieldError("videoUrl");
     }
-  }, [customImageUrl, videoUrl]);
+  }, [clearFieldError, customImageUrl, videoUrl]);
+
+  React.useEffect(() => {
+    if (canUseSecondaryFlow) return;
+
+    if (secondaryUrl.trim()) {
+      setSecondaryUrl("");
+    }
+    if (secondaryTargetType !== "shopee") {
+      setSecondaryTargetType("shopee");
+    }
+    clearFieldError("secondaryUrl");
+  }, [
+    canUseSecondaryFlow,
+    clearFieldError,
+    secondaryTargetType,
+    secondaryUrl,
+    setSecondaryTargetType,
+    setSecondaryUrl,
+  ]);
 
   React.useEffect(() => {
     if (!expiresAt) {
@@ -405,7 +425,10 @@ export const CreateLink = ({
       }
     }
 
-    if (
+    if (secondaryUrl.trim() && !videoUrl.trim()) {
+      nextErrors.secondaryUrl =
+        "Link bước 2 chỉ dùng được khi bạn đã tải video lên.";
+    } else if (
       secondaryUrl.trim() &&
       secondaryTargetType === "shopee" &&
       !isValidShopeeUrl(secondaryUrl)
@@ -1081,12 +1104,17 @@ export const CreateLink = ({
                         </label>
                         <select
                           value={secondaryTargetType}
+                          disabled={!canUseSecondaryFlow}
                           onChange={(e) =>
                             setSecondaryTargetType(
                               e.target.value === "tiktok" ? "tiktok" : "shopee",
                             )
                           }
-                          className="w-full rounded-2xl bg-white dark:bg-slate-700 px-6 py-4 font-medium text-gray-900 dark:text-slate-100 outline-none transition-all focus:ring-4 focus:ring-orange-500/10"
+                          className={`w-full rounded-2xl px-6 py-4 font-medium outline-none transition-all focus:ring-4 focus:ring-orange-500/10 ${
+                            canUseSecondaryFlow
+                              ? "bg-white text-gray-900 dark:bg-slate-700 dark:text-slate-100"
+                              : "cursor-not-allowed bg-gray-100 text-gray-400 dark:bg-slate-800 dark:text-slate-500"
+                          }`}
                         >
                           <option value="shopee">Shopee</option>
                           <option value="tiktok">TikTok</option>
@@ -1100,6 +1128,7 @@ export const CreateLink = ({
                         <input
                           data-field="secondaryUrl"
                           type="url"
+                          disabled={!canUseSecondaryFlow}
                           value={secondaryUrl}
                           onChange={(e) => {
                             setSecondaryUrl(e.target.value);
@@ -1112,16 +1141,25 @@ export const CreateLink = ({
                           }
                           className={inputClass(
                             "secondaryUrl",
-                            "w-full rounded-2xl bg-white px-6 py-4 font-medium text-gray-900 dark:bg-slate-700 dark:text-slate-100",
+                            canUseSecondaryFlow
+                              ? "w-full rounded-2xl bg-white px-6 py-4 font-medium text-gray-900 dark:bg-slate-700 dark:text-slate-100"
+                              : "w-full cursor-not-allowed rounded-2xl bg-gray-100 px-6 py-4 font-medium text-gray-400 dark:bg-slate-800 dark:text-slate-500",
                           )}
                         />
                         {renderFieldError("secondaryUrl")}
+                        {!canUseSecondaryFlow && (
+                          <p className="mt-2 px-1 text-[11px] font-medium text-gray-500">
+                            Tải video lên trước thì mới bật được link bước 2.
+                          </p>
+                        )}
+                        {canUseSecondaryFlow && (
                         <p className="mt-2 px-1 text-[11px] font-medium text-gray-500">
                           {"Bỏ trống nếu chỉ muốn đi 1 link như bình thường."}
                           {secondaryTargetType === "tiktok"
                             ? " Chỉ hỗ trợ domain TikTok."
                             : " Chỉ hỗ trợ domain Shopee."}
                         </p>
+                        )}
                       </div>
                     </div>
                   </div>

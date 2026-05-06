@@ -87,9 +87,14 @@ export const normalizeProtectedShopeeUrl = (
 
   const parsedUrl = new URL(normalizedUrl);
   const normalizedHostname = parsedUrl.hostname.trim().toLowerCase();
+  const normalizedLabel = label
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
   const allowTikTokSecondary =
-    label.toLowerCase().includes("bước 2") ||
-    label.toLowerCase().includes("phụ");
+    normalizedLabel.includes("bước 2") ||
+    normalizedLabel.includes("phụ") ||
+    normalizedLabel.includes("tiktok");
 
   if (
     !SHOPEE_HOST_REGEX.test(normalizedHostname) &&

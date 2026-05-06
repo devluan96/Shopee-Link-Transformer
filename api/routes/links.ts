@@ -138,6 +138,12 @@ export const createConvertHandler = (
         customDomain: canUseCustomDomain ? req.body?.customDomain : undefined,
       };
 
+      if (payload.secondaryUrl?.trim() && !payload.videoUrl?.trim()) {
+        return res.status(400).json({
+          error: "Link bước 2 chỉ được dùng khi landing page có video.",
+        });
+      }
+
       const featureLimits = resolvedDeps.getFeatureLimitsForProfile(
         req.authProfile || undefined,
       );
@@ -206,6 +212,12 @@ router.post("/convert", authenticate, async (req: AuthenticatedRequest, res) => 
       ...req.body,
       customDomain: canUseCustomDomain ? req.body?.customDomain : undefined,
     };
+
+    if (payload.secondaryUrl?.trim() && !payload.videoUrl?.trim()) {
+      return res.status(400).json({
+        error: "Link bước 2 chỉ được dùng khi landing page có video.",
+      });
+    }
 
     const featureLimits = featureLimitService.getFeatureLimitsForProfile(
       req.authProfile || undefined,

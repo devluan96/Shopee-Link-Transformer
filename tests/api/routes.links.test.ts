@@ -119,6 +119,50 @@ test("convert strips custom domain for non-yearly plans", async () => {
   assert.equal(capturedPayload?.customDomain, undefined);
 });
 
+test("convert blocks secondary link when no video is provided", async () => {
+  let createCalled = false;
+  const handler = createConvertHandler({
+    getSupabase: () => ({}) as never,
+    getDailyLinkQuota: async () => ({
+      plan: "monthly" as const,
+      dailyLimit: 5,
+      usedToday: 0,
+      remainingToday: 5,
+      canCreate: true,
+    }),
+    getFeatureLimitsForProfile: () => ({
+      plan: "monthly" as const,
+      canUseAbTesting: false,
+      dailyVideoUploads: 3,
+      maxTeamWorkspaces: 1,
+      maxTeamMembersPerWorkspace: 3,
+    }),
+    createLink: async () => {
+      createCalled = true;
+      throw new Error("should not create");
+    },
+  });
+
+  const res = createMockRes();
+  await handler(
+    {
+      authUser: { id: "user-1" },
+      authProfile: { subscription_plan: "monthly" },
+      body: {
+        url: "https://shopee.vn/test",
+        secondaryUrl: "https://www.tiktok.com/@demo/video/123",
+        secondaryTargetType: "tiktok",
+        videoUrl: "",
+      },
+    } as any,
+    res as any,
+  );
+
+  assert.equal(res.statusCode, 400);
+  assert.equal(createCalled, false);
+  assert.match((res.body as any).error, /video/i);
+});
+
 test("delete handler deletes link successfully", async () => {
   let deletedArgs: [string, string] | null = null;
   const handler = createDeleteLinkHandler({

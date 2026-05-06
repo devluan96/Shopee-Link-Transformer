@@ -242,6 +242,10 @@ app.get("/s-choice/:shortCode", async (req, res) => {
     )}`;
     const clickTrackingUrl = `${publicBaseUrl}/api/v1/links/${link.id}/track`;
 
+    if (!effectiveLink.video_url?.trim()) {
+      return res.redirect(effectiveLink.original_url);
+    }
+
     return res
       .status(200)
       .type("html")
