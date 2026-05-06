@@ -37,7 +37,11 @@ export const renderChoiceLandingPage = (
   link: PublicLinkRecord,
   canonicalUrl: string,
   clickTrackingUrl: string,
+  options?: {
+    experimental?: boolean;
+  },
 ) => {
+  const isExperimental = options?.experimental ?? true;
   const title = capitalizeFirstCharacter(
     link.custom_title?.trim() || "HotsNew Click",
   );
@@ -51,8 +55,9 @@ export const renderChoiceLandingPage = (
   const secondaryUrl = link.secondary_url?.trim() || "";
   const hasVideo = Boolean(videoUrl);
   const hasSecondaryRedirect = hasVideo && Boolean(secondaryUrl);
-  const defaultOgImage = `${canonicalUrl.replace(/\/s-choice\/[^/]+$/, "")}/og-image.png`;
-  const fallbackFavicon = `${canonicalUrl.replace(/\/s-choice\/[^/]+$/, "")}/logo-app-192.png`;
+  const originBase = canonicalUrl.replace(/\/s-choice\/[^/]+$|\/s\/[^/]+$/, "");
+  const defaultOgImage = `${originBase}/og-image.png`;
+  const fallbackFavicon = `${originBase}/logo-app-192.png`;
   const faviconUrl = imageUrl || fallbackFavicon;
   const socialImageUrl = imageUrl || defaultOgImage;
   const clickOnlyTrackingUrl =
@@ -60,6 +65,15 @@ export const renderChoiceLandingPage = (
       ? `${clickTrackingUrl.slice(0, -6)}/track-preview-click`
       : `${clickTrackingUrl}/track-preview-click`;
   const secondaryStateKey = `hn.choice-state.${link.short_code}`;
+  const robotsContent = isExperimental
+    ? "noindex, nofollow"
+    : "index, follow, max-image-preview:large";
+  const siteName = isExperimental
+    ? "HotsNew Click Choice Mode"
+    : "HotsNew Click";
+  const variantBadgeMarkup = isExperimental
+    ? `<div class="variant-badge">Choice Mode</div>`
+    : "";
   const overlayHintMarkup = hasSecondaryRedirect
     ? `<div class="overlay-hint" aria-hidden="true"><div class="overlay-hint-icon">&#128070;</div><div class="overlay-hint-text">Click vào đây để ủng hộ rồi trở về để xem tiếp</div></div>`
     : "";
@@ -75,7 +89,7 @@ export const renderChoiceLandingPage = (
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>${escapeHtml(title)}</title>
     <meta name="description" content="${escapeHtml(description)}" />
-    <meta name="robots" content="noindex, nofollow" />
+    <meta name="robots" content="${robotsContent}" />
     <link rel="icon" href="${escapeHtml(faviconUrl)}" />
     <link rel="shortcut icon" href="${escapeHtml(faviconUrl)}" />
     <link rel="apple-touch-icon" href="${escapeHtml(faviconUrl)}" />
@@ -85,7 +99,7 @@ export const renderChoiceLandingPage = (
     <meta property="og:title" content="${escapeHtml(title)}" />
     <meta property="og:description" content="${escapeHtml(description)}" />
     <meta property="og:url" content="${escapeHtml(canonicalUrl)}" />
-    <meta property="og:site_name" content="HotsNew Click Choice Mode" />
+    <meta property="og:site_name" content="${siteName}" />
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="${escapeHtml(title)}" />
     <meta name="twitter:description" content="${escapeHtml(description)}" />
@@ -214,7 +228,7 @@ export const renderChoiceLandingPage = (
     <div class="orb orb-3"></div>
     <main class="shell">
       <section class="card">
-        <div class="variant-badge">Choice Mode</div>
+        ${variantBadgeMarkup}
         <div class="media-panel">
           ${previewMedia}
         </div>

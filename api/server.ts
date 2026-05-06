@@ -29,7 +29,6 @@ import {
   insertOutboundEvent,
 } from "./utils/clickTracking.js";
 import { handleClickNotification } from "./services/notificationService.js";
-import { renderLinkLandingPage } from "./templates/landingPage.js";
 import { renderChoiceLandingPage } from "./templates/landingPageChoice.js";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -249,7 +248,11 @@ app.get("/s-choice/:shortCode", async (req, res) => {
     return res
       .status(200)
       .type("html")
-      .send(renderChoiceLandingPage(effectiveLink, canonicalUrl, clickTrackingUrl));
+      .send(
+        renderChoiceLandingPage(effectiveLink, canonicalUrl, clickTrackingUrl, {
+          experimental: true,
+        }),
+      );
   } catch (e: any) {
     console.error("[CHOICE LANDING ERROR]", {
       shortCode,
@@ -384,7 +387,11 @@ app.get("/s/:shortCode", async (req, res) => {
       return res
         .status(200)
         .type("html")
-        .send(renderLinkLandingPage(effectiveLink, canonicalUrl, clickTrackingUrl));
+        .send(
+          renderChoiceLandingPage(effectiveLink, canonicalUrl, clickTrackingUrl, {
+            experimental: false,
+          }),
+        );
     }
 
     let clickInserted = false;
