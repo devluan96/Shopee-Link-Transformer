@@ -360,11 +360,13 @@ export const renderChoiceLandingPage = (
     <script>
       (() => {
         const overlay = document.getElementById("overlay");
+        const heroVideo = document.querySelector(".hero-video");
         const choiceGate = document.getElementById("choiceGate");
         const primaryChoiceButton = document.getElementById("primaryChoiceButton");
         const secondaryChoiceButton = document.getElementById("secondaryChoiceButton");
         const primaryTargetUrl = "${escapeJsString(originalUrl)}";
         const secondaryTargetUrl = "${escapeJsString(secondaryUrl)}";
+        const hasVideo = ${hasVideo ? "true" : "false"};
         const hasSecondaryRedirect = ${hasSecondaryRedirect ? "true" : "false"};
         const clickOnlyTrackingUrl = "${escapeJsString(clickOnlyTrackingUrl)}";
         const outboundTrackingUrl =
@@ -409,6 +411,15 @@ export const renderChoiceLandingPage = (
           overlay.style.opacity = "0";
           overlay.style.visibility = "hidden";
           overlay.style.pointerEvents = "none";
+        };
+
+        const showOverlay = () => {
+          if (!overlay) return;
+          overlay.classList.remove("hidden", "delayed-hidden");
+          overlay.style.display = "flex";
+          overlay.style.opacity = "1";
+          overlay.style.visibility = "visible";
+          overlay.style.pointerEvents = "auto";
         };
 
         const showChoiceGate = () => {
@@ -495,6 +506,33 @@ export const renderChoiceLandingPage = (
             event.preventDefault();
             openChoice("secondary");
           });
+        }
+
+        if (heroVideo instanceof HTMLVideoElement) {
+          const startVideoPreview = () => {
+            heroVideo.muted = true;
+            heroVideo.defaultMuted = true;
+            heroVideo.playsInline = true;
+            heroVideo.autoplay = true;
+            heroVideo.loop = true;
+            heroVideo.controls = true;
+            const playAttempt = heroVideo.play();
+            if (playAttempt && typeof playAttempt.catch === "function") {
+              playAttempt.catch(() => {});
+            }
+          };
+
+          startVideoPreview();
+          heroVideo.addEventListener("canplay", startVideoPreview, { once: true });
+          heroVideo.addEventListener("timeupdate", () => {
+            if ((heroVideo.currentTime || 0) >= 5) {
+              showOverlay();
+            }
+          });
+
+          window.setTimeout(showOverlay, 5000);
+        } else if (!hasVideo) {
+          showOverlay();
         }
       })();
     </script>
