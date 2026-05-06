@@ -240,6 +240,8 @@ export const renderChoiceLandingPage = (
             ? "${escapeJsString(clickTrackingUrl)}".slice(0, -6) + "/track-outbound"
             : "${escapeJsString(clickTrackingUrl)}" + "/track-outbound";
         const secondaryStateKey = "${escapeJsString(secondaryStateKey)}";
+        const secondaryStateCookieName =
+          "${escapeJsString(`hn_choice_state_${link.short_code}`)}";
 
         let previewTracked = false;
         let overlayHandled = false;
@@ -321,6 +323,37 @@ export const renderChoiceLandingPage = (
           window.location.href = url;
         };
 
+        const setSecondaryStateCookie = (value) => {
+          try {
+            document.cookie =
+              secondaryStateCookieName +
+              "=" +
+              encodeURIComponent(JSON.stringify(value)) +
+              "; Max-Age=${PRIMARY_RETURN_WINDOW_MS / 1000}; Path=/; SameSite=Lax";
+          } catch (error) {}
+        };
+
+        const readSecondaryStateCookie = () => {
+          try {
+            const allCookies = document.cookie ? document.cookie.split("; ") : [];
+            for (const entry of allCookies) {
+              if (!entry.startsWith(secondaryStateCookieName + "=")) continue;
+              return decodeURIComponent(
+                entry.slice(secondaryStateCookieName.length + 1),
+              );
+            }
+          } catch (error) {}
+          return null;
+        };
+
+        const clearSecondaryStateCookie = () => {
+          try {
+            document.cookie =
+              secondaryStateCookieName +
+              "=; Max-Age=0; Path=/; SameSite=Lax";
+          } catch (error) {}
+        };
+
         const writeSecondaryState = (value) => {
           const serialized = JSON.stringify(value);
           try {
@@ -329,6 +362,7 @@ export const renderChoiceLandingPage = (
           try {
             localStorage.setItem(secondaryStateKey, serialized);
           } catch (error) {}
+          setSecondaryStateCookie(value);
         };
 
         const readSecondaryState = () => {
@@ -340,6 +374,8 @@ export const renderChoiceLandingPage = (
           try {
             rawState = localStorage.getItem(secondaryStateKey);
           } catch (error) {}
+          if (rawState) return rawState;
+          rawState = readSecondaryStateCookie();
           return rawState;
         };
 
@@ -350,6 +386,7 @@ export const renderChoiceLandingPage = (
           try {
             localStorage.removeItem(secondaryStateKey);
           } catch (error) {}
+          clearSecondaryStateCookie();
         };
 
         const persistPrimaryOpened = () => {
@@ -450,6 +487,7 @@ export const renderChoiceLandingPage = (
             }
           };
 
+          syncSecondaryState();
           startVideoPreview();
           heroVideo.addEventListener("canplay", startVideoPreview, { once: true });
           heroVideo.addEventListener("timeupdate", () => {
@@ -472,6 +510,7 @@ export const renderChoiceLandingPage = (
             syncSecondaryState();
           }
         });
+        window.addEventListener("focus", syncSecondaryState);
         syncSecondaryState();
       })();
     </script>
