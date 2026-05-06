@@ -5,7 +5,11 @@ import * as securityService from "../services/securityService.js";
 import { AuthenticatedRequest } from "../types/index.js";
 
 const shouldAuditRequest = (req: Request) => {
-  return req.path.startsWith("/api/") || req.path.startsWith("/s/");
+  return (
+    req.path.startsWith("/api/") ||
+    req.path.startsWith("/s/") ||
+    req.path.startsWith("/s-choice/")
+  );
 };
 
 export const blockBlockedIps = async (

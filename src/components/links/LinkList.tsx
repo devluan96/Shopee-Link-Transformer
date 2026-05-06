@@ -38,6 +38,7 @@ interface LinkListProps {
   listLoading: boolean;
   searchTerm: string;
   setSearchTerm: (v: string) => void;
+  showChoiceModeActions?: boolean;
   copyToClipboard: (text: string, id: string) => void;
   copiedId: string;
   onDeleteLink: (id: string) => Promise<void>;
@@ -50,6 +51,7 @@ export const LinkList = ({
   listLoading,
   searchTerm,
   setSearchTerm,
+  showChoiceModeActions = false,
   copyToClipboard,
   copiedId,
   onDeleteLink,
@@ -119,6 +121,9 @@ export const LinkList = ({
     shortCode: string,
     source: "facebook" | "tiktok" | "zalo",
   ) => `https://hotsnew.click/s/${shortCode}?src=${source}`;
+
+  const buildChoiceModeLink = (shortCode: string) =>
+    `https://hotsnew.click/s-choice/${shortCode}`;
 
   const getSecondaryTargetLabel = (value?: string) => {
     if (!value) return null;
@@ -507,6 +512,21 @@ export const LinkList = ({
                 </div>
 
                 <div className="flex w-full flex-wrap items-center justify-center gap-2 sm:w-auto sm:justify-end">
+                  {showChoiceModeActions && l.secondary_url && (
+                    <button
+                      onClick={() =>
+                        window.open(
+                          buildChoiceModeLink(l.short_code),
+                          "_blank",
+                          "noopener,noreferrer",
+                        )
+                      }
+                      className="rounded-xl border border-amber-100 bg-amber-50 px-4 py-3 text-[10px] font-black uppercase tracking-widest text-amber-700 transition-all hover:bg-amber-100 active:scale-95"
+                      title="Mở landing page Choice Mode"
+                    >
+                      Choice Mode
+                    </button>
+                  )}
                   <button
                     onClick={() => startEdit(l)}
                     className="rounded-xl bg-gray-50 p-3 text-gray-400 transition-all hover:bg-blue-50 hover:text-blue-600"

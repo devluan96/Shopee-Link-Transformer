@@ -294,8 +294,7 @@ export const Pricing = ({
           Không dùng ZaloPay nữa. Cần mở gói nhanh hoặc nhận QR chuyển khoản?
         </p>
         <p className="mt-2 text-sm font-medium text-sky-700/80 dark:text-sky-200/80">
-          Liên hệ Zalo admin `0969361607` để nhận QR ngân hàng và kích hoạt gói
-          thủ công.
+          Liên hệ Zalo admin để nhận QR ngân hàng và kích hoạt gói thủ công.
         </p>
         <a
           href={zaloContactUrl}

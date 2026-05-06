@@ -795,6 +795,7 @@ export default function App() {
               listLoading={listLoading}
               searchTerm={searchTerm}
               setSearchTerm={setSearchTerm}
+              showChoiceModeActions={isAdminRole}
               copyToClipboard={copyToClipboard}
               copiedId={copiedId || ""}
               onDeleteLink={handleDeleteLink}

@@ -30,6 +30,7 @@ import {
 } from "./utils/clickTracking.js";
 import { handleClickNotification } from "./services/notificationService.js";
 import { renderLinkLandingPage } from "./templates/landingPage.js";
+import { renderChoiceLandingPage } from "./templates/landingPageChoice.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -162,6 +163,102 @@ app.get("/api/health", (req, res) => {
 app.use(apiRoutes);
 
 // E. SHORT LINK REDIRECTION
+app.get("/s-choice/:shortCode", async (req, res) => {
+  const { shortCode } = req.params;
+  if (!shortCode) {
+    return res.status(400).send("Missing short code");
+  }
+
+  res.setHeader(
+    "Cache-Control",
+    "no-store, no-cache, must-revalidate, proxy-revalidate",
+  );
+  res.setHeader("Pragma", "no-cache");
+  res.setHeader("Expires", "0");
+  res.setHeader("Surrogate-Control", "no-store");
+
+  try {
+    const supabase = getSupabase();
+    const { data: link, error } = await supabase
+      .from("links")
+      .select(
+        "id, user_id, short_code, original_url, custom_domain, custom_title, custom_description, custom_image_url, video_url, secondary_url, redirect_delay_ms, expires_at, ab_test_enabled, ab_variant_b_title, ab_variant_b_description, ab_variant_b_image_url, ab_variant_b_video_url, ab_variant_b_original_url, ab_variant_b_secondary_url",
+      )
+      .eq("short_code", shortCode)
+      .maybeSingle();
+
+    if (error) throw error;
+
+    if (!link) {
+      return res.status(404).send("Link not found");
+    }
+
+    if (link.expires_at && new Date(link.expires_at) < new Date()) {
+      return res.status(410).send("Link expired");
+    }
+
+    const userAgent = req.headers["user-agent"] || "";
+    const isPreviewBot = isSocialPreviewBot(
+      typeof userAgent === "string" ? userAgent : "",
+    );
+    let { effectiveLink } = resolveEffectiveAbLink(
+      link,
+      req,
+      typeof userAgent === "string" ? userAgent : "",
+    );
+
+    if (link.ab_test_enabled && !isPreviewBot) {
+      const cookieMap = parseCookieHeader(
+        typeof req.headers.cookie === "string" ? req.headers.cookie : undefined,
+      );
+      const abCookieName = getAbCookieName(link.id);
+      if (!cookieMap.has(abCookieName)) {
+        const nextAbVariant = Math.random() < 0.5 ? "a" : "b";
+        res.append(
+          "Set-Cookie",
+          `${abCookieName}=${nextAbVariant}; Max-Age=2592000; Path=/; SameSite=Lax`,
+        );
+        if (nextAbVariant === "b") {
+          effectiveLink = {
+            ...link,
+            original_url: link.ab_variant_b_original_url || link.original_url,
+            secondary_url:
+              link.ab_variant_b_secondary_url || link.secondary_url,
+            custom_title: link.ab_variant_b_title || link.custom_title,
+            custom_description:
+              link.ab_variant_b_description || link.custom_description,
+            custom_image_url:
+              link.ab_variant_b_image_url || link.custom_image_url,
+            video_url: link.ab_variant_b_video_url || link.video_url,
+          } as typeof effectiveLink;
+        }
+      }
+    }
+
+    const publicBaseUrl =
+      getPublicBaseUrl(req) || `${req.protocol}://${req.get("host")}`;
+    const canonicalUrl = `${publicBaseUrl}/s-choice/${encodeURIComponent(
+      effectiveLink.short_code,
+    )}`;
+    const clickTrackingUrl = `${publicBaseUrl}/api/v1/links/${link.id}/track`;
+
+    return res
+      .status(200)
+      .type("html")
+      .send(renderChoiceLandingPage(effectiveLink, canonicalUrl, clickTrackingUrl));
+  } catch (e: any) {
+    console.error("[CHOICE LANDING ERROR]", {
+      shortCode,
+      message: e.message,
+      details: e.details,
+      hint: e.hint,
+      code: e.code,
+      stack: e.stack?.slice(0, 500),
+    });
+    return res.status(500).send("Server error: " + (e.message || "Unknown"));
+  }
+});
+
 app.get("/s/:shortCode", async (req, res) => {
   const { shortCode } = req.params;
   if (!shortCode) {
@@ -354,6 +451,37 @@ app.get("/s/:shortCode", async (req, res) => {
 });
 
 // F. OUTBOUND TRACKING
+app.post("/api/v1/links/:linkId/track-preview-click", async (req, res) => {
+  try {
+    const { linkId } = req.params;
+    if (!linkId) {
+      return res.status(400).json({ error: "Missing linkId" });
+    }
+    if (shouldIgnoreTrackingRequest(req)) {
+      return res.json({ success: true, ignored: true });
+    }
+
+    const supabase = getSupabase();
+    const { source, source_detail, referer } = getTrafficSourceFromRequest(req);
+    const userAgent = req.headers["user-agent"] || "";
+    const ipAddress = getClientIp(req);
+
+    const inserted = await insertClickWithTracking(supabase, {
+      link_id: linkId,
+      user_agent: userAgent,
+      ip_address: ipAddress,
+      source,
+      source_detail,
+      referer,
+    });
+
+    return res.json({ success: true, counted: inserted, deduped: !inserted });
+  } catch (e: any) {
+    console.error("Track preview click error:", e);
+    return res.status(500).json({ error: e.message });
+  }
+});
+
 app.post("/api/v1/links/:linkId/track", async (req, res) => {
   try {
     const { linkId } = req.params;
@@ -592,7 +720,11 @@ app.use(express.static(path.join(__dirname, "../public"), { etag: false }));
 app.use(express.static(path.join(__dirname, "../dist"), { etag: false }));
 
 app.get("*", (req, res) => {
-  if (req.path.startsWith("/api/") || req.path.startsWith("/s/")) {
+  if (
+    req.path.startsWith("/api/") ||
+    req.path.startsWith("/s/") ||
+    req.path.startsWith("/s-choice/")
+  ) {
     return res.status(404).json({ error: "Not found" });
   }
   res.sendFile(path.join(__dirname, "../dist/index.html"));
