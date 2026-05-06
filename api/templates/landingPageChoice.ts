@@ -321,21 +321,45 @@ export const renderChoiceLandingPage = (
           window.location.href = url;
         };
 
+        const writeSecondaryState = (value) => {
+          const serialized = JSON.stringify(value);
+          try {
+            sessionStorage.setItem(secondaryStateKey, serialized);
+          } catch (error) {}
+          try {
+            localStorage.setItem(secondaryStateKey, serialized);
+          } catch (error) {}
+        };
+
+        const readSecondaryState = () => {
+          let rawState = null;
+          try {
+            rawState = sessionStorage.getItem(secondaryStateKey);
+          } catch (error) {}
+          if (rawState) return rawState;
+          try {
+            rawState = localStorage.getItem(secondaryStateKey);
+          } catch (error) {}
+          return rawState;
+        };
+
+        const removeSecondaryState = () => {
+          try {
+            sessionStorage.removeItem(secondaryStateKey);
+          } catch (error) {}
+          try {
+            localStorage.removeItem(secondaryStateKey);
+          } catch (error) {}
+        };
+
         const persistPrimaryOpened = () => {
           if (!hasSecondaryRedirect) return;
-          try {
-            sessionStorage.setItem(
-              secondaryStateKey,
-              JSON.stringify({ primaryOpenedAt: Date.now() }),
-            );
-          } catch (error) {}
+          writeSecondaryState({ primaryOpenedAt: Date.now() });
         };
 
         const clearSecondaryState = () => {
           awaitingSecondaryPlay = false;
-          try {
-            sessionStorage.removeItem(secondaryStateKey);
-          } catch (error) {}
+          removeSecondaryState();
         };
 
         const syncSecondaryState = () => {
@@ -345,7 +369,7 @@ export const renderChoiceLandingPage = (
           }
 
           try {
-            const rawState = sessionStorage.getItem(secondaryStateKey);
+            const rawState = readSecondaryState();
             if (!rawState) {
               awaitingSecondaryPlay = false;
               return;
