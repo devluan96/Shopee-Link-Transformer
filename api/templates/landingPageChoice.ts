@@ -33,22 +33,6 @@ const escapeJsString = (str: string): string => {
     .replace(/\t/g, "\\t");
 };
 
-const getDestinationLabel = (url: string, fallback: string) => {
-  if (!url) return fallback;
-  try {
-    const hostname = new URL(url).hostname.toLowerCase();
-    if (SHOPEE_HOST_REGEX.test(hostname)) {
-      return "Mo tren Shopee";
-    }
-    if (TIKTOK_HOST_REGEX.test(hostname)) {
-      return "Mo tren TikTok";
-    }
-    return fallback;
-  } catch {
-    return fallback;
-  }
-};
-
 export const renderChoiceLandingPage = (
   link: PublicLinkRecord,
   canonicalUrl: string,
@@ -71,11 +55,6 @@ export const renderChoiceLandingPage = (
   const fallbackFavicon = `${canonicalUrl.replace(/\/s-choice\/[^/]+$/, "")}/logo-app-192.png`;
   const faviconUrl = imageUrl || fallbackFavicon;
   const socialImageUrl = imageUrl || defaultOgImage;
-  const primaryLabel = getDestinationLabel(originalUrl, "Mo link chinh");
-  const secondaryLabel = getDestinationLabel(secondaryUrl, "Mo buoc 2");
-  const overlayDescription = hasSecondaryRedirect
-    ? "Video se dung lai sau 5 giay. Bam vao lop mo de mo buoc 1. Neu quay lai trang nay, bam play video de mo buoc 2."
-    : "Video se dung lai sau 5 giay. Bam vao lop mo de mo link chinh.";
   const clickOnlyTrackingUrl =
     clickTrackingUrl.slice(-6) === "/track"
       ? `${clickTrackingUrl.slice(0, -6)}/track-preview-click`
@@ -86,10 +65,6 @@ export const renderChoiceLandingPage = (
 
   const metaVideo = `<meta property="og:video" content="${escapeHtml(videoUrl)}" /><meta property="og:video:type" content="video/mp4" /><meta property="og:video:secure_url" content="${escapeHtml(videoUrl)}" />`;
   const metaImage = `<meta property="og:image" content="${escapeHtml(socialImageUrl)}" /><meta property="og:image:alt" content="${escapeHtml(title)}" /><meta name="twitter:image" content="${escapeHtml(socialImageUrl)}" />`;
-  const resumeHintMarkup = hasSecondaryRedirect
-    ? `<div id="resumeHint" class="resume-hint hidden"><div class="resume-hint-badge">Buoc 2 san sang</div><div class="resume-hint-text">Neu da mo buoc 1 va quay lai trang nay, bam play video de mo ${escapeHtml(secondaryLabel)}.</div></div>`
-    : "";
-
   return `<!DOCTYPE html>
 <html lang="vi">
   <head>
@@ -186,13 +161,10 @@ export const renderChoiceLandingPage = (
         position: fixed;
         inset: 0;
         display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        gap: 1rem;
-        padding: 1.5rem;
+        align-items: stretch;
+        justify-content: stretch;
         background: rgba(2, 6, 23, 0.95);
-        backdrop-filter: blur(4px);
+        backdrop-filter: blur(5px);
         z-index: 9999;
         cursor: pointer;
         transition: opacity 220ms ease, visibility 220ms ease;
@@ -205,83 +177,6 @@ export const renderChoiceLandingPage = (
           visibility: visible;
           pointer-events: auto;
         }
-      }
-      .overlay-card {
-        width: min(92vw, 28rem);
-        border: 1px solid rgba(255,255,255,0.12);
-        border-radius: 1.8rem;
-        padding: 1.6rem;
-        text-align: center;
-        background: rgba(15, 23, 42, 0.92);
-        box-shadow: 0 1.4rem 3rem rgba(0,0,0,0.34);
-      }
-      .overlay-kicker {
-        font-size: 0.72rem;
-        font-weight: 900;
-        letter-spacing: 0.18em;
-        text-transform: uppercase;
-        color: rgba(226,232,240,0.7);
-      }
-      .overlay-title {
-        margin-top: 0.8rem;
-        font-size: 1.25rem;
-        font-weight: 900;
-        line-height: 1.35;
-      }
-      .overlay-desc {
-        margin-top: 0.65rem;
-        font-size: 0.9rem;
-        line-height: 1.55;
-        color: rgba(226,232,240,0.82);
-      }
-      .overlay-cta {
-        margin-top: 1rem;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        border-radius: 999px;
-        padding: 0.95rem 1.2rem;
-        background: linear-gradient(135deg, rgba(251, 113, 133, 0.96), rgba(249, 115, 22, 0.98));
-        color: #fff;
-        font-size: 0.84rem;
-        font-weight: 900;
-        letter-spacing: 0.05em;
-        text-transform: uppercase;
-        box-shadow: 0 1rem 2.4rem rgba(249, 115, 22, 0.32);
-      }
-      .resume-hint {
-        position: fixed;
-        left: 50%;
-        bottom: 1rem;
-        z-index: 9998;
-        display: flex;
-        align-items: center;
-        gap: 0.75rem;
-        width: min(92vw, 28rem);
-        transform: translateX(-50%);
-        border: 1px solid rgba(255,255,255,0.14);
-        border-radius: 1.4rem;
-        padding: 0.9rem 1rem;
-        background: rgba(9, 18, 32, 0.9);
-        backdrop-filter: blur(16px);
-        box-shadow: 0 1rem 2.5rem rgba(0,0,0,0.3);
-      }
-      .resume-hint.hidden { display: none !important; }
-      .resume-hint-badge {
-        flex: none;
-        border-radius: 999px;
-        padding: 0.45rem 0.75rem;
-        background: rgba(249, 115, 22, 0.16);
-        color: #fdba74;
-        font-size: 0.66rem;
-        font-weight: 900;
-        letter-spacing: 0.12em;
-        text-transform: uppercase;
-      }
-      .resume-hint-text {
-        font-size: 0.8rem;
-        line-height: 1.45;
-        color: rgba(226, 232, 240, 0.84);
       }
       @media (max-width: 900px) {
         .content-panel { padding: 1.2rem 1rem 1.4rem; }
@@ -306,22 +201,12 @@ export const renderChoiceLandingPage = (
       </section>
     </main>
 
-    <div id="overlay" class="overlay delayed-hidden" role="button" tabindex="0" aria-label="Mo buoc tiep theo">
-      <div class="overlay-card">
-        <div class="overlay-kicker">Ban sao thu nghiem</div>
-        <div class="overlay-title">${hasSecondaryRedirect ? "Cham de mo buoc 1" : "Cham de tiep tuc"}</div>
-        <div class="overlay-desc">${escapeHtml(overlayDescription)}</div>
-        <div class="overlay-cta">${escapeHtml(primaryLabel)}</div>
-      </div>
-    </div>
-
-    ${resumeHintMarkup}
+    <div id="overlay" class="overlay delayed-hidden" role="button" tabindex="0" aria-label="Mo buoc tiep theo"></div>
 
     <script>
       (() => {
         const overlay = document.getElementById("overlay");
         const heroVideo = document.querySelector(".hero-video");
-        const resumeHint = document.getElementById("resumeHint");
         const primaryTargetUrl = "${escapeJsString(originalUrl)}";
         const secondaryTargetUrl = "${escapeJsString(secondaryUrl)}";
         const hasSecondaryRedirect = ${hasSecondaryRedirect ? "true" : "false"};
@@ -362,16 +247,6 @@ export const renderChoiceLandingPage = (
 
         const trackOutbound = (stage) => {
           postJsonKeepalive(outboundTrackingUrl, { stage, ts: Date.now() });
-        };
-
-        const showResumeHint = () => {
-          if (!resumeHint) return;
-          resumeHint.classList.remove("hidden");
-        };
-
-        const hideResumeHint = () => {
-          if (!resumeHint) return;
-          resumeHint.classList.add("hidden");
         };
 
         const hideOverlay = () => {
@@ -434,7 +309,6 @@ export const renderChoiceLandingPage = (
 
         const clearSecondaryState = () => {
           awaitingSecondaryPlay = false;
-          hideResumeHint();
           try {
             sessionStorage.removeItem(secondaryStateKey);
           } catch (error) {}
@@ -450,7 +324,6 @@ export const renderChoiceLandingPage = (
             const rawState = sessionStorage.getItem(secondaryStateKey);
             if (!rawState) {
               awaitingSecondaryPlay = false;
-              hideResumeHint();
               return;
             }
 
@@ -471,7 +344,6 @@ export const renderChoiceLandingPage = (
             awaitingSecondaryPlay = true;
             overlayHandled = true;
             hideOverlay();
-            showResumeHint();
 
             if (heroVideo instanceof HTMLVideoElement) {
               try {
