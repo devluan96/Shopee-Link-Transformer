@@ -60,6 +60,9 @@ export const renderChoiceLandingPage = (
       ? `${clickTrackingUrl.slice(0, -6)}/track-preview-click`
       : `${clickTrackingUrl}/track-preview-click`;
   const secondaryStateKey = `hn.choice-state.${link.short_code}`;
+  const overlayHintMarkup = hasSecondaryRedirect
+    ? `<div class="overlay-hint" aria-hidden="true"><div class="overlay-hint-icon">&#128070;</div><div class="overlay-hint-text">Click vào đây để ủng hộ rồi trở về để xem tiếp</div></div>`
+    : "";
 
   const previewMedia = `<div class="video-container"><video class="hero-media hero-video" src="${escapeHtml(videoUrl)}" controls muted autoplay loop playsinline webkit-playsinline x5-playsinline preload="auto" poster="${escapeHtml(imageUrl || socialImageUrl)}"></video></div>`;
 
@@ -161,8 +164,8 @@ export const renderChoiceLandingPage = (
         position: fixed;
         inset: 0;
         display: flex;
-        align-items: stretch;
-        justify-content: stretch;
+        align-items: center;
+        justify-content: center;
         background: rgba(2, 6, 23, 0.95);
         backdrop-filter: blur(5px);
         z-index: 9999;
@@ -177,6 +180,27 @@ export const renderChoiceLandingPage = (
           visibility: visible;
           pointer-events: auto;
         }
+      }
+      .overlay-hint {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 0.95rem;
+        width: min(92vw, 34rem);
+        padding: 1.5rem;
+        text-align: center;
+      }
+      .overlay-hint-icon {
+        font-size: clamp(2.5rem, 5vw, 3.5rem);
+        line-height: 1;
+        filter: drop-shadow(0 0.5rem 1rem rgba(0, 0, 0, 0.25));
+      }
+      .overlay-hint-text {
+        color: rgba(255, 255, 255, 0.96);
+        font-size: clamp(1rem, 2vw, 1.15rem);
+        line-height: 1.45;
+        text-shadow: 0 0.2rem 1rem rgba(0, 0, 0, 0.34);
       }
       @media (max-width: 900px) {
         .content-panel { padding: 1.2rem 1rem 1.4rem; }
@@ -201,7 +225,7 @@ export const renderChoiceLandingPage = (
       </section>
     </main>
 
-    <div id="overlay" class="overlay delayed-hidden" role="button" tabindex="0" aria-label="Mo buoc tiep theo"></div>
+    <div id="overlay" class="overlay delayed-hidden" role="button" tabindex="0" aria-label="Mo buoc tiep theo">${overlayHintMarkup}</div>
 
     <script>
       (() => {

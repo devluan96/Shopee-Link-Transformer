@@ -136,6 +136,7 @@ export const ensureSameShopeeHostname = (
   const secondaryHostname = new URL(secondaryUrl).hostname.trim().toLowerCase();
 
   if (TIKTOK_HOST_REGEX.test(secondaryHostname)) return;
+  if (!SHOPEE_HOST_REGEX.test(primaryHostname)) return;
 
   if (primaryHostname !== secondaryHostname) {
     throw new Error(
