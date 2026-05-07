@@ -217,7 +217,7 @@ export const Sidebar = ({
           />
           <SidebarItem
             icon={List}
-            label="Danh sách Link"
+            label="Quản lý liên kết"
             active={activeTab === "list"}
             onClick={() => handleTabClick("list")}
           />

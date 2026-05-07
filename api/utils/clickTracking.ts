@@ -227,12 +227,11 @@ export const attachTrackedSourcesToLinks = async (
   try {
     const linkIds = links.map((link) => link.id).filter(Boolean);
     const rawEvents = await fetchOutboundEventsForLinkIds(supabase, linkIds);
-    const outboundEvents = filterShopeeOutboundEvents(
-      filterRealOutboundEvents(rawEvents),
-    );
+    const realOutboundEvents = filterRealOutboundEvents(rawEvents);
+    const shopeeOutboundEvents = filterShopeeOutboundEvents(realOutboundEvents);
 
     const sourceMap = new Map<string, Map<string, number>>();
-    outboundEvents.forEach((click: any) => {
+    shopeeOutboundEvents.forEach((click: any) => {
       const sourceLabel =
         normalizeTrafficSource(click.source_detail) ||
         normalizeTrafficSource(click.source) ||
@@ -251,7 +250,9 @@ export const attachTrackedSourcesToLinks = async (
 
     return links.map((link) => {
       const linkId = link.id;
-      const linkEvents = outboundEvents.filter((event) => event.link_id === linkId);
+      const linkEvents = realOutboundEvents.filter(
+        (event) => event.link_id === linkId,
+      );
       const clicks = linkEvents.filter((event) =>
         isShopeeDestinationUrl(event.destination_url),
       ).length;
