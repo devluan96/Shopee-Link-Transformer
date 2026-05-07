@@ -217,4 +217,62 @@ router.get("/user/notifications/logs", authenticate, async (req: AuthenticatedRe
   }
 });
 
+// GET /api/v1/user/notifications/inbox - Get in-app notifications
+router.get("/user/notifications/inbox", authenticate, async (req: AuthenticatedRequest, res) => {
+  try {
+    const supabase = getSupabase();
+    const userId = req.authUser?.id;
+    if (!userId) {
+      return res.status(400).json({ error: "Missing userId" });
+    }
+
+    const limit = parseInt(req.query.limit as string) || 20;
+    const payload = await notificationService.listAppNotifications(
+      supabase,
+      userId,
+      limit,
+    );
+    return res.json(payload);
+  } catch (e: any) {
+    return res.status(500).json({ error: e.message });
+  }
+});
+
+// POST /api/v1/user/notifications/inbox/:notificationId/read
+router.post("/user/notifications/inbox/:notificationId/read", authenticate, async (req: AuthenticatedRequest, res) => {
+  try {
+    const supabase = getSupabase();
+    const userId = req.authUser?.id;
+    const notificationId = req.params.notificationId;
+    if (!userId || !notificationId) {
+      return res.status(400).json({ error: "Missing userId or notificationId" });
+    }
+
+    await notificationService.markNotificationRead(
+      supabase,
+      userId,
+      notificationId,
+    );
+    return res.json({ success: true });
+  } catch (e: any) {
+    return res.status(500).json({ error: e.message });
+  }
+});
+
+// POST /api/v1/user/notifications/inbox/read-all
+router.post("/user/notifications/inbox/read-all", authenticate, async (req: AuthenticatedRequest, res) => {
+  try {
+    const supabase = getSupabase();
+    const userId = req.authUser?.id;
+    if (!userId) {
+      return res.status(400).json({ error: "Missing userId" });
+    }
+
+    await notificationService.markAllNotificationsRead(supabase, userId);
+    return res.json({ success: true });
+  } catch (e: any) {
+    return res.status(500).json({ error: e.message });
+  }
+});
+
 export default router;

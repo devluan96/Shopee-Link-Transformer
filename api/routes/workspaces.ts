@@ -95,6 +95,52 @@ router.get(
   },
 );
 
+router.get(
+  "/user/workspace-invitations",
+  authenticate,
+  async (req: AuthenticatedRequest, res) => {
+    try {
+      const supabase = getSupabase();
+      const userId = req.authUser?.id;
+      if (!userId) {
+        return res.status(400).json({ error: "Missing userId" });
+      }
+
+      const invitations = await workspaceService.listPendingWorkspaceInvitations(
+        supabase,
+        userId,
+      );
+      return res.json(invitations);
+    } catch (e: any) {
+      return res.status(400).json({ error: e.message });
+    }
+  },
+);
+
+router.get(
+  "/user/workspaces/:workspaceId/invitations",
+  authenticate,
+  async (req: AuthenticatedRequest, res) => {
+    try {
+      const supabase = getSupabase();
+      const userId = req.authUser?.id;
+      const workspaceId = req.params.workspaceId;
+      if (!userId || !workspaceId) {
+        return res.status(400).json({ error: "Missing userId or workspaceId" });
+      }
+
+      const invitations = await workspaceService.listSentWorkspaceInvitations(
+        supabase,
+        workspaceId,
+        userId,
+      );
+      return res.json(invitations);
+    } catch (e: any) {
+      return res.status(400).json({ error: e.message });
+    }
+  },
+);
+
 router.post(
   "/user/workspaces/:workspaceId/members",
   authenticate,
@@ -137,6 +183,78 @@ router.post(
         },
       );
       return res.json(member);
+    } catch (e: any) {
+      return res.status(400).json({ error: e.message });
+    }
+  },
+);
+
+router.post(
+  "/user/workspace-invitations/:invitationId/accept",
+  authenticate,
+  async (req: AuthenticatedRequest, res) => {
+    try {
+      const supabase = getSupabase();
+      const userId = req.authUser?.id;
+      const invitationId = req.params.invitationId;
+      if (!userId || !invitationId) {
+        return res.status(400).json({ error: "Missing userId or invitationId" });
+      }
+
+      const invitation = await workspaceService.acceptWorkspaceInvitation(
+        supabase,
+        invitationId,
+        userId,
+      );
+      return res.json(invitation);
+    } catch (e: any) {
+      return res.status(400).json({ error: e.message });
+    }
+  },
+);
+
+router.post(
+  "/user/workspace-invitations/:invitationId/decline",
+  authenticate,
+  async (req: AuthenticatedRequest, res) => {
+    try {
+      const supabase = getSupabase();
+      const userId = req.authUser?.id;
+      const invitationId = req.params.invitationId;
+      if (!userId || !invitationId) {
+        return res.status(400).json({ error: "Missing userId or invitationId" });
+      }
+
+      const invitation = await workspaceService.declineWorkspaceInvitation(
+        supabase,
+        invitationId,
+        userId,
+      );
+      return res.json(invitation);
+    } catch (e: any) {
+      return res.status(400).json({ error: e.message });
+    }
+  },
+);
+
+router.delete(
+  "/user/workspace-invitations/:invitationId",
+  authenticate,
+  async (req: AuthenticatedRequest, res) => {
+    try {
+      const supabase = getSupabase();
+      const userId = req.authUser?.id;
+      const invitationId = req.params.invitationId;
+      if (!userId || !invitationId) {
+        return res.status(400).json({ error: "Missing userId or invitationId" });
+      }
+
+      const invitation = await workspaceService.cancelWorkspaceInvitation(
+        supabase,
+        invitationId,
+        userId,
+      );
+      return res.json(invitation);
     } catch (e: any) {
       return res.status(400).json({ error: e.message });
     }

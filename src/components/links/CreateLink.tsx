@@ -1153,12 +1153,12 @@ export const CreateLink = ({
                           </p>
                         )}
                         {canUseSecondaryFlow && (
-                        <p className="mt-2 px-1 text-[11px] font-medium text-gray-500">
-                          {"Bỏ trống nếu chỉ muốn đi 1 link như bình thường."}
-                          {secondaryTargetType === "tiktok"
-                            ? " Chỉ hỗ trợ domain TikTok."
-                            : " Chỉ hỗ trợ domain Shopee."}
-                        </p>
+                          <p className="mt-2 px-1 text-[11px] font-medium text-gray-500">
+                            {"Bỏ trống nếu chỉ muốn đi 1 link như bình thường."}
+                            {secondaryTargetType === "tiktok"
+                              ? " Chỉ hỗ trợ domain TikTok."
+                              : " Chỉ hỗ trợ domain Shopee."}
+                          </p>
                         )}
                       </div>
                     </div>
@@ -1484,8 +1484,8 @@ export const CreateLink = ({
                       </div>
                       <span className="text-[11px] uppercase tracking-wider sm:text-xs">
                         {uploadingThumbnail
-                          ? "Dang tai anh thumbnail..."
-                          : "Chon anh thumbnail tu may"}
+                          ? "Đang tải ảnh thumbnail..."
+                          : "Chọn ảnh thumbnail từ máy"}
                       </span>
                     </div>
                     {customImageUrl && (

@@ -48,6 +48,11 @@ export type LinkUpdatePayload = Omit<
 };
 
 export type WorkspaceRole = "owner" | "editor" | "viewer";
+export type WorkspaceInvitationStatus =
+  | "pending"
+  | "accepted"
+  | "declined"
+  | "cancelled";
 
 export interface Workspace {
   id: string;
@@ -67,6 +72,41 @@ export interface WorkspaceMember {
   email?: string | null;
   avatar_url?: string | null;
   joined_at?: string | null;
+}
+
+export interface WorkspaceInvitation {
+  id: string;
+  workspace_id: string;
+  workspace_name: string;
+  workspace_description?: string | null;
+  invited_user_id: string;
+  invited_email: string;
+  role: Exclude<WorkspaceRole, "owner">;
+  status: WorkspaceInvitationStatus;
+  invited_by: string;
+  invited_by_name?: string | null;
+  invited_by_email?: string | null;
+  created_at: string;
+  responded_at?: string | null;
+}
+
+export type AppNotificationType =
+  | "workspace_invitation"
+  | "link_click_threshold";
+
+export interface AppNotification {
+  id: string;
+  user_id: string;
+  type: AppNotificationType;
+  title: string;
+  message: string;
+  link_id?: string | null;
+  workspace_id?: string | null;
+  metadata?: Record<string, unknown> | null;
+  is_read: boolean;
+  read_at?: string | null;
+  created_at: string;
+  updated_at?: string | null;
 }
 
 export interface AccessLogEntry {

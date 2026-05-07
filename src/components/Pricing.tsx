@@ -288,12 +288,6 @@ export const Pricing = ({
           );
         })}
       </div>
-
-      <footer className="mt-12 text-center">
-        <p className="text-[10px] font-black uppercase tracking-widest text-gray-300 dark:text-slate-600">
-          (c) 2026 HOTSNEW.CLICK INFRASTRUCTURE
-        </p>
-      </footer>
     </div>
   );
 };

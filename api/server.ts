@@ -438,10 +438,22 @@ app.get("/s/:shortCode", async (req, res) => {
 
     if (link.user_id && (clickInserted || outboundInserted)) {
       try {
-        handleClickNotification(supabase, link.user_id, link.id, link.short_code, {
-          source: abVariant === "b" ? `${source || "direct"}:ab-b` : source || "direct",
-          created_at: new Date().toISOString(),
-        });
+        handleClickNotification(
+          supabase,
+          link.user_id,
+          link.id,
+          link.short_code,
+          {
+            source:
+              abVariant === "b"
+                ? `${source || "direct"}:ab-b`
+                : source || "direct",
+            created_at: new Date().toISOString(),
+          },
+          {
+            linkTitle: effectiveLink.custom_title || null,
+          },
+        );
       } catch (notifyError) {
         console.error("Direct notification error:", notifyError);
       }
@@ -512,7 +524,7 @@ app.post("/api/v1/links/:linkId/track", async (req, res) => {
     const { data: link, error: linkError } = await supabase
       .from("links")
       .select(
-        "id, user_id, short_code, original_url, secondary_url, ab_test_enabled, ab_variant_b_title, ab_variant_b_description, ab_variant_b_image_url, ab_variant_b_video_url, ab_variant_b_original_url, ab_variant_b_secondary_url",
+        "id, user_id, short_code, custom_title, original_url, secondary_url, ab_test_enabled, ab_variant_b_title, ab_variant_b_description, ab_variant_b_image_url, ab_variant_b_video_url, ab_variant_b_original_url, ab_variant_b_secondary_url",
       )
       .eq("id", linkId)
       .maybeSingle();
@@ -579,6 +591,9 @@ app.post("/api/v1/links/:linkId/track", async (req, res) => {
           effectiveLink.id,
           effectiveLink.short_code,
           clickData,
+          {
+            linkTitle: effectiveLink.custom_title || null,
+          },
         );
       } catch (notifyError) {
         console.error("Notification error:", notifyError);

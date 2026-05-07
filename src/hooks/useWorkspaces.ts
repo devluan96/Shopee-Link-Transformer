@@ -1,6 +1,11 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { User } from "@supabase/supabase-js";
-import { Workspace, WorkspaceMember, WorkspaceRole } from "@/src/types";
+import {
+  Workspace,
+  WorkspaceInvitation,
+  WorkspaceMember,
+  WorkspaceRole,
+} from "@/src/types";
 import { toast } from "sonner";
 
 interface UseWorkspacesProps {
@@ -12,55 +17,94 @@ interface UseWorkspacesProps {
 }
 
 const getWorkspaceStorageKey = (userId?: string) =>
-  userId ? `hotsnew.currentWorkspaceId.${userId}` : "hotsnew.currentWorkspaceId";
+  userId
+    ? `hotsnew.currentWorkspaceId.${userId}`
+    : "hotsnew.currentWorkspaceId";
 
 export function useWorkspaces({ user, fetchWithAuth }: UseWorkspacesProps) {
+  const userId = user?.id || "";
   const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
   const [currentWorkspaceId, setCurrentWorkspaceId] = useState<string>("");
   const [workspaceLoading, setWorkspaceLoading] = useState(false);
   const [workspaceResolved, setWorkspaceResolved] = useState(false);
   const [members, setMembers] = useState<WorkspaceMember[]>([]);
   const [membersLoading, setMembersLoading] = useState(false);
+  const [pendingInvitations, setPendingInvitations] = useState<
+    WorkspaceInvitation[]
+  >([]);
+  const [pendingInvitationsLoading, setPendingInvitationsLoading] =
+    useState(false);
+  const [sentInvitations, setSentInvitations] = useState<WorkspaceInvitation[]>(
+    [],
+  );
+  const [sentInvitationsLoading, setSentInvitationsLoading] = useState(false);
+  const workspacesLoadedRef = useRef(false);
+  const pendingInvitationsLoadedRef = useRef(false);
+  const membersCacheRef = useRef<Record<string, WorkspaceMember[]>>({});
+  const sentInvitationsCacheRef = useRef<Record<string, WorkspaceInvitation[]>>(
+    {},
+  );
 
   const currentWorkspace = useMemo(
-    () => workspaces.find((workspace) => workspace.id === currentWorkspaceId) || null,
+    () =>
+      workspaces.find((workspace) => workspace.id === currentWorkspaceId) ||
+      null,
     [workspaces, currentWorkspaceId],
   );
 
-  const fetchWorkspaces = useCallback(async () => {
-    if (!user) return;
+  const fetchWorkspaces = useCallback(
+    async (force = false) => {
+      if (!userId) return;
+      if (!force && workspacesLoadedRef.current) return;
 
-    setWorkspaceLoading(true);
-    setWorkspaceResolved(false);
-    try {
-      const res = await fetchWithAuth("/api/v1/user/workspaces");
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.error || "Không tải được workspace");
+      setWorkspaceLoading(true);
+      setWorkspaceResolved(false);
+
+      try {
+        const res = await fetchWithAuth("/api/v1/user/workspaces");
+        const data = await res.json();
+        if (!res.ok) {
+          throw new Error(data.error || "Khong the tai workspace");
+        }
+
+        const nextWorkspaces = data as Workspace[];
+        setWorkspaces(nextWorkspaces);
+        workspacesLoadedRef.current = true;
+
+        const storedWorkspaceId =
+          window.localStorage.getItem(getWorkspaceStorageKey(userId)) || "";
+        const fallbackWorkspaceId =
+          nextWorkspaces.find((workspace) => workspace.id === storedWorkspaceId)
+            ?.id ||
+          nextWorkspaces[0]?.id ||
+          "";
+
+        setCurrentWorkspaceId((prev) =>
+          prev && nextWorkspaces.some((workspace) => workspace.id === prev)
+            ? prev
+            : fallbackWorkspaceId,
+        );
+      } catch (error: any) {
+        toast.error(error.message || "Loi khi tai workspace");
+      } finally {
+        setWorkspaceLoading(false);
+        setWorkspaceResolved(true);
       }
-
-      const nextWorkspaces = data as Workspace[];
-      setWorkspaces(nextWorkspaces);
-
-      const storedWorkspaceId =
-        window.localStorage.getItem(getWorkspaceStorageKey(user.id)) || "";
-      const fallbackWorkspaceId =
-        nextWorkspaces.find((workspace) => workspace.id === storedWorkspaceId)?.id ||
-        nextWorkspaces[0]?.id ||
-        "";
-      setCurrentWorkspaceId(fallbackWorkspaceId);
-    } catch (e: any) {
-      toast.error(e.message || "Lỗi tải workspace");
-    } finally {
-      setWorkspaceLoading(false);
-      setWorkspaceResolved(true);
-    }
-  }, [user, fetchWithAuth]);
+    },
+    [fetchWithAuth, userId],
+  );
 
   const fetchMembers = useCallback(
-    async (workspaceId: string) => {
-      if (!user || !workspaceId) {
+    async (workspaceId: string, force = false) => {
+      if (!userId || !workspaceId) {
         setMembers([]);
+        return;
+      }
+
+      const cachedMembers = membersCacheRef.current[workspaceId];
+      if (!force && cachedMembers) {
+        setMembers(cachedMembers);
+        setMembersLoading(false);
         return;
       }
 
@@ -71,17 +115,82 @@ export function useWorkspaces({ user, fetchWithAuth }: UseWorkspacesProps) {
         );
         const data = await res.json();
         if (!res.ok) {
-          throw new Error(data.error || "Không tải được thành viên");
+          throw new Error(data.error || "Khong the tai thanh vien");
         }
 
-        setMembers(data as WorkspaceMember[]);
-      } catch (e: any) {
-        toast.error(e.message || "Lỗi tải thành viên");
+        const nextMembers = data as WorkspaceMember[];
+        membersCacheRef.current[workspaceId] = nextMembers;
+        setMembers(nextMembers);
+      } catch (error: any) {
+        toast.error(error.message || "Loi khi tai thanh vien");
       } finally {
         setMembersLoading(false);
       }
     },
-    [user, fetchWithAuth],
+    [fetchWithAuth, userId],
+  );
+
+  const fetchPendingInvitations = useCallback(
+    async (force = false) => {
+      if (!userId) {
+        setPendingInvitations([]);
+        return;
+      }
+      if (!force && pendingInvitationsLoadedRef.current) return;
+
+      setPendingInvitationsLoading(true);
+      try {
+        const res = await fetchWithAuth("/api/v1/user/workspace-invitations");
+        const data = await res.json();
+        if (!res.ok) {
+          throw new Error(data.error || "Không thể tải lời mời workspace");
+        }
+
+        setPendingInvitations(data as WorkspaceInvitation[]);
+        pendingInvitationsLoadedRef.current = true;
+      } catch (error: any) {
+        toast.error(error.message || "Lỗi khi tải lời mời workspace");
+      } finally {
+        setPendingInvitationsLoading(false);
+      }
+    },
+    [fetchWithAuth, userId],
+  );
+
+  const fetchSentInvitations = useCallback(
+    async (workspaceId: string, force = false) => {
+      if (!userId || !workspaceId) {
+        setSentInvitations([]);
+        return;
+      }
+
+      const cachedInvitations = sentInvitationsCacheRef.current[workspaceId];
+      if (!force && cachedInvitations) {
+        setSentInvitations(cachedInvitations);
+        setSentInvitationsLoading(false);
+        return;
+      }
+
+      setSentInvitationsLoading(true);
+      try {
+        const res = await fetchWithAuth(
+          `/api/v1/user/workspaces/${workspaceId}/invitations`,
+        );
+        const data = await res.json();
+        if (!res.ok) {
+          throw new Error(data.error || "Không thể tải lời mời đã gửi");
+        }
+
+        const nextInvitations = data as WorkspaceInvitation[];
+        sentInvitationsCacheRef.current[workspaceId] = nextInvitations;
+        setSentInvitations(nextInvitations);
+      } catch (error: any) {
+        toast.error(error.message || "Lỗi khi tải lời mời đã gửi");
+      } finally {
+        setSentInvitationsLoading(false);
+      }
+    },
+    [fetchWithAuth, userId],
   );
 
   const createWorkspace = useCallback(
@@ -93,16 +202,18 @@ export function useWorkspaces({ user, fetchWithAuth }: UseWorkspacesProps) {
       });
       const data = await res.json();
       if (!res.ok) {
-        throw new Error(data.error || "Không tạo được workspace");
+        throw new Error(data.error || "Khong the tao workspace");
       }
 
       const nextWorkspace = data as Workspace;
-      setWorkspaces((prev) => [...prev, nextWorkspace]);
+      await fetchWorkspaces(true);
       setCurrentWorkspaceId(nextWorkspace.id);
-      toast.success("Đã tạo workspace mới");
+      await fetchMembers(nextWorkspace.id, true);
+      await fetchSentInvitations(nextWorkspace.id, true);
+      toast.success("Da tao workspace moi");
       return nextWorkspace;
     },
-    [fetchWithAuth],
+    [fetchMembers, fetchSentInvitations, fetchWithAuth, fetchWorkspaces],
   );
 
   const inviteMember = useCallback(
@@ -117,14 +228,14 @@ export function useWorkspaces({ user, fetchWithAuth }: UseWorkspacesProps) {
       );
       const data = await res.json();
       if (!res.ok) {
-        throw new Error(data.error || "Không mời được thành viên");
+        throw new Error(data.error || "Không thể gửi lời mời");
       }
 
-      await fetchMembers(workspaceId);
-      toast.success("Đã thêm thành viên vào workspace");
-      return data as WorkspaceMember;
+      toast.success("Đã gửi lời mời. Đợi người dùng chấp nhận.");
+      await fetchSentInvitations(workspaceId, true);
+      return data as WorkspaceInvitation;
     },
-    [fetchWithAuth, fetchMembers],
+    [fetchSentInvitations, fetchWithAuth],
   );
 
   const updateMemberRole = useCallback(
@@ -139,13 +250,13 @@ export function useWorkspaces({ user, fetchWithAuth }: UseWorkspacesProps) {
       );
       const data = await res.json();
       if (!res.ok) {
-        throw new Error(data.error || "Không cập nhật được role");
+        throw new Error(data.error || "Không thể cập nhật role");
       }
 
-      await fetchMembers(workspaceId);
+      await fetchMembers(workspaceId, true);
       toast.success("Đã cập nhật role");
     },
-    [fetchWithAuth, fetchMembers],
+    [fetchMembers, fetchWithAuth],
   );
 
   const removeMember = useCallback(
@@ -158,38 +269,141 @@ export function useWorkspaces({ user, fetchWithAuth }: UseWorkspacesProps) {
       );
       const data = await res.json();
       if (!res.ok) {
-        throw new Error(data.error || "Không xóa được thành viên");
+        throw new Error(data.error || "Không thể xóa thành viên");
       }
 
-      await fetchMembers(workspaceId);
+      await fetchMembers(workspaceId, true);
       toast.success("Đã xóa thành viên khỏi workspace");
     },
-    [fetchWithAuth, fetchMembers],
+    [fetchMembers, fetchWithAuth],
+  );
+
+  const acceptInvitation = useCallback(
+    async (invitationId: string) => {
+      const res = await fetchWithAuth(
+        `/api/v1/user/workspace-invitations/${invitationId}/accept`,
+        { method: "POST" },
+      );
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || "Không thể chấp nhận lời mời");
+      }
+
+      const invitation = data as WorkspaceInvitation;
+      await fetchPendingInvitations(true);
+      await fetchWorkspaces(true);
+      setCurrentWorkspaceId(invitation.workspace_id);
+      await fetchMembers(invitation.workspace_id, true);
+      toast.success(`Đã tham gia workspace ${invitation.workspace_name}`);
+      return invitation;
+    },
+    [fetchMembers, fetchPendingInvitations, fetchWithAuth, fetchWorkspaces],
+  );
+
+  const declineInvitation = useCallback(
+    async (invitationId: string) => {
+      const res = await fetchWithAuth(
+        `/api/v1/user/workspace-invitations/${invitationId}/decline`,
+        { method: "POST" },
+      );
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || "Không thể từ chối lời mời");
+      }
+
+      await fetchPendingInvitations(true);
+      toast.success("Đã từ chối lời mời workspace");
+      return data as WorkspaceInvitation;
+    },
+    [fetchPendingInvitations, fetchWithAuth],
+  );
+
+  const cancelInvitation = useCallback(
+    async (workspaceId: string, invitationId: string) => {
+      const res = await fetchWithAuth(
+        `/api/v1/user/workspace-invitations/${invitationId}`,
+        {
+          method: "DELETE",
+        },
+      );
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || "Không thể hủy lời mời");
+      }
+
+      await fetchSentInvitations(workspaceId, true);
+      toast.success("Đã hủy lời mời workspace");
+      return data as WorkspaceInvitation;
+    },
+    [fetchSentInvitations, fetchWithAuth],
   );
 
   useEffect(() => {
-    if (!user) {
+    if (!userId) {
       setWorkspaces([]);
       setCurrentWorkspaceId("");
       setWorkspaceResolved(false);
       setMembers([]);
+      setPendingInvitations([]);
+      setSentInvitations([]);
+      workspacesLoadedRef.current = false;
+      pendingInvitationsLoadedRef.current = false;
+      membersCacheRef.current = {};
+      sentInvitationsCacheRef.current = {};
       window.localStorage.removeItem(getWorkspaceStorageKey());
       return;
     }
-    fetchWorkspaces();
-  }, [user?.id, fetchWorkspaces]);
+
+    workspacesLoadedRef.current = false;
+    pendingInvitationsLoadedRef.current = false;
+    membersCacheRef.current = {};
+    sentInvitationsCacheRef.current = {};
+    void fetchWorkspaces(true);
+    void fetchPendingInvitations(true);
+  }, [fetchPendingInvitations, fetchWorkspaces, userId]);
 
   useEffect(() => {
     if (currentWorkspaceId) {
       window.localStorage.setItem(
-        getWorkspaceStorageKey(user?.id),
+        getWorkspaceStorageKey(userId),
         currentWorkspaceId,
       );
-      fetchMembers(currentWorkspaceId);
+
+      const cachedMembers = membersCacheRef.current[currentWorkspaceId];
+      if (cachedMembers) {
+        setMembers(cachedMembers);
+        setMembersLoading(false);
+      } else {
+        void fetchMembers(currentWorkspaceId);
+      }
+
+      const currentWorkspaceRole = workspaces.find(
+        (workspace) => workspace.id === currentWorkspaceId,
+      )?.role;
+      if (currentWorkspaceRole === "owner") {
+        const cachedSentInvitations =
+          sentInvitationsCacheRef.current[currentWorkspaceId];
+        if (cachedSentInvitations) {
+          setSentInvitations(cachedSentInvitations);
+          setSentInvitationsLoading(false);
+        } else {
+          void fetchSentInvitations(currentWorkspaceId);
+        }
+      } else {
+        setSentInvitations([]);
+        setSentInvitationsLoading(false);
+      }
     } else {
       setMembers([]);
+      setSentInvitations([]);
     }
-  }, [currentWorkspaceId, fetchMembers, user?.id]);
+  }, [
+    currentWorkspaceId,
+    fetchMembers,
+    fetchSentInvitations,
+    userId,
+    workspaces,
+  ]);
 
   return {
     workspaces,
@@ -199,12 +413,21 @@ export function useWorkspaces({ user, fetchWithAuth }: UseWorkspacesProps) {
     workspaceResolved,
     members,
     membersLoading,
+    pendingInvitations,
+    pendingInvitationsLoading,
+    sentInvitations,
+    sentInvitationsLoading,
     setCurrentWorkspaceId,
     fetchWorkspaces,
     fetchMembers,
+    fetchPendingInvitations,
+    fetchSentInvitations,
     createWorkspace,
     inviteMember,
     updateMemberRole,
     removeMember,
+    acceptInvitation,
+    declineInvitation,
+    cancelInvitation,
   };
 }

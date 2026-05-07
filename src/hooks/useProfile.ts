@@ -92,6 +92,10 @@ interface UseProfileProps {
 }
 
 export function useProfile({ user, fetchWithAuth }: UseProfileProps): ProfileState & ProfileActions {
+  const userId = user?.id || "";
+  const userEmail = user?.email || "";
+  const userMetadataFullName = user?.user_metadata?.full_name || "";
+  const userMetadataAvatarUrl = user?.user_metadata?.avatar_url || "";
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [profileLoading, setProfileLoading] = useState(false);
   const [profileBootstrapLoading, setProfileBootstrapLoading] = useState(false);
@@ -114,7 +118,7 @@ export function useProfile({ user, fetchWithAuth }: UseProfileProps): ProfileSta
   }, []);
 
   const refreshCurrentProfile = useCallback(async (): Promise<UserProfile | null> => {
-    if (!user) return null;
+    if (!userId) return null;
 
     const response = await fetchWithAuth("/api/v1/user/profile");
     const data = await response.json();
@@ -125,10 +129,10 @@ export function useProfile({ user, fetchWithAuth }: UseProfileProps): ProfileSta
     }
 
     return null;
-  }, [user, fetchWithAuth]);
+  }, [fetchWithAuth, userId]);
 
   const handleUpdateProfile = useCallback(async (data: { full_name: string; avatar_url: string }) => {
-    if (!user) {
+    if (!userId) {
       toast.error("Báº¡n chÆ°a Ä‘Äƒng nháº­p!");
       return;
     }
@@ -156,10 +160,10 @@ export function useProfile({ user, fetchWithAuth }: UseProfileProps): ProfileSta
     } finally {
       setProfileLoading(false);
     }
-  }, [user, fetchWithAuth]);
+  }, [fetchWithAuth, userId]);
 
   const handleAvatarUpload = useCallback(async (file: File): Promise<string | null> => {
-    if (!user) {
+    if (!userId) {
       console.error("âŒ Avatar upload failed: No authenticated user found");
       return null;
     }
@@ -196,22 +200,22 @@ export function useProfile({ user, fetchWithAuth }: UseProfileProps): ProfileSta
       );
       return null;
     }
-  }, [user, fetchWithAuth]);
+  }, [fetchWithAuth, userId]);
 
   useEffect(() => {
     bootstrappedUserIdRef.current = null;
     setProfile(null);
     setProfileLoading(false);
     setProfileBootstrapLoading(!!user?.id);
-  }, [user?.id]);
+  }, [userId]);
 
   // Profile bootstrap and realtime sync
   useEffect(() => {
     let isActive = true;
 
     const bootstrapProfile = async () => {
-      if (!user || !isActive) {
-        if (!user) {
+      if (!userId || !isActive) {
+        if (!userId) {
           setProfile(null);
           setProfileBootstrapLoading(false);
         }
@@ -219,7 +223,7 @@ export function useProfile({ user, fetchWithAuth }: UseProfileProps): ProfileSta
       }
 
       // Skip if already bootstrapped for this user
-      if (bootstrappedUserIdRef.current === user.id) {
+      if (bootstrappedUserIdRef.current === userId) {
         return;
       }
 
@@ -263,7 +267,7 @@ export function useProfile({ user, fetchWithAuth }: UseProfileProps): ProfileSta
               const { data } = await supabase
                 .from("profiles")
                 .select("*")
-                .eq("id", user.id)
+                .eq("id", userId)
                 .maybeSingle();
               if (data) existingProfile = data;
             } catch {
@@ -281,12 +285,12 @@ export function useProfile({ user, fetchWithAuth }: UseProfileProps): ProfileSta
         if (needsProfileBootstrap) {
           // Create new profile
           const defaultName =
-            user.user_metadata?.full_name ||
-            user.email?.split("@")[0] ||
+            userMetadataFullName ||
+            userEmail.split("@")[0] ||
             "User";
           const defaultAvatar =
-            user.user_metadata?.avatar_url ||
-            `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.id}`;
+            userMetadataAvatarUrl ||
+            `https://api.dicebear.com/7.x/avataaars/svg?seed=${userId}`;
 
           const insertRes = await fetchWithAuth("/api/v1/user/profile/update", {
             method: "POST",
@@ -301,7 +305,7 @@ export function useProfile({ user, fetchWithAuth }: UseProfileProps): ProfileSta
           setProfile(existingProfile as UserProfile);
         }
 
-        bootstrappedUserIdRef.current = user.id;
+        bootstrappedUserIdRef.current = userId;
       } catch (e) {
         console.error("Profile sync error:", e);
       } finally {
@@ -316,21 +320,28 @@ export function useProfile({ user, fetchWithAuth }: UseProfileProps): ProfileSta
     return () => {
       isActive = false;
     };
-  }, [user, fetchWithAuth, shouldRetryProfileFetch]);
+  }, [
+    fetchWithAuth,
+    shouldRetryProfileFetch,
+    userEmail,
+    userId,
+    userMetadataAvatarUrl,
+    userMetadataFullName,
+  ]);
 
   // Separate effect for realtime subscription to avoid race conditions
   useEffect(() => {
-    if (!user?.id) return;
+    if (!userId) return;
 
     const channel = supabase
-      .channel(`profile-${user.id}`)
+      .channel(`profile-${userId}`)
       .on(
         "postgres_changes",
         {
           event: "UPDATE",
           schema: "public",
           table: "profiles",
-          filter: `id=eq.${user.id}`,
+          filter: `id=eq.${userId}`,
         },
         (payload) => {
           setProfile(payload.new as UserProfile);
@@ -341,7 +352,7 @@ export function useProfile({ user, fetchWithAuth }: UseProfileProps): ProfileSta
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [user]);
+  }, [userId]);
 
   return {
     profile,

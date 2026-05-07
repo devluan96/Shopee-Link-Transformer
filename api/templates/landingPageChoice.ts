@@ -47,7 +47,7 @@ export const renderChoiceLandingPage = (
   );
   const description = capitalizeFirstCharacter(
     link.custom_description?.trim() ||
-      "Noi dung dang san sang. Bam vao man hinh de tiep tuc.",
+      "Nội dung đang sẵn sàng. Bấm vào màn hình để tiếp tục.",
   );
   const imageUrl = link.custom_image_url?.trim() || "";
   const videoUrl = link.video_url?.trim() || "";

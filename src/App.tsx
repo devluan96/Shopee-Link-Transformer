@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState, Suspense, lazy } from "react";
 import { Menu, Zap } from "lucide-react";
 import { ThemeToggle } from "./components/common/ThemeToggle";
+import { NotificationBell } from "./components/common/NotificationBell";
 import { toast, Toaster } from "sonner";
 import { LinkQuota, Tab, UserLimits } from "./types";
 
@@ -18,6 +19,7 @@ import {
   useClipboard,
   useWorkspaces,
   useSecurity,
+  useNotifications,
 } from "./hooks";
 
 // Static Components
@@ -150,12 +152,29 @@ export default function App() {
     workspaceResolved,
     members,
     membersLoading,
+    pendingInvitations,
+    pendingInvitationsLoading,
+    sentInvitations,
+    sentInvitationsLoading,
     setCurrentWorkspaceId,
+    fetchPendingInvitations,
     createWorkspace,
     inviteMember,
     updateMemberRole,
     removeMember,
+    acceptInvitation,
+    declineInvitation,
+    cancelInvitation,
   } = useWorkspaces({ user, fetchWithAuth });
+
+  const {
+    notifications,
+    unreadCount,
+    notificationsLoading,
+    fetchNotifications,
+    markNotificationRead,
+    markAllNotificationsRead,
+  } = useNotifications({ user, fetchWithAuth });
 
   // Links Hook
   const {
@@ -411,7 +430,7 @@ export default function App() {
   });
 
   const refreshLinkQuota = React.useCallback(async () => {
-    if (!user) {
+    if (!user?.id) {
       setLinkQuota(null);
       return;
     }
@@ -428,10 +447,10 @@ export default function App() {
     } catch {
       setLinkQuota(null);
     }
-  }, [fetchWithAuth, user]);
+  }, [fetchWithAuth, user?.id]);
 
   const refreshUserLimits = React.useCallback(async () => {
-    if (!user) {
+    if (!user?.id) {
       setUserLimits(null);
       return;
     }
@@ -448,7 +467,7 @@ export default function App() {
     } catch {
       setUserLimits(null);
     }
-  }, [fetchWithAuth, user]);
+  }, [fetchWithAuth, user?.id]);
 
   // Derived state
   const isAdminRole =
@@ -597,6 +616,27 @@ export default function App() {
         onClose={() => setIsSidebarOpen(false)}
       />
 
+      {user && (
+        <div className="hidden lg:block">
+          <NotificationBell
+            notifications={notifications}
+            unreadCount={unreadCount}
+            loading={notificationsLoading}
+            onRefresh={() => fetchNotifications(true)}
+            onMarkRead={markNotificationRead}
+            onMarkAllRead={markAllNotificationsRead}
+            onOpenTeamWorkspace={() => {
+              setActiveTab("team");
+              void fetchPendingInvitations(true);
+            }}
+            onOpenLinks={() => {
+              setActiveTab("list");
+            }}
+            className="fixed right-8 top-6"
+          />
+        </div>
+      )}
+
       {/* Mobile Header */}
       <div className="lg:hidden bg-white dark:bg-slate-800 border-b border-gray-100 dark:border-slate-700 px-6 py-4 flex items-center justify-between sticky top-0 z-30">
         <div className="flex items-center gap-2">
@@ -610,6 +650,22 @@ export default function App() {
           </span>
         </div>
         <div className="flex items-center gap-3">
+          <NotificationBell
+            notifications={notifications}
+            unreadCount={unreadCount}
+            loading={notificationsLoading}
+            onRefresh={() => fetchNotifications(true)}
+            onMarkRead={markNotificationRead}
+            onMarkAllRead={markAllNotificationsRead}
+            onOpenTeamWorkspace={() => {
+              setActiveTab("team");
+              void fetchPendingInvitations(true);
+            }}
+            onOpenLinks={() => {
+              setActiveTab("list");
+            }}
+            className="lg:hidden"
+          />
           <ThemeToggle />
           <button
             onClick={() => setIsSidebarOpen(true)}
@@ -639,12 +695,19 @@ export default function App() {
               workspaceLoading={workspaceLoading}
               members={members}
               membersLoading={membersLoading}
+              pendingInvitations={pendingInvitations}
+              pendingInvitationsLoading={pendingInvitationsLoading}
+              sentInvitations={sentInvitations}
+              sentInvitationsLoading={sentInvitationsLoading}
               userLimits={userLimits}
               onSelectWorkspace={setCurrentWorkspaceId}
               onCreateWorkspace={createWorkspace}
               onInviteMember={inviteMember}
               onUpdateMemberRole={updateMemberRole}
               onRemoveMember={removeMember}
+              onAcceptInvitation={acceptInvitation}
+              onDeclineInvitation={declineInvitation}
+              onCancelInvitation={cancelInvitation}
             />
           )}
 

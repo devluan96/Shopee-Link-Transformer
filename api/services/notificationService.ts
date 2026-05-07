@@ -8,10 +8,30 @@ export interface NotificationSettings {
   notify_threshold: number;
 }
 
-// Get notification settings for user
+export type AppNotificationType =
+  | "workspace_invitation"
+  | "link_click_threshold";
+
+export interface AppNotification {
+  id: string;
+  user_id: string;
+  type: AppNotificationType;
+  title: string;
+  message: string;
+  link_id?: string | null;
+  workspace_id?: string | null;
+  metadata?: Record<string, unknown> | null;
+  is_read: boolean;
+  read_at?: string | null;
+  created_at: string;
+  updated_at?: string | null;
+}
+
+const CLICK_NOTIFICATION_THRESHOLDS = [5, 10, 20];
+
 export const getNotificationSettings = async (
   supabase: SupabaseClient,
-  userId: string
+  userId: string,
 ): Promise<NotificationSettings | null> => {
   const { data, error } = await supabase
     .from("user_notification_settings")
@@ -30,27 +50,152 @@ export const getNotificationSettings = async (
   };
 };
 
-// Save notification settings
 export const saveNotificationSettings = async (
   supabase: SupabaseClient,
   userId: string,
-  settings: Partial<NotificationSettings>
+  settings: Partial<NotificationSettings>,
 ): Promise<void> => {
-  const { error } = await supabase
-    .from("user_notification_settings")
-    .upsert(
-      {
-        user_id: userId,
-        ...settings,
-        updated_at: new Date().toISOString(),
-      },
-      { onConflict: "user_id" }
-    );
+  const { error } = await supabase.from("user_notification_settings").upsert(
+    {
+      user_id: userId,
+      ...settings,
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: "user_id" },
+  );
 
   if (error) throw error;
 };
 
-// Send webhook notification
+export const listAppNotifications = async (
+  supabase: SupabaseClient,
+  userId: string,
+  limit = 20,
+) => {
+  const safeLimit = Math.min(Math.max(limit, 1), 50);
+
+  const [{ data, error }, { count, error: countError }] = await Promise.all([
+    supabase
+      .from("user_notifications")
+      .select(
+        "id, user_id, type, title, message, link_id, workspace_id, metadata, is_read, read_at, created_at, updated_at",
+      )
+      .eq("user_id", userId)
+      .order("created_at", { ascending: false })
+      .limit(safeLimit),
+    supabase
+      .from("user_notifications")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", userId)
+      .eq("is_read", false),
+  ]);
+
+  if (error) throw error;
+  if (countError) throw countError;
+
+  return {
+    notifications: (data || []) as AppNotification[],
+    unreadCount: count || 0,
+  };
+};
+
+export const markNotificationRead = async (
+  supabase: SupabaseClient,
+  userId: string,
+  notificationId: string,
+) => {
+  const timestamp = new Date().toISOString();
+  const { error } = await supabase
+    .from("user_notifications")
+    .update({
+      is_read: true,
+      read_at: timestamp,
+      updated_at: timestamp,
+    })
+    .eq("id", notificationId)
+    .eq("user_id", userId);
+
+  if (error) throw error;
+};
+
+export const markAllNotificationsRead = async (
+  supabase: SupabaseClient,
+  userId: string,
+) => {
+  const timestamp = new Date().toISOString();
+  const { error } = await supabase
+    .from("user_notifications")
+    .update({
+      is_read: true,
+      read_at: timestamp,
+      updated_at: timestamp,
+    })
+    .eq("user_id", userId)
+    .eq("is_read", false);
+
+  if (error) throw error;
+};
+
+export const createAppNotification = async (
+  supabase: SupabaseClient,
+  payload: {
+    userId: string;
+    type: AppNotificationType;
+    title: string;
+    message: string;
+    linkId?: string | null;
+    workspaceId?: string | null;
+    metadata?: Record<string, unknown>;
+    uniqueEventKey?: string | null;
+  },
+) => {
+  const timestamp = new Date().toISOString();
+  const nextPayload = {
+    user_id: payload.userId,
+    type: payload.type,
+    title: payload.title,
+    message: payload.message,
+    link_id: payload.linkId || null,
+    workspace_id: payload.workspaceId || null,
+    metadata: payload.metadata || {},
+    unique_event_key: payload.uniqueEventKey || null,
+    is_read: false,
+    read_at: null,
+    updated_at: timestamp,
+  };
+
+  if (payload.uniqueEventKey) {
+    const { data: existingNotification, error: existingError } = await supabase
+      .from("user_notifications")
+      .select("id")
+      .eq("unique_event_key", payload.uniqueEventKey)
+      .maybeSingle();
+
+    if (existingError) {
+      throw existingError;
+    }
+
+    if (existingNotification?.id) {
+      const { error: updateError } = await supabase
+        .from("user_notifications")
+        .update(nextPayload)
+        .eq("id", existingNotification.id);
+
+      if (updateError) {
+        throw updateError;
+      }
+      return;
+    }
+  }
+
+  const { error } = await supabase
+    .from("user_notifications")
+    .insert(nextPayload);
+  if (error) {
+    throw error;
+  }
+};
+
 export const sendWebhookNotification = async (
   webhookUrl: string,
   payload: {
@@ -67,7 +212,7 @@ export const sendWebhookNotification = async (
       created_at: string;
     };
     user_id: string;
-  }
+  },
 ): Promise<boolean> => {
   try {
     const response = await fetch(webhookUrl, {
@@ -86,11 +231,10 @@ export const sendWebhookNotification = async (
   }
 };
 
-// Send Telegram notification
 export const sendTelegramNotification = async (
   botToken: string,
   chatId: string,
-  message: string
+  message: string,
 ): Promise<boolean> => {
   try {
     const response = await fetch(
@@ -106,7 +250,7 @@ export const sendTelegramNotification = async (
           parse_mode: "HTML",
           disable_web_page_preview: true,
         }),
-      }
+      },
     );
 
     const data = await response.json();
@@ -117,14 +261,13 @@ export const sendTelegramNotification = async (
   }
 };
 
-// Log notification attempt
 export const logNotification = async (
   supabase: SupabaseClient,
   userId: string,
   linkId: string | null,
   type: "webhook" | "telegram",
   status: "success" | "failed",
-  message?: string
+  message?: string,
 ): Promise<void> => {
   await supabase.from("notification_logs").insert({
     user_id: userId,
@@ -135,7 +278,69 @@ export const logNotification = async (
   });
 };
 
-// Main notification handler - call this when a click happens
+const maybeCreateClickThresholdNotification = async (
+  supabase: SupabaseClient,
+  userId: string,
+  linkId: string,
+  shortCode: string,
+  linkTitle?: string | null,
+) => {
+  const { count, error } = await supabase
+    .from("link_outbound_events")
+    .select("id", { count: "exact", head: true })
+    .eq("link_id", linkId);
+
+  if (error) throw error;
+
+  const totalClicks = Number(count || 0);
+  if (!CLICK_NOTIFICATION_THRESHOLDS.includes(totalClicks)) {
+    return;
+  }
+
+  const label = linkTitle?.trim() || shortCode;
+  await createAppNotification(supabase, {
+    userId,
+    type: "link_click_threshold",
+    title: `Link đạt ${totalClicks} lượt click`,
+    message: `${label} vừa đạt mốc ${totalClicks} lượt click.`,
+    linkId,
+    metadata: {
+      short_code: shortCode,
+      link_title: linkTitle || null,
+      total_clicks: totalClicks,
+      threshold: totalClicks,
+    },
+    uniqueEventKey: `link_click_threshold:${linkId}:${totalClicks}`,
+  });
+};
+
+export const createWorkspaceInvitationNotification = async (
+  supabase: SupabaseClient,
+  payload: {
+    userId: string;
+    workspaceId: string;
+    workspaceName: string;
+    invitedByName?: string | null;
+    invitationId: string;
+    role: "editor" | "viewer";
+  },
+) => {
+  const inviterLabel = payload.invitedByName?.trim() || "Owner";
+  await createAppNotification(supabase, {
+    userId: payload.userId,
+    type: "workspace_invitation",
+    title: "Bạn có lời mời vào Team Workspace",
+    message: `${inviterLabel} mời bạn vào workspace ${payload.workspaceName} với vai trò ${payload.role}.`,
+    workspaceId: payload.workspaceId,
+    metadata: {
+      invitation_id: payload.invitationId,
+      workspace_name: payload.workspaceName,
+      role: payload.role,
+    },
+    uniqueEventKey: `workspace_invitation:${payload.invitationId}`,
+  });
+};
+
 export const handleClickNotification = async (
   supabase: SupabaseClient,
   userId: string,
@@ -149,32 +354,41 @@ export const handleClickNotification = async (
     os?: string;
     source?: string;
     created_at: string;
-  }
+  },
+  options?: {
+    linkTitle?: string | null;
+  },
 ): Promise<void> => {
+  await maybeCreateClickThresholdNotification(
+    supabase,
+    userId,
+    linkId,
+    shortCode,
+    options?.linkTitle,
+  );
+
   const settings = await getNotificationSettings(supabase, userId);
-  
   if (!settings || !settings.notify_on_click) {
     return;
   }
 
-  // Check threshold (0 = notify on every click)
   if (settings.notify_threshold > 0) {
     const { count } = await supabase
       .from("clicks")
       .select("*", { count: "exact", head: true })
       .eq("link_id", linkId);
 
-    // Only notify if click count matches threshold
     if ((count || 0) % settings.notify_threshold !== 0) {
       return;
     }
   }
 
-  // Format message
-  const location = [clickData.city, clickData.country].filter(Boolean).join(", ") || "Unknown";
-  const device = [clickData.device_type, clickData.browser].filter(Boolean).join(" / ") || "Unknown";
+  const location =
+    [clickData.city, clickData.country].filter(Boolean).join(", ") || "Unknown";
+  const device =
+    [clickData.device_type, clickData.browser].filter(Boolean).join(" / ") ||
+    "Unknown";
 
-  // Send webhook if configured
   if (settings.webhook_url) {
     const success = await sendWebhookNotification(settings.webhook_url, {
       event: "link.click",
@@ -190,24 +404,22 @@ export const handleClickNotification = async (
       linkId,
       "webhook",
       success ? "success" : "failed",
-      success ? undefined : "Webhook request failed"
+      success ? undefined : "Webhook request failed",
     );
   }
 
-  // Send Telegram if configured
   if (settings.telegram_bot_token && settings.telegram_chat_id) {
-    const message = `🔥 <b>Click mới!</b>
+    const message = `Link ${shortCode} có click mới
 
-🔗 Link: <code>${shortCode}</code>
-📍 Vị trí: ${location}
-📱 Thiết bị: ${device}
-🌐 Nguồn: ${clickData.source || "Direct"}
-🕐 Thời gian: ${new Date(clickData.created_at).toLocaleString("vi-VN")}`;
+Vi tri: ${location}
+Thiet bi: ${device}
+Nguon: ${clickData.source || "Direct"}
+Thoi gian: ${new Date(clickData.created_at).toLocaleString("vi-VN")}`;
 
     const success = await sendTelegramNotification(
       settings.telegram_bot_token,
       settings.telegram_chat_id,
-      message
+      message,
     );
 
     await logNotification(
@@ -216,7 +428,7 @@ export const handleClickNotification = async (
       linkId,
       "telegram",
       success ? "success" : "failed",
-      success ? undefined : "Telegram API request failed"
+      success ? undefined : "Telegram API request failed",
     );
   }
 };

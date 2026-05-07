@@ -11,3 +11,4 @@ export { useLinkCreator, type LinkCreatorState, type LinkCreatorActions } from "
 export { useClipboard, type ClipboardState, type ClipboardActions } from "./useClipboard";
 export { useWorkspaces } from "./useWorkspaces";
 export { useSecurity } from "./useSecurity";
+export { useNotifications } from "./useNotifications";

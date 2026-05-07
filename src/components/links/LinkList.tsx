@@ -651,7 +651,7 @@ export const LinkList = ({
                   <div className="flex flex-wrap items-center gap-2 xl:justify-end">
                     <button
                       onClick={() => startEdit(l)}
-                      className="inline-flex min-w-24 items-center justify-center gap-2 rounded-[1rem] border border-slate-200 bg-slate-50 px-3 py-2.5 text-[11px] font-black uppercase tracking-[0.16em] text-slate-600 transition-all hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:border-blue-500/30 dark:hover:bg-blue-500/10 dark:hover:text-blue-200"
+                      className="inline-flex min-w-24 items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-[11px] font-black uppercase tracking-[0.16em] text-slate-600 transition-all hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:border-blue-500/30 dark:hover:bg-blue-500/10 dark:hover:text-blue-200"
                       title="Chỉnh sửa"
                     >
                       <Pencil size={14} />
@@ -659,7 +659,7 @@ export const LinkList = ({
                     </button>
                     <button
                       onClick={() => setDeletingLink(l)}
-                      className="inline-flex min-w-24 items-center justify-center gap-2 rounded-[1rem] border border-slate-200 bg-slate-50 px-3 py-2.5 text-[11px] font-black uppercase tracking-[0.16em] text-slate-600 transition-all hover:border-red-200 hover:bg-red-50 hover:text-red-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:border-red-500/30 dark:hover:bg-red-500/10 dark:hover:text-red-200"
+                      className="inline-flex min-w-24 items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-[11px] font-black uppercase tracking-[0.16em] text-slate-600 transition-all hover:border-red-200 hover:bg-red-50 hover:text-red-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:border-red-500/30 dark:hover:bg-red-500/10 dark:hover:text-red-200"
                       title="Xóa link"
                     >
                       <Trash2 size={14} />
@@ -672,13 +672,13 @@ export const LinkList = ({
                           linkId,
                         )
                       }
-                      className="inline-flex min-w-30 items-center justify-center gap-2 rounded-[1rem] bg-slate-950 px-4 py-2.5 text-[11px] font-black uppercase tracking-[0.16em] text-white transition-all hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-200"
+                      className="inline-flex min-w-30 items-center justify-center gap-2 rounded-2xl bg-slate-950 px-4 py-2.5 text-[11px] font-black uppercase tracking-[0.16em] text-white transition-all hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-200"
                     >
                       {copiedId === linkId ? "DONE" : "COPY"}
                     </button>
                     <button
                       onClick={() => setQrLink(l)}
-                      className="inline-flex min-w-20 items-center justify-center gap-2 rounded-[1rem] border border-fuchsia-200/70 bg-fuchsia-50 px-3 py-2.5 text-[11px] font-black uppercase tracking-[0.16em] text-fuchsia-700 transition-all hover:bg-fuchsia-100 dark:border-fuchsia-500/20 dark:bg-fuchsia-500/10 dark:text-fuchsia-200 dark:hover:bg-fuchsia-500/20"
+                      className="inline-flex min-w-20 items-center justify-center gap-2 rounded-2xl border border-fuchsia-200/70 bg-fuchsia-50 px-3 py-2.5 text-[11px] font-black uppercase tracking-[0.16em] text-fuchsia-700 transition-all hover:bg-fuchsia-100 dark:border-fuchsia-500/20 dark:bg-fuchsia-500/10 dark:text-fuchsia-200 dark:hover:bg-fuchsia-500/20"
                       title="Mã QR"
                     >
                       <QrCode size={15} />
@@ -693,7 +693,7 @@ export const LinkList = ({
                             "noopener,noreferrer",
                           )
                         }
-                        className="inline-flex min-w-24 items-center justify-center rounded-[1rem] border border-amber-200/70 bg-amber-50 px-3 py-2.5 text-[11px] font-black uppercase tracking-[0.16em] text-amber-700 transition-all hover:bg-amber-100 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-200 dark:hover:bg-amber-500/20"
+                        className="inline-flex min-w-24 items-center justify-center rounded-2xl border border-amber-200/70 bg-amber-50 px-3 py-2.5 text-[11px] font-black uppercase tracking-[0.16em] text-amber-700 transition-all hover:bg-amber-100 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-200 dark:hover:bg-amber-500/20"
                         title="Mo landing page Choice Mode"
                       >
                         Choice

@@ -1,6 +1,12 @@
 import { SupabaseClient } from "../config/supabase.js";
+import { createWorkspaceInvitationNotification } from "./notificationService.js";
 
 export type WorkspaceRole = "owner" | "editor" | "viewer";
+export type WorkspaceInvitationStatus =
+  | "pending"
+  | "accepted"
+  | "declined"
+  | "cancelled";
 
 export interface WorkspaceSummary {
   id: string;
@@ -22,6 +28,22 @@ export interface WorkspaceMemberSummary {
   joined_at?: string | null;
 }
 
+export interface WorkspaceInvitationSummary {
+  id: string;
+  workspace_id: string;
+  workspace_name: string;
+  workspace_description?: string | null;
+  invited_user_id: string;
+  invited_email: string;
+  role: Exclude<WorkspaceRole, "owner">;
+  status: WorkspaceInvitationStatus;
+  invited_by: string;
+  invited_by_name?: string | null;
+  invited_by_email?: string | null;
+  created_at: string;
+  responded_at?: string | null;
+}
+
 interface ProfileSummary {
   id: string;
   full_name?: string | null;
@@ -29,7 +51,136 @@ interface ProfileSummary {
   avatar_url?: string | null;
 }
 
+interface WorkspaceInvitationRow {
+  id: string;
+  workspace_id: string;
+  invited_user_id: string;
+  invited_email: string;
+  role: Exclude<WorkspaceRole, "owner">;
+  status: WorkspaceInvitationStatus;
+  invited_by: string;
+  created_at: string;
+  responded_at?: string | null;
+}
+
 const PERSONAL_WORKSPACE_SLUG_PREFIX = "personal-";
+
+const getProfileByEmail = async (supabase: SupabaseClient, email: string) => {
+  const normalizedEmail = email.trim().toLowerCase();
+  const { data: profile, error } = await supabase
+    .from("profiles")
+    .select("id, full_name, email, avatar_url")
+    .ilike("email", normalizedEmail)
+    .maybeSingle();
+
+  if (error) throw error;
+  if (!profile?.id) {
+    throw new Error("Không tìm thấy người dùng này.");
+  }
+
+  return profile as ProfileSummary & { id: string; email?: string | null };
+};
+
+const mapInvitationRows = async (
+  supabase: SupabaseClient,
+  invitationRows: WorkspaceInvitationRow[],
+): Promise<WorkspaceInvitationSummary[]> => {
+  if (!invitationRows.length) return [];
+
+  const workspaceIds = Array.from(
+    new Set(invitationRows.map((item) => item.workspace_id).filter(Boolean)),
+  );
+  const inviterIds = Array.from(
+    new Set(invitationRows.map((item) => item.invited_by).filter(Boolean)),
+  );
+
+  const [
+    { data: workspaces, error: workspacesError },
+    { data: profiles, error: profilesError },
+  ] = await Promise.all([
+    supabase
+      .from("workspaces")
+      .select("id, name, description")
+      .in("id", workspaceIds),
+    inviterIds.length
+      ? supabase
+          .from("profiles")
+          .select("id, full_name, email")
+          .in("id", inviterIds)
+      : Promise.resolve({ data: [], error: null }),
+  ]);
+
+  if (workspacesError) throw workspacesError;
+  if (profilesError) throw profilesError;
+
+  const workspaceMap = new Map<
+    string,
+    { name: string; description?: string | null }
+  >(
+    (workspaces || []).map((workspace: any) => [
+      workspace.id,
+      {
+        name: workspace.name,
+        description: workspace.description ?? null,
+      },
+    ]),
+  );
+  const profileMap = new Map<
+    string,
+    { full_name?: string | null; email?: string | null }
+  >(
+    (profiles || []).map((profile: any) => [
+      profile.id,
+      {
+        full_name: profile.full_name ?? null,
+        email: profile.email ?? null,
+      },
+    ]),
+  );
+
+  return invitationRows
+    .map((item) => {
+      const workspace = workspaceMap.get(item.workspace_id);
+      if (!workspace) return null;
+      const inviter = profileMap.get(item.invited_by);
+
+      return {
+        id: item.id,
+        workspace_id: item.workspace_id,
+        workspace_name: workspace.name,
+        workspace_description: workspace.description ?? null,
+        invited_user_id: item.invited_user_id,
+        invited_email: item.invited_email,
+        role: item.role,
+        status: item.status,
+        invited_by: item.invited_by,
+        invited_by_name: inviter?.full_name ?? null,
+        invited_by_email: inviter?.email ?? null,
+        created_at: item.created_at,
+        responded_at: item.responded_at ?? null,
+      } satisfies WorkspaceInvitationSummary;
+    })
+    .filter(Boolean) as WorkspaceInvitationSummary[];
+};
+
+export const ensureWorkspaceMembership = async (
+  supabase: SupabaseClient,
+  workspaceId: string,
+  userId: string,
+  role: WorkspaceRole,
+) => {
+  const { error } = await supabase.from("workspace_members").upsert(
+    {
+      workspace_id: workspaceId,
+      user_id: userId,
+      role,
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: "workspace_id,user_id" },
+  );
+
+  if (error) throw error;
+};
 
 export const ensurePersonalWorkspace = async (
   supabase: SupabaseClient,
@@ -76,25 +227,6 @@ export const ensurePersonalWorkspace = async (
   return created;
 };
 
-export const ensureWorkspaceMembership = async (
-  supabase: SupabaseClient,
-  workspaceId: string,
-  userId: string,
-  role: WorkspaceRole,
-) => {
-  const { error } = await supabase.from("workspace_members").upsert(
-    {
-      workspace_id: workspaceId,
-      user_id: userId,
-      role,
-      updated_at: new Date().toISOString(),
-    },
-    { onConflict: "workspace_id,user_id" },
-  );
-
-  if (error) throw error;
-};
-
 export const listUserWorkspaces = async (
   supabase: SupabaseClient,
   userId: string,
@@ -136,7 +268,13 @@ export const createWorkspace = async (
     throw new Error("Tên workspace không được để trống.");
   }
 
-  const slugBase = `${name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "workspace"}-${Date.now().toString(36)}`;
+  const slugBase = `${
+    name
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "") || "workspace"
+  }-${Date.now().toString(36)}`;
+
   const { data, error } = await supabase
     .from("workspaces")
     .insert({
@@ -150,6 +288,7 @@ export const createWorkspace = async (
     .single();
 
   if (error) throw error;
+
   await ensureWorkspaceMembership(supabase, data.id, userId, "owner");
 
   return {
@@ -166,7 +305,7 @@ const assertWorkspaceOwner = async (
   const accessMap = await getWorkspaceAccessMap(supabase, userId);
   const role = accessMap.get(workspaceId);
   if (role !== "owner") {
-    throw new Error("Chỉ owner mới quản lý thành viên workspace.");
+    throw new Error("Chỉ owner mới có thể quản lý thành viên workspace.");
   }
 };
 
@@ -187,6 +326,7 @@ export const listWorkspaceMembers = async (
     .order("created_at", { ascending: true });
 
   if (error) throw error;
+
   const memberRows = data || [];
   const memberIds = memberRows.map((item: any) => item.user_id).filter(Boolean);
 
@@ -198,7 +338,10 @@ export const listWorkspaceMembers = async (
   if (profilesError) throw profilesError;
 
   const profileMap = new Map<string, ProfileSummary>(
-    (profiles || []).map((profile: any) => [profile.id, profile as ProfileSummary]),
+    (profiles || []).map((profile: any) => [
+      profile.id,
+      profile as ProfileSummary,
+    ]),
   );
 
   return memberRows.map((item: any) => {
@@ -213,6 +356,43 @@ export const listWorkspaceMembers = async (
       joined_at: item.created_at ?? null,
     };
   });
+};
+
+export const listPendingWorkspaceInvitations = async (
+  supabase: SupabaseClient,
+  userId: string,
+): Promise<WorkspaceInvitationSummary[]> => {
+  const { data, error } = await supabase
+    .from("workspace_invitations")
+    .select(
+      "id, workspace_id, invited_user_id, invited_email, role, status, invited_by, created_at, responded_at",
+    )
+    .eq("invited_user_id", userId)
+    .eq("status", "pending")
+    .order("created_at", { ascending: false });
+
+  if (error) throw error;
+  return mapInvitationRows(supabase, (data || []) as WorkspaceInvitationRow[]);
+};
+
+export const listSentWorkspaceInvitations = async (
+  supabase: SupabaseClient,
+  workspaceId: string,
+  userId: string,
+): Promise<WorkspaceInvitationSummary[]> => {
+  await assertWorkspaceOwner(supabase, workspaceId, userId);
+
+  const { data, error } = await supabase
+    .from("workspace_invitations")
+    .select(
+      "id, workspace_id, invited_user_id, invited_email, role, status, invited_by, created_at, responded_at",
+    )
+    .eq("workspace_id", workspaceId)
+    .eq("status", "pending")
+    .order("created_at", { ascending: false });
+
+  if (error) throw error;
+  return mapInvitationRows(supabase, (data || []) as WorkspaceInvitationRow[]);
 };
 
 export const inviteWorkspaceMember = async (
@@ -230,39 +410,236 @@ export const inviteWorkspaceMember = async (
   if (!email) {
     throw new Error("Email thành viên không được để trống.");
   }
-
-  const { data: profile, error: profileError } = await supabase
-    .from("profiles")
-    .select("id, full_name, email, avatar_url")
-    .ilike("email", email)
-    .maybeSingle();
-
-  if (profileError) throw profileError;
-  if (!profile?.id) {
-    throw new Error("Không tìm thấy user với email này.");
+  if (payload.role === "owner") {
+    throw new Error("Không thể mời role owner.");
   }
 
-  await ensureWorkspaceMembership(supabase, workspaceId, profile.id, payload.role);
+  const profile = await getProfileByEmail(supabase, email);
+  if (profile.id === actorUserId) {
+    throw new Error("Không thể mời chính bạn vào workspace.");
+  }
 
-  const { error } = await supabase
+  const { data: existingMember, error: existingMemberError } = await supabase
     .from("workspace_members")
-    .update({
-      invited_by: actorUserId,
-      updated_at: new Date().toISOString(),
-    })
+    .select("user_id")
     .eq("workspace_id", workspaceId)
-    .eq("user_id", profile.id);
+    .eq("user_id", profile.id)
+    .maybeSingle();
 
-  if (error) throw error;
+  if (existingMemberError) throw existingMemberError;
+  if (existingMember?.user_id) {
+    throw new Error("Người dùng này đã là thành viên của workspace.");
+  }
 
+  const { data: existingInvite, error: existingInviteError } = await supabase
+    .from("workspace_invitations")
+    .select(
+      "id, workspace_id, invited_user_id, invited_email, role, status, invited_by, created_at, responded_at",
+    )
+    .eq("workspace_id", workspaceId)
+    .eq("invited_user_id", profile.id)
+    .eq("status", "pending")
+    .maybeSingle();
+
+  if (existingInviteError) throw existingInviteError;
+
+  const timestamp = new Date().toISOString();
+  let invitationRow: WorkspaceInvitationRow;
+
+  if (existingInvite?.id) {
+    const { data, error } = await supabase
+      .from("workspace_invitations")
+      .update({
+        invited_email: email,
+        role: payload.role,
+        invited_by: actorUserId,
+        updated_at: timestamp,
+        responded_at: null,
+      })
+      .eq("id", existingInvite.id)
+      .select(
+        "id, workspace_id, invited_user_id, invited_email, role, status, invited_by, created_at, responded_at",
+      )
+      .single();
+
+    if (error) throw error;
+    invitationRow = data as WorkspaceInvitationRow;
+  } else {
+    const { data, error } = await supabase
+      .from("workspace_invitations")
+      .insert({
+        workspace_id: workspaceId,
+        invited_user_id: profile.id,
+        invited_email: email,
+        role: payload.role,
+        status: "pending",
+        invited_by: actorUserId,
+      })
+      .select(
+        "id, workspace_id, invited_user_id, invited_email, role, status, invited_by, created_at, responded_at",
+      )
+      .single();
+
+    if (error) throw error;
+    invitationRow = data as WorkspaceInvitationRow;
+  }
+
+  const [invitation] = await mapInvitationRows(supabase, [invitationRow]);
+  if (invitation) {
+    await createWorkspaceInvitationNotification(supabase, {
+      userId: invitation.invited_user_id,
+      workspaceId: invitation.workspace_id,
+      workspaceName: invitation.workspace_name,
+      invitedByName: invitation.invited_by_name,
+      invitationId: invitation.id,
+      role: invitation.role,
+    });
+  }
+  return invitation;
+};
+
+export const acceptWorkspaceInvitation = async (
+  supabase: SupabaseClient,
+  invitationId: string,
+  userId: string,
+) => {
+  const { data: invitation, error: invitationError } = await supabase
+    .from("workspace_invitations")
+    .select(
+      "id, workspace_id, invited_user_id, invited_email, role, status, invited_by, created_at, responded_at",
+    )
+    .eq("id", invitationId)
+    .maybeSingle();
+
+  if (invitationError) throw invitationError;
+  if (!invitation) {
+    throw new Error("Lời mời không tồn tại.");
+  }
+  if (invitation.invited_user_id !== userId) {
+    throw new Error("Bạn không có quyền xử lý lời mời này.");
+  }
+  if (invitation.status !== "pending") {
+    throw new Error("Lời mời này đã được xử lý.");
+  }
+
+  await ensureWorkspaceMembership(
+    supabase,
+    invitation.workspace_id,
+    userId,
+    invitation.role,
+  );
+
+  const respondedAt = new Date().toISOString();
+  const { error: updateError } = await supabase
+    .from("workspace_invitations")
+    .update({
+      status: "accepted",
+      responded_at: respondedAt,
+      updated_at: respondedAt,
+    })
+    .eq("id", invitationId);
+
+  if (updateError) throw updateError;
+
+  const [mapped] = await mapInvitationRows(supabase, [
+    invitation as WorkspaceInvitationRow,
+  ]);
   return {
-    workspace_id: workspaceId,
-    user_id: profile.id,
-    role: payload.role,
-    full_name: profile.full_name ?? null,
-    email: profile.email ?? null,
-    avatar_url: profile.avatar_url ?? null,
-  } satisfies WorkspaceMemberSummary;
+    ...mapped,
+    status: "accepted" as const,
+    responded_at: respondedAt,
+  } satisfies WorkspaceInvitationSummary;
+};
+
+export const declineWorkspaceInvitation = async (
+  supabase: SupabaseClient,
+  invitationId: string,
+  userId: string,
+) => {
+  const { data: invitation, error: invitationError } = await supabase
+    .from("workspace_invitations")
+    .select(
+      "id, workspace_id, invited_user_id, invited_email, role, status, invited_by, created_at, responded_at",
+    )
+    .eq("id", invitationId)
+    .maybeSingle();
+
+  if (invitationError) throw invitationError;
+  if (!invitation) {
+    throw new Error("Lời mời không tồn tại.");
+  }
+  if (invitation.invited_user_id !== userId) {
+    throw new Error("Bạn không có quyền xử lý lời mời này.");
+  }
+  if (invitation.status !== "pending") {
+    throw new Error("Lời mời này đã được xử lý.");
+  }
+
+  const respondedAt = new Date().toISOString();
+  const { error: updateError } = await supabase
+    .from("workspace_invitations")
+    .update({
+      status: "declined",
+      responded_at: respondedAt,
+      updated_at: respondedAt,
+    })
+    .eq("id", invitationId);
+
+  if (updateError) throw updateError;
+
+  const [mapped] = await mapInvitationRows(supabase, [
+    invitation as WorkspaceInvitationRow,
+  ]);
+  return {
+    ...mapped,
+    status: "declined" as const,
+    responded_at: respondedAt,
+  } satisfies WorkspaceInvitationSummary;
+};
+
+export const cancelWorkspaceInvitation = async (
+  supabase: SupabaseClient,
+  invitationId: string,
+  userId: string,
+) => {
+  const { data: invitation, error: invitationError } = await supabase
+    .from("workspace_invitations")
+    .select(
+      "id, workspace_id, invited_user_id, invited_email, role, status, invited_by, created_at, responded_at",
+    )
+    .eq("id", invitationId)
+    .maybeSingle();
+
+  if (invitationError) throw invitationError;
+  if (!invitation) {
+    throw new Error("Loi moi khong ton tai.");
+  }
+  if (invitation.status !== "pending") {
+    throw new Error("Loi moi nay da duoc xu ly.");
+  }
+
+  await assertWorkspaceOwner(supabase, invitation.workspace_id, userId);
+
+  const respondedAt = new Date().toISOString();
+  const { error: updateError } = await supabase
+    .from("workspace_invitations")
+    .update({
+      status: "cancelled",
+      responded_at: respondedAt,
+      updated_at: respondedAt,
+    })
+    .eq("id", invitationId);
+
+  if (updateError) throw updateError;
+
+  const [mapped] = await mapInvitationRows(supabase, [
+    invitation as WorkspaceInvitationRow,
+  ]);
+  return {
+    ...mapped,
+    status: "cancelled" as const,
+    responded_at: respondedAt,
+  } satisfies WorkspaceInvitationSummary;
 };
 
 export const updateWorkspaceMemberRole = async (
