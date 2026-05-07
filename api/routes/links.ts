@@ -6,6 +6,7 @@ import { LINK_DAILY_LIMITS } from "../config/constants.js";
 import * as linkService from "../services/linkService.js";
 import * as workspaceService from "../services/workspaceService.js";
 import * as featureLimitService from "../services/featureLimitService.js";
+import * as notificationService from "../services/notificationService.js";
 import {
   attachTrackedSourcesToLinks,
   fetchOutboundEventsForLinkIds,
@@ -106,9 +107,7 @@ const defaultLinkRouteDeps: LinkRouteDeps = {
   deleteLink: linkService.deleteLink,
 };
 
-export const createConvertHandler = (
-  deps: Partial<LinkRouteDeps> = {},
-) => {
+export const createConvertHandler = (deps: Partial<LinkRouteDeps> = {}) => {
   const resolvedDeps = { ...defaultLinkRouteDeps, ...deps };
 
   return async (req: AuthenticatedRequest, res: any) => {
@@ -162,9 +161,7 @@ export const createConvertHandler = (
   };
 };
 
-export const createDeleteLinkHandler = (
-  deps: Partial<LinkRouteDeps> = {},
-) => {
+export const createDeleteLinkHandler = (deps: Partial<LinkRouteDeps> = {}) => {
   const resolvedDeps = { ...defaultLinkRouteDeps, ...deps };
 
   return async (req: AuthenticatedRequest, res: any) => {
@@ -186,90 +183,136 @@ export const createDeleteLinkHandler = (
 };
 
 // POST /api/v1/convert - Create new link
-router.post("/convert", authenticate, async (req: AuthenticatedRequest, res) => {
-  try {
-    const supabase = getSupabase();
-    const userId = req.authUser?.id;
-    const canUseCustomDomain =
-      req.authProfile?.role === "admin" ||
-      req.authProfile?.subscription_plan === "yearly";
-    if (!userId) {
-      return res.status(400).json({ error: "Missing userId" });
+router.post(
+  "/convert",
+  authenticate,
+  async (req: AuthenticatedRequest, res) => {
+    try {
+      const supabase = getSupabase();
+      const userId = req.authUser?.id;
+      const canUseCustomDomain =
+        req.authProfile?.role === "admin" ||
+        req.authProfile?.subscription_plan === "yearly";
+      if (!userId) {
+        return res.status(400).json({ error: "Missing userId" });
+      }
+
+      const quota = await getDailyLinkQuota(supabase, req, userId);
+      if (!quota.canCreate) {
+        return res.status(429).json({
+          error:
+            quota.dailyLimit === 0
+              ? "Gói hiện tại chưa được phép tạo link."
+              : `Bạn đã dùng hết ${quota.dailyLimit} lượt tạo link hôm nay.`,
+          quota,
+        });
+      }
+
+      const payload = {
+        ...req.body,
+        customDomain: canUseCustomDomain ? req.body?.customDomain : undefined,
+      };
+
+      if (payload.secondaryUrl?.trim() && !payload.videoUrl?.trim()) {
+        return res.status(400).json({
+          error: "Link bước 2 chỉ được dùng khi landing page có video.",
+        });
+      }
+
+      const featureLimits = featureLimitService.getFeatureLimitsForProfile(
+        req.authProfile || undefined,
+      );
+      if (payload.abTestEnabled && !featureLimits.canUseAbTesting) {
+        return res.status(403).json({
+          error: "A/B testing chỉ mở cho gói năm hoặc admin.",
+        });
+      }
+
+      const link = await linkService.createLink(supabase, userId, payload);
+      return res.json(link);
+    } catch (e: any) {
+      console.error("❌ Convert error:", e);
+      return res.status(400).json({ error: e.message || "Convert failed" });
     }
+  },
+);
 
-    const quota = await getDailyLinkQuota(supabase, req, userId);
-    if (!quota.canCreate) {
-      return res.status(429).json({
-        error:
-          quota.dailyLimit === 0
-            ? "Gói hiện tại chưa được phép tạo link."
-            : `Bạn đã dùng hết ${quota.dailyLimit} lượt tạo link hôm nay.`,
-        quota,
-      });
+router.get(
+  "/user/link-quota",
+  authenticate,
+  async (req: AuthenticatedRequest, res) => {
+    try {
+      const supabase = getSupabase();
+      const userId = req.authUser?.id;
+
+      if (!userId) {
+        return res.status(400).json({ error: "Missing userId" });
+      }
+
+      const quota = await getDailyLinkQuota(supabase, req, userId);
+      if (
+        quota.dailyLimit !== null &&
+        quota.dailyLimit > 0 &&
+        quota.remainingToday <= 1
+      ) {
+        await notificationService.createQuotaWarningNotification(supabase, {
+          userId,
+          quotaKey: "link_daily",
+          title: "Sắp hết quota tạo link",
+          message: `Bạn còn ${quota.remainingToday} lượt tạo link hôm nay.`,
+          uniqueSuffix: `${new Date().toISOString().slice(0, 10)}:${quota.remainingToday}`,
+          metadata: {
+            remaining: quota.remainingToday,
+            total: quota.dailyLimit,
+            used: quota.usedToday,
+          },
+        });
+      }
+      return res.json(quota);
+    } catch (e: any) {
+      return res
+        .status(500)
+        .json({ error: e.message || "Failed to fetch quota" });
     }
-
-    const payload = {
-      ...req.body,
-      customDomain: canUseCustomDomain ? req.body?.customDomain : undefined,
-    };
-
-    if (payload.secondaryUrl?.trim() && !payload.videoUrl?.trim()) {
-      return res.status(400).json({
-        error: "Link bước 2 chỉ được dùng khi landing page có video.",
-      });
-    }
-
-    const featureLimits = featureLimitService.getFeatureLimitsForProfile(
-      req.authProfile || undefined,
-    );
-    if (payload.abTestEnabled && !featureLimits.canUseAbTesting) {
-      return res.status(403).json({
-        error: "A/B testing chỉ mở cho gói năm hoặc admin.",
-      });
-    }
-
-    const link = await linkService.createLink(supabase, userId, payload);
-    return res.json(link);
-  } catch (e: any) {
-    console.error("❌ Convert error:", e);
-    return res.status(400).json({ error: e.message || "Convert failed" });
-  }
-});
-
-router.get("/user/link-quota", authenticate, async (req: AuthenticatedRequest, res) => {
-  try {
-    const supabase = getSupabase();
-    const userId = req.authUser?.id;
-
-    if (!userId) {
-      return res.status(400).json({ error: "Missing userId" });
-    }
-
-    const quota = await getDailyLinkQuota(supabase, req, userId);
-    return res.json(quota);
-  } catch (e: any) {
-    return res.status(500).json({ error: e.message || "Failed to fetch quota" });
-  }
-});
+  },
+);
 
 // GET /api/v1/user/links - Get user's links
-router.get("/user/links", authenticate, async (req: AuthenticatedRequest, res) => {
-  try {
-    const supabase = getSupabase();
-    const userId = req.authUser?.id;
-    if (!userId) {
-      return res.status(400).json({ error: "Missing userId" });
-    }
+router.get(
+  "/user/links",
+  authenticate,
+  async (req: AuthenticatedRequest, res) => {
+    try {
+      const supabase = getSupabase();
+      const userId = req.authUser?.id;
+      if (!userId) {
+        return res.status(400).json({ error: "Missing userId" });
+      }
 
-    const workspaceId =
-      typeof req.query.workspaceId === "string" ? req.query.workspaceId : undefined;
-    const links = await linkService.getUserLinks(supabase, userId, workspaceId);
-    const linksWithSources = await attachTrackedSourcesToLinks(supabase, links);
-    return res.json(linksWithSources);
-  } catch (e: any) {
-    return res.status(500).json({ error: e.message });
-  }
-});
+      const workspaceId =
+        typeof req.query.workspaceId === "string"
+          ? req.query.workspaceId
+          : undefined;
+      const links = await linkService.getUserLinks(
+        supabase,
+        userId,
+        workspaceId,
+      );
+      await notificationService.maybeCreateLinkExpiryNotifications(
+        supabase,
+        userId,
+        links,
+      );
+      const linksWithSources = await attachTrackedSourcesToLinks(
+        supabase,
+        links,
+      );
+      return res.json(linksWithSources);
+    } catch (e: any) {
+      return res.status(500).json({ error: e.message });
+    }
+  },
+);
 
 // PATCH /api/v1/user/links/:id - Update link
 router.patch(
@@ -338,7 +381,12 @@ router.patch(
         });
       }
 
-      const link = await linkService.updateLink(supabase, linkId, userId, updates);
+      const link = await linkService.updateLink(
+        supabase,
+        linkId,
+        userId,
+        updates,
+      );
       return res.json(link);
     } catch (e: any) {
       return res.status(400).json({ error: e.message });

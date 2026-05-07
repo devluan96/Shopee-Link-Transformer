@@ -632,6 +632,9 @@ export default function App() {
             onOpenLinks={() => {
               setActiveTab("list");
             }}
+            onOpenPricing={() => {
+              setActiveTab("pricing");
+            }}
             className="fixed right-8 top-6"
           />
         </div>
@@ -663,6 +666,9 @@ export default function App() {
             }}
             onOpenLinks={() => {
               setActiveTab("list");
+            }}
+            onOpenPricing={() => {
+              setActiveTab("pricing");
             }}
             className="lg:hidden"
           />

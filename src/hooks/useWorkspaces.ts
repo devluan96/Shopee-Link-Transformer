@@ -6,6 +6,7 @@ import {
   WorkspaceMember,
   WorkspaceRole,
 } from "@/src/types";
+import { supabase } from "@/src/lib/supabase";
 import { toast } from "sonner";
 
 interface UseWorkspacesProps {
@@ -44,6 +45,7 @@ export function useWorkspaces({ user, fetchWithAuth }: UseWorkspacesProps) {
   const sentInvitationsCacheRef = useRef<Record<string, WorkspaceInvitation[]>>(
     {},
   );
+  const currentWorkspaceIdRef = useRef("");
 
   const currentWorkspace = useMemo(
     () =>
@@ -339,6 +341,10 @@ export function useWorkspaces({ user, fetchWithAuth }: UseWorkspacesProps) {
   );
 
   useEffect(() => {
+    currentWorkspaceIdRef.current = currentWorkspaceId;
+  }, [currentWorkspaceId]);
+
+  useEffect(() => {
     if (!userId) {
       setWorkspaces([]);
       setCurrentWorkspaceId("");
@@ -361,6 +367,56 @@ export function useWorkspaces({ user, fetchWithAuth }: UseWorkspacesProps) {
     void fetchWorkspaces(true);
     void fetchPendingInvitations(true);
   }, [fetchPendingInvitations, fetchWorkspaces, userId]);
+
+  useEffect(() => {
+    if (!userId) return;
+
+    const channel = supabase
+      .channel(`workspace-sync:${userId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "workspace_members",
+          filter: `user_id=eq.${userId}`,
+        },
+        async () => {
+          workspacesLoadedRef.current = false;
+          membersCacheRef.current = {};
+          sentInvitationsCacheRef.current = {};
+          await fetchWorkspaces(true);
+
+          const nextWorkspaceId = currentWorkspaceIdRef.current;
+          if (nextWorkspaceId) {
+            await fetchMembers(nextWorkspaceId, true);
+          }
+        },
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "workspace_invitations",
+          filter: `invited_user_id=eq.${userId}`,
+        },
+        async () => {
+          pendingInvitationsLoadedRef.current = false;
+          await fetchPendingInvitations(true);
+        },
+      )
+      .subscribe();
+
+    return () => {
+      void supabase.removeChannel(channel);
+    };
+  }, [
+    fetchMembers,
+    fetchPendingInvitations,
+    fetchWorkspaces,
+    userId,
+  ]);
 
   useEffect(() => {
     if (currentWorkspaceId) {

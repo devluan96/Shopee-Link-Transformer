@@ -10,7 +10,13 @@ export interface NotificationSettings {
 
 export type AppNotificationType =
   | "workspace_invitation"
-  | "link_click_threshold";
+  | "workspace_invitation_response"
+  | "workspace_membership_updated"
+  | "workspace_membership_removed"
+  | "link_click_threshold"
+  | "link_expiring_soon"
+  | "quota_warning"
+  | "subscription_expiring";
 
 export interface AppNotification {
   id: string;
@@ -28,6 +34,8 @@ export interface AppNotification {
 }
 
 const CLICK_NOTIFICATION_THRESHOLDS = [5, 10, 20];
+const LINK_EXPIRY_WARNING_WINDOW_MS = 24 * 60 * 60 * 1000;
+const SUBSCRIPTION_EXPIRY_WARNING_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
 
 export const getNotificationSettings = async (
   supabase: SupabaseClient,
@@ -322,7 +330,7 @@ export const createWorkspaceInvitationNotification = async (
     workspaceName: string;
     invitedByName?: string | null;
     invitationId: string;
-    role: "editor" | "viewer";
+    role: string;
   },
 ) => {
   const inviterLabel = payload.invitedByName?.trim() || "Owner";
@@ -338,6 +346,193 @@ export const createWorkspaceInvitationNotification = async (
       role: payload.role,
     },
     uniqueEventKey: `workspace_invitation:${payload.invitationId}`,
+  });
+};
+
+export const createWorkspaceInvitationResponseNotification = async (
+  supabase: SupabaseClient,
+  payload: {
+    userId: string;
+    workspaceId: string;
+    workspaceName: string;
+    memberName?: string | null;
+    memberEmail?: string | null;
+    invitationId: string;
+    action: "accepted" | "declined";
+    role: string;
+  },
+) => {
+  const memberLabel =
+    payload.memberName?.trim() || payload.memberEmail?.trim() || "Thanh vien";
+  const actionLabel =
+    payload.action === "accepted" ? "Đã chấp Nhận" : "Đã từ chối";
+
+  await createAppNotification(supabase, {
+    userId: payload.userId,
+    type: "workspace_invitation_response",
+    title:
+      payload.action === "accepted"
+        ? "Lời mời workspace đã được chấp nhận"
+        : "Lời mời workspace đã bị từ chối",
+    message: `${memberLabel} ${actionLabel} lời mời vào workspace ${payload.workspaceName} (${payload.role}).`,
+    workspaceId: payload.workspaceId,
+    metadata: {
+      invitation_id: payload.invitationId,
+      workspace_name: payload.workspaceName,
+      member_name: payload.memberName || null,
+      member_email: payload.memberEmail || null,
+      role: payload.role,
+      action: payload.action,
+    },
+    uniqueEventKey: `workspace_invitation_response:${payload.invitationId}:${payload.action}`,
+  });
+};
+
+export const createWorkspaceMembershipUpdatedNotification = async (
+  supabase: SupabaseClient,
+  payload: {
+    userId: string;
+    workspaceId: string;
+    workspaceName: string;
+    role: "editor" | "viewer";
+  },
+) => {
+  await createAppNotification(supabase, {
+    userId: payload.userId,
+    type: "workspace_membership_updated",
+    title: "Vai trò workspace đã thay đổi",
+    message: `Vai trò của bạn trong workspace ${payload.workspaceName} đã được đổi thành ${payload.role}.`,
+    workspaceId: payload.workspaceId,
+    metadata: {
+      workspace_name: payload.workspaceName,
+      role: payload.role,
+    },
+  });
+};
+
+export const createWorkspaceMembershipRemovedNotification = async (
+  supabase: SupabaseClient,
+  payload: {
+    userId: string;
+    workspaceId: string;
+    workspaceName: string;
+  },
+) => {
+  await createAppNotification(supabase, {
+    userId: payload.userId,
+    type: "workspace_membership_removed",
+    title: "Bạn đã bị xóa khỏi workspace",
+    message: `Bạn không còn là thành viên của workspace ${payload.workspaceName}.`,
+    workspaceId: payload.workspaceId,
+    metadata: {
+      workspace_name: payload.workspaceName,
+    },
+  });
+};
+
+export const createQuotaWarningNotification = async (
+  supabase: SupabaseClient,
+  payload: {
+    userId: string;
+    quotaKey: "link_daily" | "video_daily" | "team_workspace";
+    title: string;
+    message: string;
+    uniqueSuffix: string;
+    metadata?: Record<string, unknown>;
+  },
+) => {
+  await createAppNotification(supabase, {
+    userId: payload.userId,
+    type: "quota_warning",
+    title: payload.title,
+    message: payload.message,
+    metadata: {
+      quota_key: payload.quotaKey,
+      ...(payload.metadata || {}),
+    },
+    uniqueEventKey: `quota_warning:${payload.quotaKey}:${payload.uniqueSuffix}`,
+  });
+};
+
+export const maybeCreateLinkExpiryNotifications = async (
+  supabase: SupabaseClient,
+  userId: string,
+  links: Array<{
+    id?: string;
+    short_code?: string | null;
+    custom_title?: string | null;
+    expires_at?: string | null;
+  }>,
+) => {
+  const now = Date.now();
+
+  await Promise.all(
+    links.map(async (link) => {
+      if (!link.id || !link.expires_at) return;
+
+      const expiresAtMs = new Date(link.expires_at).getTime();
+      if (!Number.isFinite(expiresAtMs)) return;
+
+      const diffMs = expiresAtMs - now;
+      if (diffMs <= 0 || diffMs > LINK_EXPIRY_WARNING_WINDOW_MS) return;
+
+      const hoursLeft = Math.max(1, Math.ceil(diffMs / (60 * 60 * 1000)));
+      const label = link.custom_title?.trim() || link.short_code || "Link";
+
+      await createAppNotification(supabase, {
+        userId,
+        type: "link_expiring_soon",
+        title: "Link sắp hết hạn",
+        message: `${label} sẽ hết hạn trong khoảng ${hoursLeft} giờ nữa.`,
+        linkId: link.id,
+        metadata: {
+          short_code: link.short_code || null,
+          link_title: link.custom_title || null,
+          expires_at: link.expires_at,
+          hours_left: hoursLeft,
+        },
+        uniqueEventKey: `link_expiring_soon:${link.id}:${link.expires_at}`,
+      });
+    }),
+  );
+};
+
+export const maybeCreateSubscriptionExpiryNotification = async (
+  supabase: SupabaseClient,
+  payload: {
+    userId: string;
+    subscriptionPlan?: string | null;
+    subscriptionExpiry?: string | null;
+  },
+) => {
+  if (
+    !payload.subscriptionExpiry ||
+    !payload.subscriptionPlan ||
+    payload.subscriptionPlan === "free"
+  ) {
+    return;
+  }
+
+  const expiryMs = new Date(payload.subscriptionExpiry).getTime();
+  if (!Number.isFinite(expiryMs)) return;
+
+  const diffMs = expiryMs - Date.now();
+  if (diffMs <= 0 || diffMs > SUBSCRIPTION_EXPIRY_WARNING_WINDOW_MS) {
+    return;
+  }
+
+  const daysLeft = Math.max(1, Math.ceil(diffMs / (24 * 60 * 60 * 1000)));
+  await createAppNotification(supabase, {
+    userId: payload.userId,
+    type: "subscription_expiring",
+    title: "Gói cước sắp hết hạn",
+    message: `Gói ${payload.subscriptionPlan} của bạn sẽ hết hạn sau khoảng ${daysLeft} ngày.`,
+    metadata: {
+      subscription_plan: payload.subscriptionPlan,
+      subscription_expiry: payload.subscriptionExpiry,
+      days_left: daysLeft,
+    },
+    uniqueEventKey: `subscription_expiring:${payload.subscriptionPlan}:${payload.subscriptionExpiry}`,
   });
 };
 

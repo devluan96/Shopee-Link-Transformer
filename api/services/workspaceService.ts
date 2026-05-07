@@ -1,5 +1,10 @@
 import { SupabaseClient } from "../config/supabase.js";
-import { createWorkspaceInvitationNotification } from "./notificationService.js";
+import {
+  createWorkspaceInvitationNotification,
+  createWorkspaceInvitationResponseNotification,
+  createWorkspaceMembershipRemovedNotification,
+  createWorkspaceMembershipUpdatedNotification,
+} from "./notificationService.js";
 
 export type WorkspaceRole = "owner" | "editor" | "viewer";
 export type WorkspaceInvitationStatus =
@@ -50,6 +55,17 @@ interface ProfileSummary {
   email?: string | null;
   avatar_url?: string | null;
 }
+
+const getProfileById = async (supabase: SupabaseClient, userId: string) => {
+  const { data: profile, error } = await supabase
+    .from("profiles")
+    .select("id, full_name, email, avatar_url")
+    .eq("id", userId)
+    .maybeSingle();
+
+  if (error) throw error;
+  return (profile || null) as ProfileSummary | null;
+};
 
 interface WorkspaceInvitationRow {
   id: string;
@@ -544,6 +560,19 @@ export const acceptWorkspaceInvitation = async (
   const [mapped] = await mapInvitationRows(supabase, [
     invitation as WorkspaceInvitationRow,
   ]);
+  if (mapped?.invited_by) {
+    const invitedProfile = await getProfileById(supabase, userId);
+    await createWorkspaceInvitationResponseNotification(supabase, {
+      userId: mapped.invited_by,
+      workspaceId: mapped.workspace_id,
+      workspaceName: mapped.workspace_name,
+      memberName: invitedProfile?.full_name ?? null,
+      memberEmail: invitedProfile?.email ?? mapped.invited_email,
+      invitationId: mapped.id,
+      action: "accepted",
+      role: mapped.role,
+    });
+  }
   return {
     ...mapped,
     status: "accepted" as const,
@@ -590,6 +619,19 @@ export const declineWorkspaceInvitation = async (
   const [mapped] = await mapInvitationRows(supabase, [
     invitation as WorkspaceInvitationRow,
   ]);
+  if (mapped?.invited_by) {
+    const invitedProfile = await getProfileById(supabase, userId);
+    await createWorkspaceInvitationResponseNotification(supabase, {
+      userId: mapped.invited_by,
+      workspaceId: mapped.workspace_id,
+      workspaceName: mapped.workspace_name,
+      memberName: invitedProfile?.full_name ?? null,
+      memberEmail: invitedProfile?.email ?? mapped.invited_email,
+      invitationId: mapped.id,
+      action: "declined",
+      role: mapped.role,
+    });
+  }
   return {
     ...mapped,
     status: "declined" as const,
@@ -653,7 +695,7 @@ export const updateWorkspaceMemberRole = async (
 
   const { data: workspace, error: workspaceError } = await supabase
     .from("workspaces")
-    .select("owner_id")
+    .select("owner_id, name")
     .eq("id", workspaceId)
     .maybeSingle();
 
@@ -662,6 +704,8 @@ export const updateWorkspaceMemberRole = async (
   if (workspace.owner_id === memberUserId) {
     throw new Error("Không thể đổi role của owner.");
   }
+
+  const memberProfile = await getProfileById(supabase, memberUserId);
 
   const { error } = await supabase
     .from("workspace_members")
@@ -673,6 +717,13 @@ export const updateWorkspaceMemberRole = async (
     .eq("user_id", memberUserId);
 
   if (error) throw error;
+
+  await createWorkspaceMembershipUpdatedNotification(supabase, {
+    userId: memberUserId,
+    workspaceId,
+    workspaceName: workspace.name || memberProfile?.full_name || "Workspace",
+    role: role === "viewer" ? "viewer" : "editor",
+  });
 };
 
 export const removeWorkspaceMember = async (
@@ -685,7 +736,7 @@ export const removeWorkspaceMember = async (
 
   const { data: workspace, error: workspaceError } = await supabase
     .from("workspaces")
-    .select("owner_id")
+    .select("owner_id, name")
     .eq("id", workspaceId)
     .maybeSingle();
 
@@ -695,6 +746,8 @@ export const removeWorkspaceMember = async (
     throw new Error("Không thể xóa owner khỏi workspace.");
   }
 
+  const memberProfile = await getProfileById(supabase, memberUserId);
+
   const { error } = await supabase
     .from("workspace_members")
     .delete()
@@ -702,6 +755,12 @@ export const removeWorkspaceMember = async (
     .eq("user_id", memberUserId);
 
   if (error) throw error;
+
+  await createWorkspaceMembershipRemovedNotification(supabase, {
+    userId: memberUserId,
+    workspaceId,
+    workspaceName: workspace.name || memberProfile?.full_name || "Workspace",
+  });
 };
 
 export const getWorkspaceAccessMap = async (

@@ -92,7 +92,13 @@ export interface WorkspaceInvitation {
 
 export type AppNotificationType =
   | "workspace_invitation"
-  | "link_click_threshold";
+  | "workspace_invitation_response"
+  | "workspace_membership_updated"
+  | "workspace_membership_removed"
+  | "link_click_threshold"
+  | "link_expiring_soon"
+  | "quota_warning"
+  | "subscription_expiring";
 
 export interface AppNotification {
   id: string;
