@@ -43,7 +43,7 @@ interface UseMetaProps {
 
 const titleMap: Record<Tab, string> = {
   dashboard: "Bảng Điều Khiển - HotsNew Click",
-  install: "Cài app / Extension - HotsNew Click",
+  install: "Cài app - HotsNew Click",
   pricing: "Bảng Giá - HotsNew Click",
   create: "Tạo link Shopee - HotsNew Click",
   list: "Danh sách link - HotsNew Click",
@@ -57,7 +57,7 @@ const descriptionMap: Record<Tab, string> = {
   dashboard:
     "Theo dõi nhanh hiệu suất link, lượt click và tăng trưởng chiến dịch trên HotsNew Click.",
   install:
-    "Hướng dẫn cài app web và extension HotsNew để lấy link TikTok, Shopee nhanh hơn.",
+    "Hướng dẫn cài app HotsNew để mở workspace nhanh hơn như một ứng dụng riêng.",
   pricing:
     "Xem bảng giá và nâng cấp gói dịch vụ để tạo landing page Shopee chuyên nghiệp hơn.",
   create:

@@ -202,7 +202,7 @@ export const Sidebar = ({
           />
           <SidebarItem
             icon={Download}
-            label="Cài app / Extension"
+            label="Cài app"
             active={activeTab === "install"}
             onClick={() => handleTabClick("install")}
           />

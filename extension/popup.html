@@ -8,14 +8,9 @@
       :root {
         color-scheme: dark;
         font-family: "Segoe UI", Inter, system-ui, sans-serif;
-        --bg: #0b1220;
-        --panel: #121b2f;
-        --panel-2: #182338;
         --line: rgba(148, 163, 184, 0.14);
         --text: #f8fafc;
         --muted: #93a4bc;
-        --orange: #f97316;
-        --cyan: #22d3ee;
         --green: #4ade80;
         --yellow: #fbbf24;
       }
@@ -28,8 +23,16 @@
         margin: 0;
         width: 388px;
         background:
-          radial-gradient(circle at 12% 14%, rgba(34, 211, 238, 0.18), transparent 24%),
-          radial-gradient(circle at 88% 20%, rgba(249, 115, 22, 0.18), transparent 28%),
+          radial-gradient(
+            circle at 12% 14%,
+            rgba(34, 211, 238, 0.18),
+            transparent 24%
+          ),
+          radial-gradient(
+            circle at 88% 20%,
+            rgba(249, 115, 22, 0.18),
+            transparent 28%
+          ),
           linear-gradient(165deg, #09111f 0%, #0f172a 52%, #111827 100%);
         color: var(--text);
       }
@@ -147,13 +150,21 @@
 
       .source-card,
       .quota-card,
-      .hint-card {
+      .hint-card,
+      .result-card {
         border: 1px solid var(--line);
         border-radius: 20px;
-        background: linear-gradient(180deg, rgba(23, 33, 53, 0.96), rgba(17, 24, 39, 0.92));
+        background: linear-gradient(
+          180deg,
+          rgba(23, 33, 53, 0.96),
+          rgba(17, 24, 39, 0.92)
+        );
       }
 
-      .source-card {
+      .source-card,
+      .quota-card,
+      .hint-card,
+      .result-card {
         padding: 14px;
       }
 
@@ -179,14 +190,34 @@
         font-weight: 800;
       }
 
-      .source-url {
+      .source-url,
+      .result-url {
         border-radius: 16px;
         padding: 12px 14px;
-        background: rgba(51, 65, 85, 0.34);
-        color: #9fb0c8;
         font-size: 12px;
         line-height: 1.5;
         word-break: break-word;
+      }
+
+      .source-url {
+        background: rgba(51, 65, 85, 0.34);
+        color: #9fb0c8;
+      }
+
+      .result-card {
+        border-color: rgba(74, 222, 128, 0.2);
+        background: linear-gradient(
+          180deg,
+          rgba(14, 116, 74, 0.22),
+          rgba(15, 23, 42, 0.92)
+        );
+      }
+
+      .result-url {
+        margin-top: 10px;
+        background: rgba(15, 23, 42, 0.55);
+        color: #dcfce7;
+        font-weight: 800;
       }
 
       .source-help {
@@ -215,7 +246,10 @@
         appearance: none;
         border: 0;
         cursor: pointer;
-        transition: transform 0.15s ease, opacity 0.15s ease, background 0.15s ease;
+        transition:
+          transform 0.15s ease,
+          opacity 0.15s ease,
+          background 0.15s ease;
       }
 
       button:hover:not(:disabled) {
@@ -240,7 +274,8 @@
         box-shadow: 0 14px 28px rgba(249, 115, 22, 0.28);
       }
 
-      .grid {
+      .grid,
+      .result-actions {
         display: grid;
         gap: 10px;
         grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -270,11 +305,6 @@
         color: var(--muted);
         font-size: 11px;
         line-height: 1.45;
-      }
-
-      .quota-card,
-      .hint-card {
-        padding: 14px;
       }
 
       .mini-row {
@@ -325,7 +355,8 @@
             </div>
           </div>
           <p class="hero-sub">
-            Lấy link từ tab hiện tại, gửi thẳng vào HotsNew và mở đúng màn hình cần dùng.
+            Tạo short link ngay trong popup, tự copy kết quả mới, hoặc mở trang
+            tạo link khi cần chỉnh thêm title, ảnh, video.
           </p>
           <div class="hero-badges">
             <div id="supportBadge" class="badge" data-tone="muted">
@@ -345,7 +376,9 @@
                 <div id="sourceHost" class="source-host">Chưa đọc được tab</div>
               </div>
             </div>
-            <div id="currentUrl" class="source-url">Đang lấy URL hiện tại...</div>
+            <div id="currentUrl" class="source-url">
+              Đang lấy URL hiện tại...
+            </div>
             <p id="sourceHint" class="source-help">
               Chỉ hỗ trợ tab Shopee hoặc TikTok để tạo link một chạm.
             </p>
@@ -353,18 +386,42 @@
 
           <div id="status" class="status"></div>
 
-          <button id="openCreate" class="cta" type="button">
-            Tạo link từ tab hiện tại
+          <button id="quickCreate" class="cta" type="button">
+            Tạo link thẳng trên extension
           </button>
 
+          <section id="resultCard" class="result-card" hidden>
+            <div class="section-kicker">Kết quả vừa tạo</div>
+            <div id="resultUrl" class="result-url"></div>
+            <div class="result-actions">
+              <button
+                id="copyResult"
+                class="mini accent"
+                type="button"
+                disabled
+              >
+                Copy link mới
+              </button>
+              <button id="openResult" class="mini" type="button" disabled>
+                Mở link
+              </button>
+            </div>
+          </section>
+
           <div class="grid">
+            <button id="openCreate" class="action" type="button">
+              <span class="title">Mở trang tạo link</span>
+              <span class="sub"
+                >Chỉnh title, ảnh, video và các field nâng cao</span
+              >
+            </button>
             <button id="copyUrl" class="action" type="button">
               <span class="title">Copy URL</span>
-              <span class="sub">Sao chép link tab hiện tại</span>
+              <span class="sub">Sao chép link nguồn hiện tại</span>
             </button>
             <button id="pasteClipboard" class="action" type="button">
-              <span class="title">Dán Clipboard</span>
-              <span class="sub">Nhận link đã copy trước đó</span>
+              <span class="title">Tạo từ Clipboard</span>
+              <span class="sub">Tạo link thẳng từ URL đã copy</span>
             </button>
             <button id="openRoot" class="action" type="button">
               <span class="title">Mở HotsNew</span>
@@ -379,17 +436,24 @@
           <section class="quota-card">
             <div class="section-kicker">Công cụ phụ</div>
             <div class="mini-row">
-              <button id="openPricing" class="mini" type="button">Bảng giá</button>
-              <button id="openInstall" class="mini" type="button">Cài app</button>
-              <button id="openZalo" class="mini accent" type="button">Zalo admin</button>
+              <button id="openPricing" class="mini" type="button">
+                Bảng giá
+              </button>
+              <button id="openInstall" class="mini" type="button">
+                Cài app
+              </button>
+              <button id="openZalo" class="mini accent" type="button">
+                Zalo admin
+              </button>
             </div>
           </section>
 
           <section class="hint-card">
             <div class="section-kicker">Gợi ý dùng nhanh</div>
             <p class="footer-note">
-              Muốn popup hiển thị quota thật, hãy mở sẵn một tab HotsNew đã đăng nhập.
-              Nếu đang ở tab không phải Shopee hoặc TikTok, bạn vẫn có thể dán link từ clipboard.
+              Để tạo link thẳng trong extension, hãy giữ sẵn một tab HotsNew đã
+              đăng nhập. Nếu cần chỉnh landing page chi tiết hơn, dùng nút mở
+              trang tạo link thay vì tạo nhanh.
             </p>
           </section>
         </div>
