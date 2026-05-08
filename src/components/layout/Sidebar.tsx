@@ -201,12 +201,6 @@ export const Sidebar = ({
             onClick={() => handleTabClick("dashboard")}
           />
           <SidebarItem
-            icon={Download}
-            label="Cài app"
-            active={activeTab === "install"}
-            onClick={() => handleTabClick("install")}
-          />
-          <SidebarItem
             icon={PlusCircle}
             label="Tạo Link"
             active={activeTab === "create"}
@@ -232,6 +226,12 @@ export const Sidebar = ({
             label="Team Workspace"
             active={activeTab === "team"}
             onClick={() => handleTabClick("team")}
+          />
+          <SidebarItem
+            icon={Download}
+            label="Cài app"
+            active={activeTab === "install"}
+            onClick={() => handleTabClick("install")}
           />
 
           {isActuallyAdmin && (

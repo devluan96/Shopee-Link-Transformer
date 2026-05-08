@@ -1,7 +1,9 @@
 import React from "react";
 import {
+  ArrowRight,
   Building2,
   Check,
+  Crown,
   Loader2,
   Mail,
   PlusCircle,
@@ -55,6 +57,89 @@ interface WorkspaceManagerProps {
   ) => Promise<WorkspaceInvitation>;
 }
 
+const roleLabel: Record<WorkspaceRole, string> = {
+  owner: "Owner",
+  editor: "Editor",
+  viewer: "Viewer",
+};
+
+const roleBadgeClass: Record<WorkspaceRole, string> = {
+  owner:
+    "border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-200",
+  editor:
+    "border-sky-200 bg-sky-50 text-sky-700 dark:border-sky-500/20 dark:bg-sky-500/10 dark:text-sky-200",
+  viewer:
+    "border-slate-200 bg-slate-100 text-slate-700 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200",
+};
+
+const surfaceClass =
+  "rounded-[1.75rem] border border-slate-200/70 bg-white/92 shadow-[0_24px_80px_-48px_rgba(15,23,42,0.35)] backdrop-blur dark:border-slate-700/70 dark:bg-slate-900/88";
+const inputClass =
+  "w-full rounded-2xl border border-slate-200 bg-white/90 px-4 py-3.5 text-sm font-medium text-slate-900 outline-none transition-all placeholder:text-slate-400 focus:border-orange-300 focus:ring-4 focus:ring-orange-500/10 dark:border-slate-700 dark:bg-slate-950/70 dark:text-slate-100 dark:placeholder:text-slate-500";
+
+function WorkspaceSectionTitle({
+  eyebrow,
+  title,
+  description,
+  icon: Icon,
+  tone = "orange",
+}: {
+  eyebrow?: string;
+  title: string;
+  description?: string;
+  icon: React.ComponentType<{ size?: number; className?: string }>;
+  tone?: "orange" | "blue" | "slate";
+}) {
+  const toneClass =
+    tone === "blue"
+      ? "bg-sky-100 text-sky-700 dark:bg-sky-500/15 dark:text-sky-200"
+      : tone === "slate"
+        ? "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200"
+        : "bg-orange-100 text-orange-700 dark:bg-orange-500/15 dark:text-orange-200";
+
+  return (
+    <div className="flex items-start justify-between gap-4">
+      <div className="min-w-0">
+        {eyebrow && (
+          <p className="mb-2 text-[11px] font-black uppercase tracking-[0.24em] text-slate-400 dark:text-slate-500">
+            {eyebrow}
+          </p>
+        )}
+        <h3 className="text-xl font-black tracking-tight text-slate-950 dark:text-slate-50">
+          {title}
+        </h3>
+        {description && (
+          <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500 dark:text-slate-400">
+            {description}
+          </p>
+        )}
+      </div>
+      <div className={cn("rounded-2xl p-3", toneClass)}>
+        <Icon size={20} />
+      </div>
+    </div>
+  );
+}
+
+function StatPill({
+  label,
+  value,
+}: {
+  label: string;
+  value: string;
+}) {
+  return (
+    <div className="rounded-2xl border border-slate-200/80 bg-white/80 px-4 py-3 dark:border-slate-700 dark:bg-slate-950/40">
+      <p className="text-[10px] font-black uppercase tracking-[0.22em] text-slate-400">
+        {label}
+      </p>
+      <p className="mt-1 text-lg font-black tracking-tight text-slate-950 dark:text-slate-50">
+        {value}
+      </p>
+    </div>
+  );
+}
+
 export function WorkspaceManager({
   workspaces,
   currentWorkspace,
@@ -89,15 +174,23 @@ export function WorkspaceManager({
   const canManageMembers = currentWorkspace?.role === "owner";
   const ownedTeamWorkspaces = userLimits?.ownedTeamWorkspaces ?? 0;
   const maxTeamWorkspaces = userLimits?.maxTeamWorkspaces ?? null;
+  const maxMembersPerWorkspace = userLimits?.maxTeamMembersPerWorkspace ?? null;
   const canCreateMoreWorkspaces =
     maxTeamWorkspaces === null ? true : ownedTeamWorkspaces < maxTeamWorkspaces;
-  const maxMembersPerWorkspace = userLimits?.maxTeamMembersPerWorkspace ?? null;
   const canInviteMoreMembers =
     maxMembersPerWorkspace === null
       ? true
       : members.length < maxMembersPerWorkspace;
   const createWorkspaceBlocked = !canCreateMoreWorkspaces;
   const inviteMembersBlocked = !canInviteMoreMembers;
+  const teamWorkspaceCount = workspaces.filter(
+    (workspace) => !workspace.is_personal,
+  ).length;
+  const currentWorkspaceType = currentWorkspace?.is_personal
+    ? "Personal"
+    : "Team";
+  const showIncomingInvitations =
+    pendingInvitationsLoading || (!canManageMembers && pendingInvitations.length > 0);
 
   const handleCreateWorkspace = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -184,132 +277,227 @@ export function WorkspaceManager({
   };
 
   return (
-    <div className="space-y-8">
-      <header>
-        <h2 className="text-3xl font-black tracking-tight text-gray-900 dark:text-slate-100">
-          Team Workspace
-        </h2>
-        <p className="mt-2 font-medium italic text-gray-500 dark:text-slate-400">
-          Chọn workspace đang làm việc, tạo team mới và phân quyền
-          editor/viewer.
-        </p>
-        {userLimits && (
-          <div className="mt-4 flex flex-wrap gap-3">
-            <div className="rounded-full border border-sky-100 bg-sky-50 px-4 py-2 text-[11px] font-black uppercase tracking-widest text-sky-700 dark:border-sky-500/20 dark:bg-sky-500/10 dark:text-sky-200">
-              Workspace team:{" "}
-              {maxTeamWorkspaces === null
-                ? "Không giới hạn"
-                : `${ownedTeamWorkspaces}/${maxTeamWorkspaces}`}
-            </div>
-            <div className="rounded-full border border-violet-100 bg-violet-50 px-4 py-2 text-[11px] font-black uppercase tracking-widest text-violet-700 dark:border-violet-500/20 dark:bg-violet-500/10 dark:text-violet-200">
-              Member / workspace:{" "}
-              {maxMembersPerWorkspace === null
-                ? "Không giới hạn"
-                : `${members.length}/${maxMembersPerWorkspace}`}
-            </div>
-          </div>
+    <div className="space-y-6">
+      <header
+        className={cn(
+          surfaceClass,
+          "relative overflow-hidden p-6 lg:p-8",
+          "bg-[radial-gradient(circle_at_top_left,_rgba(251,146,60,0.16),_transparent_34%),radial-gradient(circle_at_bottom_right,_rgba(56,189,248,0.1),_transparent_30%)]",
         )}
-      </header>
-
-      <div className="grid grid-cols-1 gap-8 xl:grid-cols-[0.95fr_1.25fr]">
-        <section className="space-y-6 rounded-[2.5rem] border border-gray-100 bg-white p-8 shadow-sm dark:border-slate-700 dark:bg-slate-800">
-          <div className="flex items-center gap-3">
-            <div className="rounded-2xl bg-orange-50 p-3 text-orange-600">
-              <Building2 size={20} />
+      >
+        <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-orange-300/70 to-transparent dark:via-orange-200/30" />
+        <div className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
+          <div className="space-y-5">
+            <div className="inline-flex items-center gap-2 rounded-full border border-orange-200 bg-orange-50 px-3 py-1.5 text-[11px] font-black uppercase tracking-[0.24em] text-orange-700 dark:border-orange-500/20 dark:bg-orange-500/10 dark:text-orange-200">
+              <ShieldCheck size={14} />
+              Team Workspace
             </div>
-            <div>
-              <h3 className="text-xl font-black text-gray-900 dark:text-slate-100">
-                Workspace
-              </h3>
-              <p className="text-sm font-medium text-gray-500 dark:text-slate-400">
-                Mỗi workspace là một nhóm link và thành viên riêng.
+
+            <div className="max-w-2xl">
+              <h2 className="text-3xl font-black tracking-tight text-slate-950 dark:text-slate-50">
+                Team gọn, role rõ, thao tác nhanh.
+              </h2>
+              <p className="mt-3 text-sm leading-6 text-slate-600 dark:text-slate-300">
+                Giữ lại đúng phần cần dùng để quản lý workspace, lời mời và
+                thành viên trong một màn hình ngắn gọn.
               </p>
             </div>
+
+            <div className="grid gap-3 sm:grid-cols-3">
+              <StatPill
+                label="Workspace team"
+                value={
+                  maxTeamWorkspaces === null
+                    ? `${teamWorkspaceCount}`
+                    : `${ownedTeamWorkspaces}/${maxTeamWorkspaces}`
+                }
+              />
+              <StatPill
+                label="Thành viên"
+                value={
+                  maxMembersPerWorkspace === null
+                    ? `${members.length}`
+                    : `${members.length}/${maxMembersPerWorkspace}`
+                }
+              />
+              <StatPill
+                label="Lời mời chờ"
+                value={`${pendingInvitations.length}`}
+              />
+            </div>
           </div>
+
+          <div className="rounded-[1.75rem] border border-slate-800 bg-slate-950 p-6 text-white shadow-[0_24px_60px_-40px_rgba(2,6,23,0.9)]">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="text-[11px] font-black uppercase tracking-[0.24em] text-orange-300">
+                  Workspace đang chạy
+                </p>
+                <h3 className="mt-5 text-2xl font-black tracking-tight">
+                  {currentWorkspace?.name || "Chưa chọn workspace"}
+                </h3>
+                <p className="mt-2 text-sm text-slate-300">
+                  {currentWorkspace?.description || "Chọn workspace để bắt đầu quản lý team."}
+                </p>
+              </div>
+              <div className="rounded-2xl bg-white/10 p-3 text-orange-300">
+                <Building2 size={20} />
+              </div>
+            </div>
+
+            <div className="mt-6 flex flex-wrap gap-2">
+              {currentWorkspace && (
+                <>
+                  <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-[11px] font-black uppercase tracking-[0.22em] text-slate-200">
+                    {currentWorkspaceType}
+                  </span>
+                  <span
+                    className={cn(
+                      "rounded-full border px-3 py-1.5 text-[11px] font-black uppercase tracking-[0.22em]",
+                      roleBadgeClass[currentWorkspace.role],
+                    )}
+                  >
+                    {roleLabel[currentWorkspace.role]}
+                  </span>
+                </>
+              )}
+              <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-[11px] font-black uppercase tracking-[0.22em] text-slate-200">
+                {members.length} member
+              </span>
+              <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-[11px] font-black uppercase tracking-[0.22em] text-slate-200">
+                {sentInvitations.length} pending invite
+              </span>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-[0.88fr_1.12fr]">
+        <section className={cn(surfaceClass, "space-y-5 p-6")}>
+          <WorkspaceSectionTitle
+            eyebrow="Workspace"
+            title="Danh sách workspace"
+            icon={Building2}
+          />
 
           <div className="space-y-3">
             {workspaceLoading ? (
-              <div className="flex items-center gap-3 rounded-2xl bg-gray-50 px-4 py-4 text-sm font-bold text-gray-500 dark:bg-slate-900 dark:text-slate-400">
+              <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 text-sm font-bold text-slate-500 dark:border-slate-700 dark:bg-slate-950/50 dark:text-slate-400">
                 <Loader2 size={16} className="animate-spin" />
                 Đang tải workspace...
               </div>
             ) : (
-              workspaces.map((workspace) => (
-                <button
-                  key={workspace.id}
-                  type="button"
-                  onClick={() => onSelectWorkspace(workspace.id)}
-                  className={cn(
-                    "w-full rounded-2xl border px-4 py-4 text-left transition-all",
-                    currentWorkspace?.id === workspace.id
-                      ? "border-orange-200 bg-orange-50 shadow-sm"
-                      : "border-gray-100 bg-gray-50 hover:border-gray-200 hover:bg-white dark:border-slate-700 dark:bg-slate-900 dark:hover:bg-slate-800",
-                  )}
-                >
-                  <div className="flex items-center justify-between gap-3">
-                    <div>
-                      <p className="font-black text-gray-900 dark:text-slate-100">
-                        {workspace.name}
-                      </p>
-                      <p className="mt-1 text-[11px] font-bold uppercase tracking-widest text-gray-400 dark:text-slate-500">
-                        {workspace.is_personal ? "Personal" : "Team"} ·{" "}
-                        {workspace.role}
-                      </p>
+              workspaces.map((workspace) => {
+                const isActive = currentWorkspace?.id === workspace.id;
+
+                return (
+                  <button
+                    key={workspace.id}
+                    type="button"
+                    onClick={() => onSelectWorkspace(workspace.id)}
+                    className={cn(
+                      "w-full rounded-[1.5rem] border p-4 text-left transition-all",
+                      isActive
+                        ? "border-orange-200 bg-orange-50/80 shadow-[0_20px_50px_-42px_rgba(234,88,12,0.8)] dark:border-orange-500/30 dark:bg-orange-500/10"
+                        : "border-slate-200/70 bg-slate-50/80 hover:border-slate-300 hover:bg-white dark:border-slate-700 dark:bg-slate-950/35 dark:hover:bg-slate-950/55",
+                    )}
+                  >
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <p className="truncate text-lg font-black tracking-tight text-slate-950 dark:text-slate-50">
+                            {workspace.name}
+                          </p>
+                          {isActive && (
+                            <span className="rounded-full border border-orange-200 bg-orange-100 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.22em] text-orange-700 dark:border-orange-500/20 dark:bg-orange-500/10 dark:text-orange-200">
+                              Active
+                            </span>
+                          )}
+                        </div>
+
+                        <div className="mt-3 flex flex-wrap gap-2">
+                          <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.22em] text-slate-500 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-300">
+                            {workspace.is_personal ? "Personal" : "Team"}
+                          </span>
+                          <span
+                            className={cn(
+                              "rounded-full border px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.22em]",
+                              roleBadgeClass[workspace.role],
+                            )}
+                          >
+                            {roleLabel[workspace.role]}
+                          </span>
+                        </div>
+
+                        <p className="mt-3 text-sm leading-6 text-slate-500 dark:text-slate-400">
+                          {workspace.description || "Chưa có mô tả."}
+                        </p>
+                      </div>
+
+                      <div
+                        className={cn(
+                          "flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border",
+                          isActive
+                            ? "border-orange-200 bg-white text-orange-600 dark:border-orange-500/20 dark:bg-slate-950/70 dark:text-orange-200"
+                            : "border-slate-200 bg-white text-slate-400 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-500",
+                        )}
+                      >
+                        <ShieldCheck size={16} />
+                      </div>
                     </div>
-                    <ShieldCheck
-                      size={18}
-                      className={cn(
-                        currentWorkspace?.id === workspace.id
-                          ? "text-orange-600"
-                          : "text-gray-300 dark:text-slate-600",
-                      )}
-                    />
-                  </div>
-                  {workspace.description && (
-                    <p className="mt-2 text-sm text-gray-500 dark:text-slate-400">
-                      {workspace.description}
-                    </p>
-                  )}
-                </button>
-              ))
+                  </button>
+                );
+              })
             )}
           </div>
 
           {userLimits && createWorkspaceBlocked && (
-            <div className="rounded-2xl border border-amber-100 bg-amber-50 px-4 py-4 text-sm font-medium text-amber-700 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-200">
+            <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-4 text-sm font-medium text-amber-800 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-200">
               {maxTeamWorkspaces === 0
                 ? "Gói hiện tại chưa hỗ trợ Team Workspace."
-                : `Bạn đã dùng hết ${maxTeamWorkspaces} Team Workspace cho gói hiện tại.`}
+                : `Bạn đã dùng hết ${maxTeamWorkspaces} Team Workspace.`}
             </div>
           )}
 
           <form
             onSubmit={handleCreateWorkspace}
-            className="space-y-4 border-t border-gray-100 pt-6 dark:border-slate-700"
+            className="rounded-[1.5rem] border border-slate-200 bg-slate-950 p-5 text-white dark:border-slate-700"
           >
-            <div>
-              <label className="mb-2 block text-[11px] font-black uppercase tracking-widest text-gray-400">
-                Tạo workspace mới
-              </label>
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <p className="text-[11px] font-black uppercase tracking-[0.24em] text-orange-300">
+                  Tạo workspace
+                </p>
+                <p className="mt-2 text-sm text-slate-300">
+                  Tách team hoặc campaign mới.
+                </p>
+              </div>
+              <div className="rounded-2xl bg-white/10 p-3 text-orange-300">
+                <PlusCircle size={18} />
+              </div>
+            </div>
+
+            <div className="mt-4 space-y-3">
               <input
                 type="text"
                 value={workspaceName}
                 onChange={(e) => setWorkspaceName(e.target.value)}
-                placeholder="Tên workspace..."
-                className="w-full rounded-2xl bg-gray-50 px-5 py-4 font-medium text-gray-900 outline-none transition-all focus:ring-4 focus:ring-orange-500/10 dark:bg-slate-900 dark:text-slate-100"
+                placeholder="Tên workspace"
+                className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3.5 text-sm font-medium text-white outline-none transition-all placeholder:text-slate-400 focus:border-orange-300 focus:ring-4 focus:ring-orange-500/20"
+              />
+              <textarea
+                value={workspaceDescription}
+                onChange={(e) => setWorkspaceDescription(e.target.value)}
+                rows={3}
+                placeholder="Mô tả ngắn"
+                className="w-full resize-none rounded-2xl border border-white/10 bg-white/5 px-4 py-3.5 text-sm font-medium text-white outline-none transition-all placeholder:text-slate-400 focus:border-orange-300 focus:ring-4 focus:ring-orange-500/20"
               />
             </div>
-            <textarea
-              value={workspaceDescription}
-              onChange={(e) => setWorkspaceDescription(e.target.value)}
-              rows={3}
-              placeholder="Mô tả ngắn về team/campaign..."
-              className="w-full resize-none rounded-2xl bg-gray-50 px-5 py-4 font-medium text-gray-900 outline-none transition-all focus:ring-4 focus:ring-orange-500/10 dark:bg-slate-900 dark:text-slate-100"
-            />
+
             <button
               type="submit"
               disabled={creatingWorkspace || createWorkspaceBlocked}
-              className="flex w-full items-center justify-center gap-2 rounded-2xl bg-orange-600 py-4 text-xs font-black uppercase tracking-widest text-white transition-all hover:bg-orange-700 disabled:opacity-60"
+              className="mt-4 flex w-full items-center justify-center gap-2 rounded-2xl bg-orange-500 py-3.5 text-xs font-black uppercase tracking-[0.24em] text-white transition-all hover:bg-orange-400 disabled:cursor-not-allowed disabled:opacity-60"
             >
               {creatingWorkspace ? (
                 <Loader2 size={16} className="animate-spin" />
@@ -321,196 +509,189 @@ export function WorkspaceManager({
           </form>
         </section>
 
-        <section className="space-y-6 rounded-[2.5rem] border border-gray-100 bg-white p-8 shadow-sm dark:border-slate-700 dark:bg-slate-800">
-          <div className="flex items-center justify-between gap-4">
-            <div>
-              <h3 className="text-xl font-black text-gray-900 dark:text-slate-100">
-                {currentWorkspace?.name || "Chọn một workspace"}
-              </h3>
-              <p className="mt-1 text-sm font-medium text-gray-500 dark:text-slate-400">
-                {currentWorkspace
-                  ? `Role của bạn: ${currentWorkspace.role}`
-                  : "Chọn workspace ở cột trái để xem thành viên."}
-              </p>
-            </div>
-            <div className="rounded-2xl bg-blue-50 p-3 text-blue-600">
-              <Users size={20} />
-            </div>
-          </div>
-
-          <div className="space-y-3 rounded-3xl border border-sky-100 bg-sky-50/70 p-5 dark:border-sky-500/20 dark:bg-sky-500/10">
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <h4 className="text-sm font-black uppercase tracking-widest text-sky-700 dark:text-sky-200">
-                  Lời mời đang chờ
-                </h4>
-                <p className="mt-1 text-sm text-sky-700/80 dark:text-sky-100/70">
-                  Khi được mời vào team, user cần chấp nhận thì workspace mới sẽ
-                  hiện ở danh sách của họ.
-                </p>
-              </div>
-            </div>
-
-            {pendingInvitationsLoading ? (
-              <div className="flex items-center gap-3 rounded-2xl bg-white/80 px-4 py-4 text-sm font-bold text-sky-700 dark:bg-slate-900/60 dark:text-sky-200">
-                <Loader2 size={16} className="animate-spin" />
-                Đang tải lời mời...
-              </div>
-            ) : pendingInvitations.length > 0 ? (
-              pendingInvitations.map((invitation) => {
-                const isBusy = invitationBusyId === invitation.id;
-                return (
-                  <div
-                    key={invitation.id}
-                    className="grid grid-cols-1 gap-4 rounded-3xl border border-sky-100 bg-white/90 p-4 md:grid-cols-[1fr_auto] md:items-center dark:border-sky-500/20 dark:bg-slate-900/70"
-                  >
-                    <div className="min-w-0">
-                      <p className="truncate font-black text-gray-900 dark:text-slate-100">
-                        {invitation.workspace_name}
-                      </p>
-                      <p className="mt-1 text-sm text-gray-500 dark:text-slate-400">
-                        Mời bởi{" "}
-                        {invitation.invited_by_name ||
-                          invitation.invited_by_email ||
-                          "Owner"}
-                        {" · "}
-                        role {invitation.role}
-                      </p>
-                      {invitation.workspace_description && (
-                        <p className="mt-1 text-sm text-gray-500 dark:text-slate-400">
-                          {invitation.workspace_description}
-                        </p>
-                      )}
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                      <button
-                        type="button"
-                        disabled={isBusy}
-                        onClick={() => handleAcceptInvitation(invitation.id)}
-                        className="flex items-center justify-center gap-2 rounded-2xl bg-emerald-600 px-4 py-3 text-xs font-black uppercase tracking-widest text-white transition-all hover:bg-emerald-700 disabled:opacity-60"
-                      >
-                        {isBusy ? (
-                          <Loader2 size={14} className="animate-spin" />
-                        ) : (
-                          <Check size={14} />
-                        )}
-                        Chấp nhận
-                      </button>
-                      <button
-                        type="button"
-                        disabled={isBusy}
-                        onClick={() => handleDeclineInvitation(invitation.id)}
-                        className="flex items-center justify-center gap-2 rounded-2xl bg-white px-4 py-3 text-xs font-black uppercase tracking-widest text-gray-600 transition-all hover:bg-gray-100 disabled:opacity-60 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
-                      >
-                        <X size={14} />
-                        Từ chối
-                      </button>
-                    </div>
-                  </div>
-                );
-              })
-            ) : (
-              <div className="rounded-2xl bg-white/80 px-4 py-4 text-sm font-medium text-sky-700 dark:bg-slate-900/60 dark:text-sky-200">
-                Bạn không có lời mời workspace nào đang chờ.
-              </div>
-            )}
-          </div>
-
-          {currentWorkspace && canManageMembers && (
-            <form
-              onSubmit={handleInviteMember}
-              className="grid grid-cols-1 gap-4 rounded-3xl border border-gray-100 bg-gray-50 p-5 md:grid-cols-[1.4fr_0.75fr_auto] dark:border-slate-700 dark:bg-slate-900"
-            >
-              <input
-                type="email"
-                value={inviteEmail}
-                onChange={(e) => setInviteEmail(e.target.value)}
-                placeholder="Email user có thể thêm vào workspace"
-                className="rounded-2xl bg-white px-5 py-4 font-medium text-gray-900 outline-none transition-all focus:ring-4 focus:ring-orange-500/10 dark:bg-slate-800 dark:text-slate-100"
+        <section className="space-y-6">
+          {showIncomingInvitations && (
+            <div className={cn(surfaceClass, "p-6")}>
+              <WorkspaceSectionTitle
+                eyebrow="Lời mời"
+                title="Lời mời vào team"
+                icon={Mail}
+                tone="blue"
               />
-              <select
-                value={inviteRole}
-                onChange={(e) =>
-                  setInviteRole(
-                    e.target.value === "viewer" ? "viewer" : "editor",
-                  )
-                }
-                className="rounded-2xl bg-white px-5 py-4 font-bold text-gray-900 outline-none transition-all focus:ring-4 focus:ring-orange-500/10 dark:bg-slate-800 dark:text-slate-100"
-              >
-                <option value="editor">Editor</option>
-                <option value="viewer">Viewer</option>
-              </select>
-              <button
-                type="submit"
-                disabled={invitingMember || inviteMembersBlocked}
-                className="flex items-center justify-center gap-2 rounded-2xl bg-gray-900 px-6 py-4 text-xs font-black uppercase tracking-widest text-white transition-all hover:bg-black disabled:opacity-60"
-              >
-                {invitingMember ? (
-                  <Loader2 size={16} className="animate-spin" />
+
+              <div className="mt-5 space-y-3">
+                {pendingInvitationsLoading ? (
+                  <div className="flex items-center gap-3 rounded-2xl border border-sky-200 bg-sky-50 px-4 py-4 text-sm font-bold text-sky-700 dark:border-sky-500/20 dark:bg-sky-500/10 dark:text-sky-200">
+                    <Loader2 size={16} className="animate-spin" />
+                    Đang tải lời mời...
+                  </div>
                 ) : (
-                  <UserPlus size={16} />
+                  pendingInvitations.map((invitation) => {
+                    const isBusy = invitationBusyId === invitation.id;
+
+                    return (
+                      <div
+                        key={invitation.id}
+                        className="grid gap-4 rounded-[1.5rem] border border-sky-200/70 bg-sky-50/70 p-4 md:grid-cols-[1fr_auto] md:items-center dark:border-sky-500/20 dark:bg-sky-500/10"
+                      >
+                        <div className="min-w-0">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <p className="truncate font-black text-slate-950 dark:text-slate-50">
+                              {invitation.workspace_name}
+                            </p>
+                            <span
+                              className={cn(
+                                "rounded-full border px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.22em]",
+                                roleBadgeClass[
+                                  invitation.role as Exclude<
+                                    WorkspaceRole,
+                                    "owner"
+                                  >
+                                ],
+                              )}
+                            >
+                              {roleLabel[invitation.role]}
+                            </span>
+                          </div>
+                          <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
+                            Mời bởi{" "}
+                            {invitation.invited_by_name ||
+                              invitation.invited_by_email ||
+                              "Owner"}
+                          </p>
+                        </div>
+
+                        <div className="flex flex-wrap gap-2">
+                          <button
+                            type="button"
+                            disabled={isBusy}
+                            onClick={() => handleAcceptInvitation(invitation.id)}
+                            className="flex items-center justify-center gap-2 rounded-2xl bg-emerald-600 px-4 py-3 text-xs font-black uppercase tracking-[0.22em] text-white transition-all hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
+                          >
+                            {isBusy ? (
+                              <Loader2 size={14} className="animate-spin" />
+                            ) : (
+                              <Check size={14} />
+                            )}
+                            Chấp nhận
+                          </button>
+                          <button
+                            type="button"
+                            disabled={isBusy}
+                            onClick={() => handleDeclineInvitation(invitation.id)}
+                            className="flex items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-xs font-black uppercase tracking-[0.22em] text-slate-600 transition-all hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+                          >
+                            <X size={14} />
+                            Từ chối
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })
                 )}
-                Mời
-              </button>
-            </form>
+              </div>
+            </div>
           )}
 
           {currentWorkspace && canManageMembers && (
-            <div className="space-y-3 rounded-3xl border border-gray-100 bg-gray-50 p-5 dark:border-slate-700 dark:bg-slate-900">
-              <div>
-                <h4 className="text-sm font-black uppercase tracking-widest text-gray-500 dark:text-slate-400">
-                  Lời mời đã gửi
-                </h4>
-                <p className="mt-1 text-sm text-gray-500 dark:text-slate-400">
-                  Owner có thể theo dõi và hủy lời mời đang chờ.
-                </p>
-              </div>
+            <div className={cn(surfaceClass, "p-6")}>
+              <WorkspaceSectionTitle
+                eyebrow="Quản lý lời mời"
+                title="Mời thành viên"
+                icon={UserPlus}
+              />
 
-              {sentInvitationsLoading ? (
-                <div className="flex items-center gap-3 rounded-2xl bg-white px-4 py-4 text-sm font-bold text-gray-500 dark:bg-slate-800 dark:text-slate-300">
-                  <Loader2 size={16} className="animate-spin" />
-                  Đang tải lời mời đã gửi...
+              <form
+                onSubmit={handleInviteMember}
+                className="mt-5 grid gap-3 lg:grid-cols-[1.1fr_0.7fr_auto]"
+              >
+                <input
+                  type="email"
+                  value={inviteEmail}
+                  onChange={(e) => setInviteEmail(e.target.value)}
+                  placeholder="Email thành viên"
+                  className={inputClass}
+                />
+                <select
+                  value={inviteRole}
+                  onChange={(e) =>
+                    setInviteRole(
+                      e.target.value === "viewer" ? "viewer" : "editor",
+                    )
+                  }
+                  className={inputClass}
+                >
+                  <option value="editor">Editor</option>
+                  <option value="viewer">Viewer</option>
+                </select>
+                <button
+                  type="submit"
+                  disabled={invitingMember || inviteMembersBlocked}
+                  className="flex items-center justify-center gap-2 rounded-2xl bg-slate-950 px-5 py-3.5 text-xs font-black uppercase tracking-[0.22em] text-white transition-all hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-white dark:text-slate-950 dark:hover:bg-slate-200"
+                >
+                  {invitingMember ? (
+                    <Loader2 size={16} className="animate-spin" />
+                  ) : (
+                    <UserPlus size={16} />
+                  )}
+                  Mời
+                </button>
+              </form>
+
+              <div className="mt-5 border-t border-slate-200 pt-5 dark:border-slate-700">
+                <div className="mb-3">
+                  <p className="text-[11px] font-black uppercase tracking-[0.24em] text-slate-400">
+                    Lời mời đã gửi
+                  </p>
                 </div>
-              ) : sentInvitations.length > 0 ? (
-                sentInvitations.map((invitation) => {
-                  const isBusy = sentInvitationBusyId === invitation.id;
-                  return (
-                    <div
-                      key={invitation.id}
-                      className="grid grid-cols-1 gap-4 rounded-3xl border border-gray-100 bg-white p-4 md:grid-cols-[1fr_auto] md:items-center dark:border-slate-700 dark:bg-slate-800"
-                    >
-                      <div className="min-w-0">
-                        <p className="truncate font-black text-gray-900 dark:text-slate-100">
-                          {invitation.invited_email}
-                        </p>
-                        <p className="mt-1 text-sm text-gray-500 dark:text-slate-400">
-                          Role {invitation.role} · {invitation.workspace_name}
-                        </p>
-                        <p className="mt-1 text-xs font-bold uppercase tracking-widest text-gray-400 dark:text-slate-500">
-                          Chờ chấp nhận
-                        </p>
-                      </div>
-                      <button
-                        type="button"
-                        disabled={isBusy}
-                        onClick={() => handleCancelInvitation(invitation.id)}
-                        className="flex items-center justify-center gap-2 rounded-2xl bg-red-50 px-4 py-3 text-xs font-black uppercase tracking-widest text-red-600 transition-all hover:bg-red-100 disabled:opacity-60 dark:bg-red-500/10 dark:text-red-200 dark:hover:bg-red-500/20"
+
+                <div className="space-y-3">
+                {sentInvitationsLoading ? (
+                  <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 text-sm font-bold text-slate-500 dark:border-slate-700 dark:bg-slate-950/40 dark:text-slate-400">
+                    <Loader2 size={16} className="animate-spin" />
+                    Đang tải lời mời đã gửi...
+                  </div>
+                ) : sentInvitations.length > 0 ? (
+                  sentInvitations.map((invitation) => {
+                    const isBusy = sentInvitationBusyId === invitation.id;
+
+                    return (
+                      <div
+                        key={invitation.id}
+                        className="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-4 sm:flex-row sm:items-center sm:justify-between dark:border-slate-700 dark:bg-slate-950/35"
                       >
-                        {isBusy ? (
-                          <Loader2 size={14} className="animate-spin" />
-                        ) : (
-                          <X size={14} />
-                        )}
-                        Hủy lời mời
-                      </button>
-                    </div>
-                  );
-                })
-              ) : (
-                <div className="rounded-2xl bg-white px-4 py-4 text-sm font-medium text-gray-500 dark:bg-slate-800 dark:text-slate-400">
-                  Chưa có lời mời nào đang chờ trong workspace này.
+                        <div className="min-w-0">
+                          <p className="truncate font-black text-slate-950 dark:text-slate-50">
+                            {invitation.invited_email}
+                          </p>
+                          <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
+                            {roleLabel[invitation.role]} · chờ xác nhận
+                          </p>
+                        </div>
+
+                        <button
+                          type="button"
+                          disabled={isBusy}
+                          onClick={() => handleCancelInvitation(invitation.id)}
+                          className="flex items-center justify-center gap-2 rounded-2xl bg-red-50 px-4 py-3 text-xs font-black uppercase tracking-[0.22em] text-red-600 transition-all hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-red-500/10 dark:text-red-200 dark:hover:bg-red-500/20"
+                        >
+                          {isBusy ? (
+                            <Loader2 size={14} className="animate-spin" />
+                          ) : (
+                            <X size={14} />
+                          )}
+                          Hủy
+                        </button>
+                      </div>
+                    );
+                  })
+                ) : (
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 text-sm font-medium text-slate-500 dark:border-slate-700 dark:bg-slate-950/40 dark:text-slate-400">
+                    Chưa có lời mời nào đã gửi.
+                  </div>
+                )}
                 </div>
-              )}
+              </div>
             </div>
           )}
 
@@ -518,101 +699,121 @@ export function WorkspaceManager({
             canManageMembers &&
             userLimits &&
             inviteMembersBlocked && (
-              <div className="rounded-2xl border border-amber-100 bg-amber-50 px-4 py-4 text-sm font-medium text-amber-700 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-200">
+              <div className="rounded-2xl border border-amber-200 bg-amber-50 px-5 py-4 text-sm font-medium text-amber-800 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-200">
                 {maxMembersPerWorkspace === 0
-                  ? "Gói hiện tại chưa hỗ trợ mời thành viên vào workspace."
+                  ? "Gói hiện tại chưa hỗ trợ mời thành viên."
                   : `Workspace này đã dùng hết ${maxMembersPerWorkspace} slot thành viên.`}
               </div>
             )}
 
           {currentWorkspace && !canManageMembers && (
-            <div className="rounded-3xl border border-amber-100 bg-amber-50 px-5 py-4 text-sm font-medium text-amber-700 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-200">
+            <div className="rounded-2xl border border-amber-200 bg-amber-50 px-5 py-4 text-sm font-medium text-amber-800 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-200">
               Chỉ owner mới có thể thêm hoặc đổi role thành viên. Bạn hiện là{" "}
-              {currentWorkspace.role}.
+              {roleLabel[currentWorkspace.role]}.
             </div>
           )}
 
-          <div className="space-y-3">
-            {membersLoading ? (
-              <div className="flex items-center gap-3 rounded-2xl bg-gray-50 px-4 py-4 text-sm font-bold text-gray-500 dark:bg-slate-900 dark:text-slate-400">
-                <Loader2 size={16} className="animate-spin" />
-                Đang tải thành viên...
-              </div>
-            ) : members.length > 0 ? (
-              members.map((member) => {
-                const isOwner = member.role === "owner";
-                const isBusy = memberBusyId === member.user_id;
+          <div className={cn(surfaceClass, "p-6")}>
+            <WorkspaceSectionTitle
+              eyebrow="Thành viên"
+              title="Danh sách thành viên"
+              icon={Crown}
+              tone="slate"
+            />
 
-                return (
-                  <div
-                    key={`${member.workspace_id}-${member.user_id}`}
-                    className="grid grid-cols-1 gap-4 rounded-3xl border border-gray-100 bg-gray-50 p-5 md:grid-cols-[1.2fr_0.7fr_auto] md:items-center dark:border-slate-700 dark:bg-slate-900"
-                  >
-                    <div className="flex items-center gap-4">
-                      {member.avatar_url ? (
-                        <img
-                          src={member.avatar_url}
-                          alt={
-                            member.full_name || member.email || "Member avatar"
-                          }
-                          className="h-12 w-12 rounded-2xl object-cover"
-                        />
-                      ) : (
-                        <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white text-gray-400 dark:bg-slate-800">
-                          <Users size={18} />
-                        </div>
-                      )}
-                      <div className="min-w-0">
-                        <p className="truncate font-black text-gray-900 dark:text-slate-100">
-                          {member.full_name || member.email || member.user_id}
-                        </p>
-                        <p className="truncate text-sm text-gray-500 dark:text-slate-400">
-                          <Mail
-                            size={13}
-                            className="mr-1 inline-block align-[-2px]"
+            <div className="mt-5 space-y-3">
+              {membersLoading ? (
+                <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 text-sm font-bold text-slate-500 dark:border-slate-700 dark:bg-slate-950/40 dark:text-slate-400">
+                  <Loader2 size={16} className="animate-spin" />
+                  Đang tải thành viên...
+                </div>
+              ) : members.length > 0 ? (
+                members.map((member) => {
+                  const isOwner = member.role === "owner";
+                  const isBusy = memberBusyId === member.user_id;
+
+                  return (
+                    <div
+                      key={`${member.workspace_id}-${member.user_id}`}
+                      className="grid gap-4 rounded-[1.5rem] border border-slate-200 bg-slate-50/80 p-4 md:grid-cols-[1.2fr_0.7fr_auto] md:items-center dark:border-slate-700 dark:bg-slate-950/35"
+                    >
+                      <div className="flex items-center gap-4">
+                        {member.avatar_url ? (
+                          <img
+                            src={member.avatar_url}
+                            alt={
+                              member.full_name || member.email || "Member avatar"
+                            }
+                            className="h-12 w-12 rounded-[1rem] object-cover ring-1 ring-slate-200 dark:ring-slate-700"
                           />
-                          {member.email || "Không có email"}
-                        </p>
+                        ) : (
+                          <div className="flex h-12 w-12 items-center justify-center rounded-[1rem] bg-white text-slate-400 ring-1 ring-slate-200 dark:bg-slate-900 dark:text-slate-500 dark:ring-slate-700">
+                            <Users size={18} />
+                          </div>
+                        )}
+
+                        <div className="min-w-0">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <p className="truncate font-black text-slate-950 dark:text-slate-50">
+                              {member.full_name || member.email || member.user_id}
+                            </p>
+                            {isOwner && (
+                              <span className="rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.22em] text-amber-700 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-200">
+                                Owner
+                              </span>
+                            )}
+                          </div>
+                          <p className="mt-2 truncate text-sm text-slate-500 dark:text-slate-400">
+                            <Mail
+                              size={13}
+                              className="mr-1 inline-block align-[-2px]"
+                            />
+                            {member.email || "Không có email"}
+                          </p>
+                        </div>
                       </div>
+
+                      <select
+                        value={member.role}
+                        disabled={!canManageMembers || isOwner || isBusy}
+                        onChange={(e) =>
+                          handleRoleChange(
+                            member.user_id,
+                            e.target.value === "viewer" ? "viewer" : "editor",
+                          )
+                        }
+                        className={cn(
+                          inputClass,
+                          "py-3 font-bold disabled:cursor-not-allowed disabled:opacity-60",
+                        )}
+                      >
+                        <option value="owner">Owner</option>
+                        <option value="editor">Editor</option>
+                        <option value="viewer">Viewer</option>
+                      </select>
+
+                      <button
+                        type="button"
+                        disabled={!canManageMembers || isOwner || isBusy}
+                        onClick={() => handleRemoveMember(member.user_id)}
+                        className="flex items-center justify-center gap-2 rounded-2xl bg-red-50 px-4 py-3 text-xs font-black uppercase tracking-[0.22em] text-red-600 transition-all hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-red-500/10 dark:text-red-200 dark:hover:bg-red-500/20"
+                      >
+                        {isBusy ? (
+                          <Loader2 size={16} className="animate-spin" />
+                        ) : (
+                          <Trash2 size={16} />
+                        )}
+                        Xóa
+                      </button>
                     </div>
-
-                    <select
-                      value={member.role}
-                      disabled={!canManageMembers || isOwner || isBusy}
-                      onChange={(e) =>
-                        handleRoleChange(
-                          member.user_id,
-                          e.target.value === "viewer" ? "viewer" : "editor",
-                        )
-                      }
-                      className="rounded-2xl bg-white px-4 py-3 font-bold text-gray-900 outline-none transition-all focus:ring-4 focus:ring-orange-500/10 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-slate-800 dark:text-slate-100"
-                    >
-                      <option value="owner">Owner</option>
-                      <option value="editor">Editor</option>
-                      <option value="viewer">Viewer</option>
-                    </select>
-
-                    <button
-                      type="button"
-                      disabled={!canManageMembers || isOwner || isBusy}
-                      onClick={() => handleRemoveMember(member.user_id)}
-                      className="flex items-center justify-center gap-2 rounded-2xl bg-red-50 px-4 py-3 text-xs font-black uppercase tracking-widest text-red-600 transition-all hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-50"
-                    >
-                      {isBusy ? (
-                        <Loader2 size={16} className="animate-spin" />
-                      ) : (
-                        <Trash2 size={16} />
-                      )}
-                      Xóa
-                    </button>
-                  </div>
-                );
-              })
-            ) : (
-              <div className="rounded-2xl bg-gray-50 px-4 py-4 text-sm font-medium text-gray-500 dark:bg-slate-900 dark:text-slate-400">
-                Chưa có thành viên nào trong workspace này.
-              </div>
-            )}
+                  );
+                })
+              ) : (
+                <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 text-sm font-medium text-slate-500 dark:border-slate-700 dark:bg-slate-950/40 dark:text-slate-400">
+                  Chưa có thành viên nào trong workspace này.
+                </div>
+              )}
+            </div>
           </div>
         </section>
       </div>
