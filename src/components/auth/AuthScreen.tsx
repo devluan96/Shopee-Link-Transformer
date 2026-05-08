@@ -1,497 +1,820 @@
 import React, { useState } from "react";
 import {
-  Zap,
-  Users as UsersIcon,
-  ShieldCheck,
   AlertCircle,
   ArrowRight,
-  Mail,
-  Lock,
+  BadgeCheck,
+  BarChart3,
   Eye,
   EyeOff,
+  Fingerprint,
+  Layers3,
   Loader2,
+  Lock,
+  Mail,
+  Play,
+  ShieldCheck,
+  Sparkles,
 } from "lucide-react";
+import { AnimatePresence, motion } from "motion/react";
 import { cn } from "@/src/lib/utils";
-import { signInWithGoogle } from "@/src/lib/supabase";
-import { motion, AnimatePresence } from "motion/react";
 
 interface AuthScreenProps {
+  isRegistering: boolean;
+  setIsRegistering: (val: boolean) => void;
+  loginEmail: string;
+  setLoginEmail: (val: string) => void;
+  loginPassword: string;
+  setLoginPassword: (val: string) => void;
+  registerEmail: string;
+  setRegisterEmail: (val: string) => void;
+  registerPassword: string;
+  setRegisterPassword: (val: string) => void;
+  registerConfirmPassword: string;
+  setRegisterConfirmPassword: (val: string) => void;
+  rememberMe: boolean;
+  setRememberMe: (val: boolean) => void;
+  passwordRecoveryMode: boolean;
+  recoveryPassword: string;
+  setRecoveryPassword: (val: string) => void;
+  recoveryConfirmPassword: string;
+  setRecoveryConfirmPassword: (val: string) => void;
+  loading: boolean;
+  authError: string | null;
+  authNotice: string | null;
+  handleEmailAuth: (e: React.FormEvent) => void;
+  handleForgotPassword: () => void | Promise<void>;
+  handlePasswordRecovery: (e: React.FormEvent) => void | Promise<void>;
+  resetLoading?: () => void;
+}
+
+interface AuthFormProps {
   isRegistering: boolean;
   setIsRegistering: (val: boolean) => void;
   email: string;
   setEmail: (val: string) => void;
   password: string;
   setPassword: (val: string) => void;
+  confirmPassword?: string;
+  setConfirmPassword?: (val: string) => void;
+  rememberMe: boolean;
+  setRememberMe: (val: boolean) => void;
+  passwordRecoveryMode?: boolean;
+  recoveryPassword: string;
+  setRecoveryPassword: (val: string) => void;
+  recoveryConfirmPassword: string;
+  setRecoveryConfirmPassword: (val: string) => void;
   loading: boolean;
   authError: string | null;
   authNotice: string | null;
   handleEmailAuth: (e: React.FormEvent) => void;
+  handleForgotPassword: () => void | Promise<void>;
+  handlePasswordRecovery: (e: React.FormEvent) => void | Promise<void>;
   resetLoading?: () => void;
 }
+
+const featureCards = [
+  {
+    title: "Trang xem trước đẹp mắt",
+    detail:
+      "Landing page, thống kê và xác thực dùng chung một ngôn ngữ thiết kế.",
+    icon: Layers3,
+  },
+  {
+    title: "Số liệu thời gian thực",
+    detail: "Theo dõi lượt click, chuyển đổi và hiệu quả của từng chiến dịch.",
+    icon: BarChart3,
+  },
+  {
+    title: "Bảo mật sẵn sàng",
+    detail:
+      "Ghi nhớ đăng nhập, khôi phục mật khẩu và 2FA cho vận hành thực tế.",
+    icon: Fingerprint,
+  },
+];
 
 export const AuthScreen = ({
   isRegistering,
   setIsRegistering,
-  email,
-  setEmail,
-  password,
-  setPassword,
+  loginEmail,
+  setLoginEmail,
+  loginPassword,
+  setLoginPassword,
+  registerEmail,
+  setRegisterEmail,
+  registerPassword,
+  setRegisterPassword,
+  registerConfirmPassword,
+  setRegisterConfirmPassword,
+  rememberMe,
+  setRememberMe,
+  passwordRecoveryMode,
+  recoveryPassword,
+  setRecoveryPassword,
+  recoveryConfirmPassword,
+  setRecoveryConfirmPassword,
   loading,
   authError,
   authNotice,
   handleEmailAuth,
+  handleForgotPassword,
+  handlePasswordRecovery,
   resetLoading,
 }: AuthScreenProps) => {
-  const [isFlipped, setIsFlipped] = useState(false);
-
-  const toggleMode = (mode: boolean) => {
-    if (mode === isRegistering) return;
-    setIsFlipped(!isFlipped);
-    setTimeout(() => {
-      setIsRegistering(mode);
-    }, 150);
-  };
-
   return (
-    <div className="h-screen w-screen bg-[#FDFDFD] flex font-sans overflow-hidden">
-      {/* LEFT SIDE: Marketing / Hero (Desktop Only) */}
-      <div className="hidden lg:flex lg:w-1/2 bg-orange-50 relative items-center justify-center p-8 xl:p-16 overflow-hidden">
-        {/* Decorative Circles */}
-        <div className="absolute top-[-20%] left-[-20%] w-[80%] h-[80%] bg-orange-100 rounded-full blur-[140px] opacity-60" />
-        <div className="absolute bottom-[-10%] right-[-10%] w-[60%] h-[60%] bg-white rounded-full blur-[100px] opacity-40" />
+    <div className="relative h-dvh overflow-hidden bg-[#f3eee7] text-slate-950">
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(255,128,0,0.15),transparent_30%),radial-gradient(circle_at_85%_18%,rgba(15,23,42,0.08),transparent_22%),linear-gradient(135deg,#f8f1e7_0%,#f5efe8_44%,#fbfaf8_100%)]" />
+      <div className="absolute -left-40 -top-32 h-72 w-72 rounded-full bg-orange-300/20 blur-3xl" />
+      <div className="absolute -bottom-48 -right-32 h-80 w-80 rounded-full bg-slate-900/8 blur-3xl" />
+      <div className="absolute inset-y-0 left-[46%] hidden w-px bg-white/40 lg:block" />
 
-        <div className="relative z-10 max-w-xl w-full flex flex-col justify-center h-full">
-          <motion.div
-            initial={{ opacity: 0, x: -50 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.8, ease: "easeOut" }}
-            className="flex flex-col"
-          >
-            <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-orange-600/10 text-orange-600 rounded-full mb-6 w-fit">
-              <Zap size={14} className="fill-current" />
-              <span className="text-[9px] font-black uppercase tracking-widest leading-none">
-                CÔNG CỤ TỐI ƯU SHOPEE
-              </span>
-            </div>
+      <div className="relative z-10 grid h-full lg:grid-cols-[1.02fr_0.98fr]">
+        <section className="hidden px-6 py-6 lg:flex xl:px-8 xl:py-7">
+          <div className="relative flex h-full w-full flex-col overflow-hidden rounded-[2.4rem] border border-white/60 bg-[#1d160f] px-8 py-7 text-white shadow-[0_30px_100px_rgba(24,16,8,0.28)]">
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(255,181,71,0.22),transparent_24%),radial-gradient(circle_at_78%_22%,rgba(255,255,255,0.08),transparent_20%),linear-gradient(180deg,rgba(255,255,255,0.04),rgba(255,255,255,0)_28%)]" />
 
-            <h1 className="text-4xl xl:text-5xl font-black text-slate-900 leading-[1.1] mb-4">
-              Rút gọn{" "}
-              <span className="text-orange-600 uppercase">link Shopee</span>{" "}
-              <br />& quản lý dễ dàng
-            </h1>
+            <motion.div
+              initial={{ opacity: 0, y: 18 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.65, ease: "easeOut" }}
+              className="relative flex h-full flex-col"
+            >
+              <div className="mb-5 inline-flex w-fit items-center gap-2 rounded-full border border-white/10 bg-white/8 px-4 py-2 text-[10px] font-bold uppercase tracking-[0.24em] text-orange-200 backdrop-blur">
+                <Sparkles size={14} className="text-orange-300" />
+                Trải nghiệm xác thực cao cấp
+              </div>
 
-            <p className="text-slate-500 text-base font-medium mb-8 max-w-md leading-relaxed opacity-80">
-              Tạo link rút gọn chuyên nghiệp, chuyên trang giới thiệu sản phẩm
-              cực đẹp chỉ trong 5 giây. Gia tăng tỷ lệ mua hàng ngay hôm nay.
-            </p>
+              <div className="max-w-xl">
+                <p className="mb-3 text-xs font-semibold uppercase tracking-[0.34em] text-orange-200/80">
+                  Nền tảng HotsNew Click
+                </p>
+                <h1 className="font-['Be_Vietnam_Pro'] text-[2.7rem] font-bold leading-[1.04] tracking-[-0.035em] xl:text-[3.3rem]">
+                  Quản lý link Shopee
+                  <span className="block bg-[linear-gradient(135deg,#fff6ea_0%,#ffb457_45%,#ff6a00_100%)] bg-clip-text text-transparent">
+                    nhanh, đẹp và chuyên nghiệp.
+                  </span>
+                </h1>
+                <p className="mt-4 max-w-lg text-sm leading-6 text-white/70 xl:text-[15px]">
+                  Tạo link rút gọn, trang xem trước thu hút và theo dõi hiệu quả
+                  chiến dịch trong một không gian làm việc gọn gàng, dễ dùng.
+                </p>
+              </div>
 
-            {/* Feature Cards Grid - More Compact */}
-            <div className="grid grid-cols-2 gap-3 mb-10">
-              {[
-                {
-                  label: "Rút gọn nhanh",
-                  info: "Tiết kiệm thời gian",
-                  icon: <Zap size={18} />,
-                },
-                {
-                  label: "Thống kê chi tiết",
-                  info: "Lượt click Real-time",
-                  icon: <ArrowRight size={18} />,
-                },
-                {
-                  label: "Quản lý dễ dàng",
-                  info: "Lắp ráp link chuyên nghiệp",
-                  icon: <Mail size={18} />,
-                },
-                {
-                  label: "Bảo mật tuyệt đối",
-                  info: "An toàn dữ liệu",
-                  icon: <ShieldCheck size={18} />,
-                },
-              ].map((f, i) => (
-                <motion.div
-                  key={f.label}
-                  initial={{ opacity: 0, y: 15 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.2 + i * 0.1 }}
-                  className="bg-white/70 backdrop-blur-md p-4 rounded-2xl border border-white shadow-sm flex items-center gap-4 hover:shadow-lg hover:shadow-orange-200/40 transition-all duration-300 group"
-                >
-                  <div className="w-9 h-9 shrink-0 bg-orange-50 rounded-xl flex items-center justify-center text-orange-600 group-hover:bg-orange-600 group-hover:text-white transition-colors">
-                    {f.icon}
-                  </div>
+              <div className="mt-5 grid gap-3 xl:grid-cols-3">
+                {featureCards.map((item, index) => {
+                  const Icon = item.icon;
+                  return (
+                    <motion.div
+                      key={item.title}
+                      initial={{ opacity: 0, y: 16 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.14 + index * 0.06, duration: 0.5 }}
+                      className="rounded-[1.45rem] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.12),rgba(255,255,255,0.05))] p-4 backdrop-blur"
+                    >
+                      <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-orange-400/16 text-orange-200">
+                        <Icon size={18} />
+                      </div>
+                      <h3 className="mt-3 font-['Be_Vietnam_Pro'] text-base font-semibold tracking-[-0.02em] text-white">
+                        {item.title}
+                      </h3>
+                      <p className="mt-1.5 text-xs leading-5 text-white/62">
+                        {item.detail}
+                      </p>
+                    </motion.div>
+                  );
+                })}
+              </div>
+
+              <motion.div
+                initial={{ opacity: 0, y: 22 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.28, duration: 0.65 }}
+                className="relative mt-5 overflow-hidden rounded-[1.8rem] border border-white/10 bg-[#f7f3ee] p-4 text-slate-900 shadow-[0_20px_60px_rgba(0,0,0,0.18)]"
+              >
+                <div className="relative flex items-center justify-between gap-4">
                   <div>
-                    <h4 className="text-xs font-black text-slate-900 leading-tight">
-                      {f.label}
-                    </h4>
-                    <p className="text-[9px] text-slate-400 font-bold uppercase tracking-tighter mt-0.5">
-                      {f.info}
+                    <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-slate-500">
+                      Hệ sinh thái xem trước
+                    </p>
+                    <h3 className="mt-2 font-['Be_Vietnam_Pro'] text-xl font-semibold tracking-[-0.025em]">
+                      Dashboard, landing page và xác thực cùng một nhịp.
+                    </h3>
+                  </div>
+                  <div className="hidden rounded-2xl border border-slate-200 bg-white px-4 py-3 text-right shadow-sm xl:block">
+                    <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-slate-400">
+                      Chuyển đổi trực tiếp
+                    </p>
+                    <p className="mt-1 font-['Be_Vietnam_Pro'] text-xl font-semibold tracking-[-0.025em] text-orange-600">
+                      +27.4%
                     </p>
                   </div>
-                </motion.div>
-              ))}
-            </div>
+                </div>
 
-            {/* Main Preview Image Container - Scaled Down */}
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ delay: 0.6, duration: 1 }}
-              className="relative rounded-[2.5rem] overflow-hidden shadow-2xl border-4 border-white isolate"
-            >
-              <img
-                src="./og-image.png"
-                alt="App Preview"
-                className="w-full h-auto aspect-video object-cover"
-                referrerPolicy="no-referrer"
-              />
-              <div className="absolute inset-0 bg-linear-to-t from-black/20 to-transparent" />
-            </motion.div>
-          </motion.div>
-        </div>
-      </div>
-
-      {/* RIGHT SIDE: Auth Form */}
-      <div className="w-full lg:w-1/2 flex items-center justify-center p-6 lg:p-12 relative bg-white lg:bg-transparent">
-        {/* Mobile background decors */}
-        <div className="lg:hidden absolute top-[-10%] right-[-10%] w-[50%] h-[50%] bg-orange-100 rounded-full blur-[100px] opacity-40" />
-
-        <div className="max-w-md w-full relative z-10">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="text-center mb-8"
-          >
-            <div className="flex items-center justify-center ">
-              <img
-                src="/logo-app-192.png"
-                alt="HotsNew Click logo"
-                className="h-16 w-16 rounded-2xl object-cover"
-              />
-            </div>
-            <h1 className="text-3xl font-black tracking-tight text-gray-900 mb-1.5">
-              HotsNew{" "}
-              <span className="text-orange-600 uppercase italic text-2xl">
-                click
-              </span>
-            </h1>
-            <p className="text-gray-400 font-bold uppercase tracking-widest text-[9px]">
-              Đăng nhập để bắt đầu chuyển đổi
-            </p>
-          </motion.div>
-
-          <div className="perspective-1000">
-            <motion.div
-              initial={false}
-              animate={{ rotateY: isRegistering ? 180 : 0 }}
-              transition={{
-                duration: 0.6,
-                type: "spring",
-                stiffness: 260,
-                damping: 20,
-              }}
-              style={{ transformStyle: "preserve-3d" }}
-              className="w-full relative h-130"
-            >
-              {/* Front side (LOGIN) */}
-              <div
-                style={{ backfaceVisibility: "hidden" }}
-                className="absolute inset-0 w-full h-full bg-white p-8 lg:p-10 rounded-[2.5rem] shadow-2xl shadow-orange-900/10 border border-gray-100 flex flex-col"
-              >
-                <AuthForm
-                  title="Đăng nhập"
-                  subtitle="MỪNG BẠN QUAY TRỞ LẠI"
-                  isRegistering={false}
-                  setIsRegistering={toggleMode}
-                  email={email}
-                  setEmail={setEmail}
-                  password={password}
-                  setPassword={setPassword}
-                  loading={loading}
-                  authError={authError}
-                  authNotice={authNotice}
-                  handleEmailAuth={handleEmailAuth}
-                  resetLoading={resetLoading}
-                />
-              </div>
-
-              {/* Back side (REGISTER) */}
-              <div
-                style={{
-                  backfaceVisibility: "hidden",
-                  transform: "rotateY(180deg)",
-                }}
-                className="absolute inset-0 w-full h-full bg-slate-900 p-8 lg:p-10 rounded-[2.5rem] shadow-2xl border border-slate-800 shadow-slate-900/20 flex flex-col"
-              >
-                <AuthForm
-                  title="Đăng ký"
-                  subtitle="TẠO TÀI KHOẢN MIỄN PHÍ"
-                  isRegistering={true}
-                  setIsRegistering={toggleMode}
-                  email={email}
-                  setEmail={setEmail}
-                  password={password}
-                  setPassword={setPassword}
-                  loading={loading}
-                  authError={authError}
-                  authNotice={authNotice}
-                  handleEmailAuth={handleEmailAuth}
-                  resetLoading={resetLoading}
-                  dark
-                />
-              </div>
+                <div className="relative mt-4 overflow-hidden rounded-[1.3rem] border border-slate-200 bg-white">
+                  <img
+                    src="./og-image.png"
+                    alt="Xem trước ứng dụng"
+                    className="h-48 w-full object-cover object-top xl:h-52"
+                    referrerPolicy="no-referrer"
+                  />
+                  <div className="absolute inset-x-0 bottom-0 flex items-end justify-between bg-[linear-gradient(180deg,transparent,rgba(15,23,42,0.72))] p-4">
+                    <div className="text-white">
+                      <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-white/65">
+                        Trình diễn
+                      </p>
+                      <p className="mt-1.5 font-['Be_Vietnam_Pro'] text-lg font-semibold tracking-[-0.025em]">
+                        Rút gọn link + landing page + thống kê
+                      </p>
+                    </div>
+                    <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/20 bg-white/12 text-white backdrop-blur">
+                      <Play size={15} className="translate-x-0.5" />
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
             </motion.div>
           </div>
+        </section>
 
-          <p className="text-center mt-8 text-[9px] text-gray-400 font-bold tracking-widest uppercase">
-            HotsNew Click © 2026 • Bảo mật bởi hệ thống hotsshop.click
-          </p>
-        </div>
+        <section className="flex h-full items-center justify-center px-4 py-4 sm:px-6 lg:px-8 xl:px-10">
+          <div className="w-full max-w-132">
+            <motion.div
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6 }}
+              className="mb-4 flex items-center justify-between gap-4 rounded-[1.45rem] border border-white/70 bg-white/65 px-4 py-3 shadow-[0_20px_60px_rgba(82,56,20,0.08)] backdrop-blur"
+            >
+              <div className="flex items-center gap-3.5">
+                <img
+                  src="/logo-app-192.png"
+                  alt="Logo HotsNew Click"
+                  className="h-12 w-12 rounded-xl border border-orange-100 object-cover shadow-sm"
+                />
+                <div>
+                  <p className="font-['Be_Vietnam_Pro'] text-xl font-bold tracking-[-0.03em] text-slate-950">
+                    HotsNew <span className="text-orange-600">Click</span>
+                  </p>
+                  <p className="mt-1 text-[10px] font-bold uppercase tracking-[0.25em] text-slate-400">
+                    Không gian làm việc cho link Shopee
+                  </p>
+                </div>
+              </div>
+              <div className="hidden rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-[11px] font-bold text-emerald-700 sm:inline-flex sm:items-center sm:gap-1.5">
+                <ShieldCheck size={13} />
+                Bảo mật an toàn
+              </div>
+            </motion.div>
+
+            {passwordRecoveryMode ? (
+              <AuthFormPanel
+                isRegistering={false}
+                setIsRegistering={setIsRegistering}
+                email={loginEmail}
+                setEmail={setLoginEmail}
+                password={loginPassword}
+                setPassword={setLoginPassword}
+                rememberMe={rememberMe}
+                setRememberMe={setRememberMe}
+                passwordRecoveryMode
+                recoveryPassword={recoveryPassword}
+                setRecoveryPassword={setRecoveryPassword}
+                recoveryConfirmPassword={recoveryConfirmPassword}
+                setRecoveryConfirmPassword={setRecoveryConfirmPassword}
+                loading={loading}
+                authError={authError}
+                authNotice={authNotice}
+                handleEmailAuth={handleEmailAuth}
+                handleForgotPassword={handleForgotPassword}
+                handlePasswordRecovery={handlePasswordRecovery}
+                resetLoading={resetLoading}
+              />
+            ) : (
+              <div
+                className="relative h-140 sm:h-144"
+                style={{ perspective: "1800px" }}
+              >
+                <motion.div
+                  initial={false}
+                  animate={{ rotateY: isRegistering ? 180 : 0 }}
+                  transition={{
+                    duration: 0.6,
+                    type: "spring",
+                    stiffness: 260,
+                    damping: 24,
+                  }}
+                  style={{ transformStyle: "preserve-3d" }}
+                  className="relative h-full w-full"
+                >
+                  <div
+                    style={{ backfaceVisibility: "hidden" }}
+                    className={cn(
+                      "absolute inset-0",
+                      isRegistering && "pointer-events-none",
+                    )}
+                  >
+                    <AuthFormPanel
+                      isRegistering={false}
+                      setIsRegistering={setIsRegistering}
+                      email={loginEmail}
+                      setEmail={setLoginEmail}
+                      password={loginPassword}
+                      setPassword={setLoginPassword}
+                      rememberMe={rememberMe}
+                      setRememberMe={setRememberMe}
+                      recoveryPassword={recoveryPassword}
+                      setRecoveryPassword={setRecoveryPassword}
+                      recoveryConfirmPassword={recoveryConfirmPassword}
+                      setRecoveryConfirmPassword={setRecoveryConfirmPassword}
+                      loading={loading}
+                      authError={authError}
+                      authNotice={authNotice}
+                      handleEmailAuth={handleEmailAuth}
+                      handleForgotPassword={handleForgotPassword}
+                      handlePasswordRecovery={handlePasswordRecovery}
+                      resetLoading={resetLoading}
+                    />
+                  </div>
+
+                  <div
+                    style={{
+                      backfaceVisibility: "hidden",
+                      transform: "rotateY(180deg)",
+                    }}
+                    className={cn(
+                      "absolute inset-0",
+                      !isRegistering && "pointer-events-none",
+                    )}
+                  >
+                    <AuthFormPanel
+                      isRegistering
+                      setIsRegistering={setIsRegistering}
+                      email={registerEmail}
+                      setEmail={setRegisterEmail}
+                      password={registerPassword}
+                      setPassword={setRegisterPassword}
+                      confirmPassword={registerConfirmPassword}
+                      setConfirmPassword={setRegisterConfirmPassword}
+                      rememberMe={rememberMe}
+                      setRememberMe={setRememberMe}
+                      recoveryPassword={recoveryPassword}
+                      setRecoveryPassword={setRecoveryPassword}
+                      recoveryConfirmPassword={recoveryConfirmPassword}
+                      setRecoveryConfirmPassword={setRecoveryConfirmPassword}
+                      loading={loading}
+                      authError={authError}
+                      authNotice={authNotice}
+                      handleEmailAuth={handleEmailAuth}
+                      handleForgotPassword={handleForgotPassword}
+                      handlePasswordRecovery={handlePasswordRecovery}
+                      resetLoading={resetLoading}
+                    />
+                  </div>
+                </motion.div>
+              </div>
+            )}
+
+            <p className="mt-4 text-center text-[10px] font-bold uppercase tracking-[0.24em] text-slate-400">
+              HotsNew Click © 2026 • Dành cho seller, creator và đội vận hành
+            </p>
+          </div>
+        </section>
       </div>
     </div>
   );
 };
 
-const AuthForm = ({
-  title,
-  subtitle,
+const AuthFormPanel = ({
   isRegistering,
   setIsRegistering,
   email,
   setEmail,
   password,
   setPassword,
+  confirmPassword,
+  setConfirmPassword,
+  rememberMe,
+  setRememberMe,
+  passwordRecoveryMode = false,
+  recoveryPassword,
+  setRecoveryPassword,
+  recoveryConfirmPassword,
+  setRecoveryConfirmPassword,
   loading,
   authError,
   authNotice,
   handleEmailAuth,
+  handleForgotPassword,
+  handlePasswordRecovery,
   resetLoading,
-  dark = false,
-}: any) => {
-  const [showPassword, setShowPassword] = useState(false);
+}: AuthFormProps) => {
+  const [showPrimaryPassword, setShowPrimaryPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [showRecoveryPassword, setShowRecoveryPassword] = useState(false);
+  const [showRecoveryConfirmPassword, setShowRecoveryConfirmPassword] =
+    useState(false);
+
+  const title = passwordRecoveryMode
+    ? "Đặt lại mật khẩu"
+    : isRegistering
+      ? "Tạo tài khoản mới"
+      : "Đăng nhập hệ thống";
+
+  const subtitle = passwordRecoveryMode
+    ? "CẬP NHẬT THÔNG TIN TRUY CẬP"
+    : isRegistering
+      ? "BẮT ĐẦU THIẾT LẬP KHÔNG GIAN LÀM VIỆC"
+      : "TRUY CẬP BẢNG ĐIỀU KHIỂN CHỈ TRONG MỘT BƯỚC";
+
+  const confirmPasswordMismatch =
+    isRegistering &&
+    (confirmPassword ?? "").trim().length > 0 &&
+    password !== (confirmPassword ?? "");
+
+  const statusChipClassName = passwordRecoveryMode
+    ? "border-amber-200 bg-amber-50 text-amber-700 shadow-[0_8px_18px_rgba(245,158,11,0.10)]"
+    : isRegistering
+      ? "border-sky-200 bg-sky-50 text-sky-700 shadow-[0_8px_18px_rgba(14,165,233,0.10)]"
+      : "border-emerald-200 bg-emerald-50 text-emerald-700 shadow-[0_8px_18px_rgba(16,185,129,0.10)]";
 
   return (
-    <div className="flex flex-col h-full">
-      <div className="mb-6">
-        <h2
-          className={cn(
-            "text-2xl font-black mb-1",
-            dark ? "text-white" : "text-gray-900",
-          )}
-        >
-          {title}
-        </h2>
-        <p
-          className={cn(
-            "text-xs font-bold uppercase tracking-wider",
-            dark ? "text-slate-500" : "text-gray-400",
-          )}
-        >
-          {subtitle}
-        </p>
-      </div>
+    <motion.div
+      initial={{ opacity: 0, y: 18 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.65, ease: "easeOut" }}
+      className="relative h-full overflow-hidden rounded-[1.95rem] border border-white/70 bg-[linear-gradient(180deg,rgba(255,255,255,0.92),rgba(255,255,255,0.78))] p-5 shadow-[0_30px_80px_rgba(82,56,20,0.11)] backdrop-blur xl:p-6"
+    >
+      <div className="absolute inset-x-0 top-0 h-24 bg-[radial-gradient(circle_at_top,rgba(255,132,0,0.12),transparent_72%)]" />
 
-      <div
-        className={cn(
-          "flex p-1 rounded-2xl mb-8",
-          dark ? "bg-slate-800/50" : "bg-gray-100",
-        )}
-      >
-        <button
-          type="button"
-          onClick={() => setIsRegistering(false)}
-          className={cn(
-            "flex-1 py-3 text-xs font-black uppercase tracking-widest rounded-xl transition-all",
-            !isRegistering
-              ? dark
-                ? "bg-slate-700 text-white shadow-lg"
-                : "bg-white text-gray-900 shadow-lg"
-              : dark
-                ? "text-slate-500 hover:text-slate-400"
-                : "text-gray-400 hover:text-gray-600",
-          )}
-        >
-          Đăng nhập
-        </button>
-        <button
-          type="button"
-          onClick={() => setIsRegistering(true)}
-          className={cn(
-            "flex-1 py-3 text-xs font-black uppercase tracking-widest rounded-xl transition-all",
-            isRegistering
-              ? dark
-                ? "bg-white text-gray-900 shadow-lg"
-                : "bg-white text-gray-900 shadow-lg"
-              : dark
-                ? "text-slate-500 hover:text-slate-400"
-                : "text-gray-400 hover:text-gray-600",
-          )}
-        >
-          Đăng ký
-        </button>
-      </div>
+      <div className="relative flex h-full flex-col">
+        <div className="mb-5 flex items-start justify-between gap-4">
+          <div>
+            <div className="inline-flex items-center gap-2 rounded-full border border-orange-100 bg-orange-50 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.22em] text-orange-700">
+              <BadgeCheck size={13} />
+              {passwordRecoveryMode
+                ? "Khôi phục tài khoản"
+                : "Không gian xác thực"}
+            </div>
+            <h2 className="mt-3 font-['Be_Vietnam_Pro'] text-[1.8rem] font-bold tracking-[-0.03em] text-slate-950 sm:text-[2rem]">
+              {title}
+            </h2>
+            <p className="mt-1.5 text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400">
+              {subtitle}
+            </p>
+          </div>
 
-      <form onSubmit={handleEmailAuth} className="space-y-4 flex-1">
-        <div className="space-y-1.5">
-          <label
-            className={cn(
-              "text-[10px] font-black uppercase tracking-widest ml-1",
-              dark ? "text-slate-500" : "text-gray-400",
-            )}
-          >
-            Email address
-          </label>
-          <div className="relative group">
-            <span
+          <div className="hidden sm:block">
+            <div
               className={cn(
-                "absolute left-4 top-1/2 -translate-y-1/2 transition-colors",
-                dark
-                  ? "text-slate-600 group-focus-within:text-white"
-                  : "text-gray-400 group-focus-within:text-orange-500",
+                "inline-flex items-center gap-2 rounded-full border px-3.5 py-2 text-sm font-bold",
+                statusChipClassName,
               )}
             >
-              <Mail size={18} />
-            </span>
-            <input
-              type="email"
-              required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="name@example.com"
-              className={cn(
-                "w-full pl-12 pr-4 py-3.5 border-2 outline-none transition-all font-medium text-sm rounded-[1.25rem]",
-                dark
-                  ? "bg-slate-800/50 border-transparent focus:border-white/20 text-white placeholder:text-slate-700"
-                  : "bg-gray-50 border-transparent focus:border-orange-500 text-gray-900 placeholder:text-gray-300",
-              )}
-            />
+              <BadgeCheck size={15} />
+              <span>
+                {passwordRecoveryMode
+                  ? "Đặt lại"
+                  : isRegistering
+                    ? "Mới"
+                    : "Sẵn sàng"}
+              </span>
+            </div>
           </div>
         </div>
 
-        <div className="space-y-1.5">
-          <div className="flex items-center justify-between ml-1">
-            <label
-              className={cn(
-                "text-[10px] font-black uppercase tracking-widest",
-                dark ? "text-slate-500" : "text-gray-400",
-              )}
-            >
-              Password
-            </label>
-            {!isRegistering && (
-              <button
-                type="button"
-                onClick={() => {
-                  const emailInput = document.querySelector('input[type="email"]') as HTMLInputElement;
-                  if (emailInput?.value) {
-                    window.open(`/api/v1/auth/reset-password?email=${encodeURIComponent(emailInput.value)}`, '_blank');
-                  } else {
-                    alert('Vui lòng nhập email trước khi yêu cầu đặt lại mật khẩu');
-                  }
-                }}
-                className={cn(
-                  "text-[9px] font-bold transition-colors hover:underline",
-                  dark ? "text-orange-400 hover:text-orange-300" : "text-orange-600 hover:text-orange-700",
-                )}
-              >
-                Quên mật khẩu?
-              </button>
-            )}
+        {!passwordRecoveryMode && (
+          <div className="mb-5 rounded-[1.35rem] border border-slate-200/80 bg-slate-100/80 p-1.5">
+            <div className="grid grid-cols-2 gap-1.5">
+              {[
+                { key: "login", label: "Đăng nhập" },
+                { key: "register", label: "Đăng ký" },
+              ].map((item) => {
+                const active =
+                  (item.key === "login" && !isRegistering) ||
+                  (item.key === "register" && isRegistering);
+
+                return (
+                  <button
+                    key={item.key}
+                    type="button"
+                    onClick={() => setIsRegistering(item.key === "register")}
+                    className={cn(
+                      "relative rounded-[1.1rem] px-4 py-3 text-xs font-black uppercase tracking-[0.16em] transition-colors",
+                      active
+                        ? "text-slate-950"
+                        : "text-slate-400 hover:text-slate-700",
+                    )}
+                  >
+                    {active && (
+                      <motion.span
+                        layoutId="auth-mode-pill"
+                        className="absolute inset-0 rounded-[1.1rem] bg-white shadow-[0_10px_20px_rgba(15,23,42,0.08)]"
+                        transition={{
+                          type: "spring",
+                          stiffness: 320,
+                          damping: 28,
+                        }}
+                      />
+                    )}
+                    <span className="relative z-10">{item.label}</span>
+                  </button>
+                );
+              })}
+            </div>
           </div>
-          <div className="relative group">
-            <span
-              className={cn(
-                "absolute left-4 top-1/2 -translate-y-1/2 transition-colors",
-                dark
-                  ? "text-slate-600 group-focus-within:text-white"
-                  : "text-gray-400 group-focus-within:text-orange-500",
-              )}
+        )}
+
+        <form
+          onSubmit={
+            passwordRecoveryMode ? handlePasswordRecovery : handleEmailAuth
+          }
+          className="flex flex-1 flex-col space-y-3.5"
+        >
+          <InputField
+            label="Địa chỉ email"
+            icon={<Mail size={18} />}
+            type="email"
+            value={email}
+            onChange={setEmail}
+            placeholder="tenban@example.com"
+            readOnly={passwordRecoveryMode}
+          />
+
+          <AnimatePresence mode="wait">
+            {passwordRecoveryMode ? (
+              <motion.div
+                key="recovery-fields"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                transition={{ duration: 0.22 }}
+                className="space-y-3.5"
+              >
+                <PasswordField
+                  label="Mật khẩu mới"
+                  value={recoveryPassword}
+                  onChange={setRecoveryPassword}
+                  showValue={showRecoveryPassword}
+                  onToggleShow={() => setShowRecoveryPassword((prev) => !prev)}
+                />
+                <PasswordField
+                  label="Xác nhận mật khẩu"
+                  value={recoveryConfirmPassword}
+                  onChange={setRecoveryConfirmPassword}
+                  showValue={showRecoveryConfirmPassword}
+                  onToggleShow={() =>
+                    setShowRecoveryConfirmPassword((prev) => !prev)
+                  }
+                />
+              </motion.div>
+            ) : (
+              <motion.div
+                key="auth-fields"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                transition={{ duration: 0.22 }}
+                className="space-y-3.5"
+              >
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <label className="pl-1 text-[11px] font-bold uppercase tracking-[0.2em] text-slate-400">
+                      Mật khẩu
+                    </label>
+                    {!isRegistering && (
+                      <button
+                        type="button"
+                        onClick={() => void handleForgotPassword()}
+                        className="text-[10px] font-bold uppercase tracking-[0.14em] text-orange-600 transition-colors hover:text-orange-700"
+                      >
+                        Quên mật khẩu?
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="group relative overflow-hidden rounded-[1.25rem] border border-slate-200 bg-white shadow-[inset_0_1px_0_rgba(255,255,255,0.85)] transition-colors focus-within:border-orange-300">
+                    <div className="pointer-events-none absolute inset-y-0 left-0 w-12 bg-[linear-gradient(180deg,rgba(255,132,0,0.06),transparent)]" />
+                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 transition-colors group-focus-within:text-orange-600">
+                      <Lock size={18} />
+                    </span>
+                    <input
+                      type={showPrimaryPassword ? "text" : "password"}
+                      required
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      placeholder="••••••••"
+                      className="w-full bg-transparent px-12 py-3.5 pr-12 text-[15px] font-medium text-slate-950 outline-none placeholder:text-slate-300"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPrimaryPassword((prev) => !prev)}
+                      className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 transition-colors hover:text-orange-600"
+                    >
+                      {showPrimaryPassword ? (
+                        <EyeOff size={18} />
+                      ) : (
+                        <Eye size={18} />
+                      )}
+                    </button>
+                  </div>
+                </div>
+
+                {isRegistering && (
+                  <PasswordField
+                    label="Nhập lại mật khẩu"
+                    value={confirmPassword ?? ""}
+                    onChange={setConfirmPassword ?? (() => {})}
+                    showValue={showConfirmPassword}
+                    onToggleShow={() => setShowConfirmPassword((prev) => !prev)}
+                    invalid={confirmPasswordMismatch}
+                    errorText={
+                      confirmPasswordMismatch
+                        ? "Mật khẩu nhập lại không khớp."
+                        : undefined
+                    }
+                  />
+                )}
+
+                {!isRegistering && (
+                  <label className="flex items-center gap-3 px-1 text-sm font-medium text-slate-600">
+                    <input
+                      type="checkbox"
+                      checked={rememberMe}
+                      onChange={(e) => setRememberMe(e.target.checked)}
+                      className="h-4 w-4 rounded border-slate-300 text-orange-600 focus:ring-orange-500"
+                    />
+                    Ghi nhớ đăng nhập trên thiết bị này
+                  </label>
+                )}
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {authError && (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.97 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="flex items-center gap-3 rounded-[1.25rem] border border-rose-200 bg-rose-50 px-4 py-3.5 text-sm font-medium text-rose-700"
             >
-              <Lock size={18} />
-            </span>
-            <input
-              type={showPassword ? "text" : "password"}
-              required
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="••••••••"
-              className={cn(
-                "w-full pl-12 pr-12 py-3.5 border-2 outline-none transition-all font-medium text-sm rounded-[1.25rem]",
-                dark
-                  ? "bg-slate-800/50 border-transparent focus:border-white/20 text-white placeholder:text-slate-700"
-                  : "bg-gray-50 border-transparent focus:border-orange-500 text-gray-900 placeholder:text-gray-300",
+              <AlertCircle size={16} className="shrink-0" />
+              <span>{authError}</span>
+            </motion.div>
+          )}
+
+          {authNotice && (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.97 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="flex items-start gap-3 rounded-[1.25rem] border border-emerald-200 bg-emerald-50 px-4 py-3.5 text-sm font-medium leading-6 text-emerald-800"
+            >
+              <Mail size={16} className="mt-1 shrink-0" />
+              <span>{authNotice}</span>
+            </motion.div>
+          )}
+
+          <button
+            type="submit"
+            disabled={loading}
+            className={cn(
+              "relative isolate mt-auto group flex w-full items-center justify-center gap-2 overflow-hidden rounded-[1.3rem] bg-[linear-gradient(135deg,#ff7a00_0%,#ff5a00_55%,#ff8f2d_100%)] px-5 py-3.5 text-xs font-black uppercase tracking-[0.22em] text-white shadow-[0_20px_40px_rgba(255,106,0,0.24)] transition-transform active:scale-[0.99]",
+              loading && "cursor-not-allowed opacity-85",
+            )}
+          >
+            <span className="absolute inset-0 bg-[linear-gradient(135deg,rgba(255,255,255,0.18),transparent_42%,rgba(255,255,255,0.08))]" />
+            <span className="relative z-10 flex items-center gap-2">
+              {loading ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : passwordRecoveryMode ? (
+                "Lưu mật khẩu mới"
+              ) : isRegistering ? (
+                "Tạo tài khoản"
+              ) : (
+                "Truy cập hệ thống"
               )}
-            />
+              {!loading && (
+                <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+              )}
+            </span>
+          </button>
+
+          {loading && resetLoading && (
             <button
               type="button"
-              onClick={() => setShowPassword(!showPassword)}
-              className={cn(
-                "absolute right-4 top-1/2 -translate-y-1/2 transition-colors",
-                dark
-                  ? "text-slate-500 hover:text-white"
-                  : "text-gray-400 hover:text-orange-500",
-              )}
+              onClick={resetLoading}
+              className="w-full text-center text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400 transition-colors hover:text-orange-600"
             >
-              {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              Hủy và thử lại nếu bị treo
             </button>
-          </div>
-        </div>
-
-        {authError && (
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="text-xs font-bold text-red-500 bg-red-500/10 p-4 rounded-2xl border border-red-500/20 flex items-center gap-2"
-          >
-            <AlertCircle size={14} className="shrink-0" /> {authError}
-          </motion.div>
-        )}
-
-        {authNotice && (
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className={cn(
-              "text-xs font-bold p-4 rounded-2xl border flex items-start gap-2 leading-relaxed",
-              dark
-                ? "text-emerald-100 bg-emerald-500/10 border-emerald-400/20"
-                : "text-emerald-700 bg-emerald-50 border-emerald-200",
-            )}
-          >
-            <Mail size={14} className="shrink-0 mt-0.5" />
-            <span>{authNotice}</span>
-          </motion.div>
-        )}
-
-        <button
-          type="submit"
-          disabled={loading}
-          className={cn(
-            "w-full py-4 mt-2 rounded-[1.25rem] font-black uppercase tracking-[0.2em] text-xs transition-all active:scale-95 flex items-center justify-center gap-2",
-            dark
-              ? "bg-white text-slate-900 hover:bg-slate-50 shadow-xl shadow-white/5"
-              : "bg-orange-600 text-white hover:bg-orange-700 shadow-xl shadow-orange-600/20",
           )}
-        >
-          {loading ? (
-            <Loader2 className="w-4 h-4 animate-spin" />
-          ) : isRegistering ? (
-            "Tạo tài khoản ngay"
-          ) : (
-            "Truy cập hệ thống"
-          )}
-          {!loading && <ArrowRight size={14} />}
-        </button>
-
-        {loading && resetLoading && (
-          <button
-            type="button"
-            onClick={resetLoading}
-            className="w-full text-center text-[10px] text-gray-400 font-bold uppercase tracking-widest hover:text-orange-600 transition-colors mt-2"
-          >
-            Hủy và thử lại nếu treo
-          </button>
-        )}
-      </form>
-    </div>
+        </form>
+      </div>
+    </motion.div>
   );
 };
+
+const InputField = ({
+  label,
+  icon,
+  type,
+  value,
+  onChange,
+  placeholder,
+  readOnly = false,
+}: {
+  label: string;
+  icon: React.ReactNode;
+  type: string;
+  value: string;
+  onChange: (value: string) => void;
+  placeholder: string;
+  readOnly?: boolean;
+}) => (
+  <div className="space-y-2">
+    <label className="pl-1 text-[11px] font-bold uppercase tracking-[0.2em] text-slate-400">
+      {label}
+    </label>
+    <div className="group relative overflow-hidden rounded-[1.25rem] border border-slate-200 bg-white shadow-[inset_0_1px_0_rgba(255,255,255,0.85)] transition-colors focus-within:border-orange-300">
+      <div className="pointer-events-none absolute inset-y-0 left-0 w-12 bg-[linear-gradient(180deg,rgba(255,132,0,0.06),transparent)]" />
+      <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 transition-colors group-focus-within:text-orange-600">
+        {icon}
+      </span>
+      <input
+        type={type}
+        required
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        readOnly={readOnly}
+        className={cn(
+          "w-full bg-transparent px-12 py-3.5 pr-4 text-[15px] font-medium text-slate-950 outline-none placeholder:text-slate-300",
+          readOnly && "cursor-not-allowed opacity-70",
+        )}
+      />
+    </div>
+  </div>
+);
+
+const PasswordField = ({
+  label,
+  value,
+  onChange,
+  showValue,
+  onToggleShow,
+  invalid = false,
+  errorText,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  showValue: boolean;
+  onToggleShow: () => void;
+  invalid?: boolean;
+  errorText?: string;
+}) => (
+  <div className="space-y-2">
+    <label className="pl-1 text-[11px] font-bold uppercase tracking-[0.2em] text-slate-400">
+      {label}
+    </label>
+    <div
+      className={cn(
+        "group relative overflow-hidden rounded-[1.25rem] border bg-white shadow-[inset_0_1px_0_rgba(255,255,255,0.85)] transition-colors",
+        invalid
+          ? "border-rose-300 focus-within:border-rose-400"
+          : "border-slate-200 focus-within:border-orange-300",
+      )}
+    >
+      <div className="pointer-events-none absolute inset-y-0 left-0 w-12 bg-[linear-gradient(180deg,rgba(255,132,0,0.06),transparent)]" />
+      <span
+        className={cn(
+          "absolute left-4 top-1/2 -translate-y-1/2 transition-colors",
+          invalid
+            ? "text-rose-400 group-focus-within:text-rose-500"
+            : "text-slate-400 group-focus-within:text-orange-600",
+        )}
+      >
+        <Lock size={18} />
+      </span>
+      <input
+        type={showValue ? "text" : "password"}
+        required
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder="••••••••"
+        className="w-full bg-transparent px-12 py-3.5 pr-12 text-[15px] font-medium text-slate-950 outline-none placeholder:text-slate-300"
+      />
+      <button
+        type="button"
+        onClick={onToggleShow}
+        className={cn(
+          "absolute right-4 top-1/2 -translate-y-1/2 transition-colors",
+          invalid
+            ? "text-rose-400 hover:text-rose-500"
+            : "text-slate-400 hover:text-orange-600",
+        )}
+      >
+        {showValue ? <EyeOff size={18} /> : <Eye size={18} />}
+      </button>
+    </div>
+    {errorText && (
+      <p className="pl-1 text-xs font-medium text-rose-600">{errorText}</p>
+    )}
+  </div>
+);

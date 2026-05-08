@@ -10,6 +10,65 @@ const supabaseProjectRef = (() => {
   }
 })();
 export const supabaseStorageKey = `sb-${supabaseProjectRef}-auth-token`;
+export const rememberLoginStorageKey = 'hotsnew.auth.remember';
+export const rememberedEmailStorageKey = 'hotsnew.auth.email';
+
+const canUseBrowserStorage = () =>
+  typeof window !== 'undefined' &&
+  typeof window.localStorage !== 'undefined' &&
+  typeof window.sessionStorage !== 'undefined';
+
+export const getRememberLoginPreference = () => {
+  if (!canUseBrowserStorage()) return true;
+  return window.localStorage.getItem(rememberLoginStorageKey) !== '0';
+};
+
+export const setRememberLoginPreference = (remember: boolean) => {
+  if (!canUseBrowserStorage()) return;
+  window.localStorage.setItem(rememberLoginStorageKey, remember ? '1' : '0');
+};
+
+export const getRememberedEmail = () => {
+  if (!canUseBrowserStorage()) return '';
+  return window.localStorage.getItem(rememberedEmailStorageKey) ?? '';
+};
+
+export const setRememberedEmail = (email: string) => {
+  if (!canUseBrowserStorage()) return;
+  const normalizedEmail = email.trim();
+  if (normalizedEmail) {
+    window.localStorage.setItem(rememberedEmailStorageKey, normalizedEmail);
+    return;
+  }
+  window.localStorage.removeItem(rememberedEmailStorageKey);
+};
+
+const authStorage = {
+  getItem: (key: string) => {
+    if (!canUseBrowserStorage()) return null;
+    if (getRememberLoginPreference()) {
+      return window.localStorage.getItem(key) ?? window.sessionStorage.getItem(key);
+    }
+    return window.sessionStorage.getItem(key) ?? window.localStorage.getItem(key);
+  },
+  setItem: (key: string, value: string) => {
+    if (!canUseBrowserStorage()) return;
+    const targetStorage = getRememberLoginPreference()
+      ? window.localStorage
+      : window.sessionStorage;
+    const secondaryStorage =
+      targetStorage === window.localStorage
+        ? window.sessionStorage
+        : window.localStorage;
+    targetStorage.setItem(key, value);
+    secondaryStorage.removeItem(key);
+  },
+  removeItem: (key: string) => {
+    if (!canUseBrowserStorage()) return;
+    window.localStorage.removeItem(key);
+    window.sessionStorage.removeItem(key);
+  },
+};
 
 console.log('🛠️ [Supabase Config] URL:', supabaseUrl ? 'Defined' : 'MISSING');
 console.log('🛠️ [Supabase Config] Key:', supabaseAnonKey ? 'Defined' : 'MISSING');
@@ -20,6 +79,7 @@ if (!supabaseUrl || !supabaseAnonKey) {
 
 export const supabase = createClient(supabaseUrl || 'https://placeholder.supabase.co', supabaseAnonKey || 'placeholder', {
   auth: {
+    storage: authStorage,
     storageKey: supabaseStorageKey,
     persistSession: true,
     autoRefreshToken: true,
@@ -113,6 +173,28 @@ export const logout = async () => {
     !String(error.message || "").toLowerCase().includes("session missing") &&
     !String(error.message || "").toLowerCase().includes("refresh token")
   ) {
+    throw error;
+  }
+};
+
+export const sendPasswordResetEmail = async (email: string) => {
+  const trimmedEmail = email.trim();
+  if (!trimmedEmail) {
+    throw new Error('Vui lòng nhập email trước khi yêu cầu đặt lại mật khẩu.');
+  }
+
+  const { error } = await supabase.auth.resetPasswordForEmail(trimmedEmail, {
+    redirectTo: `${window.location.origin}/?reset_password=1`,
+  });
+
+  if (error) {
+    throw error;
+  }
+};
+
+export const updatePassword = async (password: string) => {
+  const { error } = await supabase.auth.updateUser({ password });
+  if (error) {
     throw error;
   }
 };

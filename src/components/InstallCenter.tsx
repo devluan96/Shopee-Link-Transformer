@@ -103,25 +103,22 @@ export function InstallCenter() {
 
   const installStatus = isInstalled
     ? {
-        tone:
-          "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-300",
+        tone: "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-300",
         label: "App đã sẵn sàng trên thiết bị này",
       }
     : canInstall
       ? {
-          tone:
-            "border-orange-200 bg-orange-50 text-orange-700 dark:border-orange-500/20 dark:bg-orange-500/10 dark:text-orange-300",
+          tone: "border-orange-200 bg-orange-50 text-orange-700 dark:border-orange-500/20 dark:bg-orange-500/10 dark:text-orange-300",
           label: "Có thể cài app trực tiếp ngay bây giờ",
         }
       : {
-          tone:
-            "border-slate-200 bg-slate-100 text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300",
+          tone: "border-slate-200 bg-slate-100 text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300",
           label: "Cần mở menu trình duyệt để cài app",
         };
 
   return (
     <div className="mx-auto max-w-7xl space-y-8">
-      <header className="relative overflow-hidden rounded-[2.5rem] border border-slate-200/70 bg-[radial-gradient(circle_at_top_left,_rgba(249,115,22,0.18),_transparent_32%),linear-gradient(135deg,_rgba(255,255,255,0.96),_rgba(248,250,252,0.98))] p-8 shadow-[0_25px_80px_-50px_rgba(15,23,42,0.45)] dark:border-slate-700 dark:bg-[radial-gradient(circle_at_top_left,_rgba(249,115,22,0.14),_transparent_30%),linear-gradient(135deg,_rgba(15,23,42,0.98),_rgba(2,6,23,0.95))] md:p-10">
+      <header className="relative overflow-hidden rounded-[2.5rem] border border-slate-200/70 bg-[radial-gradient(circle_at_top_left,rgba(249,115,22,0.18),transparent_32%),linear-gradient(135deg,rgba(255,255,255,0.96),rgba(248,250,252,0.98))] p-8 shadow-[0_25px_80px_-50px_rgba(15,23,42,0.45)] dark:border-slate-700 dark:bg-[radial-gradient(circle_at_top_left,rgba(249,115,22,0.14),transparent_30%),linear-gradient(135deg,rgba(15,23,42,0.98),rgba(2,6,23,0.95))] md:p-10">
         <div className="absolute right-0 top-0 h-40 w-40 rounded-full bg-orange-200/30 blur-3xl dark:bg-orange-500/10" />
         <div className="relative space-y-8">
           <div className="inline-flex items-center gap-2 rounded-full border border-orange-200 bg-white/80 px-4 py-2 text-[11px] font-black uppercase tracking-[0.28em] text-orange-600 backdrop-blur dark:border-orange-500/20 dark:bg-slate-900/80 dark:text-orange-300">
@@ -161,7 +158,7 @@ export function InstallCenter() {
               </div>
             </div>
 
-            <div className="rounded-[2rem] border border-slate-200/80 bg-white/85 p-6 shadow-lg shadow-slate-200/30 backdrop-blur dark:border-slate-700 dark:bg-slate-900/80 dark:shadow-black/20">
+            <div className="rounded-4xl border border-slate-200/80 bg-white/85 p-6 shadow-lg shadow-slate-200/30 backdrop-blur dark:border-slate-700 dark:bg-slate-900/80 dark:shadow-black/20">
               <div className="flex items-center justify-between gap-3">
                 <div>
                   <p className="text-[11px] font-black uppercase tracking-[0.24em] text-slate-400 dark:text-slate-500">
@@ -183,7 +180,9 @@ export function InstallCenter() {
                   <CheckCircle2
                     size={18}
                     className={
-                      isInstalled ? "mt-0.5 text-emerald-500" : "mt-0.5 text-orange-500"
+                      isInstalled
+                        ? "mt-0.5 text-emerald-500"
+                        : "mt-0.5 text-orange-500"
                     }
                   />
                   <p className="text-sm font-medium leading-7 text-slate-700 dark:text-slate-300">
@@ -208,7 +207,7 @@ export function InstallCenter() {
         </div>
       </header>
 
-      <section className="rounded-[2.25rem] border border-slate-200/70 bg-[linear-gradient(135deg,_rgba(15,23,42,0.98),_rgba(30,41,59,0.96))] p-7 text-white shadow-[0_24px_80px_-48px_rgba(15,23,42,0.9)] dark:border-slate-700 md:p-8">
+      <section className="rounded-[2.25rem] border border-slate-200/70 bg-[linear-gradient(135deg,rgba(15,23,42,0.98),rgba(30,41,59,0.96))] p-7 text-white shadow-[0_24px_80px_-48px_rgba(15,23,42,0.9)] dark:border-slate-700 md:p-8">
         <div className="grid gap-6 xl:grid-cols-[0.78fr_1.22fr]">
           <div className="space-y-5">
             <div className="space-y-3">
@@ -219,8 +218,9 @@ export function InstallCenter() {
                 App giúp flow làm việc gọn hơn ở đâu
               </h3>
               <p className="max-w-xl text-sm font-medium leading-7 text-slate-300">
-                Khi đã cài xong, HotsNew có thể đứng riêng như một công cụ làm việc
-                thật sự thay vì chỉ là một tab web dễ bị chìm giữa nhiều tab khác.
+                Khi đã cài xong, HotsNew có thể đứng riêng như một công cụ làm
+                việc thật sự thay vì chỉ là một tab web dễ bị chìm giữa nhiều
+                tab khác.
               </p>
             </div>
 
@@ -299,7 +299,7 @@ export function InstallCenter() {
             {appSurfaces.map((surface) => (
               <div
                 key={surface.title}
-                className="rounded-[1.5rem] border border-slate-200 bg-slate-50/80 p-4 dark:border-slate-700 dark:bg-slate-900/70"
+                className="rounded-3xl border border-slate-200 bg-slate-50/80 p-4 dark:border-slate-700 dark:bg-slate-900/70"
               >
                 <p className="text-[11px] font-black uppercase tracking-[0.24em] text-orange-500">
                   {surface.title}
@@ -371,7 +371,7 @@ export function InstallCenter() {
           </div>
         </div>
 
-        <div className="rounded-[2.25rem] border border-slate-200/70 bg-[linear-gradient(135deg,_rgba(15,23,42,0.98),_rgba(30,41,59,0.96))] p-7 text-white shadow-[0_24px_80px_-48px_rgba(15,23,42,0.9)] dark:border-slate-700 md:p-8">
+        <div className="rounded-[2.25rem] border border-slate-200/70 bg-[linear-gradient(135deg,rgba(15,23,42,0.98),rgba(30,41,59,0.96))] p-7 text-white shadow-[0_24px_80px_-48px_rgba(15,23,42,0.9)] dark:border-slate-700 md:p-8">
           <div className="space-y-3">
             <p className="text-[11px] font-black uppercase tracking-[0.28em] text-orange-300">
               Bắt đầu nhanh
@@ -380,8 +380,9 @@ export function InstallCenter() {
               Tab này giờ chỉ còn đúng phần app, gọn hơn và dễ dùng hơn.
             </h3>
             <p className="max-w-3xl text-sm font-medium leading-7 text-slate-300">
-              Khi cần onboarding user mới, chỉ cần cho họ cài app và ghim lại nơi
-              truy cập. Flow này giờ chỉ tập trung vào app để gọn và dễ hiểu hơn.
+              Khi cần onboarding user mới, chỉ cần cho họ cài app và ghim lại
+              nơi truy cập. Flow này giờ chỉ tập trung vào app để gọn và dễ hiểu
+              hơn.
             </p>
           </div>
 

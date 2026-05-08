@@ -20,7 +20,10 @@ export function InstallAppButton() {
             </p>
           </div>
         </div>
-        <Smartphone size={18} className="shrink-0 text-emerald-600 dark:text-emerald-300" />
+        <Smartphone
+          size={18}
+          className="shrink-0 text-emerald-600 dark:text-emerald-300"
+        />
       </div>
     );
   }
@@ -41,7 +44,10 @@ export function InstallAppButton() {
             </p>
           </div>
         </div>
-        <ArrowUpRight size={18} className="shrink-0 text-slate-400 dark:text-slate-500" />
+        <ArrowUpRight
+          size={18}
+          className="shrink-0 text-slate-400 dark:text-slate-500"
+        />
       </div>
     );
   }
@@ -51,7 +57,7 @@ export function InstallAppButton() {
       type="button"
       onClick={() => void install()}
       disabled={isInstalling}
-      className="flex w-full items-center justify-between gap-3 rounded-[1.45rem] bg-[linear-gradient(135deg,_#f97316,_#ea580c)] px-4 py-4 text-left text-white shadow-[0_18px_40px_-20px_rgba(249,115,22,0.85)] transition-all hover:-translate-y-0.5 hover:shadow-[0_22px_46px_-22px_rgba(249,115,22,0.95)] disabled:cursor-not-allowed disabled:opacity-70"
+      className="flex w-full items-center justify-between gap-3 rounded-[1.45rem] bg-[linear-gradient(135deg,#f97316,#ea580c)] px-4 py-4 text-left text-white shadow-[0_18px_40px_-20px_rgba(249,115,22,0.85)] transition-all hover:-translate-y-0.5 hover:shadow-[0_22px_46px_-22px_rgba(249,115,22,0.95)] disabled:cursor-not-allowed disabled:opacity-70"
     >
       <div className="flex items-center gap-3">
         <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-white/15">

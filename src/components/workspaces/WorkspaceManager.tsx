@@ -121,13 +121,7 @@ function WorkspaceSectionTitle({
   );
 }
 
-function StatPill({
-  label,
-  value,
-}: {
-  label: string;
-  value: string;
-}) {
+function StatPill({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-2xl border border-slate-200/80 bg-white/80 px-4 py-3 dark:border-slate-700 dark:bg-slate-950/40">
       <p className="text-[10px] font-black uppercase tracking-[0.22em] text-slate-400">
@@ -190,7 +184,8 @@ export function WorkspaceManager({
     ? "Personal"
     : "Team";
   const showIncomingInvitations =
-    pendingInvitationsLoading || (!canManageMembers && pendingInvitations.length > 0);
+    pendingInvitationsLoading ||
+    (!canManageMembers && pendingInvitations.length > 0);
 
   const handleCreateWorkspace = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -282,10 +277,10 @@ export function WorkspaceManager({
         className={cn(
           surfaceClass,
           "relative overflow-hidden p-6 lg:p-8",
-          "bg-[radial-gradient(circle_at_top_left,_rgba(251,146,60,0.16),_transparent_34%),radial-gradient(circle_at_bottom_right,_rgba(56,189,248,0.1),_transparent_30%)]",
+          "bg-[radial-gradient(circle_at_top_left,rgba(251,146,60,0.16),transparent_34%),radial-gradient(circle_at_bottom_right,rgba(56,189,248,0.1),transparent_30%)]",
         )}
       >
-        <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-orange-300/70 to-transparent dark:via-orange-200/30" />
+        <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-linear-to-r from-transparent via-orange-300/70 to-transparent dark:via-orange-200/30" />
         <div className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
           <div className="space-y-5">
             <div className="inline-flex items-center gap-2 rounded-full border border-orange-200 bg-orange-50 px-3 py-1.5 text-[11px] font-black uppercase tracking-[0.24em] text-orange-700 dark:border-orange-500/20 dark:bg-orange-500/10 dark:text-orange-200">
@@ -337,7 +332,8 @@ export function WorkspaceManager({
                   {currentWorkspace?.name || "Chưa chọn workspace"}
                 </h3>
                 <p className="mt-2 text-sm text-slate-300">
-                  {currentWorkspace?.description || "Chọn workspace để bắt đầu quản lý team."}
+                  {currentWorkspace?.description ||
+                    "Chọn workspace để bắt đầu quản lý team."}
                 </p>
               </div>
               <div className="rounded-2xl bg-white/10 p-3 text-orange-300">
@@ -396,7 +392,7 @@ export function WorkspaceManager({
                     type="button"
                     onClick={() => onSelectWorkspace(workspace.id)}
                     className={cn(
-                      "w-full rounded-[1.5rem] border p-4 text-left transition-all",
+                      "w-full rounded-3xl border p-4 text-left transition-all",
                       isActive
                         ? "border-orange-200 bg-orange-50/80 shadow-[0_20px_50px_-42px_rgba(234,88,12,0.8)] dark:border-orange-500/30 dark:bg-orange-500/10"
                         : "border-slate-200/70 bg-slate-50/80 hover:border-slate-300 hover:bg-white dark:border-slate-700 dark:bg-slate-950/35 dark:hover:bg-slate-950/55",
@@ -461,7 +457,7 @@ export function WorkspaceManager({
 
           <form
             onSubmit={handleCreateWorkspace}
-            className="rounded-[1.5rem] border border-slate-200 bg-slate-950 p-5 text-white dark:border-slate-700"
+            className="rounded-3xl border border-slate-200 bg-slate-950 p-5 text-white dark:border-slate-700"
           >
             <div className="flex items-center justify-between gap-4">
               <div>
@@ -532,7 +528,7 @@ export function WorkspaceManager({
                     return (
                       <div
                         key={invitation.id}
-                        className="grid gap-4 rounded-[1.5rem] border border-sky-200/70 bg-sky-50/70 p-4 md:grid-cols-[1fr_auto] md:items-center dark:border-sky-500/20 dark:bg-sky-500/10"
+                        className="grid gap-4 rounded-3xl border border-sky-200/70 bg-sky-50/70 p-4 md:grid-cols-[1fr_auto] md:items-center dark:border-sky-500/20 dark:bg-sky-500/10"
                       >
                         <div className="min-w-0">
                           <div className="flex flex-wrap items-center gap-2">
@@ -565,7 +561,9 @@ export function WorkspaceManager({
                           <button
                             type="button"
                             disabled={isBusy}
-                            onClick={() => handleAcceptInvitation(invitation.id)}
+                            onClick={() =>
+                              handleAcceptInvitation(invitation.id)
+                            }
                             className="flex items-center justify-center gap-2 rounded-2xl bg-emerald-600 px-4 py-3 text-xs font-black uppercase tracking-[0.22em] text-white transition-all hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
                           >
                             {isBusy ? (
@@ -578,7 +576,9 @@ export function WorkspaceManager({
                           <button
                             type="button"
                             disabled={isBusy}
-                            onClick={() => handleDeclineInvitation(invitation.id)}
+                            onClick={() =>
+                              handleDeclineInvitation(invitation.id)
+                            }
                             className="flex items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-xs font-black uppercase tracking-[0.22em] text-slate-600 transition-all hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
                           >
                             <X size={14} />
@@ -646,50 +646,52 @@ export function WorkspaceManager({
                 </div>
 
                 <div className="space-y-3">
-                {sentInvitationsLoading ? (
-                  <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 text-sm font-bold text-slate-500 dark:border-slate-700 dark:bg-slate-950/40 dark:text-slate-400">
-                    <Loader2 size={16} className="animate-spin" />
-                    Đang tải lời mời đã gửi...
-                  </div>
-                ) : sentInvitations.length > 0 ? (
-                  sentInvitations.map((invitation) => {
-                    const isBusy = sentInvitationBusyId === invitation.id;
+                  {sentInvitationsLoading ? (
+                    <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 text-sm font-bold text-slate-500 dark:border-slate-700 dark:bg-slate-950/40 dark:text-slate-400">
+                      <Loader2 size={16} className="animate-spin" />
+                      Đang tải lời mời đã gửi...
+                    </div>
+                  ) : sentInvitations.length > 0 ? (
+                    sentInvitations.map((invitation) => {
+                      const isBusy = sentInvitationBusyId === invitation.id;
 
-                    return (
-                      <div
-                        key={invitation.id}
-                        className="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-4 sm:flex-row sm:items-center sm:justify-between dark:border-slate-700 dark:bg-slate-950/35"
-                      >
-                        <div className="min-w-0">
-                          <p className="truncate font-black text-slate-950 dark:text-slate-50">
-                            {invitation.invited_email}
-                          </p>
-                          <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
-                            {roleLabel[invitation.role]} · chờ xác nhận
-                          </p>
-                        </div>
-
-                        <button
-                          type="button"
-                          disabled={isBusy}
-                          onClick={() => handleCancelInvitation(invitation.id)}
-                          className="flex items-center justify-center gap-2 rounded-2xl bg-red-50 px-4 py-3 text-xs font-black uppercase tracking-[0.22em] text-red-600 transition-all hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-red-500/10 dark:text-red-200 dark:hover:bg-red-500/20"
+                      return (
+                        <div
+                          key={invitation.id}
+                          className="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-4 sm:flex-row sm:items-center sm:justify-between dark:border-slate-700 dark:bg-slate-950/35"
                         >
-                          {isBusy ? (
-                            <Loader2 size={14} className="animate-spin" />
-                          ) : (
-                            <X size={14} />
-                          )}
-                          Hủy
-                        </button>
-                      </div>
-                    );
-                  })
-                ) : (
-                  <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 text-sm font-medium text-slate-500 dark:border-slate-700 dark:bg-slate-950/40 dark:text-slate-400">
-                    Chưa có lời mời nào đã gửi.
-                  </div>
-                )}
+                          <div className="min-w-0">
+                            <p className="truncate font-black text-slate-950 dark:text-slate-50">
+                              {invitation.invited_email}
+                            </p>
+                            <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
+                              {roleLabel[invitation.role]} · chờ xác nhận
+                            </p>
+                          </div>
+
+                          <button
+                            type="button"
+                            disabled={isBusy}
+                            onClick={() =>
+                              handleCancelInvitation(invitation.id)
+                            }
+                            className="flex items-center justify-center gap-2 rounded-2xl bg-red-50 px-4 py-3 text-xs font-black uppercase tracking-[0.22em] text-red-600 transition-all hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-red-500/10 dark:text-red-200 dark:hover:bg-red-500/20"
+                          >
+                            {isBusy ? (
+                              <Loader2 size={14} className="animate-spin" />
+                            ) : (
+                              <X size={14} />
+                            )}
+                            Hủy
+                          </button>
+                        </div>
+                      );
+                    })
+                  ) : (
+                    <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 text-sm font-medium text-slate-500 dark:border-slate-700 dark:bg-slate-950/40 dark:text-slate-400">
+                      Chưa có lời mời nào đã gửi.
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -735,19 +737,21 @@ export function WorkspaceManager({
                   return (
                     <div
                       key={`${member.workspace_id}-${member.user_id}`}
-                      className="grid gap-4 rounded-[1.5rem] border border-slate-200 bg-slate-50/80 p-4 md:grid-cols-[1.2fr_0.7fr_auto] md:items-center dark:border-slate-700 dark:bg-slate-950/35"
+                      className="grid gap-4 rounded-3xl border border-slate-200 bg-slate-50/80 p-4 md:grid-cols-[1.2fr_0.7fr_auto] md:items-center dark:border-slate-700 dark:bg-slate-950/35"
                     >
                       <div className="flex items-center gap-4">
                         {member.avatar_url ? (
                           <img
                             src={member.avatar_url}
                             alt={
-                              member.full_name || member.email || "Member avatar"
+                              member.full_name ||
+                              member.email ||
+                              "Member avatar"
                             }
-                            className="h-12 w-12 rounded-[1rem] object-cover ring-1 ring-slate-200 dark:ring-slate-700"
+                            className="h-12 w-12 rounded-2xl object-cover ring-1 ring-slate-200 dark:ring-slate-700"
                           />
                         ) : (
-                          <div className="flex h-12 w-12 items-center justify-center rounded-[1rem] bg-white text-slate-400 ring-1 ring-slate-200 dark:bg-slate-900 dark:text-slate-500 dark:ring-slate-700">
+                          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white text-slate-400 ring-1 ring-slate-200 dark:bg-slate-900 dark:text-slate-500 dark:ring-slate-700">
                             <Users size={18} />
                           </div>
                         )}
@@ -755,7 +759,9 @@ export function WorkspaceManager({
                         <div className="min-w-0">
                           <div className="flex flex-wrap items-center gap-2">
                             <p className="truncate font-black text-slate-950 dark:text-slate-50">
-                              {member.full_name || member.email || member.user_id}
+                              {member.full_name ||
+                                member.email ||
+                                member.user_id}
                             </p>
                             {isOwner && (
                               <span className="rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.22em] text-amber-700 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-200">

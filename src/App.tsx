@@ -116,14 +116,27 @@ export default function App() {
     authError,
     authNotice,
     isRegistering,
-    email,
-    password,
-    setEmail,
-    setPassword,
+    loginEmail,
+    loginPassword,
+    registerEmail,
+    registerPassword,
+    registerConfirmPassword,
+    rememberMe,
+    passwordRecoveryMode,
+    recoveryPassword,
+    recoveryConfirmPassword,
+    setLoginEmail,
+    setLoginPassword,
+    setRegisterEmail,
+    setRegisterPassword,
+    setRegisterConfirmPassword,
     setIsRegistering,
-    setAuthError,
-    setAuthNotice,
+    setRememberMe,
+    setRecoveryPassword,
+    setRecoveryConfirmPassword,
     handleEmailAuth,
+    handleForgotPassword,
+    handlePasswordRecovery,
     handleLogout,
     fetchWithAuth,
   } = useAuth();
@@ -555,19 +568,34 @@ export default function App() {
   }
 
   // Auth screen
-  if (!user) {
+  if (!user || passwordRecoveryMode) {
     return (
       <AuthScreen
         isRegistering={isRegistering}
         setIsRegistering={setIsRegistering}
-        email={email}
-        setEmail={setEmail}
-        password={password}
-        setPassword={setPassword}
+        loginEmail={loginEmail}
+        setLoginEmail={setLoginEmail}
+        loginPassword={loginPassword}
+        setLoginPassword={setLoginPassword}
+        registerEmail={registerEmail}
+        setRegisterEmail={setRegisterEmail}
+        registerPassword={registerPassword}
+        setRegisterPassword={setRegisterPassword}
+        registerConfirmPassword={registerConfirmPassword}
+        setRegisterConfirmPassword={setRegisterConfirmPassword}
+        rememberMe={rememberMe}
+        setRememberMe={setRememberMe}
+        passwordRecoveryMode={passwordRecoveryMode}
+        recoveryPassword={recoveryPassword}
+        setRecoveryPassword={setRecoveryPassword}
+        recoveryConfirmPassword={recoveryConfirmPassword}
+        setRecoveryConfirmPassword={setRecoveryConfirmPassword}
         loading={authLoading}
         authError={authError}
         authNotice={authNotice}
         handleEmailAuth={handleEmailAuth}
+        handleForgotPassword={handleForgotPassword}
+        handlePasswordRecovery={handlePasswordRecovery}
         resetLoading={() => {}}
       />
     );

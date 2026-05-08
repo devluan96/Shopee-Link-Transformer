@@ -12,6 +12,12 @@ import {
   registerWithEmail,
   loginWithEmail,
   clearStoredSession,
+  getRememberedEmail,
+  getRememberLoginPreference,
+  sendPasswordResetEmail,
+  setRememberedEmail,
+  setRememberLoginPreference,
+  updatePassword,
 } from "@/src/lib/supabase";
 
 export interface AuthState {
@@ -20,17 +26,32 @@ export interface AuthState {
   authError: string | null;
   authNotice: string | null;
   isRegistering: boolean;
-  email: string;
-  password: string;
+  loginEmail: string;
+  loginPassword: string;
+  registerEmail: string;
+  registerPassword: string;
+  registerConfirmPassword: string;
+  rememberMe: boolean;
+  passwordRecoveryMode: boolean;
+  recoveryPassword: string;
+  recoveryConfirmPassword: string;
 }
 
 export interface AuthActions {
-  setEmail: (v: string) => void;
-  setPassword: (v: string) => void;
+  setLoginEmail: (v: string) => void;
+  setLoginPassword: (v: string) => void;
+  setRegisterEmail: (v: string) => void;
+  setRegisterPassword: (v: string) => void;
+  setRegisterConfirmPassword: (v: string) => void;
   setIsRegistering: (v: boolean) => void;
+  setRememberMe: (v: boolean) => void;
   setAuthError: (v: string | null) => void;
   setAuthNotice: (v: string | null) => void;
+  setRecoveryPassword: (v: string) => void;
+  setRecoveryConfirmPassword: (v: string) => void;
   handleEmailAuth: (e: FormEvent) => Promise<void>;
+  handleForgotPassword: () => Promise<void>;
+  handlePasswordRecovery: (e: FormEvent) => Promise<void>;
   handleLogout: () => Promise<void>;
   getAccessToken: () => Promise<string | null>;
   fetchWithAuth: (
@@ -42,19 +63,48 @@ export interface AuthActions {
 export function useAuth(): AuthState & AuthActions {
   const [user, setUser] = useState<User | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const [loginEmail, setLoginEmail] = useState(() => getRememberedEmail());
+  const [loginPassword, setLoginPassword] = useState("");
+  const [registerEmail, setRegisterEmail] = useState("");
+  const [registerPassword, setRegisterPassword] = useState("");
+  const [registerConfirmPassword, setRegisterConfirmPassword] = useState("");
+  const [rememberMe, setRememberMe] = useState(() =>
+    getRememberLoginPreference(),
+  );
   const [isRegistering, setIsRegistering] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
   const [authNotice, setAuthNotice] = useState<string | null>(null);
+  const [passwordRecoveryMode, setPasswordRecoveryMode] = useState(false);
+  const [recoveryPassword, setRecoveryPassword] = useState("");
+  const [recoveryConfirmPassword, setRecoveryConfirmPassword] = useState("");
 
   const sessionRef = useRef<Session | null>(null);
   const isLoggingOutRef = useRef(false);
   const userRef = useRef<User | null>(null);
 
+  const clearRecoveryUrl = useCallback(() => {
+    if (typeof window === "undefined") return;
+    const cleanUrl = `${window.location.origin}${window.location.pathname}`;
+    window.history.replaceState({}, document.title, cleanUrl);
+  }, []);
+
+  const isRecoveryLinkOpen = useCallback(() => {
+    if (typeof window === "undefined") return false;
+    const hash = window.location.hash.toLowerCase();
+    const search = window.location.search.toLowerCase();
+    return hash.includes("type=recovery") || search.includes("reset_password=1");
+  }, []);
+
   useEffect(() => {
     userRef.current = user;
   }, [user]);
+
+  useEffect(() => {
+    setRememberLoginPreference(rememberMe);
+    if (!rememberMe) {
+      setRememberedEmail("");
+    }
+  }, [rememberMe]);
 
   const getAccessToken = useCallback(async (): Promise<string | null> => {
     if (isLoggingOutRef.current || !userRef.current) {
@@ -225,7 +275,12 @@ export function useAuth(): AuthState & AuthActions {
 
       try {
         if (isRegistering) {
-          const newUser = await registerWithEmail(email, password);
+          if (registerPassword !== registerConfirmPassword) {
+            setAuthError("Mật khẩu nhập lại không khớp.");
+            return;
+          }
+
+          const newUser = await registerWithEmail(registerEmail, registerPassword);
           const existingAccount = newUser?.identities?.length === 0;
           if (existingAccount) {
             setAuthError(
@@ -238,9 +293,16 @@ export function useAuth(): AuthState & AuthActions {
             "Đăng ký thành công. Supabase đã gửi email xác nhận. Vui lòng mở hộp thư và bấm vào liên kết xác nhận trước khi đăng nhập.";
           setAuthNotice(notice);
           setIsRegistering(false);
-          setPassword("");
+          setLoginEmail(registerEmail);
+          setLoginPassword("");
+          if (rememberMe) {
+            setRememberedEmail(registerEmail);
+          }
+          setRegisterPassword("");
+          setRegisterConfirmPassword("");
         } else {
-          await loginWithEmail(email, password);
+          await loginWithEmail(loginEmail, loginPassword);
+          setRememberedEmail(rememberMe ? loginEmail : "");
           setAuthNotice(null);
         }
       } catch (err: unknown) {
@@ -278,7 +340,99 @@ export function useAuth(): AuthState & AuthActions {
         setAuthLoading(false);
       }
     },
-    [email, password, isRegistering, authLoading],
+    [
+      loginEmail,
+      loginPassword,
+      registerEmail,
+      registerPassword,
+      registerConfirmPassword,
+      isRegistering,
+      authLoading,
+      rememberMe,
+    ],
+  );
+
+  const handleForgotPassword = useCallback(async () => {
+    setAuthError(null);
+    setAuthNotice(null);
+    setAuthLoading(true);
+
+    try {
+      await sendPasswordResetEmail(loginEmail);
+      if (rememberMe) {
+        setRememberedEmail(loginEmail);
+      }
+      setAuthNotice(
+        "Đã gửi email đặt lại mật khẩu. Hãy mở hộp thư và bấm vào liên kết để nhập mật khẩu mới.",
+      );
+    } catch (err: unknown) {
+      const errorMessage =
+        err instanceof Error
+          ? err.message
+          : "Không gửi được email đặt lại mật khẩu.";
+      const rawMessage = errorMessage.toLowerCase();
+
+      if (rawMessage.includes("invalid email")) {
+        setAuthError("Email không hợp lệ. Vui lòng kiểm tra lại.");
+      } else if (rawMessage.includes("for security purposes")) {
+        setAuthError(
+          "Bạn vừa yêu cầu quá nhiều lần. Vui lòng chờ vài phút rồi thử lại.",
+        );
+      } else {
+        setAuthError(errorMessage);
+      }
+    } finally {
+      setAuthLoading(false);
+    }
+  }, [loginEmail, rememberMe]);
+
+  const handlePasswordRecovery = useCallback(
+    async (e: FormEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (authLoading) return;
+
+      setAuthError(null);
+      setAuthNotice(null);
+
+      if (recoveryPassword.length < 6) {
+        setAuthError("Mật khẩu mới cần tối thiểu 6 ký tự.");
+        return;
+      }
+
+      if (recoveryPassword !== recoveryConfirmPassword) {
+        setAuthError("Mật khẩu xác nhận không khớp.");
+        return;
+      }
+
+      setAuthLoading(true);
+
+      try {
+        await updatePassword(recoveryPassword);
+        setLoginPassword("");
+        setRecoveryPassword("");
+        setRecoveryConfirmPassword("");
+        setPasswordRecoveryMode(false);
+        clearRecoveryUrl();
+        setAuthNotice(
+          "Mật khẩu đã được cập nhật thành công. Bạn có thể tiếp tục sử dụng tài khoản.",
+        );
+      } catch (err: unknown) {
+        const errorMessage =
+          err instanceof Error
+            ? err.message
+            : "Không thể cập nhật mật khẩu mới.";
+        setAuthError(errorMessage);
+      } finally {
+        setAuthLoading(false);
+      }
+    },
+    [
+      authLoading,
+      clearRecoveryUrl,
+      recoveryConfirmPassword,
+      recoveryPassword,
+    ],
   );
 
   // Auth state change listener
@@ -288,9 +442,22 @@ export function useAuth(): AuthState & AuthActions {
     } = supabase.auth.onAuthStateChange(async (event, session) => {
       sessionRef.current = session ?? null;
 
+      if (event === "PASSWORD_RECOVERY") {
+        setPasswordRecoveryMode(true);
+        setLoginEmail(session?.user?.email ?? "");
+        setLoginPassword("");
+        setRegisterPassword("");
+        setRegisterConfirmPassword("");
+        setRecoveryPassword("");
+        setRecoveryConfirmPassword("");
+        setAuthError(null);
+        setAuthNotice("Liên kết hợp lệ. Hãy nhập mật khẩu mới cho tài khoản.");
+      }
+
       if (event === "SIGNED_OUT") {
         isLoggingOutRef.current = false;
         sessionRef.current = null;
+        setPasswordRecoveryMode(false);
         setUser(null);
         setAuthLoading(false);
         return;
@@ -317,6 +484,15 @@ export function useAuth(): AuthState & AuthActions {
       sessionRef.current = session ?? null;
       if (session?.user) {
         setUser(session.user);
+        if (session.user.email) {
+          setLoginEmail(session.user.email);
+        }
+        if (isRecoveryLinkOpen()) {
+          setPasswordRecoveryMode(true);
+          setAuthNotice(
+            "Liên kết hợp lệ. Hãy nhập mật khẩu mới cho tài khoản.",
+          );
+        }
       }
       setAuthLoading(false);
     });
@@ -333,7 +509,7 @@ export function useAuth(): AuthState & AuthActions {
       subscription.unsubscribe();
       clearTimeout(timer);
     };
-  }, []);
+  }, [isRecoveryLinkOpen]);
 
   // Global error handlers
   useEffect(() => {
@@ -361,14 +537,29 @@ export function useAuth(): AuthState & AuthActions {
     authError,
     authNotice,
     isRegistering,
-    email,
-    password,
-    setEmail,
-    setPassword,
+    loginEmail,
+    loginPassword,
+    registerEmail,
+    registerPassword,
+    registerConfirmPassword,
+    rememberMe,
+    passwordRecoveryMode,
+    recoveryPassword,
+    recoveryConfirmPassword,
+    setLoginEmail,
+    setLoginPassword,
+    setRegisterEmail,
+    setRegisterPassword,
+    setRegisterConfirmPassword,
     setIsRegistering,
+    setRememberMe,
     setAuthError,
     setAuthNotice,
+    setRecoveryPassword,
+    setRecoveryConfirmPassword,
     handleEmailAuth,
+    handleForgotPassword,
+    handlePasswordRecovery,
     handleLogout,
     getAccessToken,
     fetchWithAuth,
