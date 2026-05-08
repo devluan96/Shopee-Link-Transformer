@@ -1,6 +1,7 @@
 import { useState, useCallback } from "react";
 import { User } from "@supabase/supabase-js";
 import { UserProfile } from "@/src/types";
+import { LINK_USAGE_DEFAULT } from "@/src/lib/linkUsage";
 import { normalizeVietnameseSlug } from "@/src/lib/utils";
 import { toast } from "sonner";
 

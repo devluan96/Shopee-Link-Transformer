@@ -22,6 +22,10 @@ import {
 import { ConvertedLink, LinkUpdatePayload } from "@/src/types";
 import { formatDistanceToNow } from "date-fns";
 import { QRCodeCanvas } from "qrcode.react";
+import {
+  LINK_USAGE_OPTIONS_WITH_PLACEHOLDER,
+  normalizeUsageContext,
+} from "@/src/lib/linkUsage";
 
 const TIKTOK_HOST_REGEX =
   /(^|\.)tiktok\.com$|(^|\.)vt\.tiktok\.com$|(^|\.)vm\.tiktok\.com$/i;
@@ -164,7 +168,7 @@ export const LinkList = ({
     setEditForm({
       title: link.custom_title || "",
       desc: link.custom_description || "",
-      usage: link.usage_context || "",
+      usage: normalizeUsageContext(link.usage_context),
       folder: link.folder_name || "",
       tagsText: (link.tags || []).join(", "),
       img: link.custom_image_url || "",
@@ -184,7 +188,7 @@ export const LinkList = ({
       const updates: LinkUpdatePayload = {
         custom_title: editForm.title,
         custom_description: editForm.desc,
-        usage_context: editForm.usage,
+        usage_context: normalizeUsageContext(editForm.usage),
         folder_name: editForm.folder.trim() || null,
         tags: editForm.tagsText
           .split(",")
@@ -782,7 +786,7 @@ export const LinkList = ({
                   }
                   className="w-full rounded-2xl border-2 border-transparent bg-gray-50 px-6 py-4 text-sm font-medium text-gray-900 outline-none transition-all focus:border-orange-500 dark:bg-slate-700 dark:text-slate-100"
                 >
-                  {usageOptions.map((option) => (
+                  {LINK_USAGE_OPTIONS_WITH_PLACEHOLDER.map((option) => (
                     <option key={option.value} value={option.value}>
                       {option.label}
                     </option>

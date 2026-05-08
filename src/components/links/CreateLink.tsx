@@ -15,6 +15,7 @@ import {
   X,
 } from "lucide-react";
 import { cn, normalizeVietnameseSlug } from "@/src/lib/utils";
+import { LINK_USAGE_OPTIONS } from "@/src/lib/linkUsage";
 import { ConvertedLink, UserLimits } from "@/src/types";
 import { QRCodeCanvas } from "qrcode.react";
 
@@ -960,7 +961,7 @@ export const CreateLink = ({
                         "w-full rounded-2xl bg-gray-50 px-6 py-4 font-medium text-gray-900 dark:bg-slate-700 dark:text-slate-100 focus:bg-white dark:focus:bg-slate-700",
                       )}
                     >
-                      {usageOptions.map((option) => (
+                      {LINK_USAGE_OPTIONS.map((option) => (
                         <option key={option.value} value={option.value}>
                           {option.label}
                         </option>

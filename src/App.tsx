@@ -682,7 +682,7 @@ export default function App() {
         </div>
       </div>
 
-      <main className="flex-1 p-6 lg:p-12 min-h-screen pb-32 dark:bg-slate-900">
+      <main className="min-w-0 flex-1 overflow-x-hidden p-6 pb-32 dark:bg-slate-900 lg:p-12">
         <Suspense fallback={<TabLoading />}>
           {activeTab === "dashboard" && (
             <Overview

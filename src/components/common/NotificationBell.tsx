@@ -30,11 +30,11 @@ const formatRelativeTime = (value: string) => {
   const diffMs = Date.now() - date.getTime();
   const diffMinutes = Math.max(1, Math.floor(diffMs / 60000));
 
-  if (diffMinutes < 60) return `${diffMinutes} phut truoc`;
+  if (diffMinutes < 60) return `${diffMinutes} phút trước`;
   const diffHours = Math.floor(diffMinutes / 60);
-  if (diffHours < 24) return `${diffHours} gio truoc`;
+  if (diffHours < 24) return `${diffHours} giờ trước`;
   const diffDays = Math.floor(diffHours / 24);
-  return `${diffDays} ngay truoc`;
+  return `${diffDays} ngày trước`;
 };
 
 const getNotificationIcon = (type: AppNotification["type"]) => {
@@ -236,7 +236,9 @@ export function NotificationBell({
                       <button
                         key={notification.id}
                         type="button"
-                        onClick={() => void handleNotificationClick(notification)}
+                        onClick={() =>
+                          void handleNotificationClick(notification)
+                        }
                         className={cn(
                           "w-full rounded-2xl border px-4 py-3 text-left transition-all",
                           notification.is_read
@@ -257,7 +259,8 @@ export function NotificationBell({
                                   "workspace_membership_removed"
                                 ? "bg-sky-100 text-sky-700 dark:bg-sky-500/20 dark:text-sky-200"
                                 : notification.type === "quota_warning" ||
-                                    notification.type === "subscription_expiring"
+                                    notification.type ===
+                                      "subscription_expiring"
                                   ? "bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-200"
                                   : "bg-orange-100 text-orange-700 dark:bg-orange-500/20 dark:text-orange-200",
                             )}
