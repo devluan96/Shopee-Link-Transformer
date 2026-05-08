@@ -350,8 +350,8 @@ export const LinkList = ({
                 Quản lý liên kết
               </h2>
               <p className="mt-2 max-w-2xl text-sm font-medium leading-6 text-slate-500 dark:text-slate-400">
-                Hiển thị {displayedLinks.length}/{links.length} tài nguyên. Ban
-                nay ưu tiên tốc độ quét danh sách, thao tác nhanh và mật độ hiển
+                Hiển thị {displayedLinks.length}/{links.length} tài nguyên. Bản
+                này ưu tiên tốc độ quét danh sách, thao tác nhanh và mật độ hiển
                 thị gọn hơn.
               </p>
             </div>

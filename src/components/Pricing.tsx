@@ -179,10 +179,10 @@ export const Pricing = ({
             </p>
           )}
           {linkQuota && (
-            <p className="text-center text-sm font-bold text-sky-600 dark:text-sky-300">
+            <p className="rounded-full border border-sky-100 bg-sky-50 px-4 py-1.5 text-center text-[10px] font-black uppercase tracking-widest text-sky-600 dark:border-sky-500/20 dark:bg-sky-500/10 dark:text-sky-300">
               {linkQuota.dailyLimit === null
-                ? "Không giới hạn số link tạo mỗi ngày."
-                : `Hôm nay đã dùng ${linkQuota.usedToday}/${linkQuota.dailyLimit} link, còn lại ${linkQuota.remainingToday}.`}
+                ? "Link: khong gioi han"
+                : "Link: " + linkQuota.usedToday + "/" + linkQuota.dailyLimit}
             </p>
           )}
           {userLimits && (

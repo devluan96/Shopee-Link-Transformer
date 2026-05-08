@@ -16,7 +16,7 @@ import {
   Copy,
   QrCode,
 } from "lucide-react";
-import { SecurityOverview, UserProfile } from "@/src/types";
+import { AccessLogEntry, SecurityOverview, UserProfile } from "@/src/types";
 import { cn } from "@/src/lib/utils";
 import { toast } from "sonner";
 import { QRCodeCanvas } from "qrcode.react";
@@ -33,6 +33,160 @@ interface ProfileSettingsProps {
   onUpdate: (data: { full_name: string; avatar_url: string }) => void;
   onAvatarUpload: (file: File) => Promise<string | null>;
 }
+
+const getAccessLogSummary = (log: AccessLogEntry) => {
+  const path = log.path.toLowerCase();
+  const method = log.method.toUpperCase();
+
+  if (path.includes("/security/2fa/setup")) {
+    return {
+      title: "Bạn đã tạo secret 2FA",
+      description: "Hệ thống đã chuẩn bị mã bí mật để bạn bật xác thực 2 lớp.",
+    };
+  }
+
+  if (path.includes("/security/2fa/enable")) {
+    return {
+      title: "Bạn đã bật xác thực 2 lớp",
+      description: "Tài khoản đã được tăng thêm một lớp bảo mật.",
+    };
+  }
+
+  if (path.includes("/security/2fa/disable")) {
+    return {
+      title: "Bạn đã tắt xác thực 2 lớp",
+      description: "Tài khoản hiện không còn yêu cầu mã 2FA khi đăng nhập.",
+    };
+  }
+
+  if (path.includes("/security/2fa/challenge")) {
+    return {
+      title: "Bạn đã xác minh 2FA",
+      description: "Mã xác thực 2 lớp đã được kiểm tra cho phiên hiện tại.",
+    };
+  }
+
+  if (path.includes("/user/workspace-invitations")) {
+    return {
+      title: "Bạn đã xem lời mời workspace",
+      description: "Hệ thống đã tải danh sách lời mời team đang chờ xử lý.",
+    };
+  }
+
+  if (path.includes("/user/workspaces") && path.includes("/members")) {
+    return {
+      title: "Bạn đã xem danh sách thành viên",
+      description: "Danh sách thành viên trong workspace đã được mở.",
+    };
+  }
+
+  if (path.includes("/user/workspaces")) {
+    return {
+      title: "Bạn đã mở Team Workspace",
+      description:
+        "Hệ thống đã tải danh sách workspace và quyền hiện tại của bạn.",
+    };
+  }
+
+  if (path.includes("/user/stats")) {
+    return {
+      title: "Bạn đã xem thống kê",
+      description: "Dữ liệu thống kê workspace đã được tải.",
+    };
+  }
+
+  if (path.includes("/user/link-quota")) {
+    return {
+      title: "Bạn đã xem quota tạo link",
+      description: "Hệ thống đã kiểm tra số lượt tạo link còn lại trong ngày.",
+    };
+  }
+
+  if (path.includes("/user/limits")) {
+    return {
+      title: "Bạn đã xem giới hạn tài khoản",
+      description: "Hệ thống đã kiểm tra giới hạn gói hiện tại của bạn.",
+    };
+  }
+
+  if (path.includes("/user/links")) {
+    return {
+      title:
+        method === "GET"
+          ? "Bạn đã mở danh sách link"
+          : "Bạn đã thao tác với link",
+      description:
+        method === "GET"
+          ? "Danh sách link của bạn đã được tải."
+          : "Hệ thống đã ghi nhận một thao tác liên quan đến link.",
+    };
+  }
+
+  if (path.includes("/user/notifications/inbox")) {
+    return {
+      title: "Bạn đã mở thông báo",
+      description: "Hộp thông báo trong ứng dụng đã được tải.",
+    };
+  }
+
+  if (path.includes("/user/profile")) {
+    return {
+      title: "Bạn đã mở hồ sơ tài khoản",
+      description: "Thông tin hồ sơ cá nhân đã được tải.",
+    };
+  }
+
+  if (path.includes("/user/security")) {
+    return {
+      title: "Bạn đã mở cài đặt bảo mật",
+      description: "Hệ thống đã tải thông tin bảo mật tài khoản gần đây.",
+    };
+  }
+
+  return {
+    title: "Bạn đã truy cập một tính năng trong hệ thống",
+    description:
+      "Hệ thống đã ghi nhận một hoạt động gần đây của tài khoản này.",
+  };
+};
+
+const getAccessLogDeviceLabel = (userAgent?: string | null) => {
+  if (!userAgent) return "Thiết bị không rõ";
+
+  const ua = userAgent.toLowerCase();
+
+  if (ua.includes("iphone") || ua.includes("ipad") || ua.includes("ios")) {
+    return "iPhone / iPad";
+  }
+
+  if (ua.includes("android")) {
+    return "Điện thoại Android";
+  }
+
+  if (ua.includes("windows")) {
+    return "Máy tính Windows";
+  }
+
+  if (ua.includes("mac os") || ua.includes("macintosh")) {
+    return "Máy tính Mac";
+  }
+
+  return "Trình duyệt khác";
+};
+
+const getAccessLogStatusLabel = (log: AccessLogEntry) => {
+  if (log.blocked || log.status_code >= 400) {
+    return {
+      label: "Cần kiểm tra",
+      className: "bg-amber-100 text-amber-700",
+    };
+  }
+
+  return {
+    label: "Bình thường",
+    className: "bg-green-100 text-green-700",
+  };
+};
 
 export const ProfileSettings = ({
   profile,
@@ -630,7 +784,7 @@ export const ProfileSettings = ({
                 <History size={20} className="text-blue-500" />
                 <div className="min-w-0">
                   <h4 className="wrap-break-word font-black text-gray-900 dark:text-slate-100">
-                    Access Logs
+                    Hoạt động bảo mật gần đây
                   </h4>
                   <p className="wrap-break-word text-sm text-gray-500 dark:text-slate-400">
                     Truy cập gần đây của chính bạn.
@@ -644,37 +798,41 @@ export const ProfileSettings = ({
                     Đang tải lịch sử truy cập...
                   </div>
                 ) : securityOverview?.recentAccessLogs?.length ? (
-                  securityOverview.recentAccessLogs.map((log) => (
-                    <div
-                      key={log.id}
-                      className="rounded-2xl bg-white px-4 py-4 dark:bg-slate-800"
-                    >
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="min-w-0 flex-1">
-                          <p className="text-sm font-black uppercase tracking-widest text-gray-900 dark:text-slate-100">
-                            {log.method}
-                          </p>
-                          <p className="mt-1 break-all font-black text-gray-900 dark:text-slate-100">
-                            {log.path}
-                          </p>
+                  securityOverview.recentAccessLogs.map((log) => {
+                    const summary = getAccessLogSummary(log);
+                    const status = getAccessLogStatusLabel(log);
+
+                    return (
+                      <div
+                        key={log.id}
+                        className="rounded-2xl bg-white px-4 py-4 dark:bg-slate-800"
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0 flex-1">
+                            <p className="font-black text-gray-900 dark:text-slate-100">
+                              {summary.title}
+                            </p>
+                            <p className="mt-1 text-sm text-gray-500 dark:text-slate-400">
+                              {summary.description}
+                            </p>
+                          </div>
+                          <span
+                            className={cn(
+                              "shrink-0 rounded-full px-2.5 py-1 text-[10px] font-black uppercase tracking-widest",
+                              status.className,
+                            )}
+                          >
+                            {status.label}
+                          </span>
                         </div>
-                        <span
-                          className={cn(
-                            "shrink-0 rounded-full px-2.5 py-1 text-[10px] font-black uppercase tracking-widest",
-                            log.status_code >= 400
-                              ? "bg-red-100 text-red-600"
-                              : "bg-green-100 text-green-600",
-                          )}
-                        >
-                          {log.status_code}
-                        </span>
+                        <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-500 dark:text-slate-400">
+                          <span>{getAccessLogDeviceLabel(log.user_agent)}</span>
+                          {log.ip_address || "Unknown IP"} ·{" "}
+                          {new Date(log.created_at).toLocaleString("vi-VN")}
+                        </div>
                       </div>
-                      <p className="mt-2 wrap-break-word text-xs text-gray-500 dark:text-slate-400">
-                        {log.ip_address || "Unknown IP"} ·{" "}
-                        {new Date(log.created_at).toLocaleString("vi-VN")}
-                      </p>
-                    </div>
-                  ))
+                    );
+                  })
                 ) : (
                   <div className="rounded-2xl bg-white px-4 py-6 text-center text-sm font-medium text-gray-400 dark:bg-slate-800 dark:text-slate-500">
                     Chưa có access log nào.

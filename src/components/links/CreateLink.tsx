@@ -588,15 +588,15 @@ export const CreateLink = ({
                     ? "Gói tháng"
                     : "Gói miễn phí"}
             </span>
-            <span>
+            <span className="rounded-full bg-white px-3 py-1 text-[10px] font-black uppercase tracking-widest text-sky-700 dark:bg-slate-800 dark:text-sky-200">
               {linkQuota.dailyLimit === null
-                ? "Không giới hạn số link tạo mỗi ngày."
-                : `Hôm nay đã dùng ${linkQuota.usedToday}/${linkQuota.dailyLimit} link, còn lại ${linkQuota.remainingToday}.`}
+                ? "Link: Không giới hạn"
+                : "Link: " + linkQuota.usedToday + "/" + linkQuota.dailyLimit}
             </span>
             {userLimits && (
               <span className="rounded-full bg-white px-3 py-1 text-[10px] font-black uppercase tracking-widest text-violet-700 dark:bg-slate-800 dark:text-violet-200">
                 {userLimits.dailyVideoUploads === null
-                  ? "Video: không giới hạn"
+                  ? "Video: Không giới hạn"
                   : `Video: ${userLimits.videoUploadsUsedToday}/${userLimits.dailyVideoUploads}`}
               </span>
             )}
