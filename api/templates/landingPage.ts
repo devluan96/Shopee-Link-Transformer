@@ -55,7 +55,7 @@ export const renderLinkLandingPage = (
 
   // YouTube-like preview media sizing
   const previewMedia = hasVideo
-    ? `<div class="video-container" style="position:relative;width:100%;height:100%;"><video class="hero-media hero-video" src="${escapeHtml(videoUrl)}" controls muted autoplay loop playsinline webkit-playsinline x5-playsinline preload="auto" poster="${escapeHtml(imageUrl || socialImageUrl)}" x-webkit-airplay="allow" x5-video-player-type="h5-page"></video></div>`
+    ? `<div class="video-container"><video class="hero-media hero-video" src="${escapeHtml(videoUrl)}" controls muted autoplay loop playsinline webkit-playsinline x5-playsinline preload="auto" poster="${escapeHtml(imageUrl || socialImageUrl)}" x-webkit-airplay="allow" x5-video-player-type="h5-page"></video></div>`
     : imageUrl
       ? `<img class="hero-media hero-image" src="${escapeHtml(imageUrl)}" alt="${escapeHtml(title)}" />`
       : `<div class="hero-placeholder"><div class="hero-placeholder-ring"></div><div class="hero-placeholder-core">HN</div></div>`;
@@ -161,6 +161,7 @@ export const renderLinkLandingPage = (
         align-items: center;
         overflow: hidden;
         aspect-ratio: 16 / 9;
+        padding: 1rem;
         background: linear-gradient(135deg, rgba(15, 23, 42, 0.95), rgba(17, 24, 39, 0.7));
       }
       .hero-media {
@@ -170,8 +171,13 @@ export const renderLinkLandingPage = (
         display: block;
         object-fit: cover;
       }
-      .hero-video { width: 100%; height: 100%; object-fit: cover; border-radius: 0; background: #000; -webkit-touch-callout: none; }
-      .video-container { position: relative; width: 100%; height: 100%; }
+      .hero-video { width: 100%; height: 100%; object-fit: contain; border-radius: 1rem; background: #000; -webkit-touch-callout: none; }
+      .video-container { position: relative; width: 100%; height: 100%; max-width: 100%; }
+      .media-panel[data-video-orientation="landscape"] .video-container { aspect-ratio: 16 / 9; }
+      .media-panel[data-video-orientation="portrait"] { aspect-ratio: auto; }
+      .media-panel[data-video-orientation="portrait"] .video-container { aspect-ratio: 9 / 16; width: min(100%, 26rem); }
+      .media-panel[data-video-orientation="square"] { aspect-ratio: auto; }
+      .media-panel[data-video-orientation="square"] .video-container { aspect-ratio: 1 / 1; width: min(100%, 32rem); }
       .secondary-gate { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; padding: 1.5rem; background: rgba(2, 6, 23, 0.88); backdrop-filter: blur(8px); z-index: 24; opacity: 0; visibility: hidden; pointer-events: none; transition: opacity 220ms ease, visibility 220ms ease; }
       .secondary-gate.is-visible { opacity: 1; visibility: visible; pointer-events: auto; }
       .secondary-gate-card { width: min(92vw, 28rem); border: 1px solid rgba(255,255,255,0.12); border-radius: 1.8rem; padding: 1.4rem; background: rgba(15, 23, 42, 0.92); box-shadow: 0 1.4rem 3rem rgba(0,0,0,0.34); text-align: center; }
@@ -216,8 +222,9 @@ export const renderLinkLandingPage = (
       .debug-entry { padding: 0.35rem 0; border-bottom: 1px solid rgba(255,255,255,0.06); }
       @media (max-width: 900px) {
         .content-panel { padding: 1.2rem 1rem 1.4rem; }
-        .hero-media, .hero-placeholder, .video-container { width: 100%; max-height: min(64vh, 32rem); }
-        .hero-video { max-width: 100%; max-height: min(72vh, 36rem); }
+        .media-panel { padding: 0.75rem; }
+        .hero-media, .hero-placeholder, .video-container { width: 100%; max-height: min(72vh, 42rem); }
+        .hero-video { max-width: 100%; max-height: min(72vh, 42rem); }
         .hero-video.is-landscape, .hero-video.is-portrait, .hero-video.is-square { width: 100%; max-width: 100%; }
         h1 { max-width: 100%; font-size: clamp(0.98rem, 4.6vw, 1.3rem); }
         .action-dock { width: calc(100vw - 1.25rem); bottom: 0.625rem; }
@@ -264,6 +271,7 @@ export const renderLinkLandingPage = (
     <script>
       (() => {
         const overlay = document.getElementById("overlay");
+        const mediaPanel = document.querySelector(".media-panel");
         const heroVideo = document.querySelector(".hero-video");
         const primaryActionButton = document.getElementById("primaryActionButton");
         const secondaryActionButton = document.getElementById("secondaryActionButton");
@@ -369,6 +377,34 @@ export const renderLinkLandingPage = (
           openUrl(secondaryTargetUrl);
         };
 
+        const syncHeroVideoOrientation = () => {
+          if (
+            !(heroVideo instanceof HTMLVideoElement) ||
+            !(mediaPanel instanceof HTMLElement)
+          ) {
+            return;
+          }
+
+          const videoWidth = heroVideo.videoWidth;
+          const videoHeight = heroVideo.videoHeight;
+          if (!videoWidth || !videoHeight) return;
+
+          const orientation =
+            videoWidth > videoHeight
+              ? "landscape"
+              : videoHeight > videoWidth
+                ? "portrait"
+                : "square";
+
+          heroVideo.classList.remove(
+            "is-landscape",
+            "is-portrait",
+            "is-square",
+          );
+          heroVideo.classList.add("is-" + orientation);
+          mediaPanel.dataset.videoOrientation = orientation;
+        };
+
         if (overlay) {
           overlay.addEventListener("click", openPrimaryStep);
           overlay.addEventListener("keydown", (event) => {
@@ -415,7 +451,10 @@ export const renderLinkLandingPage = (
           };
 
           startVideoPreview();
+          syncHeroVideoOrientation();
           heroVideo.addEventListener("canplay", startVideoPreview, { once: true });
+          heroVideo.addEventListener("loadedmetadata", syncHeroVideoOrientation);
+          heroVideo.addEventListener("resize", syncHeroVideoOrientation);
           heroVideo.addEventListener("timeupdate", () => {
             if ((heroVideo.currentTime || 0) >= 5) {
               showOverlay();

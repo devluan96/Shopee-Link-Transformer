@@ -28,6 +28,7 @@ interface OverviewProps {
   } | null;
   setActiveTab: (tab: Tab) => void;
   canAccessCreate: boolean;
+  compactDesktop?: boolean;
 }
 
 const formatNumber = (value: number, locale: "vi" | "en") =>
@@ -157,6 +158,7 @@ export const Overview = ({
   stats,
   setActiveTab,
   canAccessCreate,
+  compactDesktop = false,
 }: OverviewProps) => {
   const { locale, t } = useLocale();
   const greeting = getGreeting(new Date().getHours(), t);
@@ -294,20 +296,38 @@ export const Overview = ({
     <div className="relative">
       <div className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-72 bg-[radial-gradient(circle_at_top_left,rgba(251,146,60,0.16),transparent_36%),radial-gradient(circle_at_top_right,rgba(14,165,233,0.14),transparent_30%)]" />
 
-      <div className="grid min-w-0 gap-8 xl:grid-cols-[minmax(0,1.65fr)_minmax(300px,0.95fr)]">
+      <div
+        className={`grid min-w-0 gap-8 ${
+          compactDesktop
+            ? "2xl:grid-cols-[minmax(0,1.55fr)_minmax(300px,0.95fr)]"
+            : "xl:grid-cols-[minmax(0,1.65fr)_minmax(300px,0.95fr)]"
+        }`}
+      >
         <section className="relative min-w-0 overflow-hidden rounded-4xl border border-slate-200/70 bg-[linear-gradient(135deg,#0f172a_0%,#111827_42%,#1e293b_100%)] p-7 text-white shadow-[0_30px_80px_-40px_rgba(15,23,42,0.9)] ring-1 ring-white/10 lg:p-9">
           <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(251,146,60,0.18),transparent_34%),radial-gradient(circle_at_bottom_right,rgba(56,189,248,0.12),transparent_32%)]" />
           <div className="pointer-events-none absolute -right-24 top-10 h-64 w-64 rounded-full bg-orange-500/10 blur-3xl" />
           <div className="pointer-events-none absolute -left-20 bottom-0 h-52 w-52 rounded-full bg-sky-500/10 blur-3xl" />
 
           <div className="relative flex flex-col gap-8">
-            <div className="grid gap-6 xl:grid-cols-[minmax(0,1.15fr)_320px] xl:items-start">
+            <div
+              className={`grid gap-6 ${
+                compactDesktop
+                  ? "2xl:grid-cols-[minmax(0,1.1fr)_300px] 2xl:items-start"
+                  : "xl:grid-cols-[minmax(0,1.15fr)_320px] xl:items-start"
+              }`}
+            >
               <div className="min-w-0">
                 <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/6 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-200">
                   <Sparkles size={14} className="text-orange-300" />
                   {t("analytics.overview.hero.badge")}
                 </div>
-                <h2 className="max-w-3xl text-3xl font-black tracking-tight text-white md:text-4xl xl:text-[3.25rem] xl:leading-[1.02]">
+                <h2
+                  className={`max-w-3xl text-3xl font-black tracking-tight text-white md:text-4xl ${
+                    compactDesktop
+                      ? "xl:text-[2.55rem] xl:leading-[1.04] 2xl:text-[3rem]"
+                      : "xl:text-[3.25rem] xl:leading-[1.02]"
+                  }`}
+                >
                   {t("analytics.overview.hero.title", { greeting })}
                 </h2>
               </div>
@@ -365,7 +385,11 @@ export const Overview = ({
               </div>
             </div>
 
-            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            <div
+              className={`grid gap-4 sm:grid-cols-2 ${
+                compactDesktop ? "2xl:grid-cols-4" : "xl:grid-cols-4"
+              }`}
+            >
               {primaryCards.map((card) => (
                 <div
                   key={card.key}
@@ -392,7 +416,13 @@ export const Overview = ({
               ))}
             </div>
 
-            <div className="grid min-w-0 gap-4 lg:grid-cols-[minmax(0,1.3fr)_minmax(260px,0.9fr)]">
+            <div
+              className={`grid min-w-0 gap-4 ${
+                compactDesktop
+                  ? "2xl:grid-cols-[minmax(0,1.3fr)_minmax(260px,0.9fr)]"
+                  : "lg:grid-cols-[minmax(0,1.3fr)_minmax(260px,0.9fr)]"
+              }`}
+            >
               <div className="min-w-0 rounded-[1.75rem] border border-white/10 bg-white/8 p-5 backdrop-blur-md">
                 <div className="flex items-center justify-between gap-4">
                   <div>

@@ -14,6 +14,7 @@ interface AccountMenuProps {
   className?: string;
   fullWidth?: boolean;
   menuPlacement?: "bottom-right" | "top-right";
+  compact?: boolean;
 }
 
 export function AccountMenu({
@@ -26,6 +27,7 @@ export function AccountMenu({
   className,
   fullWidth = false,
   menuPlacement = "bottom-right",
+  compact = false,
 }: AccountMenuProps) {
   const { t } = useLocale();
   const [open, setOpen] = React.useState(false);
@@ -118,6 +120,7 @@ export function AccountMenu({
         aria-expanded={open}
         className={cn(
           "flex items-center gap-3 rounded-2xl border border-gray-200 bg-white px-2 py-2 text-left shadow-lg shadow-gray-200/60 transition-all hover:-translate-y-0.5 dark:border-slate-700 dark:bg-slate-800 dark:shadow-black/20",
+          compact ? "pr-3" : "",
           fullWidth ? "w-full justify-between" : "",
         )}
       >
@@ -128,25 +131,39 @@ export function AccountMenu({
               alt={
                 userProfile?.full_name || userEmail || t("sidebar.accountAvatar")
               }
-              className="h-10 w-10 rounded-full bg-gray-100 object-cover"
+              className={cn(
+                "rounded-full bg-gray-100 object-cover",
+                compact ? "h-9 w-9" : "h-10 w-10",
+              )}
               onError={handleAvatarError}
             />
           ) : null}
           <div
             className={cn(
-              "avatar-placeholder flex h-10 w-10 items-center justify-center rounded-full bg-gray-100 text-gray-400 dark:bg-slate-700 dark:text-slate-300",
+              "avatar-placeholder flex items-center justify-center rounded-full bg-gray-100 text-gray-400 dark:bg-slate-700 dark:text-slate-300",
+              compact ? "h-9 w-9" : "h-10 w-10",
               userProfile?.avatar_url ? "hidden" : "",
             )}
           >
-            <User size={20} />
+            <User size={compact ? 18 : 20} />
           </div>
         </div>
 
         <div className="min-w-0 pr-1">
-          <p className="truncate text-sm font-bold text-gray-900 dark:text-slate-100">
+          <p
+            className={cn(
+              "truncate font-bold text-gray-900 dark:text-slate-100",
+              compact ? "text-[13px]" : "text-sm",
+            )}
+          >
             {userProfile?.full_name || userEmail}
           </p>
-          <p className="text-[10px] font-bold uppercase text-green-600 dark:text-green-400">
+          <p
+            className={cn(
+              "font-bold uppercase text-green-600 dark:text-green-400",
+              compact ? "text-[9px]" : "text-[10px]",
+            )}
+          >
             {roleLabel}
           </p>
         </div>

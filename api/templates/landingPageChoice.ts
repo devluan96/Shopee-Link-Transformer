@@ -166,11 +166,17 @@ export const renderChoiceLandingPage = (
         align-items: center;
         overflow: hidden;
         aspect-ratio: 16 / 9;
+        padding: 1rem;
         background: linear-gradient(135deg, rgba(15, 23, 42, 0.95), rgba(17, 24, 39, 0.7));
       }
       .hero-media { width: 100%; height: 100%; display: block; object-fit: cover; }
-      .hero-video { width: 100%; height: 100%; object-fit: cover; background: #000; -webkit-touch-callout: none; }
-      .video-container { position: relative; width: 100%; height: 100%; }
+      .hero-video { width: 100%; height: 100%; object-fit: contain; border-radius: 1rem; background: #000; -webkit-touch-callout: none; }
+      .video-container { position: relative; width: 100%; height: 100%; max-width: 100%; }
+      .media-panel[data-video-orientation="landscape"] .video-container { aspect-ratio: 16 / 9; }
+      .media-panel[data-video-orientation="portrait"] { aspect-ratio: auto; }
+      .media-panel[data-video-orientation="portrait"] .video-container { aspect-ratio: 9 / 16; width: min(100%, 26rem); }
+      .media-panel[data-video-orientation="square"] { aspect-ratio: auto; }
+      .media-panel[data-video-orientation="square"] .video-container { aspect-ratio: 1 / 1; width: min(100%, 32rem); }
       .content-panel { padding: 1rem; border-top: 1px solid var(--border); }
       .content-panel h1 { margin: 0 0 0.5rem; font-size: 1.25rem; line-height: 1.4; }
       .content-panel p { margin: 0; font-size: 0.92rem; line-height: 1.55; color: var(--muted); }
@@ -216,8 +222,15 @@ export const renderChoiceLandingPage = (
         line-height: 1.45;
         text-shadow: 0 0.2rem 1rem rgba(0, 0, 0, 0.34);
       }
+      .hero-video.is-landscape,
+      .hero-video.is-portrait,
+      .hero-video.is-square { width: 100%; height: 100%; max-width: 100%; max-height: 100%; }
       @media (max-width: 900px) {
         .content-panel { padding: 1.2rem 1rem 1.4rem; }
+        .media-panel { padding: 0.75rem; }
+        .hero-media, .video-container { width: 100%; max-height: min(72vh, 42rem); }
+        .hero-video { max-width: 100%; max-height: min(72vh, 42rem); }
+        .hero-video.is-landscape, .hero-video.is-portrait, .hero-video.is-square { width: 100%; max-width: 100%; }
         .content-panel h1 { font-size: clamp(0.98rem, 4.6vw, 1.3rem); }
       }
     </style>
@@ -244,6 +257,7 @@ export const renderChoiceLandingPage = (
     <script>
       (() => {
         const overlay = document.getElementById("overlay");
+        const mediaPanel = document.querySelector(".media-panel");
         const heroVideo = document.querySelector(".hero-video");
         const primaryTargetUrl = "${escapeJsString(originalUrl)}";
         const secondaryTargetUrl = "${escapeJsString(secondaryUrl)}";
@@ -498,6 +512,34 @@ export const renderChoiceLandingPage = (
           openUrl(secondaryTargetUrl);
         };
 
+        const syncHeroVideoOrientation = () => {
+          if (
+            !(heroVideo instanceof HTMLVideoElement) ||
+            !(mediaPanel instanceof HTMLElement)
+          ) {
+            return;
+          }
+
+          const videoWidth = heroVideo.videoWidth;
+          const videoHeight = heroVideo.videoHeight;
+          if (!videoWidth || !videoHeight) return;
+
+          const orientation =
+            videoWidth > videoHeight
+              ? "landscape"
+              : videoHeight > videoWidth
+                ? "portrait"
+                : "square";
+
+          heroVideo.classList.remove(
+            "is-landscape",
+            "is-portrait",
+            "is-square",
+          );
+          heroVideo.classList.add("is-" + orientation);
+          mediaPanel.dataset.videoOrientation = orientation;
+        };
+
         if (overlay) {
           overlay.addEventListener("click", handleOverlayContinue);
           overlay.addEventListener("keydown", (event) => {
@@ -525,7 +567,10 @@ export const renderChoiceLandingPage = (
 
           syncSecondaryState();
           startVideoPreview();
+          syncHeroVideoOrientation();
           heroVideo.addEventListener("canplay", startVideoPreview, { once: true });
+          heroVideo.addEventListener("loadedmetadata", syncHeroVideoOrientation);
+          heroVideo.addEventListener("resize", syncHeroVideoOrientation);
           heroVideo.addEventListener("timeupdate", () => {
             if (!awaitingSecondaryPlay && (heroVideo.currentTime || 0) >= 5) {
               showOverlay();

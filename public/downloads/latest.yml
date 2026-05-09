@@ -1,14 +1,14 @@
 version: 0.0.0
 files:
   - url: hotsnew-click-setup-0.0.0-x64.exe
-    sha512: ZcgMH9JkT9OEgV0dSctioNjLGNFIeYEpkz47j/0eWRzEWxntyPGmZxLa0IxAcs5LuB9Tg+XxI5aa/y9L0JlxlQ==
+    sha512: g1xmjFcDIbaoUxYOIg/QJ5wm7W+zpXsLCQdlUB/KwascZml+cjgFbEGzLEC2jpD3n8RblyBXYpOK1rnT/dIDXg==
 path: hotsnew-click-setup-0.0.0-x64.exe
-sha512: ZcgMH9JkT9OEgV0dSctioNjLGNFIeYEpkz47j/0eWRzEWxntyPGmZxLa0IxAcs5LuB9Tg+XxI5aa/y9L0JlxlQ==
+sha512: g1xmjFcDIbaoUxYOIg/QJ5wm7W+zpXsLCQdlUB/KwascZml+cjgFbEGzLEC2jpD3n8RblyBXYpOK1rnT/dIDXg==
 packages:
   x64:
-    size: 105173839
-    sha512: 8TJg0Tn2YDUerwE+i1+7AmhdfKlDch+Qs7skVV50Cc5/GkNpGUUJPi6kOiKcnQk4s/45M81uPL6vSkdc7gh7qQ==
-    blockMapSize: 111503
+    size: 105174373
+    sha512: cSU2HnXTyI5hLNoWBlJBohn9Lgon4vF/TOxjRM+7P/wKHu9mGK8UIBZkrgXTemsbiDGyReCqlpTVx5+KEyN4lg==
+    blockMapSize: 111527
     path: hotsnew-click-desktop-0.0.0-x64.nsis.7z
     file: hotsnew-click-desktop-0.0.0-x64.nsis.7z
-releaseDate: '2026-05-09T11:57:06.765Z'
+releaseDate: '2026-05-09T12:56:12.256Z'

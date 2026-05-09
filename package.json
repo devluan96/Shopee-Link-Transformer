@@ -110,6 +110,7 @@
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": "always",
       "createStartMenuShortcut": true,
+      "runAfterFinish": false,
       "artifactName": "hotsnew-click-setup-${version}-${arch}.${ext}"
     },
     "nsisWeb": {
@@ -117,6 +118,7 @@
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": "always",
       "createStartMenuShortcut": true,
+      "runAfterFinish": false,
       "artifactName": "hotsnew-click-setup-${version}-${arch}.${ext}"
     },
     "portable": {

@@ -30,6 +30,7 @@ interface SidebarProps {
   handleLogout: () => void;
   isOpen?: boolean;
   onClose?: () => void;
+  compactDesktop?: boolean;
 }
 
 const SidebarItem = ({
@@ -38,17 +39,20 @@ const SidebarItem = ({
   active,
   onClick,
   isLocked,
+  compact = false,
 }: {
   icon: React.ComponentType<{ size?: number }>;
   label: string;
   active: boolean;
   onClick: () => void;
   isLocked?: boolean;
+  compact?: boolean;
 }) => (
   <button
     onClick={onClick}
     className={cn(
-      "group flex w-full items-center justify-between rounded-xl px-4 py-3 text-left text-sm font-bold transition-all",
+      "group flex w-full items-center justify-between rounded-xl text-left font-bold transition-all",
+      compact ? "px-3 py-2.5 text-[13px]" : "px-4 py-3 text-sm",
       active
         ? "bg-orange-600 text-white shadow-lg shadow-orange-200"
         : "text-gray-500 hover:bg-gray-100 hover:text-gray-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-200",
@@ -82,6 +86,7 @@ export const Sidebar = ({
   handleLogout,
   isOpen,
   onClose,
+  compactDesktop = false,
 }: SidebarProps) => {
   const { t } = useLocale();
   const zaloContactUrl = "https://zalo.me/0969361607";
@@ -104,11 +109,12 @@ export const Sidebar = ({
 
       <aside
         className={cn(
-          "fixed inset-y-0 left-0 z-50 flex w-72 flex-col border-r border-gray-200 bg-white p-6 transition-transform dark:border-slate-700 dark:bg-slate-900 lg:sticky lg:z-0 lg:h-screen lg:translate-x-0",
+          "fixed inset-y-0 left-0 z-50 flex flex-col border-r border-gray-200 bg-white p-6 transition-transform dark:border-slate-700 dark:bg-slate-900 lg:sticky lg:z-0 lg:h-screen lg:translate-x-0",
+          compactDesktop ? "w-72 lg:w-60 lg:p-4" : "w-72",
           isOpen ? "translate-x-0" : "-translate-x-full",
         )}
       >
-        <div className="mb-12 flex items-center justify-between">
+        <div className={cn("flex items-center justify-between", compactDesktop ? "mb-8" : "mb-12")}>
           <div className="flex items-center gap-3">
             <img
               src="/logo-app-192.png"
@@ -116,10 +122,10 @@ export const Sidebar = ({
               className="h-10 w-10 rounded-xl object-cover shadow-lg shadow-orange-100"
             />
             <div>
-              <h1 className="text-xl font-black leading-none tracking-tight text-gray-900 dark:text-white">
+              <h1 className={cn("font-black leading-none tracking-tight text-gray-900 dark:text-white", compactDesktop ? "text-lg" : "text-xl")}>
                 HotsNew
               </h1>
-              <p className="mt-1 text-[10px] font-black uppercase tracking-[0.2em] text-orange-500">
+              <p className={cn("mt-1 font-black uppercase tracking-[0.2em] text-orange-500", compactDesktop ? "text-[9px]" : "text-[10px]")}>
                 click <span className="italic opacity-50">&alpha;</span>
               </p>
             </div>
@@ -135,7 +141,7 @@ export const Sidebar = ({
         </div>
 
         <nav className="flex-1 space-y-2 overflow-y-auto">
-          <div className="mb-5 rounded-2xl border border-gray-100 bg-gray-50/80 p-3 dark:border-slate-700 dark:bg-slate-800/80">
+          <div className={cn("rounded-2xl border border-gray-100 bg-gray-50/80 dark:border-slate-700 dark:bg-slate-800/80", compactDesktop ? "mb-4 p-2.5" : "mb-5 p-3")}>
             <label className="mb-2 flex items-center gap-2 px-1 text-[10px] font-black uppercase tracking-widest text-gray-400 dark:text-slate-500">
               <Building2 size={12} className="text-orange-500" />
               {t("sidebar.currentWorkspace")}
@@ -144,7 +150,10 @@ export const Sidebar = ({
               <select
                 value={currentWorkspaceId}
                 onChange={(e) => onWorkspaceChange(e.target.value)}
-                className="w-full appearance-none rounded-xl border border-transparent bg-white px-4 py-3 pr-10 text-sm font-bold text-gray-900 outline-none transition-all focus:border-orange-500/20 focus:ring-4 focus:ring-orange-500/10 dark:bg-slate-900 dark:text-slate-100"
+                className={cn(
+                  "w-full appearance-none rounded-xl border border-transparent bg-white pr-10 font-bold text-gray-900 outline-none transition-all focus:border-orange-500/20 focus:ring-4 focus:ring-orange-500/10 dark:bg-slate-900 dark:text-slate-100",
+                  compactDesktop ? "px-3 py-2.5 text-[13px]" : "px-4 py-3 text-sm",
+                )}
               >
                 {workspaces.map((workspace) => (
                   <option key={workspace.id} value={workspace.id}>
@@ -160,7 +169,7 @@ export const Sidebar = ({
             </div>
           </div>
 
-          <div className="mb-4 px-4 text-[10px] font-black uppercase tracking-widest text-gray-400 dark:text-slate-500">
+          <div className={cn("font-black uppercase tracking-widest text-gray-400 dark:text-slate-500", compactDesktop ? "mb-3 px-3 text-[9px]" : "mb-4 px-4 text-[10px]")}>
             {t("sidebar.mainMenu")}
           </div>
           <SidebarItem
@@ -168,6 +177,7 @@ export const Sidebar = ({
             label={t("sidebar.dashboard")}
             active={activeTab === "dashboard"}
             onClick={() => handleTabClick("dashboard")}
+            compact={compactDesktop}
           />
           <SidebarItem
             icon={PlusCircle}
@@ -177,35 +187,40 @@ export const Sidebar = ({
             isLocked={
               !isActuallyAdmin && userProfile?.subscription_plan === "free"
             }
+            compact={compactDesktop}
           />
           <SidebarItem
             icon={List}
             label={t("sidebar.linkList")}
             active={activeTab === "list"}
             onClick={() => handleTabClick("list")}
+            compact={compactDesktop}
           />
           <SidebarItem
             icon={BarChart3}
             label={t("sidebar.analytics")}
             active={activeTab === "analytics"}
             onClick={() => handleTabClick("analytics")}
+            compact={compactDesktop}
           />
           <SidebarItem
             icon={UsersIcon}
             label={t("sidebar.team")}
             active={activeTab === "team"}
             onClick={() => handleTabClick("team")}
+            compact={compactDesktop}
           />
           <SidebarItem
             icon={Download}
             label={t("sidebar.installApp")}
             active={activeTab === "install"}
             onClick={() => handleTabClick("install")}
+            compact={compactDesktop}
           />
 
           {isActuallyAdmin && (
             <>
-              <div className="mb-4 mt-8 px-4 text-[10px] font-black uppercase tracking-widest text-orange-400">
+              <div className={cn("font-black uppercase tracking-widest text-orange-400", compactDesktop ? "mb-3 mt-6 px-3 text-[9px]" : "mb-4 mt-8 px-4 text-[10px]")}>
                 {t("sidebar.admin")}
               </div>
               <SidebarItem
@@ -213,6 +228,7 @@ export const Sidebar = ({
                 label={t("sidebar.userManagement")}
                 active={activeTab === "admin"}
                 onClick={() => handleTabClick("admin")}
+                compact={compactDesktop}
               />
             </>
           )}

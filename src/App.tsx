@@ -112,6 +112,9 @@ export default function App() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [linkQuota, setLinkQuota] = useState<LinkQuota | null>(null);
   const [userLimits, setUserLimits] = useState<UserLimits | null>(null);
+  const [viewportWidth, setViewportWidth] = useState(() =>
+    typeof window === "undefined" ? 1600 : window.innerWidth,
+  );
 
   // Auth Hook
   const {
@@ -504,11 +507,22 @@ export default function App() {
     !!currentWorkspaceId && !canEditCurrentWorkspace;
   const bootstrappingAccess =
     !!user && (authLoading || profileBootstrapLoading);
+  const compactDesktop =
+    viewportWidth >= 1024 && viewportWidth < 1520;
 
   useEffect(() => {
     setActiveTab("dashboard");
     setIsSidebarOpen(false);
   }, [user?.id]);
+
+  useEffect(() => {
+    const handleResize = () => {
+      setViewportWidth(window.innerWidth);
+    };
+
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
   useEffect(() => {
     void refreshLinkQuota();
@@ -646,6 +660,7 @@ export default function App() {
         handleLogout={handleLogout}
         isOpen={isSidebarOpen}
         onClose={() => setIsSidebarOpen(false)}
+        compactDesktop={compactDesktop}
       />
 
       {/* Mobile Header */}
@@ -695,16 +710,34 @@ export default function App() {
         </div>
       </div>
 
-      <main className="min-w-0 flex-1 overflow-x-hidden p-6 pb-32 dark:bg-slate-900 lg:px-12 lg:pb-32 lg:pt-8">
+      <main
+        className={`min-w-0 flex-1 overflow-x-hidden p-6 pb-32 dark:bg-slate-900 ${
+          compactDesktop
+            ? "lg:px-8 lg:pb-24 lg:pt-6"
+            : "lg:px-12 lg:pb-32 lg:pt-8"
+        }`}
+      >
         {user && (
           <>
-            <div className="hidden h-[72px] lg:block" />
-            <div className="pointer-events-none fixed left-72 right-0 top-0 z-40 hidden lg:block">
+            <div className={`hidden lg:block ${compactDesktop ? "h-16" : "h-[72px]"}`} />
+            <div
+              className={`pointer-events-none fixed right-0 top-0 z-40 hidden lg:block ${
+                compactDesktop ? "left-60" : "left-72"
+              }`}
+            >
               <div className="border-b border-gray-200 bg-white dark:border-slate-700 dark:bg-slate-900">
-                <div className="flex h-16 items-center justify-end px-10">
-                  <div className="pointer-events-auto flex items-center gap-2.5">
-                    <LanguageToggle />
-                    <ThemeToggle />
+                <div
+                  className={`flex items-center justify-end ${
+                    compactDesktop ? "h-14 px-6" : "h-16 px-10"
+                  }`}
+                >
+                  <div
+                    className={`pointer-events-auto flex items-center ${
+                      compactDesktop ? "gap-2" : "gap-2.5"
+                    }`}
+                  >
+                    <LanguageToggle compact={compactDesktop} />
+                    <ThemeToggle compact={compactDesktop} />
                     <NotificationBell
                       notifications={notifications}
                       unreadCount={unreadCount}
@@ -730,6 +763,7 @@ export default function App() {
                       userProfile={profile}
                       userEmail={user?.email}
                       handleLogout={handleLogout}
+                      compact={compactDesktop}
                     />
                   </div>
                 </div>
@@ -743,6 +777,7 @@ export default function App() {
               stats={stats}
               setActiveTab={setActiveTab}
               canAccessCreate={canAccessCreate}
+              compactDesktop={compactDesktop}
             />
           )}
 
