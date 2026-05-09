@@ -61,6 +61,20 @@ const run = (command, args, extraEnv = {}) => {
 const syncPublicDownloads = () => {
   fs.mkdirSync(publicDownloadsDir, { recursive: true });
 
+  for (const entry of fs.readdirSync(publicDownloadsDir, {
+    withFileTypes: true,
+  })) {
+    if (!entry.isFile()) continue;
+    if (
+      /^hotsnew-click-setup-.*-x64\.exe$/i.test(entry.name) ||
+      /^hotsnew-click-desktop-.*-x64\.nsis\.7z$/i.test(entry.name) ||
+      /^hotsnew-click-portable-.*-x64\.exe$/i.test(entry.name) ||
+      /^hotsnew-click-setup-.*-x64\.exe\.blockmap$/i.test(entry.name)
+    ) {
+      fs.rmSync(path.join(publicDownloadsDir, entry.name), { force: true });
+    }
+  }
+
   const desktopArtifacts = [
     {
       from: path.join(nsisWebDir, `hotsnew-click-setup-${rootPkg.version}-x64.exe`),

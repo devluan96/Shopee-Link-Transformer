@@ -1,14 +1,14 @@
-version: 0.0.0
+version: 0.0.1
 files:
-  - url: hotsnew-click-setup-0.0.0-x64.exe
-    sha512: 8n9d1v0wEzZNgZaXjgpJJp1WsH494JoJ63DupUjHej933K8GVDWbu9fDGj89AlsguudnJSEqbSHfKIH0BkZm2A==
-path: hotsnew-click-setup-0.0.0-x64.exe
-sha512: 8n9d1v0wEzZNgZaXjgpJJp1WsH494JoJ63DupUjHej933K8GVDWbu9fDGj89AlsguudnJSEqbSHfKIH0BkZm2A==
+  - url: hotsnew-click-setup-0.0.1-x64.exe
+    sha512: O7Pb8u/tmbNDQdNeRbY9Aaw8ZMPJHUC6VPT8ESZkgKMtX3zQtmmdUda3PgRzB7iW+gqNP+ZISuwk94YQpJ6FGw==
+path: hotsnew-click-setup-0.0.1-x64.exe
+sha512: O7Pb8u/tmbNDQdNeRbY9Aaw8ZMPJHUC6VPT8ESZkgKMtX3zQtmmdUda3PgRzB7iW+gqNP+ZISuwk94YQpJ6FGw==
 packages:
   x64:
-    size: 105174373
-    sha512: cSU2HnXTyI5hLNoWBlJBohn9Lgon4vF/TOxjRM+7P/wKHu9mGK8UIBZkrgXTemsbiDGyReCqlpTVx5+KEyN4lg==
-    blockMapSize: 111527
-    path: hotsnew-click-desktop-0.0.0-x64.nsis.7z
-    file: hotsnew-click-desktop-0.0.0-x64.nsis.7z
-releaseDate: '2026-05-09T14:05:13.214Z'
+    size: 105174411
+    sha512: Xn5Y/ddSOhbq1l3gYiHkRjZ64f3gRnsGkd7tzzcg2knu1sculruYOQ+M3cA6IGkv2zDkQ04nVcebYYkNdl7XPA==
+    blockMapSize: 111433
+    path: hotsnew-click-desktop-0.0.1-x64.nsis.7z
+    file: hotsnew-click-desktop-0.0.1-x64.nsis.7z
+releaseDate: '2026-05-09T14:27:16.999Z'

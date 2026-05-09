@@ -1,6 +1,6 @@
 {
   "name": "hotsnew-click-desktop",
-  "version": "0.0.0",
+  "version": "0.0.1",
   "description": "HotsNew Click desktop shell",
   "author": "HotsNew Click",
   "main": "main.cjs"
