@@ -2,12 +2,19 @@
   "name": "react-example",
   "private": true,
   "version": "0.0.0",
+  "description": "HotsNew Click desktop shell",
+  "author": "HotsNew Click",
+  "main": "electron/main.cjs",
   "type": "module",
   "scripts": {
     "dev": "concurrently \"npm run dev:api\" \"npm run dev:client\"",
     "dev:api": "tsx api/server.ts",
     "dev:client": "vite --port 5173",
     "build": "vite build",
+    "desktop:dev": "node ./scripts/start-electron-dev.cjs",
+    "desktop:build": "node ./scripts/build-desktop.cjs",
+    "desktop:publish:r2": "node ./scripts/publish-desktop-to-r2.cjs",
+    "desktop:publish": "node ./scripts/publish-desktop-to-r2.cjs",
     "preview": "vite preview",
     "clean": "rm -rf dist",
     "lint:ts": "node ./scripts/run-tsc.cjs",
@@ -45,6 +52,7 @@
     "zod": "^4.3.6"
   },
   "devDependencies": {
+    "@aws-sdk/client-s3": "^3.908.0",
     "@eslint/js": "^9.1.0",
     "@types/cors": "^2.8.19",
     "@types/express": "^4.17.21",
@@ -56,6 +64,8 @@
     "@typescript-eslint/parser": "^8.59.1",
     "autoprefixer": "^10.4.21",
     "concurrently": "^9.2.1",
+    "electron": "^38.4.0",
+    "electron-builder": "^26.0.12",
     "eslint": "^9.39.4",
     "eslint-plugin-react": "^7.37.5",
     "eslint-plugin-react-hooks": "^7.1.1",
@@ -63,5 +73,54 @@
     "tsx": "^4.21.0",
     "typescript": "~5.8.2",
     "vite": "^6.2.0"
+  },
+  "build": {
+    "appId": "click.hotsnew.desktop",
+    "productName": "HotsNew Click",
+    "asar": true,
+    "compression": "maximum",
+    "electronLanguages": [
+      "en-US"
+    ],
+    "directories": {
+      "app": "electron-app",
+      "buildResources": "desktop-assets",
+      "output": "release"
+    },
+    "publish": [
+      {
+        "provider": "generic",
+        "url": "https://hotsnew.click/downloads"
+      }
+    ],
+    "files": [
+      "main.cjs",
+      "package.json"
+    ],
+    "win": {
+      "signAndEditExecutable": false,
+      "icon": "desktop-assets/icon.ico",
+      "target": [
+        "nsis-web",
+        "portable"
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": "always",
+      "createStartMenuShortcut": true,
+      "artifactName": "hotsnew-click-setup-${version}-${arch}.${ext}"
+    },
+    "nsisWeb": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": "always",
+      "createStartMenuShortcut": true,
+      "artifactName": "hotsnew-click-setup-${version}-${arch}.${ext}"
+    },
+    "portable": {
+      "artifactName": "hotsnew-click-portable-${version}-${arch}.${ext}"
+    }
   }
 }

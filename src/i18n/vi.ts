@@ -303,6 +303,49 @@ export const vi = {
         menu: "Nếu chưa thấy gợi ý cài đặt, hãy mở menu trình duyệt rồi chọn cài ứng dụng từ đó.",
       },
     },
+    platforms: {
+      eyebrow: "Tải xuống theo nền tảng",
+      title: "Phát hành bản PC ngay trên cùng một màn hình cài đặt",
+      description:
+        "Khi đã có link bộ cài Windows, bạn chỉ cần gắn vào đây. Trước mắt, trình duyệt desktop được hỗ trợ vẫn có thể fallback sang cài web app.",
+      actions: {
+        installHere: "Cài trên thiết bị này",
+        desktopDownload: "Tải bản PC",
+        unavailable: "Chưa cấu hình bản phát hành",
+      },
+      hints: {
+        direct: "Liên kết phát hành trực tiếp",
+        fallback:
+          "Vẫn có thể dùng luồng cài từ trình duyệt trên thiết bị được hỗ trợ.",
+        configure:
+          "Thêm link thật bằng VITE_DESKTOP_APP_URL.",
+      },
+      desktop: {
+        badge: "Windows",
+        title: "PC",
+        description:
+          "Có thể phát hành bộ cài Windows trực tiếp, hoặc cho người dùng cài web app ngay từ trình duyệt hôm nay.",
+        help:
+          "Khi chưa có link desktop, trình duyệt desktop được hỗ trợ vẫn có thể fallback sang luồng cài hiện tại.",
+      },
+    },
+    convert: {
+      eyebrow: "Phát hành desktop",
+      title: "Web app giờ tập trung vào luồng phát hành bản PC",
+      description:
+        "Luồng phát hành giờ tập trung vào bản Windows và luồng cài từ trình duyệt, không còn duy trì wrapper native riêng cho Android và iOS.",
+      steps: [
+        "Build gói Windows bằng npm run desktop:build.",
+        "Upload bộ cài hoặc bản portable từ thư mục release.",
+        "Gắn VITE_DESKTOP_APP_URL tới link tải công khai.",
+        "Giữ luồng cài từ trình duyệt làm phương án dự phòng khi cần.",
+      ],
+      notes: [
+        "Desktop shell chỉ mở URL production của web app thay vì nhúng secret server vào máy người dùng.",
+        "Thư mục release chứa bộ cài, bản portable và bản zip fallback.",
+        "VITE_DESKTOP_APP_URL điều khiển nút tải bản PC trên màn hình này.",
+      ],
+    },
     flow: {
       eyebrow: "Luồng sử dụng",
       title: "Ứng dụng giúp quy trình làm việc gọn hơn ở đâu",

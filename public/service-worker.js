@@ -1,10 +1,13 @@
-const CACHE_NAME = "hotsnew-click-v2";
+const CACHE_NAME = "hotsnew-click-v3";
 const APP_SHELL = [
   "/",
   "/manifest.webmanifest",
   "/logo-app-192.png",
   "/logo-app-512.png",
 ];
+
+const DOWNLOAD_PATH_PATTERN =
+  /^\/downloads\/.+\.(exe|zip|msi|dmg|pkg|AppImage|deb|rpm|yml|blockmap)$/i;
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
@@ -37,6 +40,11 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
+  if (DOWNLOAD_PATH_PATTERN.test(url.pathname)) {
+    event.respondWith(fetch(request));
+    return;
+  }
+
   if (request.mode === "navigate") {
     event.respondWith(
       fetch(request).catch(() => caches.match("/")),
@@ -61,6 +69,11 @@ self.addEventListener("fetch", (event) => {
 
       return fetch(request).then((networkResponse) => {
         if (!networkResponse || networkResponse.status !== 200) {
+          return networkResponse;
+        }
+
+        const contentType = networkResponse.headers.get("content-type") || "";
+        if (contentType.includes("text/html")) {
           return networkResponse;
         }
 

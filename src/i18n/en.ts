@@ -306,6 +306,49 @@ export const en = {
           "If you do not see the install prompt, open the browser menu and choose install app from there.",
       },
     },
+    platforms: {
+      eyebrow: "Platform downloads",
+      title: "Distribute the desktop app from one install screen",
+      description:
+        "Use the real Windows release when you have it. Until then, supported desktop browsers can still install the current web app.",
+      actions: {
+        installHere: "Install on this device",
+        desktopDownload: "Download PC app",
+        unavailable: "Release not configured yet",
+      },
+      hints: {
+        direct: "Direct distribution link",
+        fallback:
+          "Fallback to browser install is still available on supported devices.",
+        configure:
+          "Add a real release URL with VITE_DESKTOP_APP_URL.",
+      },
+      desktop: {
+        badge: "Windows",
+        title: "PC",
+        description:
+          "Offer the Windows installer directly, or let users install the web app from the browser today.",
+        help:
+          "When no desktop URL is configured, supported desktop browsers can still fall back to the current install flow.",
+      },
+    },
+    convert: {
+      eyebrow: "Desktop release",
+      title: "The web app is now focused on the desktop distribution flow",
+      description:
+        "The release flow now stays centered on the Windows desktop shell and the browser install path, without maintaining separate native mobile wrappers.",
+      steps: [
+        "Build the Windows package with npm run desktop:build.",
+        "Upload the installer or portable build from the release folder.",
+        "Point VITE_DESKTOP_APP_URL to the public download link.",
+        "Keep browser install available as a fallback when needed.",
+      ],
+      notes: [
+        "The desktop shell opens the production web app URL instead of shipping private server secrets.",
+        "The release folder contains the installer, the portable build, and the unpacked fallback archive.",
+        "VITE_DESKTOP_APP_URL controls the PC download button on this screen.",
+      ],
+    },
     flow: {
       eyebrow: "Usage flow",
       title: "Where the app makes your workflow cleaner",

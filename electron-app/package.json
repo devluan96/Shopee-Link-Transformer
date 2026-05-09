@@ -1,0 +1,7 @@
+{
+  "name": "hotsnew-click-desktop",
+  "version": "0.0.0",
+  "description": "HotsNew Click desktop shell",
+  "author": "HotsNew Click",
+  "main": "main.cjs"
+}
