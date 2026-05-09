@@ -2,6 +2,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 const { app, BrowserWindow, nativeTheme, shell } = require("electron");
 
+const APP_ID = "click.hotsnew.desktop";
 const DEV_URL = process.env.ELECTRON_START_URL || "http://localhost:5173";
 const PROD_URL = process.env.APP_BASE_URL || "https://hotsnew.click";
 const DEFAULT_WINDOW_STATE = {
@@ -10,6 +11,12 @@ const DEFAULT_WINDOW_STATE = {
 };
 
 let mainWindow = null;
+
+function getWindowIconPath() {
+  return app.isPackaged
+    ? path.join(process.resourcesPath, "icon.ico")
+    : path.join(__dirname, "..", "desktop-assets", "icon.ico");
+}
 
 function getWindowStatePath() {
   return path.join(app.getPath("userData"), "window-state.json");
@@ -72,6 +79,7 @@ function createWindow() {
     center: windowState.x == null || windowState.y == null,
     autoHideMenuBar: true,
     backgroundColor,
+    icon: getWindowIconPath(),
     webPreferences: {
       contextIsolation: true,
       sandbox: true,
@@ -121,6 +129,10 @@ function createWindow() {
 }
 
 app.whenReady().then(() => {
+  if (process.platform === "win32") {
+    app.setAppUserModelId(APP_ID);
+  }
+
   createWindow();
 
   app.on("activate", () => {

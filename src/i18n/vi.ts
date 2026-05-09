@@ -317,16 +317,14 @@ export const vi = {
         direct: "Liên kết phát hành trực tiếp",
         fallback:
           "Vẫn có thể dùng luồng cài từ trình duyệt trên thiết bị được hỗ trợ.",
-        configure:
-          "Thêm link thật bằng VITE_DESKTOP_APP_URL.",
+        configure: "Thêm link thật bằng VITE_DESKTOP_APP_URL.",
       },
       desktop: {
         badge: "Windows",
         title: "PC",
         description:
           "Có thể phát hành bộ cài Windows trực tiếp, hoặc cho người dùng cài web app ngay từ trình duyệt hôm nay.",
-        help:
-          "Khi chưa có link desktop, trình duyệt desktop được hỗ trợ vẫn có thể fallback sang luồng cài hiện tại.",
+        help: "Khi chưa có link desktop, trình duyệt desktop được hỗ trợ vẫn có thể fallback sang luồng cài hiện tại.",
       },
     },
     convert: {
@@ -1052,6 +1050,23 @@ export const vi = {
       hint: "Quét để truy cập liên kết",
       download: "Tải mã QR (.png)",
     },
+  },
+  linkListShare: {
+    action: "Chia sẻ liên kết",
+    title: "Chia sẻ liên kết dưới dạng bản sao mới",
+    description:
+      "Chọn không gian làm việc khác. Không gian đích sẽ nhận một bản sao độc lập có thể chỉnh sửa mà không ảnh hưởng đến liên kết gốc.",
+    linkLabel: "Liên kết đang chọn",
+    workspaceLabel: "Không gian đích",
+    submit: "Tạo bản sao",
+    submitting: "Đang tạo...",
+    cancel: "Hủy bỏ",
+    ownerOnly:
+      "Chỉ chủ sở hữu của không gian hiện tại mới có thể chia sẻ liên kết sang không gian khác.",
+    noTargets:
+      "Không có không gian làm việc khác mà bạn có quyền chỉnh sửa để nhận bản sao.",
+    success: "Đã tạo bản sao liên kết thành công ở không gian khác.",
+    errorPrefix: "Không thể chia sẻ bản sao liên kết",
   },
   createLink: {
     validation: {

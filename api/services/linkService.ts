@@ -11,6 +11,7 @@ import { TIKTOK_HOST_REGEX } from "../config/constants.js";
 import {
   assertWorkspaceWriteAccessForLink,
   getAccessibleWorkspaceIds,
+  getWorkspaceAccessMap,
   resolveWritableWorkspaceId,
 } from "./workspaceService.js";
 import { getLinkOutputDomains } from "./appSettingsService.js";
@@ -104,6 +105,19 @@ const applyAffiliateParams = (
 
 const buildConvertedUrl = (customDomain: string | null, shortCode: string) =>
   `https://${customDomain || DEFAULT_SHORT_DOMAIN}/s/${shortCode}`;
+
+const inferSecondaryTargetType = (
+  value?: string | null,
+): "shopee" | "tiktok" | undefined => {
+  if (!value) return undefined;
+
+  try {
+    const hostname = new URL(value).hostname;
+    return TIKTOK_HOST_REGEX.test(hostname) ? "tiktok" : "shopee";
+  } catch {
+    return "shopee";
+  }
+};
 
 const createMarketingUrlApplier = (data: {
   utmSource?: string;
@@ -443,6 +457,111 @@ export const updateLink = async (
 
   if (error) throw error;
   return link;
+};
+
+export const copyLinkToWorkspace = async (
+  supabase: SupabaseClient,
+  userId: string,
+  linkId: string,
+  targetWorkspaceId: string,
+  options?: {
+    preserveCustomDomain?: boolean;
+    preserveAbTesting?: boolean;
+  },
+) => {
+  const sourceLinkAccess = await assertWorkspaceWriteAccessForLink(
+    supabase,
+    userId,
+    linkId,
+  );
+
+  if (sourceLinkAccess.workspace_id) {
+    const accessMap = await getWorkspaceAccessMap(supabase, userId);
+    const sourceRole = accessMap.get(sourceLinkAccess.workspace_id);
+    if (sourceRole !== "owner") {
+      throw new Error(
+        "Chỉ chủ sở hữu workspace nguời mới có thể chia sẻ liên kết.",
+      );
+    }
+  } else if (sourceLinkAccess.user_id !== userId) {
+    throw new Error("Bạn không có quyền sao chép liên kết này.");
+  }
+
+  const writableTargetWorkspaceId = await resolveWritableWorkspaceId(
+    supabase,
+    userId,
+    targetWorkspaceId,
+  );
+
+  if (sourceLinkAccess.workspace_id === writableTargetWorkspaceId) {
+    throw new Error("Vui lòng chọn một không gian làm việc khác.");
+  }
+
+  const { data: sourceLink, error: sourceError } = await supabase
+    .from("links")
+    .select(
+      "id, original_url, custom_domain, folder_name, tags, custom_title, custom_description, custom_image_url, video_url, secondary_url, redirect_delay_ms, usage_context, expires_at, utm_source, utm_medium, utm_campaign, utm_content, utm_term, shopee_affiliate_params, tiktok_affiliate_params, ab_test_enabled, ab_variant_b_title, ab_variant_b_description, ab_variant_b_image_url, ab_variant_b_video_url, ab_variant_b_original_url, ab_variant_b_secondary_url",
+    )
+    .eq("id", linkId)
+    .maybeSingle();
+
+  if (sourceError) throw sourceError;
+  if (!sourceLink) {
+    throw new Error("Không tìm thấy liên kết cần chia sẻ.");
+  }
+
+  return createLink(supabase, userId, {
+    url: sourceLink.original_url,
+    customTitle: sourceLink.custom_title || undefined,
+    customDescription: sourceLink.custom_description || undefined,
+    customImageUrl: sourceLink.custom_image_url || undefined,
+    videoUrl: sourceLink.video_url || undefined,
+    secondaryUrl: sourceLink.secondary_url || undefined,
+    secondaryTargetType: inferSecondaryTargetType(sourceLink.secondary_url),
+    redirectDelayMs: sourceLink.redirect_delay_ms || undefined,
+    usageContext: sourceLink.usage_context || undefined,
+    expiresAt: sourceLink.expires_at || undefined,
+    folderName: sourceLink.folder_name || undefined,
+    tags: sourceLink.tags || undefined,
+    workspaceId: writableTargetWorkspaceId,
+    customDomain: options?.preserveCustomDomain
+      ? sourceLink.custom_domain || undefined
+      : undefined,
+    utmSource: sourceLink.utm_source || undefined,
+    utmMedium: sourceLink.utm_medium || undefined,
+    utmCampaign: sourceLink.utm_campaign || undefined,
+    utmContent: sourceLink.utm_content || undefined,
+    utmTerm: sourceLink.utm_term || undefined,
+    shopeeAffiliateParams: sourceLink.shopee_affiliate_params || undefined,
+    tiktokAffiliateParams: sourceLink.tiktok_affiliate_params || undefined,
+    abTestEnabled: options?.preserveAbTesting
+      ? !!sourceLink.ab_test_enabled
+      : false,
+    abVariantBTitle:
+      options?.preserveAbTesting && sourceLink.ab_test_enabled
+        ? sourceLink.ab_variant_b_title || undefined
+        : undefined,
+    abVariantBDescription:
+      options?.preserveAbTesting && sourceLink.ab_test_enabled
+        ? sourceLink.ab_variant_b_description || undefined
+        : undefined,
+    abVariantBImageUrl:
+      options?.preserveAbTesting && sourceLink.ab_test_enabled
+        ? sourceLink.ab_variant_b_image_url || undefined
+        : undefined,
+    abVariantBVideoUrl:
+      options?.preserveAbTesting && sourceLink.ab_test_enabled
+        ? sourceLink.ab_variant_b_video_url || undefined
+        : undefined,
+    abVariantBOriginalUrl:
+      options?.preserveAbTesting && sourceLink.ab_test_enabled
+        ? sourceLink.ab_variant_b_original_url || undefined
+        : undefined,
+    abVariantBSecondaryUrl:
+      options?.preserveAbTesting && sourceLink.ab_test_enabled
+        ? sourceLink.ab_variant_b_secondary_url || undefined
+        : undefined,
+  });
 };
 
 export const deleteLink = async (

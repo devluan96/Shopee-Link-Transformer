@@ -18,8 +18,9 @@ import {
   ShieldCheck,
   Sparkles,
   Filter,
+  Share2,
 } from "lucide-react";
-import { ConvertedLink, LinkUpdatePayload } from "@/src/types";
+import { ConvertedLink, LinkUpdatePayload, Workspace } from "@/src/types";
 import { formatDistanceToNow } from "date-fns";
 import { enUS, vi as viLocale } from "date-fns/locale";
 import { QRCodeCanvas } from "qrcode.react";
@@ -28,6 +29,7 @@ import {
   normalizeUsageContext,
 } from "@/src/lib/linkUsage";
 import { useLocale } from "@/src/hooks/useLocale";
+import { toast } from "sonner";
 
 const TIKTOK_HOST_REGEX =
   /(^|\.)tiktok\.com$|(^|\.)vt\.tiktok\.com$|(^|\.)vm\.tiktok\.com$/i;
@@ -40,11 +42,15 @@ interface LinkListProps {
   listLoading: boolean;
   searchTerm: string;
   setSearchTerm: (v: string) => void;
+  workspaces?: Workspace[];
+  currentWorkspaceId?: string;
+  canShareToWorkspace?: boolean;
   showChoiceModeActions?: boolean;
   copyToClipboard: (text: string, id: string) => void;
   copiedId: string;
   onDeleteLink: (id: string) => Promise<void>;
   onUpdateLink: (id: string, data: LinkUpdatePayload) => Promise<void>;
+  onShareLink?: (id: string, workspaceId: string) => Promise<void>;
   onDeleteManyLinks?: (ids: string[]) => Promise<void>;
 }
 
@@ -53,21 +59,29 @@ export const LinkList = ({
   listLoading,
   searchTerm,
   setSearchTerm,
+  workspaces = [],
+  currentWorkspaceId,
+  canShareToWorkspace = false,
   showChoiceModeActions = false,
   copyToClipboard,
   copiedId,
   onDeleteLink,
   onUpdateLink,
+  onShareLink,
   onDeleteManyLinks,
 }: LinkListProps) => {
   const { locale, messages, t } = useLocale();
   const content = messages.linkList;
+  const shareContent = messages.linkListShare;
   const dateFnsLocale = locale === "vi" ? viLocale : enUS;
   const [editingLink, setEditingLink] = useState<ConvertedLink | null>(null);
   const [deletingLink, setDeletingLink] = useState<ConvertedLink | null>(null);
   const [qrLink, setQrLink] = useState<ConvertedLink | null>(null);
+  const [sharingLink, setSharingLink] = useState<ConvertedLink | null>(null);
+  const [shareWorkspaceId, setShareWorkspaceId] = useState("");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [bulkDeleting, setBulkDeleting] = useState(false);
+  const [isSharing, setIsSharing] = useState(false);
   const [showBulkDeleteConfirm, setShowBulkDeleteConfirm] = useState(false);
   const [quickFilter, setQuickFilter] = useState<QuickFilter>("all");
   const [editForm, setEditForm] = useState({
@@ -88,6 +102,13 @@ export const LinkList = ({
     number | null
   >(null);
   const qrCanvasRef = useRef<React.ElementRef<"canvas"> | null>(null);
+  const writableTargetWorkspaces = workspaces.filter(
+    (workspace) =>
+      workspace.id !== currentWorkspaceId &&
+      (workspace.role === "owner" || workspace.role === "editor"),
+  );
+  const canShareLinks =
+    !!onShareLink && canShareToWorkspace && writableTargetWorkspaces.length > 0;
 
   const localizedQuickFilterOptions: Array<{
     value: QuickFilter;
@@ -220,6 +241,21 @@ export const LinkList = ({
     });
   };
 
+  const startShare = (link: ConvertedLink) => {
+    if (!canShareToWorkspace) {
+      toast.error(shareContent.ownerOnly);
+      return;
+    }
+
+    if (!writableTargetWorkspaces.length) {
+      toast.error(shareContent.noTargets);
+      return;
+    }
+
+    setSharingLink(link);
+    setShareWorkspaceId(writableTargetWorkspaces[0]?.id || "");
+  };
+
   const handleUpdate = async () => {
     if (!editingLink?.id) return;
     setIsUpdating(true);
@@ -248,6 +284,19 @@ export const LinkList = ({
       setSelectedExpirePresetDays(null);
     } finally {
       setIsUpdating(false);
+    }
+  };
+
+  const handleShare = async () => {
+    if (!sharingLink?.id || !shareWorkspaceId || !onShareLink) return;
+
+    setIsSharing(true);
+    try {
+      await onShareLink(sharingLink.id, shareWorkspaceId);
+      setSharingLink(null);
+      setShareWorkspaceId("");
+    } finally {
+      setIsSharing(false);
     }
   };
 
@@ -727,6 +776,16 @@ export const LinkList = ({
                       <QrCode size={15} />
                       QR
                     </button>
+                    {canShareLinks && (
+                      <button
+                        onClick={() => startShare(link)}
+                        className="inline-flex min-w-24 items-center justify-center gap-2 rounded-2xl border border-emerald-200/70 bg-emerald-50 px-3 py-2.5 text-[11px] font-black uppercase tracking-[0.16em] text-emerald-700 transition-all hover:bg-emerald-100 dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-200 dark:hover:bg-emerald-500/20"
+                        title={shareContent.action}
+                      >
+                        <Share2 size={14} />
+                        {shareContent.action}
+                      </button>
+                    )}
                     {showChoiceModeActions && link.secondary_url && (
                       <button
                         onClick={() =>
@@ -1058,6 +1117,89 @@ export const LinkList = ({
                 className="flex w-full items-center justify-center gap-3 rounded-2xl bg-purple-600 py-5 text-[11px] font-black uppercase tracking-widest text-white shadow-xl shadow-purple-100 transition-all hover:bg-purple-700 active:scale-95"
               >
                 <Save size={18} /> {content.qrModal.download}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {sharingLink && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-6 backdrop-blur-sm">
+          <div className="w-full max-w-lg overflow-hidden rounded-[3rem] bg-white shadow-2xl dark:bg-slate-800">
+            <div className="flex items-center justify-between border-b border-gray-100 bg-gray-50/50 p-8 dark:border-slate-700 dark:bg-slate-700/50">
+              <div>
+                <h3 className="text-xl font-black tracking-tight text-gray-900 dark:text-slate-100">
+                  {shareContent.title}
+                </h3>
+                <p className="mt-2 text-sm font-medium leading-6 text-gray-500 dark:text-slate-400">
+                  {shareContent.description}
+                </p>
+              </div>
+              <button
+                onClick={() => {
+                  if (isSharing) return;
+                  setSharingLink(null);
+                  setShareWorkspaceId("");
+                }}
+                className="rounded-full p-2 transition-colors hover:bg-white dark:text-slate-300 dark:hover:bg-slate-600"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="space-y-5 p-8">
+              <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4 dark:border-slate-700 dark:bg-slate-900/70">
+                <p className="text-[10px] font-black uppercase tracking-[0.22em] text-slate-400 dark:text-slate-500">
+                  {shareContent.linkLabel}
+                </p>
+                <p className="mt-2 text-lg font-black tracking-tight text-slate-900 dark:text-slate-100">
+                  {sharingLink.custom_title || content.card.untitled}
+                </p>
+                <p className="mt-1 text-xs font-semibold uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">
+                  {sharingLink.short_code}
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <label className="pl-1 text-[11px] font-bold uppercase tracking-[0.2em] text-slate-400">
+                  {shareContent.workspaceLabel}
+                </label>
+                <select
+                  value={shareWorkspaceId}
+                  onChange={(e) => setShareWorkspaceId(e.target.value)}
+                  className="w-full rounded-2xl border-2 border-transparent bg-gray-50 px-6 py-4 text-sm font-medium text-gray-900 outline-none transition-all focus:border-orange-500 dark:bg-slate-700 dark:text-slate-100"
+                >
+                  {writableTargetWorkspaces.map((workspace) => (
+                    <option key={workspace.id} value={workspace.id}>
+                      {workspace.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <div className="flex gap-4 border-t border-gray-100 bg-gray-50 p-6 md:p-8 dark:border-slate-700 dark:bg-slate-700">
+              <button
+                onClick={() => {
+                  if (isSharing) return;
+                  setSharingLink(null);
+                  setShareWorkspaceId("");
+                }}
+                className="flex-1 rounded-2xl border border-gray-200 bg-white py-4 text-[10px] font-black uppercase tracking-widest text-gray-600 transition-all hover:bg-gray-100 dark:border-slate-600 dark:bg-slate-600 dark:text-slate-300 dark:hover:bg-slate-500"
+              >
+                {shareContent.cancel}
+              </button>
+              <button
+                onClick={handleShare}
+                disabled={isSharing || !shareWorkspaceId}
+                className="flex flex-1 items-center justify-center gap-2 rounded-2xl bg-emerald-600 py-4 text-[10px] font-black uppercase tracking-widest text-white shadow-lg shadow-emerald-100 transition-all hover:bg-emerald-700 disabled:opacity-50"
+              >
+                {isSharing ? (
+                  <div className="h-3 w-3 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+                ) : (
+                  <Share2 size={14} />
+                )}
+                {isSharing ? shareContent.submitting : shareContent.submit}
               </button>
             </div>
           </div>

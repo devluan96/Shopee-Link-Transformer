@@ -52,10 +52,7 @@ const lazyWithChunkRetry = <T extends React.ComponentType<any>>(
         /Importing a module script failed/i.test(message) ||
         /Loading chunk/i.test(message);
 
-      if (
-        isChunkLoadError &&
-        !sessionStorage.getItem(CHUNK_RELOAD_KEY)
-      ) {
+      if (isChunkLoadError && !sessionStorage.getItem(CHUNK_RELOAD_KEY)) {
         sessionStorage.setItem(CHUNK_RELOAD_KEY, "1");
         window.location.reload();
         return new Promise<never>(() => {});
@@ -206,6 +203,7 @@ export default function App() {
     setLinksDirty,
     handleDeleteLink,
     handleUpdateLink,
+    handleShareLink,
     handleDeleteManyLinks,
     refreshLinks,
   } = useLinks({
@@ -492,8 +490,9 @@ export default function App() {
   // Derived state
   const isAdminRole =
     profile?.role === "admin" || user?.email === "devluan1996@gmail.com";
-  const hasSub =
-    profile?.subscription_plan && profile.subscription_plan !== "free";
+  const hasSub = !!(
+    profile?.subscription_plan && profile.subscription_plan !== "free"
+  );
   const canUseCustomDomains =
     isAdminRole || profile?.subscription_plan === "yearly";
   const availableOutputDomains = outputDomains.length
@@ -501,14 +500,15 @@ export default function App() {
     : ["hotsnew.click"];
   const canEditCurrentWorkspace =
     currentWorkspace?.role === "owner" || currentWorkspace?.role === "editor";
-  const canAccessCreate =
-    (isAdminRole || hasSub) && (currentWorkspaceId ? canEditCurrentWorkspace : true);
+  const canAccessCreate = !!(
+    (isAdminRole || hasSub) &&
+    (currentWorkspaceId ? canEditCurrentWorkspace : true)
+  );
   const blockedByWorkspaceRole =
     !!currentWorkspaceId && !canEditCurrentWorkspace;
   const bootstrappingAccess =
     !!user && (authLoading || profileBootstrapLoading);
-  const compactDesktop =
-    viewportWidth >= 1024 && viewportWidth < 1520;
+  const compactDesktop = viewportWidth >= 1024 && viewportWidth < 1520;
 
   useEffect(() => {
     setActiveTab("dashboard");
@@ -667,13 +667,13 @@ export default function App() {
       <div className="lg:hidden sticky top-0 z-30 border-b border-gray-100 bg-white px-4 py-3 dark:border-slate-700 dark:bg-slate-800">
         <div className="flex items-center justify-between gap-3">
           <div className="min-w-0 flex flex-1 items-center gap-2">
-          <img
-            src="/logo-app-192.png"
-            alt={t("sidebar.logoAlt")}
-            className="h-7 w-7 rounded-lg object-cover"
-          />
+            <img
+              src="/logo-app-192.png"
+              alt={t("sidebar.logoAlt")}
+              className="h-7 w-7 rounded-lg object-cover"
+            />
             <span className="truncate font-black tracking-tight text-gray-900 dark:text-white">
-            HotsNew
+              HotsNew
             </span>
           </div>
           <div className="flex shrink-0 items-center gap-2">
@@ -719,7 +719,9 @@ export default function App() {
       >
         {user && (
           <>
-            <div className={`hidden lg:block ${compactDesktop ? "h-16" : "h-[72px]"}`} />
+            <div
+              className={`hidden lg:block ${compactDesktop ? "h-16" : "h-18"}`}
+            />
             <div
               className={`pointer-events-none fixed right-0 top-0 z-40 hidden lg:block ${
                 compactDesktop ? "left-60" : "left-72"
@@ -953,11 +955,15 @@ export default function App() {
               listLoading={listLoading}
               searchTerm={searchTerm}
               setSearchTerm={setSearchTerm}
+              workspaces={workspaces}
+              currentWorkspaceId={currentWorkspaceId}
+              canShareToWorkspace={currentWorkspace?.role === "owner"}
               showChoiceModeActions={isAdminRole}
               copyToClipboard={copyToClipboard}
               copiedId={copiedId || ""}
               onDeleteLink={handleDeleteLink}
               onUpdateLink={handleUpdateLink}
+              onShareLink={handleShareLink}
               onDeleteManyLinks={handleDeleteManyLinks}
             />
           )}
@@ -992,4 +998,3 @@ export default function App() {
     </div>
   );
 }
-

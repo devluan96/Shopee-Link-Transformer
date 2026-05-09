@@ -394,6 +394,62 @@ router.patch(
   },
 );
 
+// POST /api/v1/user/links/:id/share - Copy link into another workspace
+router.post(
+  "/user/links/:id/share",
+  authenticate,
+  async (req: AuthenticatedRequest, res) => {
+    try {
+      const supabase = getSupabase();
+      const userId = req.authUser?.id;
+      const linkId = req.params.id;
+      const workspaceId =
+        typeof req.body?.workspaceId === "string" ? req.body.workspaceId : "";
+
+      if (!userId || !linkId) {
+        return res.status(400).json({ error: "Missing userId or linkId" });
+      }
+
+      if (!workspaceId.trim()) {
+        return res.status(400).json({ error: "Missing target workspaceId" });
+      }
+
+      const quota = await getDailyLinkQuota(supabase, req, userId);
+      if (!quota.canCreate) {
+        return res.status(429).json({
+          error:
+            quota.dailyLimit === 0
+              ? "Gói hiện tại chưa được phép tạo link."
+              : `Bạn đã dùng hết ${quota.dailyLimit} lượt tạo link hôm nay.`,
+          quota,
+        });
+      }
+
+      const canUseCustomDomain =
+        req.authProfile?.role === "admin" ||
+        req.authProfile?.subscription_plan === "yearly";
+      const featureLimits = featureLimitService.getFeatureLimitsForProfile(
+        req.authProfile || undefined,
+      );
+
+      const link = await linkService.copyLinkToWorkspace(
+        supabase,
+        userId,
+        linkId,
+        workspaceId,
+        {
+          preserveCustomDomain: canUseCustomDomain,
+          preserveAbTesting: featureLimits.canUseAbTesting,
+        },
+      );
+
+      return res.json(link);
+    } catch (e: any) {
+      return res.status(400).json({ error: e.message });
+    }
+  },
+);
+
 // GET /api/v1/admin/users/:targetUid/clicks - Get total outbound clicks for all links of a user (admin only)
 router.get(
   "/admin/users/:targetUid/clicks",

@@ -243,7 +243,7 @@ export const AuthScreen = ({
                   </p>
                 </div>
               </div>
-              <div className="hidden rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-[11px] font-bold text-emerald-700 sm:inline-flex sm:items-center sm:gap-1.5">
+              <div className="hidden shrink-0 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-[11px] font-bold text-emerald-700 sm:inline-flex sm:items-center sm:gap-1.5 sm:whitespace-nowrap">
                 <ShieldCheck size={13} />
                 {auth.topbar.security}
               </div>
@@ -457,7 +457,7 @@ const AuthFormPanel = ({
           <div className="hidden sm:block">
             <div
               className={cn(
-                "inline-flex items-center gap-2 rounded-full border px-3.5 py-2 text-sm font-bold",
+                "inline-flex items-center gap-2 whitespace-nowrap rounded-full border px-3.5 py-2 text-sm font-bold",
                 statusChipClassName,
               )}
             >

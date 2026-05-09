@@ -2,6 +2,7 @@ import { useState, useCallback, useEffect } from "react";
 import { User } from "@supabase/supabase-js";
 import { UserProfile, ConvertedLink, LinkUpdatePayload } from "@/src/types";
 import { toast } from "sonner";
+import { useLocale } from "@/src/hooks/useLocale";
 
 interface UseLinksProps {
   user: User | null;
@@ -27,6 +28,7 @@ export interface LinksActions {
   fetchLinks: () => Promise<void>;
   handleDeleteLink: (id: string) => Promise<void>;
   handleUpdateLink: (id: string, data: LinkUpdatePayload) => Promise<void>;
+  handleShareLink: (id: string, workspaceId: string) => Promise<void>;
   handleDeleteManyLinks: (ids: string[]) => Promise<void>;
   refreshLinks: () => void;
 }
@@ -38,6 +40,7 @@ export function useLinks({
   fetchWithAuth,
   activeTab,
 }: UseLinksProps): LinksState & LinksActions {
+  const { t } = useLocale();
   const [links, setLinks] = useState<ConvertedLink[]>([]);
   const [listLoading, setListLoading] = useState(false);
   const [linksDirty, setLinksDirty] = useState(true);
@@ -100,6 +103,31 @@ export function useLinks({
     [fetchWithAuth],
   );
 
+  const handleShareLink = useCallback(
+    async (id: string, workspaceId: string) => {
+      try {
+        const res = await fetchWithAuth(`/api/v1/user/links/${id}/share`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ workspaceId }),
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          throw new Error(data.error || "Share failed");
+        }
+        setLinksDirty(true);
+        toast.success(t("linkListShare.success"));
+      } catch (e: any) {
+        toast.error(
+          `${t("linkListShare.errorPrefix")}${
+            e?.message ? `: ${e.message}` : ""
+          }`,
+        );
+      }
+    },
+    [fetchWithAuth, t],
+  );
+
   const handleDeleteManyLinks = useCallback(
     async (ids: string[]) => {
       try {
@@ -159,6 +187,7 @@ export function useLinks({
     fetchLinks,
     handleDeleteLink,
     handleUpdateLink,
+    handleShareLink,
     handleDeleteManyLinks,
     refreshLinks,
   };

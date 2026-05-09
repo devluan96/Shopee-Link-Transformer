@@ -4,12 +4,8 @@ import {
   Smartphone,
   Clock,
   Download,
-  Bell,
   MapPin,
   Monitor,
-  Eye,
-  EyeOff,
-  Check,
 } from "lucide-react";
 import {
   ResponsiveContainer,
@@ -45,14 +41,6 @@ interface TimeData {
   peakDay: string;
 }
 
-interface NotificationSettings {
-  webhook_url?: string;
-  telegram_bot_token?: string;
-  telegram_chat_id?: string;
-  notify_on_click: boolean;
-  notify_threshold: number;
-}
-
 interface AdvancedAnalyticsProps {
   fetchWithAuth: (
     input: RequestInfo | URL,
@@ -83,19 +71,13 @@ export const AdvancedAnalytics = ({
   currentWorkspaceId,
 }: AdvancedAnalyticsProps) => {
   const { t } = useLocale();
-  const [activeTab, setActiveTab] = useState<
-    "geo" | "device" | "time" | "notifications"
-  >("geo");
+  const [activeTab, setActiveTab] = useState<"geo" | "device" | "time">(
+    "geo",
+  );
   const [geoData, setGeoData] = useState<GeographicData | null>(null);
   const [deviceData, setDeviceData] = useState<DeviceData | null>(null);
   const [timeData, setTimeData] = useState<TimeData | null>(null);
   const [loading, setLoading] = useState(false);
-  const [settings, setSettings] = useState<NotificationSettings>({
-    notify_on_click: true,
-    notify_threshold: 0,
-  });
-  const [savingSettings, setSavingSettings] = useState(false);
-  const [showTelegramToken, setShowTelegramToken] = useState(false);
 
   const formatClicks = (count: number) =>
     t("analytics.advanced.common.clicks", { count });
@@ -132,29 +114,6 @@ export const AdvancedAnalytics = ({
       `/api/v1/user/analytics/time?days=30${query ? `&${query}` : ""}`,
     );
     setTimeData(await res.json());
-  };
-
-  const fetchSettings = async () => {
-    const res = await fetchWithAuth("/api/v1/user/notifications/settings");
-    const data = await res.json();
-    if (data) setSettings(data);
-  };
-
-  const saveSettings = async () => {
-    setSavingSettings(true);
-    try {
-      const res = await fetchWithAuth("/api/v1/user/notifications/settings", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(settings),
-      });
-      if (!res.ok) throw new Error("Failed to save");
-      toast.success(t("analytics.advanced.toasts.settingsSaved"));
-    } catch {
-      toast.error(t("analytics.advanced.toasts.settingsFailed"));
-    } finally {
-      setSavingSettings(false);
-    }
   };
 
   const exportCSV = async (format: "clicks" | "summary") => {
@@ -197,8 +156,6 @@ export const AdvancedAnalytics = ({
         } else if (activeTab === "time" && !timeData) {
           setLoading(true);
           await fetchTimeData();
-        } else if (activeTab === "notifications") {
-          await fetchSettings();
         }
       } catch (e) {
         console.error("Advanced analytics load failed:", e);
@@ -239,11 +196,6 @@ export const AdvancedAnalytics = ({
       icon: Smartphone,
     },
     { id: "time", label: t("analytics.advanced.tabs.time"), icon: Clock },
-    {
-      id: "notifications",
-      label: t("analytics.advanced.tabs.notifications"),
-      icon: Bell,
-    },
   ] as const;
 
   return (
@@ -265,24 +217,22 @@ export const AdvancedAnalytics = ({
         ))}
       </div>
 
-      {activeTab !== "notifications" && (
-        <div className="flex gap-2">
-          <button
-            onClick={() => exportCSV("clicks")}
-            className="flex items-center gap-2 rounded-xl bg-gray-900 px-4 py-2.5 text-xs font-black uppercase tracking-widest text-white transition-all hover:bg-black dark:bg-slate-700 dark:hover:bg-slate-600"
-          >
-            <Download size={14} />
-            {t("analytics.advanced.actions.exportClicks")}
-          </button>
-          <button
-            onClick={() => exportCSV("summary")}
-            className="flex items-center gap-2 rounded-xl border-2 border-gray-200 px-4 py-2.5 text-xs font-black uppercase tracking-widest text-gray-700 transition-all hover:border-gray-300 dark:border-slate-700 dark:text-slate-300 dark:hover:border-slate-600"
-          >
-            <Download size={14} />
-            {t("analytics.advanced.actions.exportSummary")}
-          </button>
-        </div>
-      )}
+      <div className="flex gap-2">
+        <button
+          onClick={() => exportCSV("clicks")}
+          className="flex items-center gap-2 rounded-xl bg-gray-900 px-4 py-2.5 text-xs font-black uppercase tracking-widest text-white transition-all hover:bg-black dark:bg-slate-700 dark:hover:bg-slate-600"
+        >
+          <Download size={14} />
+          {t("analytics.advanced.actions.exportClicks")}
+        </button>
+        <button
+          onClick={() => exportCSV("summary")}
+          className="flex items-center gap-2 rounded-xl border-2 border-gray-200 px-4 py-2.5 text-xs font-black uppercase tracking-widest text-gray-700 transition-all hover:border-gray-300 dark:border-slate-700 dark:text-slate-300 dark:hover:border-slate-600"
+        >
+          <Download size={14} />
+          {t("analytics.advanced.actions.exportSummary")}
+        </button>
+      </div>
 
       {activeTab === "geo" && (
         <div className="grid gap-6 lg:grid-cols-2">
@@ -657,161 +607,6 @@ export const AdvancedAnalytics = ({
         </div>
       )}
 
-      {activeTab === "notifications" && (
-        <div className={cardClassName}>
-          <div className="mb-8 flex items-center gap-3">
-            <Bell size={20} className="text-orange-500" />
-            <h3 className={`text-xl font-black ${labelClassName}`}>
-              {t("analytics.advanced.notifications.title")}
-            </h3>
-          </div>
-
-          <div className="space-y-6">
-            <div className="flex items-center justify-between rounded-2xl border border-gray-100 p-4 dark:border-slate-700 dark:bg-slate-900/70">
-              <div>
-                <h4 className={`font-bold ${labelClassName}`}>
-                  {t("analytics.advanced.notifications.toggleTitle")}
-                </h4>
-                <p className={`text-sm ${mutedClassName}`}>
-                  {t("analytics.advanced.notifications.toggleDescription")}
-                </p>
-              </div>
-              <button
-                onClick={() =>
-                  setSettings({
-                    ...settings,
-                    notify_on_click: !settings.notify_on_click,
-                  })
-                }
-                className={`relative h-7 w-12 rounded-full transition-colors ${
-                  settings.notify_on_click ? "bg-orange-500" : "bg-gray-300"
-                }`}
-              >
-                <span
-                  className={`absolute top-0.5 h-6 w-6 rounded-full bg-white shadow-md transition-transform ${
-                    settings.notify_on_click ? "left-[26px]" : "left-0.5"
-                  }`}
-                />
-              </button>
-            </div>
-
-            <div>
-              <label className="mb-2 block text-sm font-bold text-gray-700 dark:text-slate-300">
-                {t("analytics.advanced.notifications.thresholdLabel")}
-              </label>
-              <input
-                type="number"
-                min={0}
-                value={settings.notify_threshold}
-                onChange={(e) =>
-                  setSettings({
-                    ...settings,
-                    notify_threshold: parseInt(e.target.value, 10) || 0,
-                  })
-                }
-                className="w-full rounded-xl border-2 border-gray-100 px-4 py-3 font-medium outline-none transition-all focus:border-orange-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
-                placeholder={t(
-                  "analytics.advanced.notifications.thresholdPlaceholder",
-                )}
-              />
-              <p className={`mt-1 text-xs ${mutedClassName}`}>
-                {t("analytics.advanced.notifications.thresholdHint")}
-              </p>
-            </div>
-
-            <div>
-              <label className="mb-2 block text-sm font-bold text-gray-700 dark:text-slate-300">
-                {t("analytics.advanced.notifications.webhookLabel")}
-              </label>
-              <input
-                type="url"
-                value={settings.webhook_url || ""}
-                onChange={(e) =>
-                  setSettings({ ...settings, webhook_url: e.target.value })
-                }
-                className="w-full rounded-xl border-2 border-gray-100 px-4 py-3 font-medium outline-none transition-all focus:border-orange-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
-                placeholder={t(
-                  "analytics.advanced.notifications.webhookPlaceholder",
-                )}
-              />
-              <p className={`mt-1 text-xs ${mutedClassName}`}>
-                {t("analytics.advanced.notifications.webhookHint")}
-              </p>
-            </div>
-
-            <div className="rounded-2xl bg-gray-50 p-6 dark:bg-slate-900">
-              <h4 className={`mb-4 font-bold ${labelClassName}`}>
-                {t("analytics.advanced.notifications.telegramTitle")}
-              </h4>
-
-              <div className="mb-4">
-                <label className="mb-2 block text-sm font-bold text-gray-700 dark:text-slate-300">
-                  {t("analytics.advanced.notifications.botToken")}
-                </label>
-                <div className="relative">
-                  <input
-                    type={showTelegramToken ? "text" : "password"}
-                    value={settings.telegram_bot_token || ""}
-                    onChange={(e) =>
-                      setSettings({
-                        ...settings,
-                        telegram_bot_token: e.target.value,
-                      })
-                    }
-                    className="w-full rounded-xl border-2 border-gray-100 px-4 py-3 pr-12 font-medium outline-none transition-all focus:border-orange-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
-                    placeholder="123456789:ABCdefGHIjklMNOpqrsTUVwxyz"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowTelegramToken(!showTelegramToken)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:text-slate-400 dark:hover:text-slate-200"
-                  >
-                    {showTelegramToken ? <EyeOff size={18} /> : <Eye size={18} />}
-                  </button>
-                </div>
-              </div>
-
-              <div>
-                <label className="mb-2 block text-sm font-bold text-gray-700 dark:text-slate-300">
-                  {t("analytics.advanced.notifications.chatId")}
-                </label>
-                <input
-                  type="text"
-                  value={settings.telegram_chat_id || ""}
-                  onChange={(e) =>
-                    setSettings({
-                      ...settings,
-                      telegram_chat_id: e.target.value,
-                    })
-                  }
-                  className="w-full rounded-xl border-2 border-gray-100 px-4 py-3 font-medium outline-none transition-all focus:border-orange-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
-                  placeholder={t(
-                    "analytics.advanced.notifications.chatIdPlaceholder",
-                  )}
-                />
-              </div>
-            </div>
-
-            <button
-              onClick={saveSettings}
-              disabled={savingSettings}
-              className="flex w-full items-center justify-center gap-2 rounded-xl bg-orange-600 py-4 font-black uppercase tracking-widest text-white transition-all hover:bg-orange-700 disabled:opacity-50"
-            >
-              {savingSettings ? (
-                <>
-                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                  {t("analytics.advanced.actions.saving")}
-                </>
-              ) : (
-                <>
-                  <Check size={18} />
-                  {t("analytics.advanced.actions.save")}
-                </>
-              )}
-            </button>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

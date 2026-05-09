@@ -1060,6 +1060,40 @@ export const en = {
       hint: "Scan to open the link",
       download: "Download QR code (.png)",
     },
+    share: {
+      action: "Share",
+      title: "Share link as a new copy",
+      description:
+        "Choose another workspace. The destination workspace will receive an independent copy that can be edited without affecting the original link.",
+      linkLabel: "Selected link",
+      workspaceLabel: "Destination workspace",
+      submit: "Create copy",
+      submitting: "Creating...",
+      cancel: "Cancel",
+      ownerOnly:
+        "Only the owner of the current workspace can share this link to another workspace.",
+      noTargets:
+        "There is no other workspace with write access available for sharing.",
+      success: "The link copy was created successfully in another workspace.",
+      errorPrefix: "Unable to share the link copy",
+    },
+  },
+  linkListShare: {
+    action: "Share",
+    title: "Share link as a new copy",
+    description:
+      "Choose another workspace. The destination workspace will receive an independent copy that can be edited without affecting the original link.",
+    linkLabel: "Selected link",
+    workspaceLabel: "Destination workspace",
+    submit: "Create copy",
+    submitting: "Creating...",
+    cancel: "Cancel",
+    ownerOnly:
+      "Only the owner of the current workspace can share this link to another workspace.",
+    noTargets:
+      "There is no other workspace with write access available for sharing.",
+    success: "The link copy was created successfully in another workspace.",
+    errorPrefix: "Unable to share the link copy",
   },
   createLink: {
     validation: {

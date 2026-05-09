@@ -97,9 +97,15 @@
       "main.cjs",
       "package.json"
     ],
+    "extraResources": [
+      {
+        "from": "desktop-assets/icon.ico",
+        "to": "icon.ico"
+      }
+    ],
     "win": {
       "signAndEditExecutable": false,
-      "icon": "desktop-assets/icon.ico",
+      "icon": "icon.ico",
       "executableName": "HotsNew Click",
       "target": [
         "nsis",
