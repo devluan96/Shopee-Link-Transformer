@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React from "react";
 import {
   BarChart3,
   Building2,
@@ -7,17 +7,16 @@ import {
   LayoutDashboard,
   List,
   Lock,
-  LogOut,
   MessageCircle,
   PlusCircle,
-  Tag,
-  User,
   Users as UsersIcon,
+  X,
 } from "lucide-react";
 import { cn } from "@/src/lib/utils";
 import { Tab, UserProfile, Workspace } from "@/src/types";
 import { InstallAppButton } from "@/src/components/common/InstallAppButton";
-import { ThemeToggle } from "@/src/components/common/ThemeToggle";
+import { AccountMenu } from "@/src/components/common/AccountMenu";
+import { useLocale } from "@/src/hooks/useLocale";
 
 interface SidebarProps {
   activeTab: Tab;
@@ -40,7 +39,7 @@ const SidebarItem = ({
   onClick,
   isLocked,
 }: {
-  icon: any;
+  icon: React.ComponentType<{ size?: number }>;
   label: string;
   active: boolean;
   onClick: () => void;
@@ -84,42 +83,11 @@ export const Sidebar = ({
   isOpen,
   onClose,
 }: SidebarProps) => {
+  const { t } = useLocale();
   const zaloContactUrl = "https://zalo.me/0969361607";
-  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
-  const userMenuRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (
-        userMenuRef.current &&
-        !userMenuRef.current.contains(event.target as Node)
-      ) {
-        setIsUserMenuOpen(false);
-      }
-    };
-
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
-
-  useEffect(() => {
-    if (!isOpen) {
-      setIsUserMenuOpen(false);
-    }
-  }, [isOpen]);
 
   const handleTabClick = (tab: Tab) => {
     setActiveTab(tab);
-    setIsUserMenuOpen(false);
-  };
-
-  const handleAvatarError = (
-    event: React.SyntheticEvent<HTMLImageElement, Event>,
-  ) => {
-    event.currentTarget.style.display = "none";
-    event.currentTarget.parentElement
-      ?.querySelector(".avatar-placeholder")
-      ?.classList.remove("hidden");
   };
 
   return (
@@ -144,7 +112,7 @@ export const Sidebar = ({
           <div className="flex items-center gap-3">
             <img
               src="/logo-app-192.png"
-              alt="HotsNew Click logo"
+              alt={t("sidebar.logoAlt")}
               className="h-10 w-10 rounded-xl object-cover shadow-lg shadow-orange-100"
             />
             <div>
@@ -160,8 +128,9 @@ export const Sidebar = ({
           <button
             onClick={onClose}
             className="p-2 text-gray-400 hover:text-gray-900 lg:hidden"
+            aria-label={t("sidebar.close")}
           >
-            <LogOut size={20} className="rotate-180" />
+            <X size={20} />
           </button>
         </div>
 
@@ -169,13 +138,13 @@ export const Sidebar = ({
           <div className="mb-5 rounded-2xl border border-gray-100 bg-gray-50/80 p-3 dark:border-slate-700 dark:bg-slate-800/80">
             <label className="mb-2 flex items-center gap-2 px-1 text-[10px] font-black uppercase tracking-widest text-gray-400 dark:text-slate-500">
               <Building2 size={12} className="text-orange-500" />
-              Workspace hiện tại
+              {t("sidebar.currentWorkspace")}
             </label>
             <div className="relative">
               <select
                 value={currentWorkspaceId}
                 onChange={(e) => onWorkspaceChange(e.target.value)}
-                className="w-full appearance-none rounded-xl border border-transparent bg-white dark:bg-slate-900 px-4 py-3 pr-10 text-sm font-bold text-gray-900 outline-none transition-all focus:border-orange-500/20 focus:ring-4 focus:ring-orange-500/10 dark:text-slate-100"
+                className="w-full appearance-none rounded-xl border border-transparent bg-white px-4 py-3 pr-10 text-sm font-bold text-gray-900 outline-none transition-all focus:border-orange-500/20 focus:ring-4 focus:ring-orange-500/10 dark:bg-slate-900 dark:text-slate-100"
               >
                 {workspaces.map((workspace) => (
                   <option key={workspace.id} value={workspace.id}>
@@ -192,17 +161,17 @@ export const Sidebar = ({
           </div>
 
           <div className="mb-4 px-4 text-[10px] font-black uppercase tracking-widest text-gray-400 dark:text-slate-500">
-            Menu chính
+            {t("sidebar.mainMenu")}
           </div>
           <SidebarItem
             icon={LayoutDashboard}
-            label="Bảng điều khiển"
+            label={t("sidebar.dashboard")}
             active={activeTab === "dashboard"}
             onClick={() => handleTabClick("dashboard")}
           />
           <SidebarItem
             icon={PlusCircle}
-            label="Tạo Link"
+            label={t("sidebar.createLinks")}
             active={activeTab === "create"}
             onClick={() => handleTabClick("create")}
             isLocked={
@@ -211,25 +180,25 @@ export const Sidebar = ({
           />
           <SidebarItem
             icon={List}
-            label="Quản lý liên kết"
+            label={t("sidebar.linkList")}
             active={activeTab === "list"}
             onClick={() => handleTabClick("list")}
           />
           <SidebarItem
             icon={BarChart3}
-            label="Phân tích dữ liệu"
+            label={t("sidebar.analytics")}
             active={activeTab === "analytics"}
             onClick={() => handleTabClick("analytics")}
           />
           <SidebarItem
             icon={UsersIcon}
-            label="Team Workspace"
+            label={t("sidebar.team")}
             active={activeTab === "team"}
             onClick={() => handleTabClick("team")}
           />
           <SidebarItem
             icon={Download}
-            label="Cài app"
+            label={t("sidebar.installApp")}
             active={activeTab === "install"}
             onClick={() => handleTabClick("install")}
           />
@@ -237,11 +206,11 @@ export const Sidebar = ({
           {isActuallyAdmin && (
             <>
               <div className="mb-4 mt-8 px-4 text-[10px] font-black uppercase tracking-widest text-orange-400">
-                Quản trị viên
+                {t("sidebar.admin")}
               </div>
               <SidebarItem
                 icon={UsersIcon}
-                label="Quản lý User"
+                label={t("sidebar.userManagement")}
                 active={activeTab === "admin"}
                 onClick={() => handleTabClick("admin")}
               />
@@ -249,11 +218,7 @@ export const Sidebar = ({
           )}
         </nav>
 
-        <div className="mt-auto border-t border-gray-100 dark:border-slate-700 pt-6">
-          {/* Theme Toggle - Desktop */}
-          <div className="hidden lg:flex justify-center mb-4">
-            <ThemeToggle />
-          </div>
+        <div className="mt-auto border-t border-gray-100 pt-6 dark:border-slate-700">
           <a
             href={zaloContactUrl}
             target="_blank"
@@ -261,92 +226,24 @@ export const Sidebar = ({
             className="mb-4 flex items-center justify-center gap-2 rounded-2xl border border-sky-100 bg-sky-50 px-4 py-4 text-xs font-black uppercase tracking-widest text-sky-700 transition-all hover:bg-sky-100 dark:border-sky-500/20 dark:bg-sky-500/10 dark:text-sky-200 dark:hover:bg-sky-500/20"
           >
             <MessageCircle size={16} />
-            Liên hệ Zalo Admin
+            {t("sidebar.contactAdmin")}
           </a>
           <div className="mb-4">
             <InstallAppButton />
           </div>
 
-          <div ref={userMenuRef} className="relative">
-            {isUserMenuOpen && (
-              <div className="absolute bottom-full left-0 right-0 mb-3 rounded-2xl border border-gray-100 bg-white p-2 shadow-xl shadow-gray-200/70 dark:border-slate-700 dark:bg-slate-800 dark:shadow-black/30">
-                <button
-                  onClick={() => handleTabClick("pricing")}
-                  className={cn(
-                    "flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left text-sm font-bold transition-all",
-                    activeTab === "pricing"
-                      ? "bg-orange-600 text-white shadow-lg shadow-orange-200"
-                      : "text-gray-600 hover:bg-gray-100 hover:text-gray-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-200",
-                  )}
-                >
-                  <Tag size={18} />
-                  Gói dịch vụ
-                </button>
-                <button
-                  onClick={() => handleTabClick("profile")}
-                  className={cn(
-                    "flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left text-sm font-bold transition-all",
-                    activeTab === "profile"
-                      ? "bg-orange-600 text-white shadow-lg shadow-orange-200"
-                      : "text-gray-600 hover:bg-gray-100 hover:text-gray-900 dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-slate-200",
-                  )}
-                >
-                  <User size={18} />
-                  Hồ sơ cá nhân
-                </button>
-                <button
-                  onClick={() => {
-                    setIsUserMenuOpen(false);
-                    handleLogout();
-                  }}
-                  className="mt-1 flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left text-sm font-bold text-red-500 transition-all hover:bg-red-50 dark:hover:bg-red-500/10"
-                >
-                  <LogOut size={18} />
-                  Đăng xuất
-                </button>
-              </div>
-            )}
-
-            <div className="flex items-center gap-3 p-2">
-              <button
-                type="button"
-                onClick={() => setIsUserMenuOpen((prev) => !prev)}
-                aria-label="Mở menu tài khoản"
-                aria-expanded={isUserMenuOpen}
-                className="shrink-0 rounded-full transition-transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-orange-500/30"
-              >
-                {userProfile?.avatar_url ? (
-                  <img
-                    src={userProfile.avatar_url}
-                    alt={userProfile?.full_name || userEmail || "User avatar"}
-                    className="h-10 w-10 rounded-full bg-gray-100 object-cover"
-                    onError={handleAvatarError}
-                  />
-                ) : null}
-                <div
-                  className={cn(
-                    "avatar-placeholder flex h-10 w-10 items-center justify-center rounded-full bg-gray-100 text-gray-400",
-                    userProfile?.avatar_url ? "hidden" : "",
-                  )}
-                >
-                  <User size={20} />
-                </div>
-              </button>
-
-              <div className="min-w-0">
-                <p className="truncate text-sm font-bold text-gray-900 dark:text-slate-200">
-                  {userProfile?.full_name || userEmail}
-                </p>
-                <p className="text-[10px] font-bold uppercase text-green-600 dark:text-green-400">
-                  {isActuallyAdmin
-                    ? "Administrator"
-                    : userProfile?.subscription_plan === "monthly" ||
-                        userProfile?.subscription_plan === "yearly"
-                      ? "Premium Member"
-                      : "Free Member"}
-                </p>
-              </div>
-            </div>
+          <div className="lg:hidden">
+            <AccountMenu
+              activeTab={activeTab}
+              onSelectTab={handleTabClick}
+              isActuallyAdmin={isActuallyAdmin}
+              userProfile={userProfile}
+              userEmail={userEmail}
+              handleLogout={handleLogout}
+              className="w-full"
+              fullWidth
+              menuPlacement="top-right"
+            />
           </div>
         </div>
       </aside>

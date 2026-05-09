@@ -16,6 +16,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
+import { useLocale } from "@/src/hooks/useLocale";
 import { cn } from "@/src/lib/utils";
 
 interface AuthScreenProps {
@@ -72,25 +73,7 @@ interface AuthFormProps {
   resetLoading?: () => void;
 }
 
-const featureCards = [
-  {
-    title: "Trang xem trước đẹp mắt",
-    detail:
-      "Landing page, thống kê và xác thực dùng chung một ngôn ngữ thiết kế.",
-    icon: Layers3,
-  },
-  {
-    title: "Số liệu thời gian thực",
-    detail: "Theo dõi lượt click, chuyển đổi và hiệu quả của từng chiến dịch.",
-    icon: BarChart3,
-  },
-  {
-    title: "Bảo mật sẵn sàng",
-    detail:
-      "Ghi nhớ đăng nhập, khôi phục mật khẩu và 2FA cho vận hành thực tế.",
-    icon: Fingerprint,
-  },
-];
+const featureIcons = [Layers3, BarChart3, Fingerprint] as const;
 
 export const AuthScreen = ({
   isRegistering,
@@ -120,6 +103,9 @@ export const AuthScreen = ({
   handlePasswordRecovery,
   resetLoading,
 }: AuthScreenProps) => {
+  const { messages, t } = useLocale();
+  const auth = messages.auth;
+
   return (
     <div className="relative h-dvh overflow-hidden bg-[#f3eee7] text-slate-950">
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(255,128,0,0.15),transparent_30%),radial-gradient(circle_at_85%_18%,rgba(15,23,42,0.08),transparent_22%),linear-gradient(135deg,#f8f1e7_0%,#f5efe8_44%,#fbfaf8_100%)]" />
@@ -140,28 +126,27 @@ export const AuthScreen = ({
             >
               <div className="mb-5 inline-flex w-fit items-center gap-2 rounded-full border border-white/10 bg-white/8 px-4 py-2 text-[10px] font-bold uppercase tracking-[0.24em] text-orange-200 backdrop-blur">
                 <Sparkles size={14} className="text-orange-300" />
-                Trải nghiệm xác thực cao cấp
+                {auth.hero.badge}
               </div>
 
               <div className="max-w-xl">
                 <p className="mb-3 text-xs font-semibold uppercase tracking-[0.34em] text-orange-200/80">
-                  Nền tảng HotsNew Click
+                  {auth.hero.eyebrow}
                 </p>
-                <h1 className="font-['Be_Vietnam_Pro'] text-[2.7rem] font-bold leading-[1.04] tracking-[-0.035em] xl:text-[3.3rem]">
-                  Quản lý link Shopee
+                <h1 className="text-[2.7rem] font-bold leading-[1.04] tracking-[-0.035em] xl:text-[3.3rem]">
+                  {auth.hero.title}
                   <span className="block bg-[linear-gradient(135deg,#fff6ea_0%,#ffb457_45%,#ff6a00_100%)] bg-clip-text text-transparent">
-                    nhanh, đẹp và chuyên nghiệp.
+                    {auth.hero.accent}
                   </span>
                 </h1>
                 <p className="mt-4 max-w-lg text-sm leading-6 text-white/70 xl:text-[15px]">
-                  Tạo link rút gọn, trang xem trước thu hút và theo dõi hiệu quả
-                  chiến dịch trong một không gian làm việc gọn gàng, dễ dùng.
+                  {auth.hero.description}
                 </p>
               </div>
 
               <div className="mt-5 grid gap-3 xl:grid-cols-3">
-                {featureCards.map((item, index) => {
-                  const Icon = item.icon;
+                {auth.hero.features.map((item, index) => {
+                  const Icon = featureIcons[index] ?? Layers3;
                   return (
                     <motion.div
                       key={item.title}
@@ -173,7 +158,7 @@ export const AuthScreen = ({
                       <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-orange-400/16 text-orange-200">
                         <Icon size={18} />
                       </div>
-                      <h3 className="mt-3 font-['Be_Vietnam_Pro'] text-base font-semibold tracking-[-0.02em] text-white">
+                      <h3 className="mt-3 text-base font-semibold tracking-[-0.02em] text-white">
                         {item.title}
                       </h3>
                       <p className="mt-1.5 text-xs leading-5 text-white/62">
@@ -193,17 +178,17 @@ export const AuthScreen = ({
                 <div className="relative flex items-center justify-between gap-4">
                   <div>
                     <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-slate-500">
-                      Hệ sinh thái xem trước
+                      {auth.hero.preview.eyebrow}
                     </p>
-                    <h3 className="mt-2 font-['Be_Vietnam_Pro'] text-xl font-semibold tracking-[-0.025em]">
-                      Dashboard, landing page và xác thực cùng một nhịp.
+                    <h3 className="mt-2 text-xl font-semibold tracking-[-0.025em]">
+                      {auth.hero.preview.title}
                     </h3>
                   </div>
                   <div className="hidden rounded-2xl border border-slate-200 bg-white px-4 py-3 text-right shadow-sm xl:block">
                     <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-slate-400">
-                      Chuyển đổi trực tiếp
+                      {auth.hero.preview.statLabel}
                     </p>
-                    <p className="mt-1 font-['Be_Vietnam_Pro'] text-xl font-semibold tracking-[-0.025em] text-orange-600">
+                    <p className="mt-1 text-xl font-semibold tracking-[-0.025em] text-orange-600">
                       +27.4%
                     </p>
                   </div>
@@ -212,17 +197,17 @@ export const AuthScreen = ({
                 <div className="relative mt-4 overflow-hidden rounded-[1.3rem] border border-slate-200 bg-white">
                   <img
                     src="./og-image.png"
-                    alt="Xem trước ứng dụng"
+                    alt={auth.hero.preview.imageAlt}
                     className="h-48 w-full object-cover object-top xl:h-52"
                     referrerPolicy="no-referrer"
                   />
                   <div className="absolute inset-x-0 bottom-0 flex items-end justify-between bg-[linear-gradient(180deg,transparent,rgba(15,23,42,0.72))] p-4">
                     <div className="text-white">
                       <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-white/65">
-                        Trình diễn
+                        {auth.hero.preview.demoLabel}
                       </p>
-                      <p className="mt-1.5 font-['Be_Vietnam_Pro'] text-lg font-semibold tracking-[-0.025em]">
-                        Rút gọn link + landing page + thống kê
+                      <p className="mt-1.5 text-lg font-semibold tracking-[-0.025em]">
+                        {auth.hero.preview.demoTitle}
                       </p>
                     </div>
                     <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/20 bg-white/12 text-white backdrop-blur">
@@ -246,21 +231,21 @@ export const AuthScreen = ({
               <div className="flex items-center gap-3.5">
                 <img
                   src="/logo-app-192.png"
-                  alt="Logo HotsNew Click"
+                  alt={t("sidebar.logoAlt")}
                   className="h-12 w-12 rounded-xl border border-orange-100 object-cover shadow-sm"
                 />
                 <div>
-                  <p className="font-['Be_Vietnam_Pro'] text-xl font-bold tracking-[-0.03em] text-slate-950">
+                  <p className="text-xl font-bold tracking-[-0.03em] text-slate-950">
                     HotsNew <span className="text-orange-600">Click</span>
                   </p>
                   <p className="mt-1 text-[10px] font-bold uppercase tracking-[0.25em] text-slate-400">
-                    Không gian làm việc cho link Shopee
+                    {auth.topbar.tagline}
                   </p>
                 </div>
               </div>
               <div className="hidden rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-[11px] font-bold text-emerald-700 sm:inline-flex sm:items-center sm:gap-1.5">
                 <ShieldCheck size={13} />
-                Bảo mật an toàn
+                {auth.topbar.security}
               </div>
             </motion.div>
 
@@ -373,7 +358,7 @@ export const AuthScreen = ({
             )}
 
             <p className="mt-4 text-center text-[10px] font-bold uppercase tracking-[0.24em] text-slate-400">
-              HotsNew Click © 2026 • Dành cho seller, creator và đội vận hành
+              {auth.footer}
             </p>
           </div>
         </section>
@@ -406,6 +391,8 @@ const AuthFormPanel = ({
   handlePasswordRecovery,
   resetLoading,
 }: AuthFormProps) => {
+  const { messages } = useLocale();
+  const auth = messages.auth;
   const [showPrimaryPassword, setShowPrimaryPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [showRecoveryPassword, setShowRecoveryPassword] = useState(false);
@@ -413,16 +400,16 @@ const AuthFormPanel = ({
     useState(false);
 
   const title = passwordRecoveryMode
-    ? "Đặt lại mật khẩu"
+    ? auth.panel.titles.recovery
     : isRegistering
-      ? "Tạo tài khoản mới"
-      : "Đăng nhập hệ thống";
+      ? auth.panel.titles.register
+      : auth.panel.titles.login;
 
   const subtitle = passwordRecoveryMode
-    ? "CẬP NHẬT THÔNG TIN TRUY CẬP"
+    ? auth.panel.subtitles.recovery
     : isRegistering
-      ? "BẮT ĐẦU THIẾT LẬP KHÔNG GIAN LÀM VIỆC"
-      : "TRUY CẬP BẢNG ĐIỀU KHIỂN CHỈ TRONG MỘT BƯỚC";
+      ? auth.panel.subtitles.register
+      : auth.panel.subtitles.login;
 
   const confirmPasswordMismatch =
     isRegistering &&
@@ -434,6 +421,12 @@ const AuthFormPanel = ({
     : isRegistering
       ? "border-sky-200 bg-sky-50 text-sky-700 shadow-[0_8px_18px_rgba(14,165,233,0.10)]"
       : "border-emerald-200 bg-emerald-50 text-emerald-700 shadow-[0_8px_18px_rgba(16,185,129,0.10)]";
+
+  const statusChipLabel = passwordRecoveryMode
+    ? auth.panel.chips.recovery
+    : isRegistering
+      ? auth.panel.chips.register
+      : auth.panel.chips.login;
 
   return (
     <motion.div
@@ -450,10 +443,10 @@ const AuthFormPanel = ({
             <div className="inline-flex items-center gap-2 rounded-full border border-orange-100 bg-orange-50 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.22em] text-orange-700">
               <BadgeCheck size={13} />
               {passwordRecoveryMode
-                ? "Khôi phục tài khoản"
-                : "Không gian xác thực"}
+                ? auth.panel.badges.recovery
+                : auth.panel.badges.default}
             </div>
-            <h2 className="mt-3 font-['Be_Vietnam_Pro'] text-[1.8rem] font-bold tracking-[-0.03em] text-slate-950 sm:text-[2rem]">
+            <h2 className="mt-3 text-[1.8rem] font-bold tracking-[-0.03em] text-slate-950 sm:text-[2rem]">
               {title}
             </h2>
             <p className="mt-1.5 text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400">
@@ -469,13 +462,7 @@ const AuthFormPanel = ({
               )}
             >
               <BadgeCheck size={15} />
-              <span>
-                {passwordRecoveryMode
-                  ? "Đặt lại"
-                  : isRegistering
-                    ? "Mới"
-                    : "Sẵn sàng"}
-              </span>
+              <span>{statusChipLabel}</span>
             </div>
           </div>
         </div>
@@ -484,8 +471,8 @@ const AuthFormPanel = ({
           <div className="mb-5 rounded-[1.35rem] border border-slate-200/80 bg-slate-100/80 p-1.5">
             <div className="grid grid-cols-2 gap-1.5">
               {[
-                { key: "login", label: "Đăng nhập" },
-                { key: "register", label: "Đăng ký" },
+                { key: "login", label: auth.panel.tabs.login },
+                { key: "register", label: auth.panel.tabs.register },
               ].map((item) => {
                 const active =
                   (item.key === "login" && !isRegistering) ||
@@ -529,12 +516,12 @@ const AuthFormPanel = ({
           className="flex flex-1 flex-col space-y-3.5"
         >
           <InputField
-            label="Địa chỉ email"
+            label={auth.panel.fields.email}
             icon={<Mail size={18} />}
             type="email"
             value={email}
             onChange={setEmail}
-            placeholder="tenban@example.com"
+            placeholder={auth.panel.placeholders.email}
             readOnly={passwordRecoveryMode}
           />
 
@@ -549,14 +536,14 @@ const AuthFormPanel = ({
                 className="space-y-3.5"
               >
                 <PasswordField
-                  label="Mật khẩu mới"
+                  label={auth.panel.fields.newPassword}
                   value={recoveryPassword}
                   onChange={setRecoveryPassword}
                   showValue={showRecoveryPassword}
                   onToggleShow={() => setShowRecoveryPassword((prev) => !prev)}
                 />
                 <PasswordField
-                  label="Xác nhận mật khẩu"
+                  label={auth.panel.fields.confirmPassword}
                   value={recoveryConfirmPassword}
                   onChange={setRecoveryConfirmPassword}
                   showValue={showRecoveryConfirmPassword}
@@ -577,7 +564,7 @@ const AuthFormPanel = ({
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
                     <label className="pl-1 text-[11px] font-bold uppercase tracking-[0.2em] text-slate-400">
-                      Mật khẩu
+                      {auth.panel.fields.password}
                     </label>
                     {!isRegistering && (
                       <button
@@ -585,7 +572,7 @@ const AuthFormPanel = ({
                         onClick={() => void handleForgotPassword()}
                         className="text-[10px] font-bold uppercase tracking-[0.14em] text-orange-600 transition-colors hover:text-orange-700"
                       >
-                        Quên mật khẩu?
+                        {auth.panel.misc.forgotPassword}
                       </button>
                     )}
                   </div>
@@ -619,7 +606,7 @@ const AuthFormPanel = ({
 
                 {isRegistering && (
                   <PasswordField
-                    label="Nhập lại mật khẩu"
+                    label={auth.panel.fields.confirmPasswordRegister}
                     value={confirmPassword ?? ""}
                     onChange={setConfirmPassword ?? (() => {})}
                     showValue={showConfirmPassword}
@@ -627,7 +614,7 @@ const AuthFormPanel = ({
                     invalid={confirmPasswordMismatch}
                     errorText={
                       confirmPasswordMismatch
-                        ? "Mật khẩu nhập lại không khớp."
+                        ? auth.panel.errors.confirmPasswordMismatch
                         : undefined
                     }
                   />
@@ -641,7 +628,7 @@ const AuthFormPanel = ({
                       onChange={(e) => setRememberMe(e.target.checked)}
                       className="h-4 w-4 rounded border-slate-300 text-orange-600 focus:ring-orange-500"
                     />
-                    Ghi nhớ đăng nhập trên thiết bị này
+                    {auth.panel.misc.rememberMe}
                   </label>
                 )}
               </motion.div>
@@ -683,11 +670,11 @@ const AuthFormPanel = ({
               {loading ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
               ) : passwordRecoveryMode ? (
-                "Lưu mật khẩu mới"
+                auth.panel.actions.recovery
               ) : isRegistering ? (
-                "Tạo tài khoản"
+                auth.panel.actions.register
               ) : (
-                "Truy cập hệ thống"
+                auth.panel.actions.login
               )}
               {!loading && (
                 <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
@@ -701,7 +688,7 @@ const AuthFormPanel = ({
               onClick={resetLoading}
               className="w-full text-center text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400 transition-colors hover:text-orange-600"
             >
-              Hủy và thử lại nếu bị treo
+              {auth.panel.actions.cancelLoading}
             </button>
           )}
         </form>

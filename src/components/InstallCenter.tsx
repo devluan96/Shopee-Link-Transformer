@@ -10,63 +10,8 @@ import {
   Zap,
 } from "lucide-react";
 import { InstallAppButton } from "@/src/components/common/InstallAppButton";
+import { useLocale } from "@/src/hooks/useLocale";
 import { usePWAInstall } from "@/src/hooks/usePWAInstall";
-
-const setupHighlights = [
-  {
-    label: "Thời gian setup",
-    value: "1 phút",
-    hint: "Chỉ cần cài một lần trên thiết bị đang dùng.",
-  },
-  {
-    label: "Truy cập nhanh",
-    value: "1 chạm mở",
-    hint: "Vào workspace như một app riêng thay vì tìm lại tab browser.",
-  },
-  {
-    label: "Đối tượng phù hợp",
-    value: "User vận hành",
-    hint: "Hợp với người mở dashboard thường xuyên mỗi ngày.",
-  },
-];
-
-const appUseCases = [
-  "Mở HotsNew như một app riêng, tách khỏi trình duyệt.",
-  "Giảm thời gian tìm lại đúng tab làm việc khi xử lý nhiều link.",
-  "Phù hợp cho operator cần vào dashboard liên tục trong ngày.",
-];
-
-const appSurfaces = [
-  {
-    title: "Desktop",
-    body: "Tạo một cửa sổ làm việc riêng cho HotsNew để thao tác tập trung hơn.",
-  },
-  {
-    title: "Mobile",
-    body: "Ghim ra màn hình chính để mở workspace nhanh như một app thật.",
-  },
-];
-
-const workflowChecklist = [
-  "Cài app trên thiết bị bạn dùng thường xuyên nhất.",
-  "Ghim app ra desktop hoặc màn hình chính để vào nhanh hơn.",
-  "Dùng tab này như trang onboarding cho user mới của team.",
-];
-
-const troubleshooting = [
-  {
-    title: "Không thấy nút cài app",
-    body: "Hãy mở site bằng Chrome hoặc Cốc Cốc bản mới và thử lại từ menu trình duyệt.",
-  },
-  {
-    title: "Đã cài nhưng chưa quen cách mở",
-    body: "Tìm HotsNew trong danh sách ứng dụng hoặc biểu tượng vừa được ghim trên thiết bị.",
-  },
-  {
-    title: "Muốn cài lại trên thiết bị khác",
-    body: "Mỗi thiết bị cài riêng một lần. Chỉ cần đăng nhập lại HotsNew trên thiết bị đó.",
-  },
-];
 
 function SectionTitle({
   icon: Icon,
@@ -99,21 +44,26 @@ function SectionTitle({
 }
 
 export function InstallCenter() {
+  const { messages } = useLocale();
+  const copy = messages.installCenter;
   const { canInstall, isInstalled } = usePWAInstall();
 
   const installStatus = isInstalled
     ? {
         tone: "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-300",
-        label: "App đã sẵn sàng trên thiết bị này",
+        label: copy.status.labels.installed,
+        description: copy.status.descriptions.installed,
       }
     : canInstall
       ? {
           tone: "border-orange-200 bg-orange-50 text-orange-700 dark:border-orange-500/20 dark:bg-orange-500/10 dark:text-orange-300",
-          label: "Có thể cài app trực tiếp ngay bây giờ",
+          label: copy.status.labels.ready,
+          description: copy.status.descriptions.ready,
         }
       : {
           tone: "border-slate-200 bg-slate-100 text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300",
-          label: "Cần mở menu trình duyệt để cài app",
+          label: copy.status.labels.menu,
+          description: copy.status.descriptions.menu,
         };
 
   return (
@@ -123,23 +73,22 @@ export function InstallCenter() {
         <div className="relative space-y-8">
           <div className="inline-flex items-center gap-2 rounded-full border border-orange-200 bg-white/80 px-4 py-2 text-[11px] font-black uppercase tracking-[0.28em] text-orange-600 backdrop-blur dark:border-orange-500/20 dark:bg-slate-900/80 dark:text-orange-300">
             <Download size={14} />
-            App Setup
+            {copy.badge}
           </div>
 
           <div className="grid gap-8 xl:grid-cols-[1.08fr_0.92fr]">
             <div className="space-y-5">
               <div className="space-y-4">
                 <h2 className="max-w-3xl text-3xl font-black tracking-tight text-slate-950 dark:text-slate-50 md:text-5xl md:leading-[1.05]">
-                  Cài app một lần để vào workspace nhanh và gọn hơn mỗi ngày.
+                  {copy.title}
                 </h2>
                 <p className="max-w-3xl text-sm font-medium leading-7 text-slate-600 dark:text-slate-300 md:text-base">
-                  Tab này giờ chỉ giữ lại đúng một việc cần thiết: giúp user cài
-                  HotsNew như app riêng để thao tác vận hành mượt hơn.
+                  {copy.description}
                 </p>
               </div>
 
               <div className="grid gap-4 md:grid-cols-3">
-                {setupHighlights.map((item) => (
+                {copy.highlights.map((item) => (
                   <div
                     key={item.label}
                     className="rounded-[1.6rem] border border-white/70 bg-white/80 p-4 shadow-sm backdrop-blur dark:border-slate-700 dark:bg-slate-900/75"
@@ -162,10 +111,10 @@ export function InstallCenter() {
               <div className="flex items-center justify-between gap-3">
                 <div>
                   <p className="text-[11px] font-black uppercase tracking-[0.24em] text-slate-400 dark:text-slate-500">
-                    Trạng thái cài đặt
+                    {copy.status.eyebrow}
                   </p>
                   <h3 className="mt-2 text-2xl font-black tracking-tight text-slate-950 dark:text-slate-50">
-                    App riêng cho HotsNew
+                    {copy.status.title}
                   </h3>
                 </div>
                 <div
@@ -186,11 +135,7 @@ export function InstallCenter() {
                     }
                   />
                   <p className="text-sm font-medium leading-7 text-slate-700 dark:text-slate-300">
-                    {isInstalled
-                      ? "Thiết bị này đã có app. User có thể mở HotsNew như một ứng dụng riêng mà không cần quay lại tab browser."
-                      : canInstall
-                        ? "Trình duyệt hiện tại hỗ trợ cài trực tiếp. Bấm nút bên dưới để đưa HotsNew lên desktop hoặc màn hình chính."
-                        : "Nếu chưa thấy prompt cài đặt, hãy mở menu trình duyệt và chọn cài ứng dụng từ đó."}
+                    {installStatus.description}
                   </p>
                 </div>
 
@@ -212,20 +157,18 @@ export function InstallCenter() {
           <div className="space-y-5">
             <div className="space-y-3">
               <p className="text-[11px] font-black uppercase tracking-[0.24em] text-orange-300">
-                Preview workflow
+                {copy.flow.eyebrow}
               </p>
               <h3 className="text-2xl font-black tracking-tight md:text-3xl">
-                App giúp flow làm việc gọn hơn ở đâu
+                {copy.flow.title}
               </h3>
               <p className="max-w-xl text-sm font-medium leading-7 text-slate-300">
-                Khi đã cài xong, HotsNew có thể đứng riêng như một công cụ làm
-                việc thật sự thay vì chỉ là một tab web dễ bị chìm giữa nhiều
-                tab khác.
+                {copy.flow.description}
               </p>
             </div>
 
             <div className="space-y-3">
-              {appUseCases.map((item) => (
+              {copy.flow.useCases.map((item) => (
                 <div
                   key={item}
                   className="flex items-start gap-3 rounded-[1.3rem] border border-white/10 bg-white/5 px-4 py-3"
@@ -251,9 +194,11 @@ export function InstallCenter() {
               <div className="flex items-center justify-between gap-3">
                 <div>
                   <p className="text-[11px] font-black uppercase tracking-[0.22em] text-slate-400">
-                    App view
+                    {copy.flow.preview.eyebrow}
                   </p>
-                  <p className="mt-2 text-base font-black">HotsNew Workspace</p>
+                  <p className="mt-2 text-base font-black">
+                    {copy.flow.preview.title}
+                  </p>
                 </div>
                 <div className="rounded-2xl bg-orange-50 p-2 text-orange-600">
                   <MonitorSmartphone size={16} />
@@ -262,22 +207,28 @@ export function InstallCenter() {
               <div className="mt-4 space-y-3">
                 <div className="rounded-2xl bg-slate-100 px-3 py-2">
                   <p className="text-[11px] font-black uppercase tracking-[0.18em] text-slate-500">
-                    Workspace hiện tại
+                    {copy.flow.preview.currentWorkspace}
                   </p>
-                  <p className="mt-1 text-sm font-bold">Nhà LG - owner</p>
+                  <p className="mt-1 text-sm font-bold">
+                    {copy.flow.preview.currentWorkspaceValue}
+                  </p>
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div className="rounded-2xl bg-slate-100 p-3">
                     <p className="text-[11px] font-black uppercase tracking-[0.18em] text-slate-500">
-                      Action
+                      {copy.flow.preview.actionLabel}
                     </p>
-                    <p className="mt-1 text-sm font-bold">Tạo link</p>
+                    <p className="mt-1 text-sm font-bold">
+                      {copy.flow.preview.actionValue}
+                    </p>
                   </div>
                   <div className="rounded-2xl bg-slate-100 p-3">
                     <p className="text-[11px] font-black uppercase tracking-[0.18em] text-slate-500">
-                      Truy cập
+                      {copy.flow.preview.accessLabel}
                     </p>
-                    <p className="mt-1 text-sm font-bold">1 chạm mở</p>
+                    <p className="mt-1 text-sm font-bold">
+                      {copy.flow.preview.accessValue}
+                    </p>
                   </div>
                 </div>
               </div>
@@ -290,13 +241,13 @@ export function InstallCenter() {
         <div className="rounded-[2.25rem] border border-slate-200/70 bg-white p-7 shadow-[0_20px_60px_-45px_rgba(15,23,42,0.4)] dark:border-slate-700 dark:bg-slate-800 md:p-8">
           <SectionTitle
             icon={Smartphone}
-            title="Cài app HotsNew"
-            description="Dùng khi bạn muốn workspace có mặt như một công cụ làm việc thật sự, dễ truy cập hơn và ít phụ thuộc vào tab trình duyệt."
+            title={copy.surfaces.title}
+            description={copy.surfaces.description}
             accentClass="bg-orange-50 text-orange-600 dark:bg-orange-500/10 dark:text-orange-300"
           />
 
           <div className="mt-6 grid gap-4 md:grid-cols-2">
-            {appSurfaces.map((surface) => (
+            {copy.surfaces.items.map((surface) => (
               <div
                 key={surface.title}
                 className="rounded-3xl border border-slate-200 bg-slate-50/80 p-4 dark:border-slate-700 dark:bg-slate-900/70"
@@ -315,13 +266,13 @@ export function InstallCenter() {
         <div className="rounded-[2.25rem] border border-slate-200/70 bg-white p-7 shadow-[0_20px_60px_-45px_rgba(15,23,42,0.4)] dark:border-slate-700 dark:bg-slate-800 md:p-8">
           <SectionTitle
             icon={Sparkles}
-            title="Quy trình đề xuất"
-            description="Giữ lại đúng phần cần thiết để onboarding user mới nhanh hơn và đỡ nhiễu hơn."
+            title={copy.workflow.title}
+            description={copy.workflow.description}
             accentClass="bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-300"
           />
 
           <div className="mt-6 space-y-3">
-            {workflowChecklist.map((item) => (
+            {copy.workflow.checklist.map((item) => (
               <div
                 key={item}
                 className="flex items-start gap-3 rounded-[1.4rem] border border-slate-200 bg-slate-50/80 px-4 py-3 dark:border-slate-700 dark:bg-slate-900/70"
@@ -346,16 +297,16 @@ export function InstallCenter() {
             </div>
             <div>
               <p className="text-[11px] font-black uppercase tracking-[0.24em] text-slate-400 dark:text-slate-500">
-                Xử lý lỗi
+                {copy.troubleshooting.eyebrow}
               </p>
               <h3 className="mt-1 text-xl font-black tracking-tight text-slate-950 dark:text-slate-50">
-                Một vài tình huống thường gặp
+                {copy.troubleshooting.title}
               </h3>
             </div>
           </div>
 
           <div className="space-y-3">
-            {troubleshooting.map((item) => (
+            {copy.troubleshooting.items.map((item) => (
               <div
                 key={item.title}
                 className="rounded-[1.45rem] border border-slate-200 bg-white px-4 py-4 shadow-sm dark:border-slate-700 dark:bg-slate-900/40"
@@ -374,15 +325,13 @@ export function InstallCenter() {
         <div className="rounded-[2.25rem] border border-slate-200/70 bg-[linear-gradient(135deg,rgba(15,23,42,0.98),rgba(30,41,59,0.96))] p-7 text-white shadow-[0_24px_80px_-48px_rgba(15,23,42,0.9)] dark:border-slate-700 md:p-8">
           <div className="space-y-3">
             <p className="text-[11px] font-black uppercase tracking-[0.28em] text-orange-300">
-              Bắt đầu nhanh
+              {copy.cta.eyebrow}
             </p>
             <h3 className="text-2xl font-black tracking-tight">
-              Tab này giờ chỉ còn đúng phần app, gọn hơn và dễ dùng hơn.
+              {copy.cta.title}
             </h3>
             <p className="max-w-3xl text-sm font-medium leading-7 text-slate-300">
-              Khi cần onboarding user mới, chỉ cần cho họ cài app và ghim lại
-              nơi truy cập. Flow này giờ chỉ tập trung vào app để gọn và dễ hiểu
-              hơn.
+              {copy.cta.description}
             </p>
           </div>
 
@@ -393,7 +342,7 @@ export function InstallCenter() {
               rel="noreferrer"
               className="inline-flex items-center justify-between rounded-[1.35rem] bg-white px-5 py-4 text-sm font-black text-slate-950 transition-all hover:-translate-y-0.5 hover:bg-orange-50"
             >
-              <span>Mở HotsNew tab mới</span>
+              <span>{copy.cta.button}</span>
               <ExternalLink size={16} />
             </a>
           </div>

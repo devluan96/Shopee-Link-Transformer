@@ -20,6 +20,7 @@ import { AccessLogEntry, SecurityOverview, UserProfile } from "@/src/types";
 import { cn } from "@/src/lib/utils";
 import { toast } from "sonner";
 import { QRCodeCanvas } from "qrcode.react";
+import { useLocale } from "@/src/hooks/useLocale";
 
 interface ProfileSettingsProps {
   profile: UserProfile | null;
@@ -34,160 +35,6 @@ interface ProfileSettingsProps {
   onAvatarUpload: (file: File) => Promise<string | null>;
 }
 
-const getAccessLogSummary = (log: AccessLogEntry) => {
-  const path = log.path.toLowerCase();
-  const method = log.method.toUpperCase();
-
-  if (path.includes("/security/2fa/setup")) {
-    return {
-      title: "Bạn đã tạo secret 2FA",
-      description: "Hệ thống đã chuẩn bị mã bí mật để bạn bật xác thực 2 lớp.",
-    };
-  }
-
-  if (path.includes("/security/2fa/enable")) {
-    return {
-      title: "Bạn đã bật xác thực 2 lớp",
-      description: "Tài khoản đã được tăng thêm một lớp bảo mật.",
-    };
-  }
-
-  if (path.includes("/security/2fa/disable")) {
-    return {
-      title: "Bạn đã tắt xác thực 2 lớp",
-      description: "Tài khoản hiện không còn yêu cầu mã 2FA khi đăng nhập.",
-    };
-  }
-
-  if (path.includes("/security/2fa/challenge")) {
-    return {
-      title: "Bạn đã xác minh 2FA",
-      description: "Mã xác thực 2 lớp đã được kiểm tra cho phiên hiện tại.",
-    };
-  }
-
-  if (path.includes("/user/workspace-invitations")) {
-    return {
-      title: "Bạn đã xem lời mời workspace",
-      description: "Hệ thống đã tải danh sách lời mời team đang chờ xử lý.",
-    };
-  }
-
-  if (path.includes("/user/workspaces") && path.includes("/members")) {
-    return {
-      title: "Bạn đã xem danh sách thành viên",
-      description: "Danh sách thành viên trong workspace đã được mở.",
-    };
-  }
-
-  if (path.includes("/user/workspaces")) {
-    return {
-      title: "Bạn đã mở Team Workspace",
-      description:
-        "Hệ thống đã tải danh sách workspace và quyền hiện tại của bạn.",
-    };
-  }
-
-  if (path.includes("/user/stats")) {
-    return {
-      title: "Bạn đã xem thống kê",
-      description: "Dữ liệu thống kê workspace đã được tải.",
-    };
-  }
-
-  if (path.includes("/user/link-quota")) {
-    return {
-      title: "Bạn đã xem quota tạo link",
-      description: "Hệ thống đã kiểm tra số lượt tạo link còn lại trong ngày.",
-    };
-  }
-
-  if (path.includes("/user/limits")) {
-    return {
-      title: "Bạn đã xem giới hạn tài khoản",
-      description: "Hệ thống đã kiểm tra giới hạn gói hiện tại của bạn.",
-    };
-  }
-
-  if (path.includes("/user/links")) {
-    return {
-      title:
-        method === "GET"
-          ? "Bạn đã mở danh sách link"
-          : "Bạn đã thao tác với link",
-      description:
-        method === "GET"
-          ? "Danh sách link của bạn đã được tải."
-          : "Hệ thống đã ghi nhận một thao tác liên quan đến link.",
-    };
-  }
-
-  if (path.includes("/user/notifications/inbox")) {
-    return {
-      title: "Bạn đã mở thông báo",
-      description: "Hộp thông báo trong ứng dụng đã được tải.",
-    };
-  }
-
-  if (path.includes("/user/profile")) {
-    return {
-      title: "Bạn đã mở hồ sơ tài khoản",
-      description: "Thông tin hồ sơ cá nhân đã được tải.",
-    };
-  }
-
-  if (path.includes("/user/security")) {
-    return {
-      title: "Bạn đã mở cài đặt bảo mật",
-      description: "Hệ thống đã tải thông tin bảo mật tài khoản gần đây.",
-    };
-  }
-
-  return {
-    title: "Bạn đã truy cập một tính năng trong hệ thống",
-    description:
-      "Hệ thống đã ghi nhận một hoạt động gần đây của tài khoản này.",
-  };
-};
-
-const getAccessLogDeviceLabel = (userAgent?: string | null) => {
-  if (!userAgent) return "Thiết bị không rõ";
-
-  const ua = userAgent.toLowerCase();
-
-  if (ua.includes("iphone") || ua.includes("ipad") || ua.includes("ios")) {
-    return "iPhone / iPad";
-  }
-
-  if (ua.includes("android")) {
-    return "Điện thoại Android";
-  }
-
-  if (ua.includes("windows")) {
-    return "Máy tính Windows";
-  }
-
-  if (ua.includes("mac os") || ua.includes("macintosh")) {
-    return "Máy tính Mac";
-  }
-
-  return "Trình duyệt khác";
-};
-
-const getAccessLogStatusLabel = (log: AccessLogEntry) => {
-  if (log.blocked || log.status_code >= 400) {
-    return {
-      label: "Cần kiểm tra",
-      className: "bg-amber-100 text-amber-700",
-    };
-  }
-
-  return {
-    label: "Bình thường",
-    className: "bg-green-100 text-green-700",
-  };
-};
-
 export const ProfileSettings = ({
   profile,
   updating,
@@ -200,6 +47,10 @@ export const ProfileSettings = ({
   onUpdate,
   onAvatarUpload,
 }: ProfileSettingsProps) => {
+  const { locale, messages, t } = useLocale();
+  const content = messages.profile;
+  const dateLocale = locale === "vi" ? "vi-VN" : "en-US";
+
   const [fullName, setFullName] = React.useState(profile?.full_name || "");
   const [avatarUrl, setAvatarUrl] = React.useState(profile?.avatar_url || "");
   const [uploading, setUploading] = React.useState(false);
@@ -215,17 +66,10 @@ export const ProfileSettings = ({
   });
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const formatFileSize = (bytes: number) => {
-    if (bytes < 1024) return `${bytes} B`;
-    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-    return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
-  };
-
   React.useEffect(() => {
-    if (profile) {
-      setFullName(profile.full_name || "");
-      setAvatarUrl(profile.avatar_url || "");
-    }
+    if (!profile) return;
+    setFullName(profile.full_name || "");
+    setAvatarUrl(profile.avatar_url || "");
   }, [profile]);
 
   React.useEffect(() => {
@@ -244,6 +88,67 @@ export const ProfileSettings = ({
     return () => window.clearInterval(interval);
   }, []);
 
+  const formatFileSize = (bytes: number) => {
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
+  };
+
+  const getAccessLogSummary = (log: AccessLogEntry) => {
+    const path = log.path.toLowerCase();
+    const method = log.method.toUpperCase();
+    const summaries = content.accessLogs.summaries;
+
+    if (path.includes("/security/2fa/setup")) return summaries.setup;
+    if (path.includes("/security/2fa/enable")) return summaries.enable;
+    if (path.includes("/security/2fa/disable")) return summaries.disable;
+    if (path.includes("/security/2fa/challenge")) return summaries.challenge;
+    if (path.includes("/user/workspace-invitations"))
+      return summaries.workspaceInvites;
+    if (path.includes("/user/workspaces") && path.includes("/members"))
+      return summaries.workspaceMembers;
+    if (path.includes("/user/workspaces")) return summaries.workspaces;
+    if (path.includes("/user/stats")) return summaries.stats;
+    if (path.includes("/user/link-quota")) return summaries.quota;
+    if (path.includes("/user/limits")) return summaries.limits;
+    if (path.includes("/user/links"))
+      return method === "GET" ? summaries.linksRead : summaries.linksWrite;
+    if (path.includes("/user/notifications/inbox")) return summaries.notifications;
+    if (path.includes("/user/profile")) return summaries.profile;
+    if (path.includes("/user/security")) return summaries.security;
+    return summaries.generic;
+  };
+
+  const getAccessLogDeviceLabel = (userAgent?: string | null) => {
+    if (!userAgent) return content.accessLogs.devices.unknown;
+
+    const ua = userAgent.toLowerCase();
+    if (ua.includes("iphone") || ua.includes("ipad") || ua.includes("ios")) {
+      return content.accessLogs.devices.ios;
+    }
+    if (ua.includes("android")) return content.accessLogs.devices.android;
+    if (ua.includes("windows")) return content.accessLogs.devices.windows;
+    if (ua.includes("mac os") || ua.includes("macintosh")) {
+      return content.accessLogs.devices.mac;
+    }
+
+    return content.accessLogs.devices.other;
+  };
+
+  const getAccessLogStatusLabel = (log: AccessLogEntry) => {
+    if (log.blocked || log.status_code >= 400) {
+      return {
+        label: content.accessLogs.statuses.review,
+        className: "bg-amber-100 text-amber-700",
+      };
+    }
+
+    return {
+      label: content.accessLogs.statuses.normal,
+      className: "bg-green-100 text-green-700",
+    };
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     onUpdate({ full_name: fullName, avatar_url: avatarUrl });
@@ -253,23 +158,17 @@ export const ProfileSettings = ({
     const file = e.target.files?.[0];
     if (!file) return;
 
-    setSelectedAvatarMeta({
-      name: file.name,
-      size: file.size,
-    });
+    setSelectedAvatarMeta({ name: file.name, size: file.size });
     setUploading(true);
+
     try {
       const url = await onAvatarUpload(file);
-      if (url) {
-        setAvatarUrl(url);
-      }
+      if (url) setAvatarUrl(url);
     } catch (err) {
       console.error("ProfileSettings handleFileChange error:", err);
     } finally {
       setUploading(false);
-      if (fileInputRef.current) {
-        fileInputRef.current.value = "";
-      }
+      if (fileInputRef.current) fileInputRef.current.value = "";
     }
   };
 
@@ -311,17 +210,17 @@ export const ProfileSettings = ({
   const handleCopySecret = async () => {
     if (!twoFactorSetup?.secret) return;
     await navigator.clipboard.writeText(twoFactorSetup.secret);
-    toast.success("Đã copy secret 2FA.");
+    toast.success(content.toasts.copiedSecret);
   };
 
   const handleCopyOtpAuthUri = async () => {
     if (!twoFactorSetup?.otpauthUri) return;
     await navigator.clipboard.writeText(twoFactorSetup.otpauthUri);
-    toast.success("Đã copy URI setup 2FA.");
+    toast.success(content.toasts.copiedUri);
   };
 
   return (
-    <div className="max-w-6xl animate-in fade-in duration-700">
+    <div className="mx-auto w-full max-w-6xl animate-in fade-in duration-700">
       <header className="mb-10 flex flex-col justify-between gap-6 md:flex-row md:items-end">
         <div>
           <div className="mb-2 flex items-center gap-3">
@@ -329,11 +228,11 @@ export const ProfileSettings = ({
               <Settings className="h-5 w-5 text-white" />
             </div>
             <h2 className="text-3xl font-black tracking-tight text-gray-900 dark:text-slate-100">
-              Hồ Sơ Cá Nhân
+              {content.header.title}
             </h2>
           </div>
           <p className="font-medium italic text-gray-500 dark:text-slate-400">
-            Quản lý danh tính và các thiết lập tài khoản của bạn.
+            {content.header.description}
           </p>
         </div>
 
@@ -341,7 +240,7 @@ export const ProfileSettings = ({
           <div className="flex animate-pulse items-center gap-3 rounded-2xl bg-linear-to-r from-amber-400 to-orange-500 px-6 py-3 text-white shadow-xl shadow-orange-100">
             <Crown size={20} className="fill-current" />
             <span className="text-xs font-black uppercase tracking-widest">
-              Thành viên Premium
+              {content.header.premium}
             </span>
           </div>
         )}
@@ -358,7 +257,7 @@ export const ProfileSettings = ({
                   {avatarUrl ? (
                     <img
                       src={avatarUrl}
-                      alt="Avatar"
+                      alt={content.avatar.alt}
                       className="h-full w-full object-cover"
                     />
                   ) : (
@@ -393,7 +292,7 @@ export const ProfileSettings = ({
 
               <div className="mt-8 space-y-2 text-center">
                 <h3 className="line-clamp-1 text-xl font-black text-gray-900 dark:text-slate-100">
-                  {profile?.full_name || "Chưa đặt tên"}
+                  {profile?.full_name || content.common.unnamed}
                 </h3>
                 <p className="text-sm font-medium text-gray-400 dark:text-slate-400">
                   {profile?.email}
@@ -402,7 +301,7 @@ export const ProfileSettings = ({
 
               <div className="mt-5 w-full rounded-2xl border border-gray-100 bg-gray-50 px-4 py-3 text-left dark:border-slate-700 dark:bg-slate-900">
                 <p className="text-[10px] font-black uppercase tracking-widest text-gray-500 dark:text-slate-400">
-                  Avatar upload
+                  {content.avatar.uploadTitle}
                 </p>
                 {selectedAvatarMeta ? (
                   <p className="mt-2 text-xs font-medium text-gray-600 dark:text-slate-300">
@@ -411,12 +310,11 @@ export const ProfileSettings = ({
                   </p>
                 ) : (
                   <p className="mt-2 text-xs font-medium text-gray-400 dark:text-slate-500">
-                    Chọn JPG, PNG hoặc WebP để thay avatar.
+                    {content.avatar.emptyHint}
                   </p>
                 )}
                 <p className="mt-1 text-[11px] font-medium text-gray-400 dark:text-slate-500">
-                  Hệ thống sẽ tự resize về tối đa 512px và nén WebP trước khi
-                  tải lên.
+                  {content.avatar.helper}
                 </p>
               </div>
 
@@ -427,7 +325,7 @@ export const ProfileSettings = ({
                   <div className="flex items-center gap-3">
                     <BadgeCheck size={18} className="text-green-500" />
                     <span className="text-[10px] font-black uppercase tracking-widest text-gray-500 dark:text-slate-400">
-                      Trạng thái
+                      {content.statusCard.label}
                     </span>
                   </div>
                   <span
@@ -438,7 +336,9 @@ export const ProfileSettings = ({
                         : "bg-amber-100 text-amber-600",
                     )}
                   >
-                    {profile?.status === "approved" ? "Hoạt động" : "Chờ duyệt"}
+                    {profile?.status === "approved"
+                      ? content.statusCard.approved
+                      : content.statusCard.pending}
                   </span>
                 </div>
               </div>
@@ -453,7 +353,8 @@ export const ProfileSettings = ({
               <div className="grid grid-cols-1 gap-10 md:grid-cols-2">
                 <div className="space-y-4">
                   <label className="ml-1 flex items-center gap-2 text-[11px] font-black uppercase tracking-widest text-gray-400 dark:text-slate-500">
-                    <Mail size={14} className="text-orange-500" /> Địa chỉ Email
+                    <Mail size={14} className="text-orange-500" />{" "}
+                    {content.fields.email}
                   </label>
                   <div className="group relative">
                     <input
@@ -467,20 +368,20 @@ export const ProfileSettings = ({
                     </div>
                   </div>
                   <p className="ml-1 text-[10px] font-medium italic text-gray-400 dark:text-slate-500">
-                    Định danh tài khoản không thể thay đổi.
+                    {content.fields.emailHelp}
                   </p>
                 </div>
 
                 <div className="space-y-4">
                   <label className="ml-1 flex items-center gap-2 text-[11px] font-black uppercase tracking-widest text-gray-400 dark:text-slate-500">
-                    <User size={14} className="text-orange-500" /> Họ và tên đầy
-                    đủ
+                    <User size={14} className="text-orange-500" />{" "}
+                    {content.fields.fullName}
                   </label>
                   <input
                     type="text"
                     value={fullName}
                     onChange={(e) => setFullName(e.target.value)}
-                    placeholder="Họ tên hiển thị của bạn..."
+                    placeholder={content.fields.fullNamePlaceholder}
                     className="w-full rounded-3xl border-2 border-transparent bg-gray-50 px-6 py-4.5 font-bold text-gray-900 outline-none transition-all placeholder:text-gray-300 focus:border-orange-500/20 focus:bg-white dark:bg-slate-900 dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:bg-slate-900"
                   />
                 </div>
@@ -492,11 +393,10 @@ export const ProfileSettings = ({
                 </div>
                 <div>
                   <h4 className="mb-1 text-sm font-black uppercase tracking-tight text-blue-900 dark:text-blue-200">
-                    Dữ liệu cá nhân an toàn
+                    {content.infoBanner.title}
                   </h4>
                   <p className="text-[11px] font-medium uppercase tracking-tighter text-blue-600/80 dark:text-blue-200/80">
-                    Thông tin của bạn được mã hóa và chỉ dùng cho mục đích xác
-                    thực, quản lý quyền hạn trong hệ thống HotsNew Click.
+                    {content.infoBanner.description}
                   </p>
                 </div>
               </div>
@@ -507,15 +407,15 @@ export const ProfileSettings = ({
                     <div className="flex items-center gap-3">
                       <Clock size={18} className="text-orange-500" />
                       <span className="text-[10px] font-black uppercase tracking-widest text-gray-500 dark:text-slate-400">
-                        Gia nhập
+                        {content.meta.joined}
                       </span>
                     </div>
                     <span className="text-[10px] font-black text-gray-900 dark:text-slate-100">
                       {profile?.created_at
                         ? new Date(profile.created_at).toLocaleDateString(
-                            "vi-VN",
+                            dateLocale,
                           )
-                        : "---"}
+                        : content.meta.unknown}
                     </span>
                   </div>
 
@@ -523,11 +423,11 @@ export const ProfileSettings = ({
                     <div className="flex items-center gap-3">
                       <BadgeCheck size={18} className="text-green-500" />
                       <span className="text-[10px] font-black uppercase tracking-widest text-gray-500 dark:text-slate-400">
-                        Xác minh
+                        {content.meta.verified}
                       </span>
                     </div>
                     <span className="text-[10px] font-black text-green-600 dark:text-green-400">
-                      Đã kiểm định
+                      {content.meta.verifiedValue}
                     </span>
                   </div>
                 </div>
@@ -542,14 +442,14 @@ export const ProfileSettings = ({
                       <div className="h-5 w-5 animate-spin rounded-full border-3 border-white/30 border-t-white" />
                     ) : (
                       <>
-                        <Save size={18} /> Lưu các thay đổi
+                        <Save size={18} /> {content.actions.save}
                       </>
                     )}
                   </button>
 
                   <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-slate-500">
                     <BadgeCheck size={16} className="text-green-500" />
-                    Mọi thông tin đã được kiểm định
+                    {content.actions.verifiedNote}
                   </div>
                 </div>
               </div>
@@ -562,10 +462,10 @@ export const ProfileSettings = ({
             <div>
               <h3 className="flex items-center gap-3 text-2xl font-black text-gray-900 dark:text-slate-100">
                 <ShieldCheck className="text-orange-500" size={22} />
-                Bảo mật tài khoản
+                {content.security.title}
               </h3>
               <p className="mt-2 text-sm font-medium text-gray-500 dark:text-slate-400">
-                Bật 2FA/TOTP và theo dõi lịch sử truy cập gần đây.
+                {content.security.description}
               </p>
             </div>
             <span
@@ -577,8 +477,8 @@ export const ProfileSettings = ({
               )}
             >
               {securityOverview?.twoFactorEnabled
-                ? "2FA Đang bật"
-                : "2FA Chưa bật"}
+                ? content.security.enabled
+                : content.security.disabled}
             </span>
           </div>
 
@@ -590,11 +490,10 @@ export const ProfileSettings = ({
                 </div>
                 <div className="min-w-0 flex-1">
                   <h4 className="wrap-break-word font-black text-gray-900 dark:text-slate-100">
-                    Xác thực 2 lớp (TOTP)
+                    {content.security.totpTitle}
                   </h4>
                   <p className="mt-1 wrap-break-word text-sm text-gray-500 dark:text-slate-400">
-                    Dùng Google Authenticator, 1Password hoặc Authy để tạo mã 6
-                    số.
+                    {content.security.totpDescription}
                   </p>
                 </div>
               </div>
@@ -606,7 +505,7 @@ export const ProfileSettings = ({
                       <div className="min-w-0 rounded-2xl border border-gray-100 bg-gray-50 p-3 text-center dark:border-slate-700 dark:bg-slate-900">
                         <div className="mb-2 flex items-center justify-center gap-2 text-[11px] font-black uppercase tracking-widest text-orange-500">
                           <QrCode size={14} />
-                          QR Setup
+                          {content.security.qrSetup}
                         </div>
                         <div className="mx-auto rounded-xl bg-white p-2">
                           <QRCodeCanvas
@@ -617,17 +516,16 @@ export const ProfileSettings = ({
                           />
                         </div>
                         <p className="mt-2 text-[11px] font-medium text-gray-500 dark:text-slate-400">
-                          Quét mã này bằng Google Authenticator.
+                          {content.security.qrHint}
                         </p>
                       </div>
 
                       <div className="min-w-0">
                         <p className="wrap-break-word text-[11px] font-black uppercase tracking-widest text-orange-500">
-                          Secret setup
+                          {content.security.secretTitle}
                         </p>
                         <p className="mt-2 wrap-break-word text-sm font-medium text-gray-500 dark:text-slate-400">
-                          Nếu không quét QR, bạn có thể nhập secret thủ công vào
-                          Google Authenticator.
+                          {content.security.secretHint}
                         </p>
                         <div className="mt-3 flex flex-col gap-3 rounded-2xl border border-gray-100 bg-gray-50 p-4 dark:border-slate-700 dark:bg-slate-900 sm:flex-row sm:items-start">
                           <p className="flex-1 break-all font-mono text-sm font-black text-gray-900 dark:text-slate-100">
@@ -639,7 +537,7 @@ export const ProfileSettings = ({
                             className="inline-flex w-full shrink-0 items-center justify-center gap-2 rounded-xl bg-white px-3 py-2 text-[11px] font-black uppercase tracking-widest text-gray-700 transition-all hover:bg-gray-100 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700 sm:w-auto"
                           >
                             <Copy size={14} />
-                            Copy
+                            {content.security.copy}
                           </button>
                         </div>
                         <button
@@ -648,22 +546,17 @@ export const ProfileSettings = ({
                           className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-white px-3 py-2 text-[11px] font-black uppercase tracking-widest text-gray-700 transition-all hover:bg-gray-100 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700 sm:w-auto"
                         >
                           <Copy size={14} />
-                          Copy URI
+                          {content.security.copyUri}
                         </button>
                         <div className="mt-4 min-w-0 rounded-2xl bg-orange-50 px-4 py-4 text-sm text-orange-800 dark:bg-orange-500/10 dark:text-orange-200">
                           <p className="wrap-break-word text-[11px] font-black uppercase tracking-widest">
-                            Cách bật 2FA
+                            {content.security.howToTitle}
                           </p>
-                          <p className="mt-2">1. Bấm tạo secret 2FA.</p>
-                          <p className="mt-1">
-                            2. Quét QR hoặc nhập secret vào Google
-                            Authenticator.
-                          </p>
-                          <p className="mt-1">
-                            3. Lấy mã 6 số đang hiển thị trong Google
-                            Authenticator rồi nhập vào ô bên dưới.
-                          </p>
-                          <p className="mt-1">4. Bấm xác minh để bật 2FA.</p>
+                          {content.security.howToSteps.map((step) => (
+                            <p key={step} className="mt-1">
+                              {step}
+                            </p>
+                          ))}
                         </div>
                       </div>
                     </div>
@@ -672,12 +565,7 @@ export const ProfileSettings = ({
 
                 {!twoFactorSetup && !securityOverview?.twoFactorEnabled && (
                   <div className="rounded-2xl border border-dashed border-gray-200 bg-white px-4 py-4 text-sm text-gray-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400">
-                    Bấm{" "}
-                    <span className="font-black text-gray-900 dark:text-slate-100">
-                      Tạo secret 2FA
-                    </span>{" "}
-                    trước. Sau đó Google Authenticator mới sinh ra mã 6 số để
-                    bạn nhập.
+                    {content.security.createFirst}
                   </div>
                 )}
 
@@ -685,7 +573,7 @@ export const ProfileSettings = ({
                   <div className="mb-2 flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <label className="flex min-w-0 items-center gap-2 text-[11px] font-black uppercase tracking-widest text-gray-400 dark:text-slate-500">
                       <KeyRound size={14} className="text-orange-500" />
-                      Mã xác thực 6 số
+                      {content.security.codeLabel}
                     </label>
                     {(twoFactorSetup || securityOverview?.twoFactorEnabled) && (
                       <span
@@ -696,7 +584,9 @@ export const ProfileSettings = ({
                             : "bg-blue-100 text-blue-600",
                         )}
                       >
-                        Đổi sau {otpSecondsLeft}s
+                        {t("profile.security.codeRefresh", {
+                          seconds: otpSecondsLeft,
+                        })}
                       </span>
                     )}
                   </div>
@@ -712,10 +602,10 @@ export const ProfileSettings = ({
                     }
                     placeholder={
                       securityOverview?.twoFactorEnabled
-                        ? "Nhập mã hiện tại để tắt 2FA"
+                        ? content.security.codePlaceholderDisable
                         : twoFactorSetup
-                          ? "Nhập mã đang hiện trên Google Authenticator"
-                          : "Tạo secret 2FA trước"
+                          ? content.security.codePlaceholderEnable
+                          : content.security.codePlaceholderCreate
                     }
                     disabled={
                       !twoFactorSetup && !securityOverview?.twoFactorEnabled
@@ -724,14 +614,14 @@ export const ProfileSettings = ({
                   />
                   <p className="mt-2 wrap-break-word text-xs text-gray-500 dark:text-slate-400">
                     {securityOverview?.twoFactorEnabled
-                      ? "Đây là mã 6 số hiện tại trong Google Authenticator để xác nhận thao tác tắt 2FA hoặc để vượt qua bước xác minh khi đăng nhập."
+                      ? content.security.codeHelpEnabled
                       : twoFactorSetup
-                        ? "Không nhập số bạn tự nghĩ ra. Phải nhập đúng mã 6 số đang chạy trong Google Authenticator sau khi đã quét QR hoặc nhập secret."
-                        : "Sau khi tạo secret, Google Authenticator mới tạo ra mã 6 số để nhập ở đây."}
+                        ? content.security.codeHelpSetup
+                        : content.security.codeHelpCreate}
                   </p>
                   {twoFactorCode.length > 0 && twoFactorCode.length < 6 && (
                     <p className="mt-2 text-xs font-medium text-amber-600 dark:text-amber-300">
-                      Cần nhập đủ 6 số OTP từ Google Authenticator.
+                      {content.security.codeIncomplete}
                     </p>
                   )}
                 </div>
@@ -744,7 +634,7 @@ export const ProfileSettings = ({
                       disabled={twoFactorBusy}
                       className="w-full rounded-2xl bg-gray-900 px-5 py-3 text-xs font-black uppercase tracking-widest text-white transition-all hover:bg-black disabled:opacity-60 sm:w-auto"
                     >
-                      Tạo secret 2FA
+                      {content.security.createSecret}
                     </button>
                   )}
                   {!securityOverview?.twoFactorEnabled && twoFactorSetup && (
@@ -754,7 +644,7 @@ export const ProfileSettings = ({
                       disabled={twoFactorBusy || twoFactorCode.length !== 6}
                       className="w-full rounded-2xl bg-orange-600 px-5 py-3 text-xs font-black uppercase tracking-widest text-white transition-all hover:bg-orange-700 disabled:opacity-60 sm:w-auto"
                     >
-                      Xác minh và bật 2FA
+                      {content.security.enable}
                     </button>
                   )}
                   {securityOverview?.twoFactorEnabled && (
@@ -764,17 +654,19 @@ export const ProfileSettings = ({
                       disabled={twoFactorBusy || twoFactorCode.length !== 6}
                       className="w-full rounded-2xl bg-red-600 px-5 py-3 text-xs font-black uppercase tracking-widest text-white transition-all hover:bg-red-700 disabled:opacity-60 sm:w-auto"
                     >
-                      Tắt 2FA
+                      {content.security.disable}
                     </button>
                   )}
                 </div>
 
                 <div className="text-xs font-medium text-gray-500 dark:text-slate-400">
                   {securityOverview?.lastVerifiedAt
-                    ? `Xác minh gần nhất: ${new Date(
-                        securityOverview.lastVerifiedAt,
-                      ).toLocaleString("vi-VN")}`
-                    : "Chưa có lần xác minh 2FA nào."}
+                    ? t("profile.security.lastVerified", {
+                        date: new Date(
+                          securityOverview.lastVerifiedAt,
+                        ).toLocaleString(dateLocale),
+                      })
+                    : content.security.noVerification}
                 </div>
               </div>
             </div>
@@ -784,10 +676,10 @@ export const ProfileSettings = ({
                 <History size={20} className="text-blue-500" />
                 <div className="min-w-0">
                   <h4 className="wrap-break-word font-black text-gray-900 dark:text-slate-100">
-                    Hoạt động bảo mật gần đây
+                    {content.accessLogs.title}
                   </h4>
                   <p className="wrap-break-word text-sm text-gray-500 dark:text-slate-400">
-                    Truy cập gần đây của chính bạn.
+                    {content.accessLogs.description}
                   </p>
                 </div>
               </div>
@@ -795,7 +687,7 @@ export const ProfileSettings = ({
               <div className="space-y-3">
                 {securityLoading ? (
                   <div className="rounded-2xl bg-white px-4 py-6 text-center text-sm font-medium text-gray-400 dark:bg-slate-800 dark:text-slate-500">
-                    Đang tải lịch sử truy cập...
+                    {content.accessLogs.loading}
                   </div>
                 ) : securityOverview?.recentAccessLogs?.length ? (
                   securityOverview.recentAccessLogs.map((log) => {
@@ -827,15 +719,15 @@ export const ProfileSettings = ({
                         </div>
                         <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-500 dark:text-slate-400">
                           <span>{getAccessLogDeviceLabel(log.user_agent)}</span>
-                          {log.ip_address || "Unknown IP"} ·{" "}
-                          {new Date(log.created_at).toLocaleString("vi-VN")}
+                          {log.ip_address || content.accessLogs.unknownIp} ·{" "}
+                          {new Date(log.created_at).toLocaleString(dateLocale)}
                         </div>
                       </div>
                     );
                   })
                 ) : (
                   <div className="rounded-2xl bg-white px-4 py-6 text-center text-sm font-medium text-gray-400 dark:bg-slate-800 dark:text-slate-500">
-                    Chưa có access log nào.
+                    {content.accessLogs.empty}
                   </div>
                 )}
               </div>

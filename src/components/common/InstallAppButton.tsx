@@ -1,8 +1,10 @@
 import { ArrowUpRight, CheckCircle2, Download, Smartphone } from "lucide-react";
 import { usePWAInstall } from "@/src/hooks/usePWAInstall";
+import { useLocale } from "@/src/hooks/useLocale";
 
 export function InstallAppButton() {
   const { canInstall, isInstalled, isInstalling, install } = usePWAInstall();
+  const { t } = useLocale();
 
   if (isInstalled) {
     return (
@@ -13,10 +15,10 @@ export function InstallAppButton() {
           </div>
           <div>
             <p className="text-sm font-black text-emerald-800 dark:text-emerald-300">
-              App đã được cài đặt
+              {t("common.installApp.installedTitle")}
             </p>
             <p className="text-xs font-medium text-emerald-700/80 dark:text-emerald-300/80">
-              User có thể mở HotsNew như app riêng từ thiết bị này.
+              {t("common.installApp.installedDescription")}
             </p>
           </div>
         </div>
@@ -37,10 +39,10 @@ export function InstallAppButton() {
           </div>
           <div>
             <p className="text-sm font-black text-slate-900 dark:text-slate-100">
-              Cài từ menu trình duyệt
+              {t("common.installApp.menuTitle")}
             </p>
             <p className="text-xs font-medium text-slate-500 dark:text-slate-400">
-              Nếu chưa hiện prompt, hãy mở menu browser và chọn cài ứng dụng.
+              {t("common.installApp.menuDescription")}
             </p>
           </div>
         </div>
@@ -65,10 +67,12 @@ export function InstallAppButton() {
         </div>
         <div>
           <p className="text-sm font-black">
-            {isInstalling ? "Đang cài app..." : "Cài app HotsNew ngay"}
+            {isInstalling
+              ? t("common.installApp.installing")
+              : t("common.installApp.installNow")}
           </p>
           <p className="text-xs font-medium text-orange-50/90">
-            Đưa workspace lên desktop hoặc màn hình chính chỉ với một bước.
+            {t("common.installApp.installHint")}
           </p>
         </div>
       </div>

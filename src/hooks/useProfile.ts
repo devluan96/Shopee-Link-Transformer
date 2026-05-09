@@ -1,8 +1,9 @@
-﻿import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { User } from "@supabase/supabase-js";
 import { supabase } from "@/src/lib/supabase";
 import { UserProfile } from "@/src/types";
 import { toast } from "sonner";
+import { useLocale } from "@/src/hooks/useLocale";
 
 const AVATAR_MAX_DIMENSION = 512;
 const AVATAR_MAX_FILE_SIZE = 2 * 1024 * 1024;
@@ -11,13 +12,63 @@ const AVATAR_OUTPUT_QUALITY = 0.82;
 
 type ProfileFetchResponse = UserProfile | { is_new: true } | null;
 
-const resizeAvatarFile = async (file: File): Promise<File> => {
+const getProfileCopy = (locale: "vi" | "en") => ({
+  avatar: {
+    notImage:
+      locale === "vi"
+        ? "File avatar phải là ảnh."
+        : "The avatar file must be an image.",
+    noGif:
+      locale === "vi"
+        ? "Avatar không hỗ trợ GIF. Hãy dùng JPG, PNG hoặc WebP."
+        : "GIF avatars are not supported. Please use JPG, PNG, or WebP.",
+    unreadable:
+      locale === "vi"
+        ? "Không đọc được ảnh avatar."
+        : "Unable to read the avatar image.",
+    contextFailed:
+      locale === "vi"
+        ? "Không khởi tạo được bộ nén avatar."
+        : "Unable to initialize avatar compression.",
+    compressFailed:
+      locale === "vi"
+        ? "Không nén được avatar."
+        : "Unable to compress the avatar.",
+    tooLarge:
+      locale === "vi"
+        ? "Ảnh sau khi nén vẫn quá lớn. Hãy chọn ảnh nhỏ hơn."
+        : "The compressed image is still too large. Please choose a smaller image.",
+    uploadFailedPrefix:
+      locale === "vi"
+        ? "Lỗi tải ảnh qua server: "
+        : "Avatar upload failed through the server: ",
+    unknownError: locale === "vi" ? "Lỗi không xác định." : "Unknown error.",
+  },
+  profile: {
+    notSignedIn:
+      locale === "vi" ? "Bạn chưa đăng nhập." : "You are not signed in.",
+    updateError:
+      locale === "vi"
+        ? "Lỗi cập nhật hồ sơ."
+        : "Failed to update the profile.",
+    updateSuccess:
+      locale === "vi"
+        ? "Cập nhật thông tin thành công."
+        : "Profile updated successfully.",
+    systemError: locale === "vi" ? "Lỗi hệ thống." : "System error.",
+    userFallback: locale === "vi" ? "Người dùng" : "User",
+  },
+});
+
+const resizeAvatarFile = async (file: File, locale: "vi" | "en"): Promise<File> => {
+  const copy = getProfileCopy(locale);
+
   if (!file.type.startsWith("image/")) {
-    throw new Error("File avatar pháº£i lÃ  áº£nh");
+    throw new Error(copy.avatar.notImage);
   }
 
   if (file.type === "image/gif") {
-    throw new Error("Avatar khÃ´ng há»— trá»£ GIF. HÃ£y dÃ¹ng JPG, PNG hoáº·c WebP.");
+    throw new Error(copy.avatar.noGif);
   }
 
   const objectUrl = URL.createObjectURL(file);
@@ -26,7 +77,7 @@ const resizeAvatarFile = async (file: File): Promise<File> => {
     const image = await new Promise<HTMLImageElement>((resolve, reject) => {
       const img = new window.Image();
       img.onload = () => resolve(img);
-      img.onerror = () => reject(new Error("KhÃ´ng Ä‘á»c Ä‘Æ°á»£c áº£nh avatar"));
+      img.onerror = () => reject(new Error(copy.avatar.unreadable));
       img.src = objectUrl;
     });
 
@@ -43,7 +94,7 @@ const resizeAvatarFile = async (file: File): Promise<File> => {
 
     const context = canvas.getContext("2d");
     if (!context) {
-      throw new Error("KhÃ´ng khá»Ÿi táº¡o Ä‘Æ°á»£c bá»™ nÃ©n avatar");
+      throw new Error(copy.avatar.contextFailed);
     }
 
     context.drawImage(image, 0, 0, width, height);
@@ -52,7 +103,7 @@ const resizeAvatarFile = async (file: File): Promise<File> => {
       canvas.toBlob(
         (result) => {
           if (result) resolve(result);
-          else reject(new Error("KhÃ´ng nÃ©n Ä‘Æ°á»£c avatar"));
+          else reject(new Error(copy.avatar.compressFailed));
         },
         AVATAR_OUTPUT_TYPE,
         AVATAR_OUTPUT_QUALITY,
@@ -60,7 +111,7 @@ const resizeAvatarFile = async (file: File): Promise<File> => {
     });
 
     if (blob.size > AVATAR_MAX_FILE_SIZE) {
-      throw new Error("áº¢nh sau khi nÃ©n váº«n quÃ¡ lá»›n. HÃ£y chá»n áº£nh nhá» hÆ¡n.");
+      throw new Error(copy.avatar.tooLarge);
     }
 
     const outputName = file.name.replace(/\.[^.]+$/, "") || "avatar";
@@ -82,7 +133,10 @@ export interface ProfileState {
 export interface ProfileActions {
   setProfile: (profile: UserProfile | null) => void;
   refreshCurrentProfile: () => Promise<UserProfile | null>;
-  handleUpdateProfile: (data: { full_name: string; avatar_url: string }) => Promise<void>;
+  handleUpdateProfile: (data: {
+    full_name: string;
+    avatar_url: string;
+  }) => Promise<void>;
   handleAvatarUpload: (file: File) => Promise<string | null>;
 }
 
@@ -91,7 +145,12 @@ interface UseProfileProps {
   fetchWithAuth: (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
 }
 
-export function useProfile({ user, fetchWithAuth }: UseProfileProps): ProfileState & ProfileActions {
+export function useProfile({
+  user,
+  fetchWithAuth,
+}: UseProfileProps): ProfileState & ProfileActions {
+  const { locale } = useLocale();
+  const copy = getProfileCopy(locale);
   const userId = user?.id || "";
   const userEmail = user?.email || "";
   const userMetadataFullName = user?.user_metadata?.full_name || "";
@@ -99,7 +158,6 @@ export function useProfile({ user, fetchWithAuth }: UseProfileProps): ProfileSta
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [profileLoading, setProfileLoading] = useState(false);
   const [profileBootstrapLoading, setProfileBootstrapLoading] = useState(false);
-  
   const bootstrappedUserIdRef = useRef<string | null>(null);
 
   const shouldRetryProfileFetch = useCallback((err: unknown) => {
@@ -131,85 +189,93 @@ export function useProfile({ user, fetchWithAuth }: UseProfileProps): ProfileSta
     return null;
   }, [fetchWithAuth, userId]);
 
-  const handleUpdateProfile = useCallback(async (data: { full_name: string; avatar_url: string }) => {
-    if (!userId) {
-      toast.error("Báº¡n chÆ°a Ä‘Äƒng nháº­p!");
-      return;
-    }
-
-    setProfileLoading(true);
-    try {
-      const res = await fetchWithAuth("/api/v1/user/profile/update", {
-        method: "POST",
-        body: JSON.stringify({
-          full_name: data.full_name,
-          avatar_url: data.avatar_url,
-        }),
-      });
-
-      const resultData = await res.json();
-
-      if (!res.ok) {
-        throw new Error(resultData.error || "Lá»—i cáº­p nháº­t há»“ sÆ¡");
+  const handleUpdateProfile = useCallback(
+    async (data: { full_name: string; avatar_url: string }) => {
+      if (!userId) {
+        toast.error(copy.profile.notSignedIn);
+        return;
       }
 
-      setProfile(resultData as UserProfile);
-      toast.success("Cáº­p nháº­t thÃ´ng tin thÃ nh cÃ´ng!");
-    } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : "Loi he thong");
-    } finally {
-      setProfileLoading(false);
-    }
-  }, [fetchWithAuth, userId]);
+      setProfileLoading(true);
+      try {
+        const res = await fetchWithAuth("/api/v1/user/profile/update", {
+          method: "POST",
+          body: JSON.stringify({
+            full_name: data.full_name,
+            avatar_url: data.avatar_url,
+          }),
+        });
 
-  const handleAvatarUpload = useCallback(async (file: File): Promise<string | null> => {
-    if (!userId) {
-      console.error("âŒ Avatar upload failed: No authenticated user found");
-      return null;
-    }
+        const resultData = await res.json();
 
-    try {
-      const optimizedFile = await resizeAvatarFile(file);
-      const formData = new FormData();
-      formData.append("file", optimizedFile);
+        if (!res.ok) {
+          throw new Error(resultData.error || copy.profile.updateError);
+        }
 
-      const res = await fetchWithAuth("/api/v1/upload-avatar", {
-        method: "POST",
-        body: formData,
-      });
+        setProfile(resultData as UserProfile);
+        toast.success(copy.profile.updateSuccess);
+      } catch (e: unknown) {
+        toast.error(e instanceof Error ? e.message : copy.profile.systemError);
+      } finally {
+        setProfileLoading(false);
+      }
+    },
+    [copy.profile.notSignedIn, copy.profile.systemError, copy.profile.updateError, copy.profile.updateSuccess, fetchWithAuth, userId],
+  );
 
-      const contentType = res.headers.get("content-type");
-      if (!contentType || !contentType.includes("application/json")) {
-        const text = await res.text();
-        console.error("âŒ Server returned non-JSON response:", text.slice(0, 500));
-        throw new Error(`Server returned ${res.status} ${res.statusText}`);
+  const handleAvatarUpload = useCallback(
+    async (file: File): Promise<string | null> => {
+      if (!userId) {
+        console.error("Avatar upload failed: no authenticated user found");
+        return null;
       }
 
-      const data = await res.json();
+      try {
+        const optimizedFile = await resizeAvatarFile(file, locale);
+        const formData = new FormData();
+        formData.append("file", optimizedFile);
 
-      if (!res.ok) {
-        throw new Error(data.error || "Server upload failed");
+        const res = await fetchWithAuth("/api/v1/upload-avatar", {
+          method: "POST",
+          body: formData,
+        });
+
+        const contentType = res.headers.get("content-type");
+        if (!contentType || !contentType.includes("application/json")) {
+          const text = await res.text();
+          console.error(
+            "Avatar upload returned a non-JSON response:",
+            text.slice(0, 500),
+          );
+          throw new Error(`Server returned ${res.status} ${res.statusText}`);
+        }
+
+        const data = await res.json();
+
+        if (!res.ok) {
+          throw new Error(data.error || "Server upload failed");
+        }
+
+        return data.secure_url;
+      } catch (e: unknown) {
+        console.error("Avatar upload proxy error:", e);
+        toast.error(
+          copy.avatar.uploadFailedPrefix +
+            (e instanceof Error ? e.message : copy.avatar.unknownError),
+        );
+        return null;
       }
-
-      return data.secure_url;
-    } catch (e: unknown) {
-      console.error("âŒ Proxy Avatar upload catch:", e);
-      toast.error(
-        "Loi tai anh qua server: " +
-          (e instanceof Error ? e.message : "Loi khong xac dinh"),
-      );
-      return null;
-    }
-  }, [fetchWithAuth, userId]);
+    },
+    [copy.avatar.unknownError, copy.avatar.uploadFailedPrefix, fetchWithAuth, locale, userId],
+  );
 
   useEffect(() => {
     bootstrappedUserIdRef.current = null;
     setProfile(null);
     setProfileLoading(false);
     setProfileBootstrapLoading(!!user?.id);
-  }, [userId]);
+  }, [user?.id, userId]);
 
-  // Profile bootstrap and realtime sync
   useEffect(() => {
     let isActive = true;
 
@@ -222,7 +288,6 @@ export function useProfile({ user, fetchWithAuth }: UseProfileProps): ProfileSta
         return;
       }
 
-      // Skip if already bootstrapped for this user
       if (bootstrappedUserIdRef.current === userId) {
         return;
       }
@@ -231,9 +296,8 @@ export function useProfile({ user, fetchWithAuth }: UseProfileProps): ProfileSta
       setProfile(null);
 
       try {
-        // Fetch existing profile with retries
         let existingProfile: ProfileFetchResponse = null;
-        
+
         const fetchWithRetry = async (
           url: string,
           retries = 3,
@@ -249,8 +313,7 @@ export function useProfile({ user, fetchWithAuth }: UseProfileProps): ProfileSta
               if (res.status === 404) return null;
             } catch (err) {
               if (i === retries - 1 || !shouldRetryProfileFetch(err)) throw err;
-              console.warn(`â³ Fetch failed, retrying in ${delay}ms... (${i + 1}/${retries})`);
-              await new Promise((r) => setTimeout(r, delay));
+              await new Promise((resolve) => setTimeout(resolve, delay));
             }
           }
           return null;
@@ -260,8 +323,7 @@ export function useProfile({ user, fetchWithAuth }: UseProfileProps): ProfileSta
           const profileUrl = `${window.location.origin}/api/v1/user/profile`;
           existingProfile = await fetchWithRetry(profileUrl);
         } catch (fetchError: unknown) {
-          console.error("âŒ Error fetching profile via proxy:", fetchError);
-          // Fallback to direct supabase
+          console.error("Error fetching profile via proxy:", fetchError);
           if (isActive) {
             try {
               const { data } = await supabase
@@ -271,7 +333,7 @@ export function useProfile({ user, fetchWithAuth }: UseProfileProps): ProfileSta
                 .maybeSingle();
               if (data) existingProfile = data;
             } catch {
-              console.error("âŒ Fallback profile fetch also failed");
+              console.error("Fallback profile fetch also failed");
             }
           }
         }
@@ -283,11 +345,10 @@ export function useProfile({ user, fetchWithAuth }: UseProfileProps): ProfileSta
           ("is_new" in existingProfile && existingProfile.is_new);
 
         if (needsProfileBootstrap) {
-          // Create new profile
           const defaultName =
             userMetadataFullName ||
             userEmail.split("@")[0] ||
-            "User";
+            copy.profile.userFallback;
           const defaultAvatar =
             userMetadataAvatarUrl ||
             `https://api.dicebear.com/7.x/avataaars/svg?seed=${userId}`;
@@ -321,6 +382,7 @@ export function useProfile({ user, fetchWithAuth }: UseProfileProps): ProfileSta
       isActive = false;
     };
   }, [
+    copy.profile.userFallback,
     fetchWithAuth,
     shouldRetryProfileFetch,
     userEmail,
@@ -329,7 +391,6 @@ export function useProfile({ user, fetchWithAuth }: UseProfileProps): ProfileSta
     userMetadataFullName,
   ]);
 
-  // Separate effect for realtime subscription to avoid race conditions
   useEffect(() => {
     if (!userId) return;
 
@@ -364,4 +425,3 @@ export function useProfile({ user, fetchWithAuth }: UseProfileProps): ProfileSta
     handleAvatarUpload,
   };
 }
-

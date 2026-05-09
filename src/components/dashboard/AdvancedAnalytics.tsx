@@ -23,6 +23,7 @@ import {
   Tooltip,
 } from "recharts";
 import { toast } from "sonner";
+import { useLocale } from "@/src/hooks/useLocale";
 
 interface GeographicData {
   countries: Array<{ name: string; code?: string; clicks: number }>;
@@ -81,6 +82,7 @@ export const AdvancedAnalytics = ({
   fetchWithAuth,
   currentWorkspaceId,
 }: AdvancedAnalyticsProps) => {
+  const { t } = useLocale();
   const [activeTab, setActiveTab] = useState<
     "geo" | "device" | "time" | "notifications"
   >("geo");
@@ -94,6 +96,14 @@ export const AdvancedAnalytics = ({
   });
   const [savingSettings, setSavingSettings] = useState(false);
   const [showTelegramToken, setShowTelegramToken] = useState(false);
+
+  const formatClicks = (count: number) =>
+    t("analytics.advanced.common.clicks", { count });
+
+  const tooltipFormatter = (value: number | string) => [
+    formatClicks(Number(value)),
+    t("analytics.advanced.common.tooltipLabel"),
+  ];
 
   const buildWorkspaceQuery = () =>
     currentWorkspaceId
@@ -139,9 +149,9 @@ export const AdvancedAnalytics = ({
         body: JSON.stringify(settings),
       });
       if (!res.ok) throw new Error("Failed to save");
-      toast.success("Đã lưu cài đặt thông báo.");
+      toast.success(t("analytics.advanced.toasts.settingsSaved"));
     } catch {
-      toast.error("Không thể lưu cài đặt. Vui lòng thử lại.");
+      toast.error(t("analytics.advanced.toasts.settingsFailed"));
     } finally {
       setSavingSettings(false);
     }
@@ -162,9 +172,9 @@ export const AdvancedAnalytics = ({
       a.click();
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
-      toast.success("Đã tải xuống file CSV.");
+      toast.success(t("analytics.advanced.toasts.exportSuccess"));
     } catch {
-      toast.error("Không thể xuất dữ liệu. Vui lòng thử lại.");
+      toast.error(t("analytics.advanced.toasts.exportFailed"));
     }
   };
 
@@ -208,7 +218,11 @@ export const AdvancedAnalytics = ({
     </div>
   );
 
-  const renderEmpty = (icon: React.ReactNode, message: string, short = false) => (
+  const renderEmpty = (
+    icon: React.ReactNode,
+    message: string,
+    short = false,
+  ) => (
     <div
       className={`flex ${short ? "h-48" : "h-64"} flex-col items-center justify-center text-gray-400 dark:text-slate-500`}
     >
@@ -217,18 +231,28 @@ export const AdvancedAnalytics = ({
     </div>
   );
 
+  const tabs = [
+    { id: "geo", label: t("analytics.advanced.tabs.geo"), icon: Globe },
+    {
+      id: "device",
+      label: t("analytics.advanced.tabs.device"),
+      icon: Smartphone,
+    },
+    { id: "time", label: t("analytics.advanced.tabs.time"), icon: Clock },
+    {
+      id: "notifications",
+      label: t("analytics.advanced.tabs.notifications"),
+      icon: Bell,
+    },
+  ] as const;
+
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap gap-2 rounded-2xl bg-gray-100 p-1.5 dark:bg-slate-800">
-        {[
-          { id: "geo", label: "Địa lý", icon: Globe },
-          { id: "device", label: "Thiết bị", icon: Smartphone },
-          { id: "time", label: "Thời gian", icon: Clock },
-          { id: "notifications", label: "Thông báo", icon: Bell },
-        ].map((tab) => (
+        {tabs.map((tab) => (
           <button
             key={tab.id}
-            onClick={() => setActiveTab(tab.id as typeof activeTab)}
+            onClick={() => setActiveTab(tab.id)}
             className={`flex items-center gap-2 rounded-xl px-4 py-2.5 text-xs font-black uppercase tracking-widest transition-all ${
               activeTab === tab.id
                 ? "bg-white text-orange-600 shadow-sm dark:bg-slate-700"
@@ -248,14 +272,14 @@ export const AdvancedAnalytics = ({
             className="flex items-center gap-2 rounded-xl bg-gray-900 px-4 py-2.5 text-xs font-black uppercase tracking-widest text-white transition-all hover:bg-black dark:bg-slate-700 dark:hover:bg-slate-600"
           >
             <Download size={14} />
-            Xuất chi tiết (CSV)
+            {t("analytics.advanced.actions.exportClicks")}
           </button>
           <button
             onClick={() => exportCSV("summary")}
             className="flex items-center gap-2 rounded-xl border-2 border-gray-200 px-4 py-2.5 text-xs font-black uppercase tracking-widest text-gray-700 transition-all hover:border-gray-300 dark:border-slate-700 dark:text-slate-300 dark:hover:border-slate-600"
           >
             <Download size={14} />
-            Xuất tổng quan
+            {t("analytics.advanced.actions.exportSummary")}
           </button>
         </div>
       )}
@@ -265,9 +289,13 @@ export const AdvancedAnalytics = ({
           <div className={cardClassName}>
             <div className="mb-6 flex items-center gap-3">
               <Globe size={20} className="text-orange-500" />
-              <h3 className={`text-xl font-black ${labelClassName}`}>Quốc gia</h3>
+              <h3 className={`text-xl font-black ${labelClassName}`}>
+                {t("analytics.advanced.geo.countries")}
+              </h3>
               <span className="ml-auto rounded-full bg-orange-50 px-3 py-1 text-xs font-bold text-orange-600">
-                {geoData?.totalCountries || 0} quốc gia
+                {t("analytics.advanced.geo.countriesCount", {
+                  count: geoData?.totalCountries || 0,
+                })}
               </span>
             </div>
             {loading ? (
@@ -294,7 +322,7 @@ export const AdvancedAnalytics = ({
                           />
                         ))}
                       </Pie>
-                      <Tooltip />
+                      <Tooltip formatter={tooltipFormatter} />
                     </PieChart>
                   </ResponsiveContainer>
                 </div>
@@ -314,23 +342,30 @@ export const AdvancedAnalytics = ({
                         </span>
                       </div>
                       <span className="text-sm font-bold text-orange-600">
-                        {country.clicks} clicks
+                        {formatClicks(country.clicks)}
                       </span>
                     </div>
                   ))}
                 </div>
               </>
             ) : (
-              renderEmpty(<Globe size={48} />, "Chưa có dữ liệu địa lý")
+              renderEmpty(
+                <Globe size={48} />,
+                t("analytics.advanced.geo.countriesEmpty"),
+              )
             )}
           </div>
 
           <div className={cardClassName}>
             <div className="mb-6 flex items-center gap-3">
               <MapPin size={20} className="text-blue-500" />
-              <h3 className={`text-xl font-black ${labelClassName}`}>Thành phố</h3>
+              <h3 className={`text-xl font-black ${labelClassName}`}>
+                {t("analytics.advanced.geo.cities")}
+              </h3>
               <span className="ml-auto rounded-full bg-blue-50 px-3 py-1 text-xs font-bold text-blue-600">
-                {geoData?.totalCities || 0} thành phố
+                {t("analytics.advanced.geo.citiesCount", {
+                  count: geoData?.totalCities || 0,
+                })}
               </span>
             </div>
             {loading ? (
@@ -359,7 +394,10 @@ export const AdvancedAnalytics = ({
                 ))}
               </div>
             ) : (
-              renderEmpty(<MapPin size={48} />, "Chưa có dữ liệu thành phố")
+              renderEmpty(
+                <MapPin size={48} />,
+                t("analytics.advanced.geo.citiesEmpty"),
+              )
             )}
           </div>
         </div>
@@ -371,7 +409,7 @@ export const AdvancedAnalytics = ({
             <div className="mb-6 flex items-center gap-3">
               <Smartphone size={20} className="text-green-500" />
               <h3 className={`text-lg font-black ${labelClassName}`}>
-                Loại thiết bị
+                {t("analytics.advanced.device.types")}
               </h3>
             </div>
             {loading ? (
@@ -396,7 +434,7 @@ export const AdvancedAnalytics = ({
                           />
                         ))}
                       </Pie>
-                      <Tooltip />
+                      <Tooltip formatter={tooltipFormatter} />
                     </PieChart>
                   </ResponsiveContainer>
                 </div>
@@ -411,18 +449,18 @@ export const AdvancedAnalytics = ({
                           className="h-2.5 w-2.5 rounded-full"
                           style={{ backgroundColor: COLORS[idx % COLORS.length] }}
                         />
-                        <span
-                          className={`text-sm font-medium capitalize text-gray-700 dark:text-slate-300`}
-                        >
+                        <span className="text-sm font-medium capitalize text-gray-700 dark:text-slate-300">
                           {device.type}
                         </span>
                       </div>
                       <div className="text-right">
-                        <span className={`block text-sm font-bold ${labelClassName}`}>
+                        <span
+                          className={`block text-sm font-bold ${labelClassName}`}
+                        >
                           {device.percentage}%
                         </span>
                         <span className={`text-xs ${mutedClassName}`}>
-                          {device.clicks} clicks
+                          {formatClicks(device.clicks)}
                         </span>
                       </div>
                     </div>
@@ -430,7 +468,11 @@ export const AdvancedAnalytics = ({
                 </div>
               </>
             ) : (
-              renderEmpty(<Smartphone size={40} />, "Chưa có dữ liệu", true)
+              renderEmpty(
+                <Smartphone size={40} />,
+                t("analytics.advanced.common.noData"),
+                true,
+              )
             )}
           </div>
 
@@ -438,7 +480,7 @@ export const AdvancedAnalytics = ({
             <div className="mb-6 flex items-center gap-3">
               <Monitor size={20} className="text-purple-500" />
               <h3 className={`text-lg font-black ${labelClassName}`}>
-                Trình duyệt
+                {t("analytics.advanced.device.browsers")}
               </h3>
             </div>
             {loading ? (
@@ -465,13 +507,17 @@ export const AdvancedAnalytics = ({
                       />
                     </div>
                     <span className={`text-xs ${mutedClassName}`}>
-                      {browser.clicks} clicks
+                      {formatClicks(browser.clicks)}
                     </span>
                   </div>
                 ))}
               </div>
             ) : (
-              renderEmpty(<Monitor size={40} />, "Chưa có dữ liệu", true)
+              renderEmpty(
+                <Monitor size={40} />,
+                t("analytics.advanced.common.noData"),
+                true,
+              )
             )}
           </div>
 
@@ -479,7 +525,7 @@ export const AdvancedAnalytics = ({
             <div className="mb-6 flex items-center gap-3">
               <Monitor size={20} className="text-cyan-500" />
               <h3 className={`text-lg font-black ${labelClassName}`}>
-                Hệ điều hành
+                {t("analytics.advanced.device.operatingSystems")}
               </h3>
             </div>
             {loading ? (
@@ -506,13 +552,17 @@ export const AdvancedAnalytics = ({
                       />
                     </div>
                     <span className={`text-xs ${mutedClassName}`}>
-                      {os.clicks} clicks
+                      {formatClicks(os.clicks)}
                     </span>
                   </div>
                 ))}
               </div>
             ) : (
-              renderEmpty(<Monitor size={40} />, "Chưa có dữ liệu", true)
+              renderEmpty(
+                <Monitor size={40} />,
+                t("analytics.advanced.common.noData"),
+                true,
+              )
             )}
           </div>
         </div>
@@ -525,12 +575,14 @@ export const AdvancedAnalytics = ({
               <div className="flex items-center gap-3">
                 <Clock size={20} className="text-orange-500" />
                 <h3 className={`text-lg font-black ${labelClassName}`}>
-                  Phân bố theo giờ
+                  {t("analytics.advanced.time.byHour")}
                 </h3>
               </div>
               {timeData?.peakHour !== undefined && (
                 <span className="rounded-full bg-orange-50 px-3 py-1 text-xs font-bold text-orange-600">
-                  Peak: {timeData.peakHour}:00
+                  {t("analytics.advanced.common.peakHour", {
+                    hour: timeData.peakHour,
+                  })}
                 </span>
               )}
             </div>
@@ -548,13 +600,16 @@ export const AdvancedAnalytics = ({
                       tickLine={false}
                     />
                     <YAxis hide />
-                    <Tooltip formatter={(value) => [`${value} clicks`, "Clicks"]} />
+                    <Tooltip formatter={tooltipFormatter} />
                     <Bar dataKey="clicks" fill="#f97316" radius={[4, 4, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
             ) : (
-              renderEmpty(<Clock size={48} />, "Chưa có dữ liệu")
+              renderEmpty(
+                <Clock size={48} />,
+                t("analytics.advanced.common.noData"),
+              )
             )}
           </div>
 
@@ -563,12 +618,14 @@ export const AdvancedAnalytics = ({
               <div className="flex items-center gap-3">
                 <Clock size={20} className="text-blue-500" />
                 <h3 className={`text-lg font-black ${labelClassName}`}>
-                  Phân bố theo ngày
+                  {t("analytics.advanced.time.byDay")}
                 </h3>
               </div>
               {timeData?.peakDay && (
                 <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-bold text-blue-600">
-                  Peak: {timeData.peakDay}
+                  {t("analytics.advanced.common.peakDay", {
+                    day: timeData.peakDay,
+                  })}
                 </span>
               )}
             </div>
@@ -585,13 +642,16 @@ export const AdvancedAnalytics = ({
                       tickLine={false}
                     />
                     <YAxis hide />
-                    <Tooltip formatter={(value) => [`${value} clicks`, "Clicks"]} />
+                    <Tooltip formatter={tooltipFormatter} />
                     <Bar dataKey="clicks" fill="#3b82f6" radius={[4, 4, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
             ) : (
-              renderEmpty(<Clock size={48} />, "Chưa có dữ liệu")
+              renderEmpty(
+                <Clock size={48} />,
+                t("analytics.advanced.common.noData"),
+              )
             )}
           </div>
         </div>
@@ -602,7 +662,7 @@ export const AdvancedAnalytics = ({
           <div className="mb-8 flex items-center gap-3">
             <Bell size={20} className="text-orange-500" />
             <h3 className={`text-xl font-black ${labelClassName}`}>
-              Cài đặt thông báo
+              {t("analytics.advanced.notifications.title")}
             </h3>
           </div>
 
@@ -610,10 +670,10 @@ export const AdvancedAnalytics = ({
             <div className="flex items-center justify-between rounded-2xl border border-gray-100 p-4 dark:border-slate-700 dark:bg-slate-900/70">
               <div>
                 <h4 className={`font-bold ${labelClassName}`}>
-                  Thông báo khi có click
+                  {t("analytics.advanced.notifications.toggleTitle")}
                 </h4>
                 <p className={`text-sm ${mutedClassName}`}>
-                  Nhận thông báo qua Webhook hoặc Telegram
+                  {t("analytics.advanced.notifications.toggleDescription")}
                 </p>
               </div>
               <button
@@ -636,10 +696,8 @@ export const AdvancedAnalytics = ({
             </div>
 
             <div>
-              <label
-                className={`mb-2 block text-sm font-bold text-gray-700 dark:text-slate-300`}
-              >
-                Ngưỡng thông báo (0 = mọi click)
+              <label className="mb-2 block text-sm font-bold text-gray-700 dark:text-slate-300">
+                {t("analytics.advanced.notifications.thresholdLabel")}
               </label>
               <input
                 type="number"
@@ -652,19 +710,18 @@ export const AdvancedAnalytics = ({
                   })
                 }
                 className="w-full rounded-xl border-2 border-gray-100 px-4 py-3 font-medium outline-none transition-all focus:border-orange-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
-                placeholder="Ví dụ: 10 (thông báo mỗi 10 click)"
+                placeholder={t(
+                  "analytics.advanced.notifications.thresholdPlaceholder",
+                )}
               />
               <p className={`mt-1 text-xs ${mutedClassName}`}>
-                Đặt 0 để nhận thông báo cho mọi click, hoặc N để nhận thông báo
-                mỗi N clicks
+                {t("analytics.advanced.notifications.thresholdHint")}
               </p>
             </div>
 
             <div>
-              <label
-                className={`mb-2 block text-sm font-bold text-gray-700 dark:text-slate-300`}
-              >
-                Webhook URL
+              <label className="mb-2 block text-sm font-bold text-gray-700 dark:text-slate-300">
+                {t("analytics.advanced.notifications.webhookLabel")}
               </label>
               <input
                 type="url"
@@ -673,23 +730,23 @@ export const AdvancedAnalytics = ({
                   setSettings({ ...settings, webhook_url: e.target.value })
                 }
                 className="w-full rounded-xl border-2 border-gray-100 px-4 py-3 font-medium outline-none transition-all focus:border-orange-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
-                placeholder="https://your-webhook-endpoint.com/webhook"
+                placeholder={t(
+                  "analytics.advanced.notifications.webhookPlaceholder",
+                )}
               />
               <p className={`mt-1 text-xs ${mutedClassName}`}>
-                URL sẽ nhận POST request khi có click mới
+                {t("analytics.advanced.notifications.webhookHint")}
               </p>
             </div>
 
             <div className="rounded-2xl bg-gray-50 p-6 dark:bg-slate-900">
               <h4 className={`mb-4 font-bold ${labelClassName}`}>
-                Cài đặt Telegram Bot
+                {t("analytics.advanced.notifications.telegramTitle")}
               </h4>
 
               <div className="mb-4">
-                <label
-                  className={`mb-2 block text-sm font-bold text-gray-700 dark:text-slate-300`}
-                >
-                  Bot Token
+                <label className="mb-2 block text-sm font-bold text-gray-700 dark:text-slate-300">
+                  {t("analytics.advanced.notifications.botToken")}
                 </label>
                 <div className="relative">
                   <input
@@ -715,10 +772,8 @@ export const AdvancedAnalytics = ({
               </div>
 
               <div>
-                <label
-                  className={`mb-2 block text-sm font-bold text-gray-700 dark:text-slate-300`}
-                >
-                  Chat ID
+                <label className="mb-2 block text-sm font-bold text-gray-700 dark:text-slate-300">
+                  {t("analytics.advanced.notifications.chatId")}
                 </label>
                 <input
                   type="text"
@@ -730,7 +785,9 @@ export const AdvancedAnalytics = ({
                     })
                   }
                   className="w-full rounded-xl border-2 border-gray-100 px-4 py-3 font-medium outline-none transition-all focus:border-orange-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
-                  placeholder="123456789 hoặc @channelusername"
+                  placeholder={t(
+                    "analytics.advanced.notifications.chatIdPlaceholder",
+                  )}
                 />
               </div>
             </div>
@@ -743,12 +800,12 @@ export const AdvancedAnalytics = ({
               {savingSettings ? (
                 <>
                   <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                  Đang lưu...
+                  {t("analytics.advanced.actions.saving")}
                 </>
               ) : (
                 <>
                   <Check size={18} />
-                  Lưu cài đặt
+                  {t("analytics.advanced.actions.save")}
                 </>
               )}
             </button>

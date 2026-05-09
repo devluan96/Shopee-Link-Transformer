@@ -1,7 +1,10 @@
 import React, { useEffect, useRef, useState, Suspense, lazy } from "react";
 import { Menu, Zap } from "lucide-react";
+import { useLocale } from "./hooks/useLocale";
+import { LanguageToggle } from "./components/common/LanguageToggle";
 import { ThemeToggle } from "./components/common/ThemeToggle";
 import { NotificationBell } from "./components/common/NotificationBell";
+import { AccountMenu } from "./components/common/AccountMenu";
 import { toast, Toaster } from "sonner";
 import { LinkQuota, Tab, UserLimits } from "./types";
 
@@ -103,6 +106,7 @@ const TabLoading = () => (
 );
 
 export default function App() {
+  const { t } = useLocale();
   // UI State
   const [activeTab, setActiveTab] = useState<Tab>("dashboard");
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -561,7 +565,7 @@ export default function App() {
       <div className="min-h-screen bg-slate-900 flex flex-col items-center justify-center gap-4">
         <div className="w-16 h-16 border-4 border-orange-500/20 border-t-orange-500 rounded-full animate-spin" />
         <div className="text-gray-400 font-bold uppercase tracking-widest text-[10px] animate-pulse">
-          Đang khởi tạo hệ thống...
+          {t("app.loading")}
         </div>
       </div>
     );
@@ -644,73 +648,95 @@ export default function App() {
         onClose={() => setIsSidebarOpen(false)}
       />
 
-      {user && (
-        <div className="hidden lg:block">
-          <NotificationBell
-            notifications={notifications}
-            unreadCount={unreadCount}
-            loading={notificationsLoading}
-            onRefresh={() => fetchNotifications(true)}
-            onMarkRead={markNotificationRead}
-            onMarkAllRead={markAllNotificationsRead}
-            onOpenTeamWorkspace={() => {
-              setActiveTab("team");
-              void fetchPendingInvitations(true);
-            }}
-            onOpenLinks={() => {
-              setActiveTab("list");
-            }}
-            onOpenPricing={() => {
-              setActiveTab("pricing");
-            }}
-            className="fixed right-8 top-6"
-          />
-        </div>
-      )}
-
       {/* Mobile Header */}
-      <div className="lg:hidden bg-white dark:bg-slate-800 border-b border-gray-100 dark:border-slate-700 px-6 py-4 flex items-center justify-between sticky top-0 z-30">
-        <div className="flex items-center gap-2">
+      <div className="lg:hidden sticky top-0 z-30 border-b border-gray-100 bg-white px-4 py-3 dark:border-slate-700 dark:bg-slate-800">
+        <div className="flex items-center justify-between gap-3">
+          <div className="min-w-0 flex flex-1 items-center gap-2">
           <img
             src="/logo-app-192.png"
-            alt="HotsNew Click logo"
+            alt={t("sidebar.logoAlt")}
             className="h-7 w-7 rounded-lg object-cover"
           />
-          <span className="font-black text-gray-900 dark:text-white tracking-tight">
+            <span className="truncate font-black tracking-tight text-gray-900 dark:text-white">
             HotsNew
-          </span>
+            </span>
+          </div>
+          <div className="flex shrink-0 items-center gap-2">
+            <NotificationBell
+              notifications={notifications}
+              unreadCount={unreadCount}
+              loading={notificationsLoading}
+              onRefresh={() => fetchNotifications(true)}
+              onMarkRead={markNotificationRead}
+              onMarkAllRead={markAllNotificationsRead}
+              onOpenTeamWorkspace={() => {
+                setActiveTab("team");
+                void fetchPendingInvitations(true);
+              }}
+              onOpenLinks={() => {
+                setActiveTab("list");
+              }}
+              onOpenPricing={() => {
+                setActiveTab("pricing");
+              }}
+              className="lg:hidden"
+            />
+            <button
+              onClick={() => setIsSidebarOpen(true)}
+              className="p-2 text-gray-500 transition-colors hover:text-gray-900 dark:text-slate-400 dark:hover:text-slate-200"
+            >
+              <Menu size={22} />
+            </button>
+          </div>
         </div>
-        <div className="flex items-center gap-3">
-          <NotificationBell
-            notifications={notifications}
-            unreadCount={unreadCount}
-            loading={notificationsLoading}
-            onRefresh={() => fetchNotifications(true)}
-            onMarkRead={markNotificationRead}
-            onMarkAllRead={markAllNotificationsRead}
-            onOpenTeamWorkspace={() => {
-              setActiveTab("team");
-              void fetchPendingInvitations(true);
-            }}
-            onOpenLinks={() => {
-              setActiveTab("list");
-            }}
-            onOpenPricing={() => {
-              setActiveTab("pricing");
-            }}
-            className="lg:hidden"
-          />
-          <ThemeToggle />
-          <button
-            onClick={() => setIsSidebarOpen(true)}
-            className="p-2 text-gray-500 hover:text-gray-900 dark:text-slate-400 dark:hover:text-slate-200 transition-colors"
-          >
-            <Menu size={24} />
-          </button>
+        <div className="mt-3 flex items-center justify-end gap-2">
+          <LanguageToggle compact />
+          <ThemeToggle compact />
         </div>
       </div>
 
-      <main className="min-w-0 flex-1 overflow-x-hidden p-6 pb-32 dark:bg-slate-900 lg:p-12">
+      <main className="min-w-0 flex-1 overflow-x-hidden p-6 pb-32 dark:bg-slate-900 lg:px-12 lg:pb-32 lg:pt-8">
+        {user && (
+          <>
+            <div className="hidden h-[72px] lg:block" />
+            <div className="pointer-events-none fixed left-72 right-0 top-0 z-40 hidden lg:block">
+              <div className="border-b border-gray-200 bg-white dark:border-slate-700 dark:bg-slate-900">
+                <div className="flex h-16 items-center justify-end px-10">
+                  <div className="pointer-events-auto flex items-center gap-2.5">
+                    <LanguageToggle />
+                    <ThemeToggle />
+                    <NotificationBell
+                      notifications={notifications}
+                      unreadCount={unreadCount}
+                      loading={notificationsLoading}
+                      onRefresh={() => fetchNotifications(true)}
+                      onMarkRead={markNotificationRead}
+                      onMarkAllRead={markAllNotificationsRead}
+                      onOpenTeamWorkspace={() => {
+                        setActiveTab("team");
+                        void fetchPendingInvitations(true);
+                      }}
+                      onOpenLinks={() => {
+                        setActiveTab("list");
+                      }}
+                      onOpenPricing={() => {
+                        setActiveTab("pricing");
+                      }}
+                    />
+                    <AccountMenu
+                      activeTab={activeTab}
+                      onSelectTab={setActiveTab}
+                      isActuallyAdmin={isAdminRole}
+                      userProfile={profile}
+                      userEmail={user?.email}
+                      handleLogout={handleLogout}
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+          </>
+        )}
         <Suspense fallback={<TabLoading />}>
           {activeTab === "dashboard" && (
             <Overview
@@ -843,13 +869,13 @@ export default function App() {
                 </div>
                 <h3 className="text-2xl font-black text-gray-900 mb-4">
                   {blockedByWorkspaceRole
-                    ? "Workspace chỉ cho xem"
-                    : "Nâng cấp tài khoản"}
+                    ? t("app.createLocked.titleViewer")
+                    : t("app.createLocked.titleUpgrade")}
                 </h3>
                 <p className="text-gray-500 font-medium mb-8">
                   {blockedByWorkspaceRole
-                    ? "Workspace hiện tại của bạn đang ở role viewer nên không thể tạo hoặc chỉnh sửa link. Hãy chuyển sang workspace khác hoặc hỏi owner nâng quyền lên editor."
-                    : "Tính năng chuyển đổi link Shopee & TikTok dành riêng cho tài khoản Premium. Vui lòng liên hệ Admin để nâng cấp gói cước!"}
+                    ? t("app.createLocked.descriptionViewer")
+                    : t("app.createLocked.descriptionUpgrade")}
                 </p>
                 <button
                   onClick={() =>
@@ -858,8 +884,8 @@ export default function App() {
                   className="px-8 py-4 bg-gray-900 text-white rounded-2xl font-black uppercase tracking-widest text-xs"
                 >
                   {blockedByWorkspaceRole
-                    ? "Mở team Workspace"
-                    : "Quay lại Dashboard"}
+                    ? t("app.createLocked.actionViewer")
+                    : t("app.createLocked.actionUpgrade")}
                 </button>
               </div>
             ))}
@@ -931,3 +957,4 @@ export default function App() {
     </div>
   );
 }
+

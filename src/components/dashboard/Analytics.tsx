@@ -22,6 +22,7 @@ import {
 } from "recharts";
 import { AnalyticsData } from "@/src/types";
 import { AdvancedAnalytics } from "./AdvancedAnalytics";
+import { useLocale } from "@/src/hooks/useLocale";
 
 interface AnalyticsProps {
   analyticsData: AnalyticsData;
@@ -41,6 +42,7 @@ export const Analytics = ({
   fetchWithAuth,
   currentWorkspaceId,
 }: AnalyticsProps) => {
+  const { locale, messages, t } = useLocale();
   const [activeView, setActiveView] = useState<"basic" | "advanced">("basic");
   const history = analyticsData?.history || [];
   const topLinks = analyticsData?.topLinks || [];
@@ -48,43 +50,54 @@ export const Analytics = ({
   const growthPercentage = Number.isFinite(analyticsData?.growthPercentage)
     ? analyticsData.growthPercentage
     : 0;
+  const content = messages.analytics;
 
   const totalClicks = history.reduce((a, b) => a + (b.clicks || 0), 0);
   const totalShopeeClicks = analyticsData?.totalShopeeClicks || 0;
   const totalTiktokClicks = analyticsData?.totalTiktokClicks || 0;
   const growthDisplay = `${growthPercentage >= 0 ? "+" : ""}${growthPercentage.toFixed(1)}%`;
 
+  const formatChartDate = (value: string) => {
+    const parsed = new Date(value);
+    if (Number.isNaN(parsed.getTime())) return value;
+
+    return new Intl.DateTimeFormat(locale === "vi" ? "vi-VN" : "en-US", {
+      day: "2-digit",
+      month: "2-digit",
+    }).format(parsed);
+  };
+
   const stats = [
     {
-      label: "Click outbound",
+      label: content.stats.redirects,
       value: totalClicks.toLocaleString(),
       icon: MousePointer2,
       color: "text-orange-500",
       bg: "bg-orange-50",
     },
     {
-      label: "Click Shopee",
+      label: content.stats.shopee,
       value: totalShopeeClicks.toLocaleString(),
       icon: ShoppingBag,
       color: "text-emerald-600",
       bg: "bg-emerald-50",
     },
     {
-      label: "Click TikTok",
+      label: content.stats.tiktok,
       value: totalTiktokClicks.toLocaleString(),
       icon: PlaySquare,
       color: "text-cyan-700",
       bg: "bg-cyan-50",
     },
     {
-      label: "Link hoạt động",
+      label: content.stats.activeLinks,
       value: linksCount || 0,
       icon: Activity,
       color: "text-blue-500",
       bg: "bg-blue-50",
     },
     {
-      label: "Tăng trưởng (30d)",
+      label: content.stats.growth,
       value: growthDisplay,
       icon: TrendingUp,
       color: growthPercentage >= 0 ? "text-green-500" : "text-red-500",
@@ -126,7 +139,7 @@ export const Analytics = ({
             }`}
           >
             <BarChart3 size={14} />
-            Thống kê cơ bản
+            {content.views.basic}
           </button>
           <button
             onClick={() => setActiveView("advanced")}
@@ -137,7 +150,7 @@ export const Analytics = ({
             }`}
           >
             <Map size={14} />
-            Phân tích nâng cao
+            {content.views.advanced}
           </button>
         </div>
       )}
@@ -153,27 +166,27 @@ export const Analytics = ({
             <div className="mb-10 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <h3 className="text-xl font-black text-gray-900 dark:text-slate-100">
-                  Biểu đồ click outbound
+                  {content.chart.title}
                 </h3>
                 <p className="text-xs font-medium text-gray-400 dark:text-slate-400">
-                  Thống kê outbound sang Shopee và TikTok trong 30 ngày gần nhất
+                  {content.chart.description}
                 </p>
               </div>
               <div className="flex flex-wrap gap-2">
                 <span className="flex items-center gap-2 rounded-full bg-orange-50 px-3 py-1.5 text-[10px] font-black uppercase tracking-widest text-orange-500">
                   <div className="h-1.5 w-1.5 animate-pulse rounded-full bg-orange-500" />
-                  Live Data
+                  {content.chart.liveData}
                 </span>
                 <span className="rounded-full bg-blue-50 px-3 py-1.5 text-[10px] font-black uppercase tracking-widest text-blue-600">
-                  Shopee: {totalShopeeClicks}
+                  {t("analytics.chart.shopee", { count: totalShopeeClicks })}
                 </span>
                 <span className="rounded-full bg-cyan-50 px-3 py-1.5 text-[10px] font-black uppercase tracking-widest text-cyan-700">
-                  TikTok: {totalTiktokClicks}
+                  {t("analytics.chart.tiktok", { count: totalTiktokClicks })}
                 </span>
               </div>
             </div>
 
-            <div className="h-87.5 min-h-87.5 w-full">
+            <div className="h-[350px] min-h-[350px] w-full min-w-0">
               {history.length > 0 ? (
                 <ResponsiveContainer width="100%" height="100%" minHeight={350}>
                   <AreaChart data={history}>
@@ -199,6 +212,7 @@ export const Analytics = ({
                     </defs>
                     <XAxis
                       dataKey="date"
+                      tickFormatter={formatChartDate}
                       axisLine={false}
                       tickLine={false}
                       tick={{ fontSize: 10, fontWeight: 700, fill: "#9CA3AF" }}
@@ -210,6 +224,7 @@ export const Analytics = ({
                       tick={{ fontSize: 10, fontWeight: 700, fill: "#9CA3AF" }}
                     />
                     <Tooltip
+                      labelFormatter={(label) => formatChartDate(String(label))}
                       contentStyle={{
                         borderRadius: "1rem",
                         border: "none",
@@ -231,7 +246,7 @@ export const Analytics = ({
                 <div className="flex h-full w-full flex-col items-center justify-center py-20 text-gray-300">
                   <Activity size={48} className="mb-4 opacity-20" />
                   <p className="text-sm font-bold italic">
-                    Không có dữ liệu outbound trong 30 ngày qua.
+                    {content.chart.empty}
                   </p>
                 </div>
               )}
@@ -243,7 +258,7 @@ export const Analytics = ({
               <div className="mb-8 flex items-center gap-3">
                 <TrendingUp size={20} className="text-orange-500" />
                 <h3 className="text-xl font-black text-gray-900 dark:text-slate-100">
-                  Top Link Hiệu Quả
+                  {content.topLinks.title}
                 </h3>
               </div>
               <div className="space-y-4">
@@ -261,7 +276,10 @@ export const Analytics = ({
                           {item.title}
                         </div>
                         <div className="text-[10px] font-black uppercase tracking-widest text-orange-500">
-                          {item.clicks} CLICK OUTBOUND · /s/{item.short_code}
+                          {t("analytics.topLinks.itemMeta", {
+                            count: item.clicks ?? 0,
+                            code: item.short_code,
+                          })}
                         </div>
                       </div>
                       <div className="h-1.5 w-24 overflow-hidden rounded-full bg-gray-100 dark:bg-slate-700">
@@ -276,7 +294,7 @@ export const Analytics = ({
                   ))
                 ) : (
                   <div className="py-12 text-center text-sm font-medium italic text-gray-400 dark:text-slate-500">
-                    Chưa có dữ liệu thống kê link
+                    {content.topLinks.empty}
                   </div>
                 )}
               </div>
@@ -286,10 +304,10 @@ export const Analytics = ({
               <div className="mb-8 flex items-center gap-3">
                 <PieChartIcon size={20} className="text-blue-500" />
                 <h3 className="text-xl font-black text-gray-900 dark:text-slate-100">
-                  Nguồn Lưu Lượng
+                  {content.traffic.title}
                 </h3>
               </div>
-              <div className="mb-6 h-55 min-h-55">
+              <div className="mb-6 h-[220px] min-h-[220px] min-w-0">
                 {trafficSources.length > 0 ? (
                   <ResponsiveContainer
                     width="100%"
@@ -325,7 +343,7 @@ export const Analytics = ({
                   </ResponsiveContainer>
                 ) : (
                   <div className="flex h-full items-center justify-center rounded-3xl border border-dashed border-gray-100 bg-gray-50 text-center text-sm font-medium italic text-gray-400 dark:border-slate-700 dark:bg-slate-700/50 dark:text-slate-400">
-                    Chưa có dữ liệu nguồn lưu lượng.
+                    {content.traffic.empty}
                   </div>
                 )}
               </div>

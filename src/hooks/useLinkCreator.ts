@@ -2,6 +2,7 @@ import { useState, useCallback } from "react";
 import { User } from "@supabase/supabase-js";
 import { UserProfile } from "@/src/types";
 import { LINK_USAGE_DEFAULT } from "@/src/lib/linkUsage";
+import { useLocale } from "@/src/hooks/useLocale";
 import { normalizeVietnameseSlug } from "@/src/lib/utils";
 import { toast } from "sonner";
 
@@ -95,11 +96,12 @@ export function useLinkCreator({
   canAccessCreate,
   onSuccess,
 }: UseLinkCreatorProps): LinkCreatorState & LinkCreatorActions {
+  const { t } = useLocale();
   const [url, setUrl] = useState("");
   const [customTitle, setCustomTitle] = useState("");
   const [customDescription, setCustomDescription] = useState("");
   const [customShortCode, setCustomShortCode] = useState("");
-  const [usageContext, setUsageContext] = useState("Bài viết Facebook");
+  const [usageContext, setUsageContext] = useState(LINK_USAGE_DEFAULT);
   const [folderName, setFolderName] = useState("");
   const [tagsText, setTagsText] = useState("");
   const [customImageUrl, setCustomImageUrl] = useState("");
@@ -135,9 +137,7 @@ export function useLinkCreator({
       if (!url.trim() || !user) return;
 
       if (!canAccessCreate) {
-        toast.error(
-          "Vui long nang cap tai khoan de su dung tinh nang tao link!",
-        );
+        toast.error(t("createLink.feedback.upgradeRequired"));
         return;
       }
 
@@ -152,7 +152,9 @@ export function useLinkCreator({
 
         if (normalizedShortCode.length > MAX_SHORT_CODE_LENGTH) {
           throw new Error(
-            `Ma rut gon khong duoc vuot qua ${MAX_SHORT_CODE_LENGTH} ky tu.`,
+            t("createLink.feedback.shortCodeMax", {
+              max: MAX_SHORT_CODE_LENGTH,
+            }),
           );
         }
 
@@ -195,7 +197,9 @@ export function useLinkCreator({
         });
 
         const data = await response.json();
-        if (!response.ok) throw new Error(data.error || "Conversion failed");
+        if (!response.ok) {
+          throw new Error(data.error || t("createLink.feedback.conversionFailed"));
+        }
 
         const nextResult = {
           ...data,
@@ -204,10 +208,11 @@ export function useLinkCreator({
 
         setResult(nextResult);
         toast.success(
-          `Rut gon link thanh cong: ${
-            nextResult.converted_url ||
-            `https://hotsnew.click/s/${nextResult.short_code}`
-          }`,
+          t("createLink.feedback.success", {
+            url:
+              nextResult.converted_url ||
+              `https://hotsnew.click/s/${nextResult.short_code}`,
+          }),
         );
         onSuccess();
       } catch (err: any) {
@@ -250,6 +255,7 @@ export function useLinkCreator({
       abVariantBSecondaryUrl,
       fetchWithAuth,
       onSuccess,
+      t,
     ],
   );
 
@@ -258,7 +264,7 @@ export function useLinkCreator({
     setCustomTitle("");
     setCustomDescription("");
     setCustomShortCode("");
-    setUsageContext("Bài viết Facebook");
+    setUsageContext(LINK_USAGE_DEFAULT);
     setFolderName("");
     setTagsText("");
     setCustomImageUrl("");

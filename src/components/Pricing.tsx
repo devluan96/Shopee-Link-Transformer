@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Check, Crown, Sparkles, Zap } from "lucide-react";
+import { useLocale } from "@/src/hooks/useLocale";
 import { cn } from "@/src/lib/utils";
 import { LinkQuota, UserLimits, UserProfile } from "@/src/types";
 
@@ -14,6 +15,8 @@ export const Pricing = ({
   linkQuota,
   userLimits,
 }: PricingProps) => {
+  const { locale, messages, t } = useLocale();
+  const copy = messages.pricing;
   const zaloContactUrl = "https://zalo.me/0969361607";
   const currentPlan = userProfile?.subscription_plan || "free";
   const expiryTimestamp = userProfile?.subscription_expiry
@@ -21,7 +24,9 @@ export const Pricing = ({
     : null;
   const expiryDate =
     expiryTimestamp && Number.isFinite(expiryTimestamp)
-      ? new Date(expiryTimestamp).toLocaleDateString("vi-VN")
+      ? new Date(expiryTimestamp).toLocaleDateString(
+          locale === "vi" ? "vi-VN" : "en-US",
+        )
       : null;
   const [remainingMs, setRemainingMs] = useState(() =>
     expiryTimestamp ? Math.max(0, expiryTimestamp - Date.now()) : 0,
@@ -46,33 +51,23 @@ export const Pricing = ({
   const plans = [
     {
       id: "monthly" as const,
-      name: "Gói tháng",
-      price: "79.000đ",
-      period: "/ THÁNG",
-      description: "Phù hợp để chạy thử hoặc vận hành ngắn hạn.",
-      features: [
-        "Tạo landing page không giới hạn",
-        "Upload video và thumbnail",
-        "Quản lý link và theo dõi thống kê",
-        "Kích hoạt thủ công qua QR ngân hàng hoặc admin",
-      ],
+      name: copy.plans.monthly.name,
+      price: copy.plans.monthly.price,
+      period: copy.plans.monthly.period,
+      description: copy.plans.monthly.description,
+      features: copy.plans.monthly.features,
       highlight: true,
-      badge: "LINH HOẠT",
+      badge: copy.plans.monthly.badge,
     },
     {
       id: "yearly" as const,
-      name: "Gói năm",
-      price: "749.000đ",
-      period: "/ NĂM",
-      description: "Tối ưu chi phí và phù hợp cho tài khoản vận hành lâu dài.",
-      features: [
-        "Tạo landing page không giới hạn",
-        "Upload video và thumbnail",
-        "Quản lý link và theo dõi thống kê",
-        "Kích hoạt thủ công qua QR ngân hàng hoặc admin",
-      ],
+      name: copy.plans.yearly.name,
+      price: copy.plans.yearly.price,
+      period: copy.plans.yearly.period,
+      description: copy.plans.yearly.description,
+      features: copy.plans.yearly.features,
       highlight: false,
-      badge: "TIẾT KIỆM HƠN",
+      badge: copy.plans.yearly.badge,
     },
   ];
 
@@ -92,11 +87,17 @@ export const Pricing = ({
     const minutes = Math.floor((totalSeconds % 3600) / 60);
     const seconds = totalSeconds % 60;
 
-    return `${days} ngày ${hours} giờ ${minutes} phút ${seconds} giây`;
+    return `${days} ${copy.countdown.day} ${hours} ${copy.countdown.hour} ${minutes} ${copy.countdown.minute} ${seconds} ${copy.countdown.second}`;
   };
 
   const handleContactAdmin = () => {
     window.open(zaloContactUrl, "_blank", "noopener,noreferrer");
+  };
+
+  const getCurrentPlanLabel = () => {
+    if (currentPlan === "monthly") return copy.status.monthly;
+    if (currentPlan === "yearly") return copy.status.yearly;
+    return copy.status.free;
   };
 
   const getButtonState = (planId: "monthly" | "yearly") => {
@@ -105,16 +106,15 @@ export const Pricing = ({
     const disableRenew = isCurrentPlan && !canRenewCurrentPlan;
     const disabled = disableByActiveYearly || disableRenew;
 
-    let buttonText = "LIÊN HỆ KÍCH HOẠT";
-    if (isCurrentPlan) {
-      buttonText = "LIÊN HỆ GIA HẠN";
-    }
+    const buttonText = isCurrentPlan
+      ? copy.actions.renew
+      : copy.actions.activate;
 
     let helperText = "";
     if (disableByActiveYearly) {
-      helperText = "Gói năm đang hoạt động nên tạm khóa việc mở gói thấp hơn.";
+      helperText = copy.actions.disabledYearly;
     } else if (disableRenew) {
-      helperText = "Gia hạn chỉ mở khi gói còn 7 ngày hoặc ít hơn.";
+      helperText = copy.actions.disabledRenew;
     }
 
     return { disabled, buttonText, helperText };
@@ -133,11 +133,10 @@ export const Pricing = ({
     <div className="mx-auto max-w-6xl">
       <header className="mb-12">
         <h2 className="mb-2 text-3xl font-black text-gray-900 dark:text-slate-100">
-          Bảng giá dịch vụ
+          {copy.header.title}
         </h2>
         <p className="font-medium italic text-gray-500 dark:text-slate-400">
-          ZaloPay đã được gỡ khỏi luồng thanh toán. Hiện tại app dùng hình thức
-          liên hệ admin hoặc nhận QR chuyển khoản để kích hoạt gói.
+          {copy.header.description}
         </p>
       </header>
 
@@ -148,48 +147,54 @@ export const Pricing = ({
           </div>
           <div>
             <p className="mb-1 text-[10px] font-black uppercase tracking-widest text-gray-400 dark:text-slate-500">
-              TRẠNG THÁI HIỆN TẠI
+              {copy.status.eyebrow}
             </p>
             <h3 className="text-2xl font-black text-gray-900 dark:text-slate-100">
-              {currentPlan === "free"
-                ? "Gói miễn phí"
-                : currentPlan === "monthly"
-                  ? "Gói tháng"
-                  : "Gói năm"}
+              {getCurrentPlanLabel()}
             </h3>
             {expiryDate && (
               <p className="text-sm font-medium text-gray-500 dark:text-slate-400">
-                Gói đang hoạt động đến {expiryDate}.
+                {t("pricing.status.activeUntil", { date: expiryDate })}
               </p>
             )}
           </div>
         </div>
         <div className="flex flex-col items-center gap-2">
           <div className="rounded-full border border-green-100 bg-green-50 px-6 py-2 text-xs font-black uppercase tracking-widest text-green-600">
-            {currentPlan === "free" ? "Miễn phí" : "Đang hoạt động"}
+            {currentPlan === "free"
+              ? copy.status.badgeFree
+              : copy.status.badgeActive}
           </div>
           {currentPlan !== "free" && hasValidExpiry && (
             <p className="text-center text-sm font-black text-orange-600">
-              Còn lại: {formatCountdown(remainingMs)}
+              {t("pricing.status.remaining", {
+                duration: formatCountdown(remainingMs),
+              })}
             </p>
           )}
           {currentPlan !== "free" && !hasValidExpiry && (
             <p className="text-center text-sm font-bold text-amber-600">
-              Chưa có ngày hết hạn để hiển thị đếm ngược.
+              {copy.status.noExpiry}
             </p>
           )}
           {linkQuota && (
             <p className="rounded-full border border-sky-100 bg-sky-50 px-4 py-1.5 text-center text-[10px] font-black uppercase tracking-widest text-sky-600 dark:border-sky-500/20 dark:bg-sky-500/10 dark:text-sky-300">
               {linkQuota.dailyLimit === null
-                ? "Link: K không giới hạn"
-                : "Link: " + linkQuota.usedToday + "/" + linkQuota.dailyLimit}
+                ? copy.status.linksUnlimited
+                : t("pricing.status.linksDaily", {
+                    used: linkQuota.usedToday,
+                    limit: linkQuota.dailyLimit,
+                  })}
             </p>
           )}
           {userLimits && (
             <p className="text-center text-sm font-bold text-violet-600 dark:text-violet-300">
               {userLimits.dailyVideoUploads === null
-                ? "Không giới hạn upload video mỗi ngày."
-                : `Video hôm nay: ${userLimits.videoUploadsUsedToday}/${userLimits.dailyVideoUploads}`}
+                ? copy.status.videosUnlimited
+                : t("pricing.status.videosDaily", {
+                    used: userLimits.videoUploadsUsedToday,
+                    limit: userLimits.dailyVideoUploads,
+                  })}
             </p>
           )}
         </div>
@@ -238,16 +243,24 @@ export const Pricing = ({
 
                 <div className="mt-4 grid grid-cols-2 gap-3 text-[11px] font-black uppercase tracking-widest text-gray-600 dark:text-slate-300">
                   <div className="rounded-2xl border border-sky-100 bg-sky-50 px-4 py-3 text-sky-700 dark:border-sky-500/20 dark:bg-sky-500/10 dark:text-sky-200">
-                    {getPlanDailyLimit(plan.id)} link / ngày
+                    {t("pricing.metrics.linksPerDay", {
+                      value: getPlanDailyLimit(plan.id),
+                    })}
                   </div>
                   <div className="rounded-2xl border border-violet-100 bg-violet-50 px-4 py-3 text-violet-700 dark:border-violet-500/20 dark:bg-violet-500/10 dark:text-violet-200">
-                    {getPlanVideoLimit(plan.id)} video / ngày
+                    {t("pricing.metrics.videosPerDay", {
+                      value: getPlanVideoLimit(plan.id),
+                    })}
                   </div>
                   <div className="rounded-2xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-emerald-700 dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-200">
-                    {getPlanWorkspaceLimit(plan.id)} workspace
+                    {t("pricing.metrics.workspaces", {
+                      value: getPlanWorkspaceLimit(plan.id),
+                    })}
                   </div>
                   <div className="rounded-2xl border border-amber-100 bg-amber-50 px-4 py-3 text-amber-700 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-200">
-                    {getPlanMemberLimit(plan.id)} thành viên
+                    {t("pricing.metrics.members", {
+                      value: getPlanMemberLimit(plan.id),
+                    })}
                   </div>
                 </div>
               </div>

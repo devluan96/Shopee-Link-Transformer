@@ -18,6 +18,7 @@ import { cn, normalizeVietnameseSlug } from "@/src/lib/utils";
 import { LINK_USAGE_OPTIONS } from "@/src/lib/linkUsage";
 import { ConvertedLink, UserLimits } from "@/src/types";
 import { QRCodeCanvas } from "qrcode.react";
+import { useLocale } from "@/src/hooks/useLocale";
 
 const MAX_SHORT_CODE_LENGTH = 50;
 const DAY_IN_MS = 1000 * 60 * 60 * 24;
@@ -127,16 +128,6 @@ interface CreateLinkProps {
   copiedId: string;
 }
 
-const usageOptions = [
-  { value: "Bài viết Facebook", label: "Bài viết Facebook" },
-  { value: "Reel Facebook", label: "Reel Facebook" },
-  { value: "Bio TikTok", label: "Bio TikTok" },
-  { value: "Video TikTok", label: "Video TikTok" },
-  { value: "Zalo OA", label: "Zalo OA" },
-  { value: "Nhóm seeding", label: "Nhóm seeding" },
-  { value: "Livestream", label: "Livestream" },
-];
-
 export const CreateLink = ({
   url,
   setUrl,
@@ -217,6 +208,9 @@ export const CreateLink = ({
   copyToClipboard,
   copiedId,
 }: CreateLinkProps) => {
+  const { messages, t } = useLocale();
+  const content = messages.createLink;
+  const page = content.page;
   const zaloContactUrl = "https://zalo.me/0969361607";
   const [fieldErrors, setFieldErrors] = React.useState<
     Partial<Record<FormField, string>>
@@ -255,6 +249,33 @@ export const CreateLink = ({
   const videoUploadBlocked =
     userLimits?.dailyVideoUploads === 0 || videoUploadsRemainingToday === 0;
   const canUseSecondaryFlow = Boolean(videoUrl.trim());
+  const localizedUsageOptions = LINK_USAGE_OPTIONS.map((option) => {
+    switch (option.value) {
+      case "Bai viet Facebook":
+        return { ...option, label: page.usageFacebookPost };
+      case "Reel Facebook":
+        return { ...option, label: page.usageFacebookReel };
+      case "Bio TikTok":
+        return { ...option, label: page.usageTikTokBio };
+      case "Video TikTok":
+        return { ...option, label: page.usageTikTokVideo };
+      case "Zalo OA":
+        return { ...option, label: page.usageZalo };
+      case "Nhom seeding":
+        return { ...option, label: page.usageSeeding };
+      case "Livestream":
+        return { ...option, label: page.usageLivestream };
+      default:
+        return option;
+    }
+  });
+  const expiryPresets = [
+    { days: 1, label: page.expiry1d },
+    { days: 3, label: page.expiry3d },
+    { days: 7, label: page.expiry7d },
+    { days: 15, label: page.expiry15d },
+    { days: 30, label: page.expiry30d },
+  ];
 
   const clearFieldError = React.useCallback((field: FormField) => {
     setFieldErrors((prev) => {
@@ -394,53 +415,53 @@ export const CreateLink = ({
     }
   };
 
-  const validateForm = () => {
+    const validateForm = () => {
     const nextErrors: Partial<Record<FormField, string>> = {};
 
     if (!url.trim()) {
-      nextErrors.url = "Vui lòng nhập link gốc Shopee hoặc TikTok.";
+      nextErrors.url = content.validation.primaryRequired;
     } else if (!isValidPrimaryUrl(url)) {
-      nextErrors.url = "Link gốc phải là domain Shopee hoặc TikTok hợp lệ.";
+      nextErrors.url = content.validation.primaryInvalid;
     }
 
     if (!customTitle.trim()) {
-      nextErrors.customTitle = "Vui lòng nhập tiêu đề hiển thị.";
+      nextErrors.customTitle = content.validation.titleRequired;
     }
 
     if (!customDescription.trim()) {
-      nextErrors.customDescription = "Vui lòng nhập mô tả bài viết.";
+      nextErrors.customDescription = content.validation.descriptionRequired;
     }
 
     if (!customImageUrl.trim() && !videoUrl.trim()) {
-      nextErrors.customImageUrl =
-        "Vui lòng nhập Thumbnail URL hoặc tải lên video.";
-      nextErrors.videoUrl = "Vui lòng tải lên video hoặc nhập Thumbnail URL.";
+      nextErrors.customImageUrl = content.validation.imageOrVideoRequired;
+      nextErrors.videoUrl = content.validation.videoOrImageRequired;
     }
 
     if (customShortCode.trim()) {
       const normalizedShortCode = normalizeVietnameseSlug(customShortCode);
       if (normalizedShortCode.length < 3) {
-        nextErrors.customShortCode = "Mã rút gọn phải có ít nhất 3 ký tự.";
+        nextErrors.customShortCode = content.validation.shortCodeMin;
       } else if (normalizedShortCode.length > MAX_SHORT_CODE_LENGTH) {
-        nextErrors.customShortCode = `Mã rút gọn không được vượt quá ${MAX_SHORT_CODE_LENGTH} ký tự.`;
+        nextErrors.customShortCode = t("createLink.validation.shortCodeMax", {
+          max: MAX_SHORT_CODE_LENGTH,
+        });
       }
     }
 
     if (secondaryUrl.trim() && !videoUrl.trim()) {
-      nextErrors.secondaryUrl =
-        "Link bước 2 chỉ dùng được khi bạn đã tải video lên.";
+      nextErrors.secondaryUrl = content.validation.secondaryNeedsVideo;
     } else if (
       secondaryUrl.trim() &&
       secondaryTargetType === "shopee" &&
       !isValidShopeeUrl(secondaryUrl)
     ) {
-      nextErrors.secondaryUrl = "Link bước 2 phải là domain Shopee hợp lệ.";
+      nextErrors.secondaryUrl = content.validation.secondaryShopeeInvalid;
     } else if (
       secondaryUrl.trim() &&
       secondaryTargetType === "tiktok" &&
       !isValidTikTokUrl(secondaryUrl)
     ) {
-      nextErrors.secondaryUrl = "Link bước 2 phải là domain TikTok hợp lệ.";
+      nextErrors.secondaryUrl = content.validation.secondaryTiktokInvalid;
     } else if (
       secondaryUrl.trim() &&
       url.trim() &&
@@ -448,8 +469,7 @@ export const CreateLink = ({
       isValidShopeeUrl(url) &&
       getShopeeHostname(url) !== getShopeeHostname(secondaryUrl)
     ) {
-      nextErrors.secondaryUrl =
-        "Link bước 2 phải cùng domain Shopee với link Shopee gốc khi chọn mode Shopee.";
+      nextErrors.secondaryUrl = content.validation.secondarySameShopee;
     }
 
     if (
@@ -457,7 +477,7 @@ export const CreateLink = ({
       redirectDelayMs < 1000 ||
       redirectDelayMs > 10000
     ) {
-      nextErrors.redirectDelayMs = "Delay phải nằm trong khoảng 1 đến 10 giây.";
+      nextErrors.redirectDelayMs = content.validation.redirectDelayRange;
     }
 
     return nextErrors;
@@ -545,7 +565,7 @@ export const CreateLink = ({
     if (!file) return;
 
     if (!file.type.startsWith("video/")) {
-      setError("Please drop a valid video file.");
+      setError(content.validation.dropVideo);
       return;
     }
 
@@ -560,7 +580,7 @@ export const CreateLink = ({
     if (!file) return;
 
     if (!file.type.startsWith("image/")) {
-      setError("Vui lòng thả đúng file ảnh cho thumbnail.");
+      setError(content.validation.dropImage);
       return;
     }
 
@@ -571,34 +591,40 @@ export const CreateLink = ({
 
   return (
     <div key="create">
-      <header className="mb-8 md:mb-12">
+            <header className="mb-8 md:mb-12">
         <h2 className="mb-2 text-3xl font-black tracking-tight text-gray-900 dark:text-slate-100 md:text-4xl">
-          Tạo Landing Page Mới
+          {page.title}
         </h2>
         <p className="font-medium italic text-gray-500 dark:text-slate-400">
-          Chúng tôi sẽ tự động lấy dữ liệu và tối ưu hóa hiển thị trên Facebook.
+          {page.description}
         </p>
         {linkQuota && (
           <div className="mt-5 flex flex-wrap items-center gap-3 rounded-3xl border border-sky-100 bg-sky-50/80 px-5 py-4 text-sm font-bold text-sky-900 dark:border-sky-500/20 dark:bg-sky-500/10 dark:text-sky-100">
             <span className="rounded-full bg-white px-3 py-1 text-[10px] font-black uppercase tracking-widest text-sky-700 dark:bg-slate-800 dark:text-sky-200">
               {linkQuota.plan === "admin"
-                ? "Admin"
+                ? page.adminPlan
                 : linkQuota.plan === "yearly"
-                  ? "Gói năm"
+                  ? page.yearlyPlan
                   : linkQuota.plan === "monthly"
-                    ? "Gói tháng"
-                    : "Gói miễn phí"}
+                    ? page.monthlyPlan
+                    : page.freePlan}
             </span>
             <span className="rounded-full bg-white px-3 py-1 text-[10px] font-black uppercase tracking-widest text-sky-700 dark:bg-slate-800 dark:text-sky-200">
               {linkQuota.dailyLimit === null
-                ? "Link: Không giới hạn"
-                : "Link: " + linkQuota.usedToday + "/" + linkQuota.dailyLimit}
+                ? page.unlimitedLinks
+                : t("createLink.page.linksQuota", {
+                    used: linkQuota.usedToday,
+                    limit: linkQuota.dailyLimit,
+                  })}
             </span>
             {userLimits && (
               <span className="rounded-full bg-white px-3 py-1 text-[10px] font-black uppercase tracking-widest text-violet-700 dark:bg-slate-800 dark:text-violet-200">
                 {userLimits.dailyVideoUploads === null
-                  ? "Video: Không giới hạn"
-                  : `Video: ${userLimits.videoUploadsUsedToday}/${userLimits.dailyVideoUploads}`}
+                  ? page.unlimitedVideos
+                  : t("createLink.page.videosQuota", {
+                      used: userLimits.videoUploadsUsedToday,
+                      limit: userLimits.dailyVideoUploads,
+                    })}
               </span>
             )}
             {(!linkQuota.canCreate || linkQuota.plan === "free") && (
@@ -608,7 +634,7 @@ export const CreateLink = ({
                 rel="noreferrer"
                 className="ml-auto inline-flex items-center rounded-full bg-sky-600 px-4 py-2 text-[10px] font-black uppercase tracking-widest text-white transition-all hover:bg-sky-700"
               >
-                Liên hệ Zalo mở gói
+                {page.contactUpgrade}
               </a>
             )}
           </div>
@@ -626,7 +652,7 @@ export const CreateLink = ({
                   onClick={() => setError(null)}
                   className="mt-1 block text-[10px] uppercase underline"
                 >
-                  Đóng thông báo
+                  {page.closeError}
                 </button>
               </div>
             </div>
@@ -639,13 +665,13 @@ export const CreateLink = ({
           >
             <div className="pointer-events-none absolute right-0 top-0 -mr-16 -mt-16 h-32 w-32 rounded-full bg-orange-600/5 blur-3xl" />
 
-            <div className="flex flex-col gap-4 sm:gap-5 lg:flex-row lg:items-start lg:justify-between">
+                        <div className="flex flex-col gap-4 sm:gap-5 lg:flex-row lg:items-start lg:justify-between">
               <div className="min-w-0">
                 <p className="mb-2 px-1 text-[11px] font-black uppercase tracking-widest text-gray-400">
-                  Thiết lập link
+                  {page.sectionEyebrow}
                 </p>
                 <h3 className="max-w-48 text-3xl font-black leading-none tracking-tight text-gray-900 dark:text-slate-100 sm:max-w-none sm:text-2xl sm:leading-tight">
-                  Rút gọn link
+                  {page.formTitle}
                 </h3>
               </div>
               <button
@@ -660,10 +686,10 @@ export const CreateLink = ({
                 {loading ? (
                   <div className="h-5 w-5 animate-spin rounded-full border-2 border-white/30 border-t-white" />
                 ) : linkQuota && !linkQuota.canCreate ? (
-                  <>Hết lượt hôm nay</>
+                  <>{page.quotaExhausted}</>
                 ) : (
                   <>
-                    Rút gọn link <ArrowRight size={18} />
+                    {page.submit} <ArrowRight size={18} />
                   </>
                 )}
               </button>
@@ -671,8 +697,7 @@ export const CreateLink = ({
 
             <div>
               <label className="mb-3 flex items-center gap-2 px-1 text-[11px] font-black uppercase tracking-widest text-gray-400">
-                <Globe size={14} className="text-orange-500" /> Link gốc Shopee
-                / TikTok
+                <Globe size={14} className="text-orange-500" /> {page.originalLabel}
               </label>
               <div className="group relative">
                 <input
@@ -683,7 +708,7 @@ export const CreateLink = ({
                     setUrl(e.target.value);
                     clearFieldError("url");
                   }}
-                  placeholder="Dán link sản phẩm Shopee hoặc TikTok..."
+                  placeholder={page.originalPlaceholder}
                   className={inputClass(
                     "url",
                     "w-full rounded-3xl bg-gray-50 dark:bg-slate-700 px-6 py-5 font-medium text-gray-900 dark:text-slate-100 placeholder:text-gray-300 dark:placeholder:text-slate-400 focus:bg-white dark:focus:bg-slate-700 focus:ring-4 focus:ring-orange-500/10",
@@ -695,8 +720,7 @@ export const CreateLink = ({
               </div>
               {renderFieldError("url")}
               <p className="mt-2 px-1 text-[11px] font-medium text-gray-500 dark:text-slate-400">
-                Hỗ trợ link domain Shopee và TikTok để giữ flow chuyển đổi ổn
-                định.
+                {page.originalHelp}
               </p>
             </div>
 
@@ -704,8 +728,7 @@ export const CreateLink = ({
               <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
                 <div>
                   <label className="mb-3 flex items-center gap-2 px-1 text-[11px] font-black uppercase tracking-widest text-gray-400">
-                    <Type size={14} className="text-orange-500" /> Tiêu đề tùy
-                    chỉnh
+                    <Type size={14} className="text-orange-500" /> {page.titleLabel}
                   </label>
                   <input
                     data-field="customTitle"
@@ -715,7 +738,7 @@ export const CreateLink = ({
                       setCustomTitle(e.target.value);
                       clearFieldError("customTitle");
                     }}
-                    placeholder="Tiêu đề hiển thị..."
+                    placeholder={page.titlePlaceholder}
                     className={inputClass(
                       "customTitle",
                       "w-full rounded-2xl bg-gray-50 px-6 py-4 font-medium text-gray-900 dark:bg-slate-700 dark:text-slate-100 focus:bg-white dark:focus:bg-slate-700",
@@ -725,8 +748,7 @@ export const CreateLink = ({
                 </div>
                 <div>
                   <label className="mb-3 flex items-center gap-2 px-1 text-[11px] font-black uppercase tracking-widest text-gray-400">
-                    <Type size={14} className="text-orange-500" /> Mô tả bài
-                    viết
+                    <Type size={14} className="text-orange-500" /> {page.descriptionLabel}
                   </label>
                   <input
                     data-field="customDescription"
@@ -736,7 +758,7 @@ export const CreateLink = ({
                       setCustomDescription(e.target.value);
                       clearFieldError("customDescription");
                     }}
-                    placeholder="Mô tả thu hút lượt click..."
+                    placeholder={page.descriptionPlaceholder}
                     className={inputClass(
                       "customDescription",
                       "w-full rounded-2xl bg-gray-50 px-6 py-4 font-medium text-gray-900 dark:bg-slate-700 dark:text-slate-100 focus:bg-white dark:focus:bg-slate-700",
@@ -747,8 +769,7 @@ export const CreateLink = ({
               </div>
               <div>
                 <label className="mb-3 flex items-center gap-2 px-1 text-[11px] font-black uppercase tracking-widest text-gray-400">
-                  <Type size={14} className="text-orange-500" /> Mã rút gọn tùy
-                  chỉnh
+                  <Type size={14} className="text-orange-500" /> {page.shortCodeLabel}
                 </label>
                 <input
                   data-field="customShortCode"
@@ -759,7 +780,7 @@ export const CreateLink = ({
                     clearFieldError("customShortCode");
                   }}
                   maxLength={MAX_SHORT_CODE_LENGTH}
-                  placeholder="Ví dụ: toi-yeu-em"
+                  placeholder={page.shortCodePlaceholder}
                   className={inputClass(
                     "customShortCode",
                     "w-full rounded-2xl bg-gray-50 px-6 py-4 font-medium text-gray-900 dark:bg-slate-700 dark:text-slate-100 focus:bg-white dark:focus:bg-slate-700",
@@ -767,15 +788,17 @@ export const CreateLink = ({
                 />
                 {renderFieldError("customShortCode")}
                 <p className="mt-2 px-1 text-[11px] font-medium text-gray-400">
-                  Link sẽ thành:{" "}
+                  {page.previewPrefix}{" "}
                   <span className="font-black text-orange-600">
                     {normalizedShortCodePreview
                       ? `https://${customDomain || "hotsnew.click"}/s/${normalizedShortCodePreview}`
-                      : `https://${customDomain || "hotsnew.click"}/s/ma-rut-gon-cua-ban`}
+                      : `https://${customDomain || "hotsnew.click"}/s/${page.previewFallback}`}
                   </span>
                 </p>
                 <p className="mt-1 px-1 text-[11px] font-medium text-gray-400">
-                  Tối đa {MAX_SHORT_CODE_LENGTH} ký tự.
+                  {t("createLink.page.shortCodeMax", {
+                    max: MAX_SHORT_CODE_LENGTH,
+                  })}
                 </p>
               </div>
 
@@ -786,11 +809,10 @@ export const CreateLink = ({
               >
                 <div>
                   <p className="text-[11px] font-black uppercase tracking-widest text-orange-500">
-                    Cài đặt nâng cao
+                    {page.advancedTitle}
                   </p>
                   <p className="mt-1 text-xs font-medium text-gray-500 dark:text-slate-400">
-                    Domain đầu ra, UTM, affiliate, A/B test, thời hạn và flow
-                    bước 2.
+                    {page.advancedDescription}
                   </p>
                 </div>
                 <ChevronDown
@@ -802,20 +824,19 @@ export const CreateLink = ({
                 />
               </button>
 
-              {showAdvancedSettings && (
+                            {showAdvancedSettings && (
                 <div className="space-y-6">
                   <div className="grid grid-cols-1 gap-6 rounded-[1.75rem] border border-sky-100 bg-sky-50/60 p-4 sm:p-5">
                     <div>
                       <p className="mb-1 text-[11px] font-black uppercase tracking-widest text-sky-700">
-                        Marketing & Growth
+                        {page.marketingTitle}
                       </p>
                       <p className="text-xs font-medium leading-relaxed text-sky-900/70">
-                        Gắn UTM tự động, xuất link theo domain riêng và chuẩn bị
-                        sẵn dữ liệu tăng trưởng ngay từ lúc tạo.
+                        {page.marketingDescription}
                       </p>
                       {!canUseCustomDomains && (
                         <p className="mt-2 text-[11px] font-bold uppercase tracking-wider text-sky-700">
-                          Chọn domain đầu ra chỉ mở cho gói Yearly hoặc Admin.
+                          {page.customDomainLocked}
                         </p>
                       )}
                     </div>
@@ -830,7 +851,7 @@ export const CreateLink = ({
                             "cursor-not-allowed opacity-60",
                         )}
                       >
-                        <option value="">Domain mặc định: hotsnew.click</option>
+                        <option value="">{page.defaultDomain}</option>
                         {availableOutputDomains
                           .filter((domain) => domain !== "hotsnew.click")
                           .map((domain) => (
@@ -853,11 +874,10 @@ export const CreateLink = ({
                       >
                         <div>
                           <p className="text-sm font-black">
-                            Theo dấu chiến dịch (UTM Campaign Tracking)
+                            {page.campaignToggleTitle}
                           </p>
                           <p className="mt-1 text-xs font-medium opacity-70">
-                            Gắn UTM để biết click đến từ Facebook, TikTok hay
-                            Zalo.
+                            {page.campaignToggleDescription}
                           </p>
                         </div>
                         <span
@@ -868,7 +888,9 @@ export const CreateLink = ({
                               : "bg-slate-100 text-slate-500 dark:bg-slate-600/40 dark:text-slate-300",
                           )}
                         >
-                          {campaignTrackingEnabled ? "Đang bật" : "Đang tắt"}
+                          {campaignTrackingEnabled
+                            ? page.campaignEnabled
+                            : page.campaignDisabled}
                         </span>
                       </button>
                     </div>
@@ -876,37 +898,32 @@ export const CreateLink = ({
                       <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
                         <div className="space-y-2">
                           <label className="px-1 text-[11px] font-black uppercase tracking-widest text-sky-700">
-                            Nguồn traffic
+                            {page.utmSourceLabel}
                           </label>
                           <input
                             type="text"
                             value={utmSource}
                             onChange={(e) => setUtmSource(e.target.value)}
-                            placeholder="Ví dụ: facebook"
+                            placeholder={page.utmSourcePlaceholder}
                             className="w-full rounded-2xl bg-white px-6 py-4 font-medium text-gray-900 dark:bg-slate-700 dark:text-slate-100"
                           />
                           <p className="px-1 text-[11px] font-medium text-sky-900/60">
-                            Hệ thống tự gắn thêm{" "}
-                            <span className="font-black">
-                              utm_medium=social
-                            </span>
-                            .
+                            {page.utmSourceHelp}
                           </p>
                         </div>
                         <div className="space-y-2">
                           <label className="px-1 text-[11px] font-black uppercase tracking-widest text-sky-700">
-                            Tên chiến dịch
+                            {page.utmCampaignLabel}
                           </label>
                           <input
                             type="text"
                             value={utmCampaign}
                             onChange={(e) => setUtmCampaign(e.target.value)}
-                            placeholder="Ví dụ: sale-6-6 hoặc me-bim-thang-5"
+                            placeholder={page.utmCampaignPlaceholder}
                             className="w-full rounded-2xl bg-white px-6 py-4 font-medium text-gray-900 dark:bg-slate-700 dark:text-slate-100"
                           />
                           <p className="px-1 text-[11px] font-medium text-sky-900/60">
-                            Chỉ cần nhập khi bạn muốn xem hiệu quả theo từng
-                            chiến dịch cụ thể.
+                            {page.utmCampaignHelp}
                           </p>
                         </div>
                       </div>
@@ -916,11 +933,10 @@ export const CreateLink = ({
                   <div className="grid grid-cols-1 gap-6 rounded-[1.75rem] border border-violet-100 bg-violet-50/60 p-4 sm:p-5">
                     <div>
                       <p className="mb-1 text-[11px] font-black uppercase tracking-widest text-violet-700">
-                        Affiliate Integration
+                        {page.affiliateTitle}
                       </p>
                       <p className="text-xs font-medium leading-relaxed text-violet-900/70">
-                        Nhập query params affiliate để hệ thống tự gắn vào mọi
-                        link Shopee hoặc TikTok tương ứng.
+                        {page.affiliateDescription}
                       </p>
                     </div>
                     <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
@@ -930,7 +946,7 @@ export const CreateLink = ({
                         onChange={(e) =>
                           setShopeeAffiliateParams(e.target.value)
                         }
-                        placeholder="Shopee: af_id=123&sub_id=campaign-a"
+                        placeholder={page.shopeeAffiliatePlaceholder}
                         className="w-full rounded-2xl bg-white px-6 py-4 font-medium text-gray-900 dark:bg-slate-700 dark:text-slate-100"
                       />
                       <input
@@ -939,7 +955,7 @@ export const CreateLink = ({
                         onChange={(e) =>
                           setTiktokAffiliateParams(e.target.value)
                         }
-                        placeholder="TikTok: aff_id=456&sub_id=creator-b"
+                        placeholder={page.tiktokAffiliatePlaceholder}
                         className="w-full rounded-2xl bg-white px-6 py-4 font-medium text-gray-900 dark:bg-slate-700 dark:text-slate-100"
                       />
                     </div>
@@ -947,7 +963,7 @@ export const CreateLink = ({
 
                   <div>
                     <label className="mb-3 flex items-center gap-2 px-1 text-[11px] font-black uppercase tracking-widest text-gray-400">
-                      <Type size={14} className="text-orange-500" /> Dùng ở đâu
+                      <Type size={14} className="text-orange-500" /> {page.usageLabel}
                     </label>
                     <select
                       data-field="usageContext"
@@ -961,7 +977,7 @@ export const CreateLink = ({
                         "w-full rounded-2xl bg-gray-50 px-6 py-4 font-medium text-gray-900 dark:bg-slate-700 dark:text-slate-100 focus:bg-white dark:focus:bg-slate-700",
                       )}
                     >
-                      {LINK_USAGE_OPTIONS.map((option) => (
+                      {localizedUsageOptions.map((option) => (
                         <option key={option.value} value={option.value}>
                           {option.label}
                         </option>
@@ -973,8 +989,7 @@ export const CreateLink = ({
                   <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
                     <div>
                       <label className="mb-3 flex items-center gap-2 px-1 text-[11px] font-black uppercase tracking-widest text-gray-400">
-                        <Type size={14} className="text-orange-500" /> Folder
-                        chiến dịch
+                        <Type size={14} className="text-orange-500" /> {page.folderLabel}
                       </label>
                       <input
                         data-field="folderName"
@@ -984,7 +999,7 @@ export const CreateLink = ({
                           setFolderName(e.target.value);
                           clearFieldError("folderName");
                         }}
-                        placeholder="sale-6-6, remarketing, koc..."
+                        placeholder={page.folderPlaceholder}
                         className={inputClass(
                           "folderName",
                           "w-full rounded-2xl bg-gray-50 px-6 py-4 font-medium text-gray-900 dark:bg-slate-700 dark:text-slate-100 focus:bg-white dark:focus:bg-slate-700",
@@ -992,13 +1007,13 @@ export const CreateLink = ({
                       />
                       {renderFieldError("folderName")}
                       <p className="mt-2 px-1 text-[11px] font-medium text-gray-400">
-                        Nhóm link theo chiến dịch, team hoặc mùa bán hàng.
+                        {page.folderHelp}
                       </p>
                     </div>
 
                     <div>
                       <label className="mb-3 flex items-center gap-2 px-1 text-[11px] font-black uppercase tracking-widest text-gray-400">
-                        <Type size={14} className="text-orange-500" /> Tags
+                        <Type size={14} className="text-orange-500" /> {page.tagsLabel}
                       </label>
                       <input
                         data-field="tagsText"
@@ -1008,7 +1023,7 @@ export const CreateLink = ({
                           setTagsText(e.target.value);
                           clearFieldError("tagsText");
                         }}
-                        placeholder="facebook, retarget, campaign-a"
+                        placeholder={page.tagsPlaceholder}
                         className={inputClass(
                           "tagsText",
                           "w-full rounded-2xl bg-gray-50 px-6 py-4 font-medium text-gray-900 dark:bg-slate-700 dark:text-slate-100 focus:bg-white dark:focus:bg-slate-700",
@@ -1016,15 +1031,14 @@ export const CreateLink = ({
                       />
                       {renderFieldError("tagsText")}
                       <p className="mt-2 px-1 text-[11px] font-medium text-gray-400">
-                        Nhiều tag cách nhau bằng dấu phẩy để tìm/lọc sau này.
+                        {page.tagsHelp}
                       </p>
                     </div>
                   </div>
 
                   <div>
                     <label className="mb-3 flex items-center gap-2 px-1 text-[11px] font-black uppercase tracking-widest text-gray-400">
-                      <Type size={14} className="text-orange-500" /> Thời hạn
-                      link
+                      <Type size={14} className="text-orange-500" /> {page.expiryLabel}
                     </label>
                     <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
                       <button
@@ -1039,15 +1053,9 @@ export const CreateLink = ({
                             : "bg-gray-50 text-gray-500 hover:bg-gray-100 dark:bg-slate-700 dark:text-slate-300 dark:hover:bg-slate-600"
                         }`}
                       >
-                        Không hết hạn
+                        {page.expiryNever}
                       </button>
-                      {[
-                        { days: 1, label: "1 ngày" },
-                        { days: 3, label: "3 ngày" },
-                        { days: 7, label: "7 ngày" },
-                        { days: 15, label: "15 ngày" },
-                        { days: 30, label: "30 ngày" },
-                      ].map(({ days, label }) => (
+                      {expiryPresets.map(({ days, label }) => (
                         <button
                           key={days}
                           type="button"
@@ -1069,39 +1077,26 @@ export const CreateLink = ({
                     </div>
                     {renderFieldError("expiresAt")}
                     <p className="mt-2 px-1 text-[11px] font-medium text-gray-400">
-                      Link sẽ tự động vô hiệu sau thời gian đã chọn.
+                      {page.expiryHelp}
                     </p>
                   </div>
 
                   <div className="grid grid-cols-1 gap-6 rounded-[1.75rem] border border-amber-100 bg-amber-50/60 p-4 sm:p-5">
                     <div>
                       <p className="mb-1 text-[11px] font-black uppercase tracking-widest text-amber-700">
-                        {"Bọc bảo vệ 2 bước"}
+                        {page.secondaryTitle}
                       </p>
                       <p className="text-xs font-medium leading-relaxed text-amber-900/70">
-                        {
-                          "Mở link Shopee chính trước. Sau đó người dùng bấm thêm một "
-                        }
-                        {
-                          "lần nữa trên landing để mở link bước 2 trên cùng flow bảo "
-                        }
-                        {"vệ."}
+                        {page.secondaryDescription}
                       </p>
                       <p className="mt-2 text-xs font-bold leading-relaxed text-amber-800">
-                        {
-                          "Chỉ dùng mode Shopee khi link gốc và link bước 2 cùng một "
-                        }
-                        {
-                          "nguồn affiliate. Nếu chọn TikTok thì bước 2 sẽ mở sang nền "
-                        }
-                        {"tảng TikTok ở lần bấm tiếp theo."}
+                        {page.secondaryWarning}
                       </p>
                     </div>
                     <div className="grid grid-cols-1 gap-6">
                       <div>
                         <label className="mb-3 flex items-center gap-2 px-1 text-[11px] font-black uppercase tracking-widest text-gray-500">
-                          <Type size={14} className="text-orange-500" />{" "}
-                          {"Bước 2 mở gì"}
+                          <Type size={14} className="text-orange-500" /> {page.secondaryTargetLabel}
                         </label>
                         <select
                           value={secondaryTargetType}
@@ -1117,14 +1112,13 @@ export const CreateLink = ({
                               : "cursor-not-allowed bg-gray-100 text-gray-400 dark:bg-slate-800 dark:text-slate-500"
                           }`}
                         >
-                          <option value="shopee">Shopee</option>
-                          <option value="tiktok">TikTok</option>
+                          <option value="shopee">{page.secondaryTargetShopee}</option>
+                          <option value="tiktok">{page.secondaryTargetTikTok}</option>
                         </select>
                       </div>
                       <div>
                         <label className="mb-3 flex items-center gap-2 px-1 text-[11px] font-black uppercase tracking-widest text-gray-500">
-                          <Globe size={14} className="text-orange-500" />{" "}
-                          {"Link bước 2"}
+                          <Globe size={14} className="text-orange-500" /> {page.secondaryUrlLabel}
                         </label>
                         <input
                           data-field="secondaryUrl"
@@ -1137,8 +1131,8 @@ export const CreateLink = ({
                           }}
                           placeholder={
                             secondaryTargetType === "tiktok"
-                              ? "https://www.tiktok.com/..."
-                              : "https://shopee.vn/...."
+                              ? page.secondaryUrlPlaceholderTikTok
+                              : page.secondaryUrlPlaceholderShopee
                           }
                           className={inputClass(
                             "secondaryUrl",
@@ -1150,15 +1144,15 @@ export const CreateLink = ({
                         {renderFieldError("secondaryUrl")}
                         {!canUseSecondaryFlow && (
                           <p className="mt-2 px-1 text-[11px] font-medium text-gray-500">
-                            Tải video lên trước thì mới bật được link bước 2.
+                            {page.secondaryUrlHelpDisabled}
                           </p>
                         )}
                         {canUseSecondaryFlow && (
                           <p className="mt-2 px-1 text-[11px] font-medium text-gray-500">
-                            {"Bỏ trống nếu chỉ muốn đi 1 link như bình thường."}
+                            {page.secondaryUrlHelpEmpty}{" "}
                             {secondaryTargetType === "tiktok"
-                              ? " Chỉ hỗ trợ domain TikTok."
-                              : " Chỉ hỗ trợ domain Shopee."}
+                              ? page.secondaryUrlHelpTikTokOnly
+                              : page.secondaryUrlHelpShopeeOnly}
                           </p>
                         )}
                       </div>
@@ -1169,11 +1163,10 @@ export const CreateLink = ({
                     <div className="flex items-center justify-between gap-4">
                       <div>
                         <p className="mb-1 text-[11px] font-black uppercase tracking-widest text-emerald-700">
-                          A/B Testing
+                          {page.abTitle}
                         </p>
                         <p className="text-xs font-medium leading-relaxed text-emerald-900/70">
-                          Chia traffic 50/50 giữa variant A hiện tại và variant
-                          B để test landing hoặc đích chuyển đổi.
+                          {page.abDescription}
                         </p>
                       </div>
                       <button
@@ -1192,13 +1185,13 @@ export const CreateLink = ({
                             : "bg-white text-emerald-700",
                         )}
                       >
-                        {abTestEnabled ? "A/B On" : "A/B Off"}
+                        {abTestEnabled ? page.abToggleOn : page.abToggleOff}
                       </button>
                     </div>
 
                     {!canUseAbTesting && (
                       <p className="text-xs font-bold text-emerald-800/80">
-                        A/B testing hiện chỉ mở cho gói năm hoặc admin.
+                        {page.abLocked}
                       </p>
                     )}
 
@@ -1208,7 +1201,7 @@ export const CreateLink = ({
                           type="text"
                           value={abVariantBTitle}
                           onChange={(e) => setAbVariantBTitle(e.target.value)}
-                          placeholder="Variant B title"
+                          placeholder={page.abVariantBTitlePlaceholder}
                           className="w-full rounded-2xl bg-white px-6 py-4 font-medium text-gray-900 dark:bg-slate-700 dark:text-slate-100"
                         />
                         <input
@@ -1217,7 +1210,7 @@ export const CreateLink = ({
                           onChange={(e) =>
                             setAbVariantBOriginalUrl(e.target.value)
                           }
-                          placeholder="Variant B primary URL"
+                          placeholder={page.abVariantBUrlPlaceholder}
                           className="w-full rounded-2xl bg-white px-6 py-4 font-medium text-gray-900 dark:bg-slate-700 dark:text-slate-100"
                         />
                         <textarea
@@ -1225,7 +1218,7 @@ export const CreateLink = ({
                           onChange={(e) =>
                             setAbVariantBDescription(e.target.value)
                           }
-                          placeholder="Variant B description"
+                          placeholder={page.abVariantBDescriptionPlaceholder}
                           rows={4}
                           className="w-full rounded-2xl bg-white px-6 py-4 font-medium text-gray-900 dark:bg-slate-700 dark:text-slate-100 md:col-span-2"
                         />
@@ -1235,7 +1228,7 @@ export const CreateLink = ({
                           onChange={(e) =>
                             setAbVariantBImageUrl(e.target.value)
                           }
-                          placeholder="Variant B image URL"
+                          placeholder={page.abVariantBImagePlaceholder}
                           className="w-full rounded-2xl bg-white px-6 py-4 font-medium text-gray-900 dark:bg-slate-700 dark:text-slate-100"
                         />
                         <input
@@ -1244,7 +1237,7 @@ export const CreateLink = ({
                           onChange={(e) =>
                             setAbVariantBVideoUrl(e.target.value)
                           }
-                          placeholder="Variant B video URL"
+                          placeholder={page.abVariantBVideoPlaceholder}
                           className="w-full rounded-2xl bg-white px-6 py-4 font-medium text-gray-900 dark:bg-slate-700 dark:text-slate-100"
                         />
                         <input
@@ -1253,7 +1246,7 @@ export const CreateLink = ({
                           onChange={(e) =>
                             setAbVariantBSecondaryUrl(e.target.value)
                           }
-                          placeholder="Variant B secondary URL"
+                          placeholder={page.abVariantBSecondaryPlaceholder}
                           className="w-full rounded-2xl bg-white px-6 py-4 font-medium text-gray-900 dark:bg-slate-700 dark:text-slate-100 md:col-span-2"
                         />
                       </div>
@@ -1265,8 +1258,8 @@ export const CreateLink = ({
               <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 lg:items-stretch">
                 <div className="flex flex-col space-y-4">
                   <label className="flex items-center gap-2 px-1 text-[11px] font-black uppercase tracking-widest text-gray-400">
-                    <VideoIcon size={14} className="text-orange-500" /> Đính kèm
-                    video (tùy chọn)
+                    <VideoIcon size={14} className="text-orange-500" />{" "}
+                    {page.videoLabel}
                   </label>
                   <input
                     type="file"
@@ -1350,11 +1343,11 @@ export const CreateLink = ({
                       <span className="text-[11px] uppercase tracking-wider sm:text-xs">
                         {uploadingVideo
                           ? videoUploadProgress > 0
-                            ? "Đang tải video lên..."
-                            : "Đang chuẩn bị video..."
+                            ? page.videoUploading
+                            : page.videoPreparing
                           : videoUrl
-                            ? "Thay đổi video"
-                            : "Tải video lên Cloudinary"}
+                            ? page.videoReplace
+                            : page.videoUpload}
                       </span>
                     </div>
                     {videoUrl && (
@@ -1364,28 +1357,30 @@ export const CreateLink = ({
                     )}
                   </button>
                   <p className="px-1 text-[11px] font-medium text-gray-500">
-                    Drag and drop a video here, or click to browse.
+                    {page.videoDropHelp}
                   </p>
                   {userLimits && (
                     <p className="px-1 text-[11px] font-bold text-violet-600 dark:text-violet-300">
                       {userLimits.dailyVideoUploads === null
-                        ? "Gói hiện tại được upload video không giới hạn / ngày."
-                        : `Hôm nay còn ${videoUploadsRemainingToday} / ${userLimits.dailyVideoUploads} lượt upload video.`}
+                        ? page.videoQuotaUnlimited
+                        : t("createLink.page.videoQuotaRemaining", {
+                            remaining: videoUploadsRemainingToday ?? 0,
+                            limit: userLimits.dailyVideoUploads,
+                          })}
                     </p>
                   )}
                   {videoUploadBlocked && (
                     <p className="px-1 text-[11px] font-bold text-amber-600 dark:text-amber-300">
                       {userLimits?.dailyVideoUploads === 0
-                        ? "Gói hiện tại chưa hỗ trợ upload video."
-                        : "Bạn đã dùng hết quota upload video hôm nay."}
+                        ? page.videoQuotaUnsupported
+                        : page.videoQuotaExhausted}
                     </p>
                   )}
                   {renderFieldError("videoUrl")}
 
                   {videoUploadSuccess && (
                     <div className="flex items-center gap-2 rounded-xl border border-green-100 bg-green-50 px-4 py-2 text-[10px] font-black uppercase tracking-widest text-green-600">
-                      <ShieldCheck size={14} /> Tải dữ liệu lên đám mây thành
-                      công!
+                      <ShieldCheck size={14} /> {page.videoUploadSuccess}
                     </div>
                   )}
 
@@ -1425,7 +1420,7 @@ export const CreateLink = ({
                 <div className="flex flex-col space-y-4">
                   <label className="flex items-center gap-2 px-1 text-[11px] font-black uppercase tracking-widest text-gray-400">
                     <ImageIcon size={14} className="text-orange-500" />
-                    Thumbnail
+                    {page.thumbnailLabel}
                   </label>
                   <input
                     type="file"
@@ -1439,7 +1434,7 @@ export const CreateLink = ({
                     onClick={() => thumbnailInputRef.current?.click()}
                     onDragOver={(event) => event.preventDefault()}
                     onDrop={handleThumbnailDrop}
-                    className="group flex min-h-18 w-full items-center justify-between gap-4 rounded-2xl border-2 border-dashed border-sky-100 bg-sky-50/40 px-5 py-4 text-left transition-all hover:border-sky-300 hover:bg-sky-50/70 dark:border-sky-900/50 dark:bg-sky-950/20 dark:hover:border-sky-700 dark:hover:bg-sky-950/30 sm:px-6"
+                    className="group flex min-h-[72px] w-full items-center justify-between gap-4 rounded-2xl border-2 border-dashed border-sky-100 bg-sky-50/40 px-5 py-4 text-left transition-all hover:border-sky-300 hover:bg-sky-50/70 dark:border-sky-900/50 dark:bg-sky-950/20 dark:hover:border-sky-700 dark:hover:bg-sky-950/30 sm:px-6"
                   >
                     <div className="flex items-center gap-3 font-bold text-sky-500 group-hover:text-sky-700 dark:text-sky-300 dark:group-hover:text-sky-200">
                       <div className="relative flex h-10 w-10 items-center justify-center rounded-xl bg-white shadow-sm dark:bg-slate-800">
@@ -1485,8 +1480,8 @@ export const CreateLink = ({
                       </div>
                       <span className="text-[11px] uppercase tracking-wider sm:text-xs">
                         {uploadingThumbnail
-                          ? "Đang tải ảnh thumbnail..."
-                          : "Chọn ảnh thumbnail từ máy"}
+                          ? page.thumbnailUploading
+                          : page.thumbnailSelect}
                       </span>
                     </div>
                     {customImageUrl && (
@@ -1499,12 +1494,11 @@ export const CreateLink = ({
                     )}
                   </button>
                   <p className="px-1 text-[11px] font-medium text-gray-500 dark:text-slate-400">
-                    Có thể keo thả ảnh vào đây, hoặc bấm để chọn ảnh từ thư mục
-                    trên máy.
+                    {page.thumbnailDropHelp}
                   </p>
                   {thumbnailUploadSuccess && (
                     <div className="flex items-center gap-2 rounded-xl border border-green-100 bg-green-50 px-4 py-2 text-[10px] font-black uppercase tracking-widest text-green-600 dark:border-green-900/50 dark:bg-green-950/30 dark:text-green-300">
-                      <ShieldCheck size={14} /> Tải thumbnail thành công
+                      <ShieldCheck size={14} /> {page.thumbnailUploadSuccess}
                     </div>
                   )}
                   <input
@@ -1516,7 +1510,7 @@ export const CreateLink = ({
                       clearFieldError("customImageUrl");
                       clearFieldError("videoUrl");
                     }}
-                    placeholder="Link ảnh cover..."
+                    placeholder={page.thumbnailUrlPlaceholder}
                     className={inputClass(
                       "customImageUrl",
                       "min-h-21 w-full rounded-2xl bg-gray-50 px-6 py-4 font-medium text-gray-900 dark:bg-slate-700 dark:text-slate-100 focus:bg-white dark:focus:bg-slate-700",
@@ -1537,7 +1531,7 @@ export const CreateLink = ({
                     >
                       <img
                         src={customImageUrl}
-                        alt="Thumbnail preview"
+                        alt={page.thumbnailPreviewAlt}
                         onLoad={handleThumbnailPreviewLoad}
                         className={cn(
                           "h-full w-full bg-black",
@@ -1559,7 +1553,7 @@ export const CreateLink = ({
             {!result && (
               <div className="absolute inset-0 z-10 flex items-center justify-center bg-white/40 p-6 text-center backdrop-blur-[2px] dark:bg-slate-900/50">
                 <p className="rounded-full bg-gray-900 px-4 py-2 text-[10px] font-bold uppercase text-white">
-                  Review Mode
+                  {content.result.review}
                 </p>
               </div>
             )}
@@ -1574,13 +1568,13 @@ export const CreateLink = ({
                       ? "object-contain"
                       : "object-cover",
                   )}
-                  alt="Preview cover"
+                  alt={content.result.previewImageAlt}
                 />
               ) : (
                 <div className="flex flex-col items-center gap-2 opacity-20">
                   <ImageIcon size={40} />
                   <span className="text-[10px] font-black uppercase tracking-widest">
-                    No Preview Available
+                    {content.result.previewEmpty}
                   </span>
                 </div>
               )}
@@ -1591,11 +1585,10 @@ export const CreateLink = ({
                 {(customDomain || "hotsnew.click").toUpperCase()}
               </p>
               <h4 className="mb-2 line-clamp-2 text-lg font-black leading-tight text-gray-900 dark:text-slate-100">
-                {customTitle || "Tiêu đề của bạn sẽ xuất hiện tại đây..."}
+                {customTitle || content.result.previewTitleFallback}
               </h4>
               <p className="line-clamp-2 text-[13px] font-medium leading-relaxed text-gray-600 opacity-70 dark:text-slate-400">
-                {customDescription ||
-                  "Hệ thống sẽ tự động tạo landing page chứa video và tiêu đề chuyên nghiệp như một trang tin tức thực thụ."}
+                {customDescription || content.result.previewDescriptionFallback}
               </p>
             </div>
           </div>
@@ -1614,7 +1607,9 @@ export const CreateLink = ({
 
             <div className="relative z-10 mb-6 flex items-center justify-between gap-3 sm:mb-8">
               <span className="rounded-full bg-orange-50 px-3 py-1 text-[10px] font-black uppercase tracking-[0.2em] text-orange-600">
-                Link ID: {result?.short_code || "########"}
+                {t("createLink.result.codeLabel", {
+                  code: result?.short_code || "########",
+                })}
               </span>
               <button
                 onClick={() =>
@@ -1638,14 +1633,14 @@ export const CreateLink = ({
                 disabled={!result}
                 className="flex items-center justify-center gap-2 rounded-2xl bg-gray-900 py-4 text-[10px] font-black uppercase tracking-widest text-white shadow-lg transition-all hover:bg-black active:scale-95 dark:bg-slate-700 dark:hover:bg-slate-600 sm:py-5"
               >
-                <Copy size={16} /> Sao chép Link
+                <Copy size={16} /> {content.result.copyLink}
               </button>
               <button
                 onClick={() => result && setShowQrModal(true)}
                 disabled={!result}
                 className="flex items-center justify-center gap-2 rounded-2xl border-2 border-gray-100 bg-white py-4 text-[10px] font-black uppercase tracking-widest text-gray-900 shadow-sm transition-all hover:bg-gray-50 active:scale-95 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700 sm:py-5"
               >
-                <QrCode size={16} /> QR Code
+                <QrCode size={16} /> {content.result.qr}
               </button>
             </div>
           </div>
@@ -1661,10 +1656,10 @@ export const CreateLink = ({
           />
           <div className="relative bg-white rounded-[2.5rem] p-8 max-w-sm w-full shadow-2xl border border-gray-100 dark:border-slate-700 dark:bg-slate-800">
             <h3 className="text-xl font-black text-gray-900 dark:text-slate-100 mb-2 text-center">
-              QR Code
+              {content.qrModal.title}
             </h3>
             <p className="text-gray-500 dark:text-slate-400 font-medium text-sm text-center mb-6">
-              Quét để truy cập link
+              {content.qrModal.description}
             </p>
 
             <div className="flex justify-center mb-6">
@@ -1683,14 +1678,14 @@ export const CreateLink = ({
                 onClick={() => setShowQrModal(false)}
                 className="flex-1 py-4 bg-gray-100 text-gray-500 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-gray-200 transition-all dark:bg-slate-700 dark:text-slate-300 dark:hover:bg-slate-600"
               >
-                Đóng
+                {content.qrModal.close}
               </button>
               <a
                 href={`https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=${encodeURIComponent(convertedResultUrl)}&download=1`}
                 download={`qr-${result.short_code}.png`}
                 className="flex-1 py-4 bg-gray-900 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-black transition-all text-center dark:bg-slate-700 dark:hover:bg-slate-600"
               >
-                Tải xuống
+                {content.qrModal.download}
               </a>
             </div>
           </div>

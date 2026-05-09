@@ -66,7 +66,7 @@ export function useWorkspaces({ user, fetchWithAuth }: UseWorkspacesProps) {
         const res = await fetchWithAuth("/api/v1/user/workspaces");
         const data = await res.json();
         if (!res.ok) {
-          throw new Error(data.error || "Khong the tai workspace");
+          throw new Error(data.error || "Không thể tải không gian làm việc");
         }
 
         const nextWorkspaces = data as Workspace[];
@@ -87,7 +87,7 @@ export function useWorkspaces({ user, fetchWithAuth }: UseWorkspacesProps) {
             : fallbackWorkspaceId,
         );
       } catch (error: any) {
-        toast.error(error.message || "Loi khi tai workspace");
+      toast.error(error.message || "Lỗi khi tải không gian làm việc");
       } finally {
         setWorkspaceLoading(false);
         setWorkspaceResolved(true);
@@ -145,13 +145,13 @@ export function useWorkspaces({ user, fetchWithAuth }: UseWorkspacesProps) {
         const res = await fetchWithAuth("/api/v1/user/workspace-invitations");
         const data = await res.json();
         if (!res.ok) {
-          throw new Error(data.error || "Không thể tải lời mời workspace");
+          throw new Error(data.error || "Không thể tải lời mời vào không gian");
         }
 
         setPendingInvitations(data as WorkspaceInvitation[]);
         pendingInvitationsLoadedRef.current = true;
       } catch (error: any) {
-        toast.error(error.message || "Lỗi khi tải lời mời workspace");
+        toast.error(error.message || "Lỗi khi tải lời mời vào không gian");
       } finally {
         setPendingInvitationsLoading(false);
       }
@@ -204,7 +204,7 @@ export function useWorkspaces({ user, fetchWithAuth }: UseWorkspacesProps) {
       });
       const data = await res.json();
       if (!res.ok) {
-        throw new Error(data.error || "Khong the tao workspace");
+        throw new Error(data.error || "Không thể tạo không gian làm việc");
       }
 
       const nextWorkspace = data as Workspace;
@@ -212,7 +212,7 @@ export function useWorkspaces({ user, fetchWithAuth }: UseWorkspacesProps) {
       setCurrentWorkspaceId(nextWorkspace.id);
       await fetchMembers(nextWorkspace.id, true);
       await fetchSentInvitations(nextWorkspace.id, true);
-      toast.success("Da tao workspace moi");
+      toast.success("Đã tạo không gian làm việc mới");
       return nextWorkspace;
     },
     [fetchMembers, fetchSentInvitations, fetchWithAuth, fetchWorkspaces],
@@ -275,7 +275,7 @@ export function useWorkspaces({ user, fetchWithAuth }: UseWorkspacesProps) {
       }
 
       await fetchMembers(workspaceId, true);
-      toast.success("Đã xóa thành viên khỏi workspace");
+      toast.success("Đã xóa thành viên khỏi không gian");
     },
     [fetchMembers, fetchWithAuth],
   );
@@ -296,7 +296,7 @@ export function useWorkspaces({ user, fetchWithAuth }: UseWorkspacesProps) {
       await fetchWorkspaces(true);
       setCurrentWorkspaceId(invitation.workspace_id);
       await fetchMembers(invitation.workspace_id, true);
-      toast.success(`Đã tham gia workspace ${invitation.workspace_name}`);
+      toast.success(`Đã tham gia không gian ${invitation.workspace_name}`);
       return invitation;
     },
     [fetchMembers, fetchPendingInvitations, fetchWithAuth, fetchWorkspaces],
@@ -314,7 +314,7 @@ export function useWorkspaces({ user, fetchWithAuth }: UseWorkspacesProps) {
       }
 
       await fetchPendingInvitations(true);
-      toast.success("Đã từ chối lời mời workspace");
+      toast.success("Đã từ chối lời mời vào không gian");
       return data as WorkspaceInvitation;
     },
     [fetchPendingInvitations, fetchWithAuth],
@@ -334,7 +334,7 @@ export function useWorkspaces({ user, fetchWithAuth }: UseWorkspacesProps) {
       }
 
       await fetchSentInvitations(workspaceId, true);
-      toast.success("Đã hủy lời mời workspace");
+      toast.success("Đã hủy lời mời vào không gian");
       return data as WorkspaceInvitation;
     },
     [fetchSentInvitations, fetchWithAuth],

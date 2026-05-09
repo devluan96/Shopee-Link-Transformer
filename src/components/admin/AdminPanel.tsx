@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/src/lib/utils";
 import { AccessLogEntry, BlockedIpEntry, UserProfile } from "@/src/types";
+import { useLocale } from "@/src/hooks/useLocale";
 
 interface UserLink {
   id: string;
@@ -74,6 +75,10 @@ export const AdminPanel = ({
   handleDeleteUser,
   fetchWithAuth,
 }: AdminPanelProps) => {
+  const { locale, messages, t } = useLocale();
+  const dateLocale = locale === "vi" ? "vi-VN" : "en-US";
+  const content = messages.admin;
+
   const [deleteId, setDeleteId] = React.useState<string | null>(null);
   const [searchTerm, setSearchTerm] = React.useState("");
   const [planFilter, setPlanFilter] = React.useState<
@@ -98,42 +103,32 @@ export const AdminPanel = ({
     setDomainList(outputDomains);
   }, [outputDomains]);
 
-  const confirmDelete = () => {
-    if (deleteId) {
-      handleDeleteUser(deleteId);
-      setDeleteId(null);
-    }
-  };
-
   React.useEffect(() => {
-    if (selectedUser && fetchWithAuth) {
-      setUserLinksLoading(true);
-      fetchWithAuth(`/api/v1/admin/users/${selectedUser.id}/links`)
-        .then((res) => res.json())
-        .then((data) => {
-          setUserLinks(data || []);
-          setUserLinksLoading(false);
-        })
-        .catch(() => {
-          setUserLinks([]);
-          setUserLinksLoading(false);
-        });
-    }
+    if (!selectedUser || !fetchWithAuth) return;
+
+    setUserLinksLoading(true);
+    fetchWithAuth(`/api/v1/admin/users/${selectedUser.id}/links`)
+      .then((res) => res.json())
+      .then((data) => setUserLinks(data || []))
+      .catch(() => setUserLinks([]))
+      .finally(() => setUserLinksLoading(false));
   }, [selectedUser, fetchWithAuth]);
 
-  const filteredUsers = React.useMemo(() => {
-    return allUsers.filter((user) => {
-      const matchesSearch =
-        user.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        user.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        false;
-      const matchesPlan =
-        planFilter === "all" || user.subscription_plan === planFilter;
-      const matchesStatus =
-        statusFilter === "all" || user.status === statusFilter;
-      return matchesSearch && matchesPlan && matchesStatus;
-    });
-  }, [allUsers, searchTerm, planFilter, statusFilter]);
+  const filteredUsers = React.useMemo(
+    () =>
+      allUsers.filter((user) => {
+        const matchesSearch =
+          user.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          user.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          false;
+        const matchesPlan =
+          planFilter === "all" || user.subscription_plan === planFilter;
+        const matchesStatus =
+          statusFilter === "all" || user.status === statusFilter;
+        return matchesSearch && matchesPlan && matchesStatus;
+      }),
+    [allUsers, searchTerm, planFilter, statusFilter],
+  );
 
   const stats = React.useMemo(() => {
     const totalUsers = allUsers.length;
@@ -148,6 +143,12 @@ export const AdminPanel = ({
     }, 0);
     return { totalUsers, premiumUsers, pendingUsers, revenue };
   }, [allUsers]);
+
+  const confirmDelete = () => {
+    if (!deleteId) return;
+    handleDeleteUser(deleteId);
+    setDeleteId(null);
+  };
 
   const handleBlockIpSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -167,7 +168,12 @@ export const AdminPanel = ({
   };
 
   const handleAddDomain = () => {
-    const normalized = domainDraft.trim().toLowerCase().replace(/^https?:\/\//, "").replace(/\/+$/, "");
+    const normalized = domainDraft
+      .trim()
+      .toLowerCase()
+      .replace(/^https?:\/\//, "")
+      .replace(/\/+$/, "");
+
     if (!normalized || domainList.includes(normalized)) return;
     setDomainList((current) => [...current, normalized]);
     setDomainDraft("");
@@ -182,6 +188,28 @@ export const AdminPanel = ({
     }
   };
 
+  const getStatusLabel = (status?: string) =>
+    status === "approved" ? content.statuses.approved : content.statuses.pending;
+
+  const getPlanLabel = (plan?: string | null) => {
+    if (plan === "monthly") return content.plans.monthly;
+    if (plan === "yearly") return content.plans.yearly;
+    return content.plans.free;
+  };
+
+  const planOptions = [
+    { value: "all", label: content.filters.allPlans },
+    { value: "free", label: content.plans.free },
+    { value: "monthly", label: content.plans.monthly },
+    { value: "yearly", label: content.plans.yearly },
+  ] as const;
+
+  const statusOptions = [
+    { value: "all", label: content.filters.allStatuses },
+    { value: "approved", label: content.statuses.approved },
+    { value: "pending", label: content.statuses.pending },
+  ] as const;
+
   return (
     <div key="admin">
       {deleteId && (
@@ -192,24 +220,23 @@ export const AdminPanel = ({
           />
           <div className="relative w-full max-w-sm rounded-[2.5rem] border border-gray-100 bg-white p-8 shadow-2xl dark:border-slate-700 dark:bg-slate-800">
             <h3 className="mb-2 text-xl font-black text-gray-900 dark:text-slate-100">
-              Xác nhận xóa?
+              {content.deleteModal.title}
             </h3>
             <p className="mb-8 text-sm font-medium leading-relaxed text-gray-500 dark:text-slate-400">
-              Bạn có chắc chắn muốn xóa người dùng này? Mọi liên kết và dữ liệu
-              liên quan sẽ bị xóa vĩnh viễn.
+              {content.deleteModal.description}
             </p>
             <div className="flex gap-4">
               <button
                 onClick={() => setDeleteId(null)}
                 className="flex-1 rounded-2xl bg-gray-100 py-4 text-xs font-black uppercase tracking-widest text-gray-500 transition-all hover:bg-gray-200 dark:bg-slate-700 dark:text-slate-300 dark:hover:bg-slate-600"
               >
-                Hủy
+                {content.deleteModal.cancel}
               </button>
               <button
                 onClick={confirmDelete}
                 className="flex-1 rounded-2xl bg-red-600 py-4 text-xs font-black uppercase tracking-widest text-white transition-all hover:bg-red-700"
               >
-                Xóa ngay
+                {content.deleteModal.confirm}
               </button>
             </div>
           </div>
@@ -223,46 +250,49 @@ export const AdminPanel = ({
               <UsersIcon size={20} className="text-blue-600" />
             </div>
             <span className="text-sm font-medium text-gray-500 dark:text-slate-400">
-              Tổng Users
+              {content.stats.totalUsers}
             </span>
           </div>
           <div className="text-2xl font-black text-gray-900 dark:text-slate-100">
             {stats.totalUsers}
           </div>
         </div>
+
         <div className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-800">
           <div className="mb-2 flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-green-100">
               <Check size={20} className="text-green-600" />
             </div>
             <span className="text-sm font-medium text-gray-500 dark:text-slate-400">
-              Premium
+              {content.stats.premiumUsers}
             </span>
           </div>
           <div className="text-2xl font-black text-gray-900 dark:text-slate-100">
             {stats.premiumUsers}
           </div>
         </div>
+
         <div className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-800">
           <div className="mb-2 flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-orange-100">
               <UserCheck size={20} className="text-orange-600" />
             </div>
             <span className="text-sm font-medium text-gray-500 dark:text-slate-400">
-              Chờ Duyệt
+              {content.stats.pendingUsers}
             </span>
           </div>
           <div className="text-2xl font-black text-gray-900 dark:text-slate-100">
             {stats.pendingUsers}
           </div>
         </div>
+
         <div className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-800">
           <div className="mb-2 flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-purple-100">
               <BarChart3 size={20} className="text-purple-600" />
             </div>
             <span className="text-sm font-medium text-gray-500 dark:text-slate-400">
-              Doanh Thu
+              {content.stats.revenue}
             </span>
           </div>
           <div className="text-2xl font-black text-gray-900 dark:text-slate-100">
@@ -273,10 +303,10 @@ export const AdminPanel = ({
 
       <header className="mb-8">
         <h2 className="mb-2 text-3xl font-black text-gray-900 dark:text-slate-100">
-          Quản Lý Người Dùng
+          {content.header.title}
         </h2>
         <p className="font-medium text-gray-500 dark:text-slate-400">
-          Quản lý, phê duyệt và theo dõi hoạt động thành viên
+          {content.header.description}
         </p>
       </header>
 
@@ -286,10 +316,10 @@ export const AdminPanel = ({
             <Globe className="text-sky-500" size={20} />
             <div>
               <h3 className="text-xl font-black text-gray-900 dark:text-slate-100">
-                Output Domains
+                {content.domains.title}
               </h3>
               <p className="text-sm font-medium text-gray-500 dark:text-slate-400">
-                Chọn trước 2-3 domain đầu ra để user gói Yearly chọn khi tạo link.
+                {content.domains.description}
               </p>
             </div>
           </div>
@@ -331,7 +361,7 @@ export const AdminPanel = ({
               onClick={handleAddDomain}
               className="rounded-2xl bg-sky-600 px-6 py-4 text-xs font-black uppercase tracking-widest text-white"
             >
-              Thêm domain
+              {content.domains.add}
             </button>
             <button
               type="button"
@@ -339,7 +369,7 @@ export const AdminPanel = ({
               disabled={savingDomains || outputDomainsLoading}
               className="rounded-2xl bg-gray-900 px-6 py-4 text-xs font-black uppercase tracking-widest text-white disabled:opacity-60"
             >
-              {savingDomains ? "Đang lưu..." : "Lưu danh sách"}
+              {savingDomains ? content.domains.saving : content.domains.save}
             </button>
           </div>
         </section>
@@ -349,21 +379,21 @@ export const AdminPanel = ({
             <Shield size={20} className="text-orange-500" />
             <div>
               <h3 className="text-xl font-black text-gray-900 dark:text-slate-100">
-                Access Logs
+                {content.accessLogs.title}
               </h3>
               <p className="text-sm text-gray-500 dark:text-slate-400">
-                Lịch sử truy cập gần đây trên toàn hệ thống.
+                {content.accessLogs.description}
               </p>
             </div>
           </div>
           <div className="max-h-105 space-y-3 overflow-auto">
             {adminSecurityLoading ? (
               <div className="rounded-2xl bg-gray-50 px-4 py-10 text-center text-sm font-medium text-gray-400 dark:bg-slate-900 dark:text-slate-500">
-                Đang tải access logs...
+                {content.accessLogs.loading}
               </div>
             ) : adminAccessLogs.length === 0 ? (
               <div className="rounded-2xl bg-gray-50 px-4 py-10 text-center text-sm font-medium text-gray-400 dark:bg-slate-900 dark:text-slate-500">
-                Chưa có access log nào.
+                {content.accessLogs.empty}
               </div>
             ) : (
               adminAccessLogs.slice(0, 25).map((log) => (
@@ -383,13 +413,13 @@ export const AdminPanel = ({
                           : "bg-green-100 text-green-600",
                       )}
                     >
-                      {log.blocked ? "BLOCKED" : log.status_code}
+                      {log.blocked ? content.accessLogs.blocked : log.status_code}
                     </span>
                   </div>
                   <p className="mt-1 text-xs text-gray-500 dark:text-slate-400">
-                    {log.email || log.user_id || "Guest"} ·{" "}
-                    {log.ip_address || "Unknown IP"} ·{" "}
-                    {new Date(log.created_at).toLocaleString("vi-VN")}
+                    {log.email || log.user_id || content.accessLogs.guest} ·{" "}
+                    {log.ip_address || content.accessLogs.unknownIp} ·{" "}
+                    {new Date(log.created_at).toLocaleString(dateLocale)}
                   </p>
                 </div>
               ))
@@ -402,10 +432,10 @@ export const AdminPanel = ({
             <Ban size={20} className="text-red-500" />
             <div>
               <h3 className="text-xl font-black text-gray-900 dark:text-slate-100">
-                IP Blocking
+                {content.ipBlock.title}
               </h3>
               <p className="text-sm text-gray-500 dark:text-slate-400">
-                Chặn IP độc hại hoặc truy cập bất thường.
+                {content.ipBlock.description}
               </p>
             </div>
           </div>
@@ -418,14 +448,14 @@ export const AdminPanel = ({
               type="text"
               value={blockedIpAddress}
               onChange={(e) => setBlockedIpAddress(e.target.value)}
-              placeholder="Ví dụ: 203.113.10.5"
+              placeholder={content.ipBlock.ipPlaceholder}
               className="w-full rounded-2xl border border-transparent bg-white px-4 py-3 font-medium text-gray-900 outline-none transition-all focus:ring-4 focus:ring-red-500/10 dark:bg-slate-800 dark:text-slate-100"
             />
             <input
               type="text"
               value={blockedIpReason}
               onChange={(e) => setBlockedIpReason(e.target.value)}
-              placeholder="Lý do chặn IP..."
+              placeholder={content.ipBlock.reasonPlaceholder}
               className="w-full rounded-2xl border border-transparent bg-white px-4 py-3 font-medium text-gray-900 outline-none transition-all focus:ring-4 focus:ring-red-500/10 dark:bg-slate-800 dark:text-slate-100"
             />
             <button
@@ -433,14 +463,14 @@ export const AdminPanel = ({
               disabled={blockingIp}
               className="w-full rounded-2xl bg-red-600 px-4 py-3 text-xs font-black uppercase tracking-widest text-white transition-all hover:bg-red-700 disabled:opacity-60"
             >
-              {blockingIp ? "Đang chặn..." : "Chặn IP"}
+              {blockingIp ? content.ipBlock.submitting : content.ipBlock.submit}
             </button>
           </form>
 
           <div className="mt-5 max-h-60 space-y-3 overflow-auto">
             {blockedIps.length === 0 ? (
               <div className="rounded-2xl bg-gray-50 px-4 py-8 text-center text-sm font-medium text-gray-400 dark:bg-slate-900 dark:text-slate-500">
-                Chưa có IP nào bị chặn.
+                {content.ipBlock.empty}
               </div>
             ) : (
               blockedIps.map((item) => (
@@ -454,8 +484,10 @@ export const AdminPanel = ({
                         {item.ip_address}
                       </p>
                       <p className="mt-1 text-xs text-gray-500 dark:text-slate-400">
-                        {item.reason || "Không có ghi chú"} ·{" "}
-                        {item.active ? "Đang chặn" : "Đã gỡ"}
+                        {item.reason || content.ipBlock.noReason} ·{" "}
+                        {item.active
+                          ? content.ipBlock.active
+                          : content.ipBlock.inactive}
                       </p>
                     </div>
                     {item.active && (
@@ -465,7 +497,7 @@ export const AdminPanel = ({
                         className="inline-flex items-center gap-2 rounded-xl bg-white px-3 py-2 text-[11px] font-black uppercase tracking-widest text-gray-700 transition-all hover:bg-gray-100 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
                       >
                         <Unlock size={14} />
-                        Gỡ chặn
+                        {content.ipBlock.unblock}
                       </button>
                     )}
                   </div>
@@ -485,7 +517,7 @@ export const AdminPanel = ({
             />
             <input
               type="text"
-              placeholder="Tìm theo tên hoặc email..."
+              placeholder={content.filters.searchPlaceholder}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full rounded-xl border border-gray-200 py-3 pl-11 pr-4 text-sm focus:border-gray-900 focus:outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:focus:border-orange-500"
@@ -495,61 +527,75 @@ export const AdminPanel = ({
             <Filter size={18} className="text-gray-400" />
             <select
               value={planFilter}
-              onChange={(e) => setPlanFilter(e.target.value as any)}
+              onChange={(e) =>
+                setPlanFilter(
+                  e.target.value as "all" | "free" | "monthly" | "yearly",
+                )
+              }
               className="rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm focus:border-gray-900 focus:outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:focus:border-orange-500"
             >
-              <option value="all">Tất cả gói</option>
-              <option value="free">Free</option>
-              <option value="monthly">Monthly</option>
-              <option value="yearly">Yearly</option>
+              {planOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
             </select>
             <select
               value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value as any)}
+              onChange={(e) =>
+                setStatusFilter(
+                  e.target.value as "all" | "approved" | "pending",
+                )
+              }
               className="rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm focus:border-gray-900 focus:outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:focus:border-orange-500"
             >
-              <option value="all">Tất cả trạng thái</option>
-              <option value="approved">Đã duyệt</option>
-              <option value="pending">Chờ duyệt</option>
+              {statusOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
             </select>
           </div>
         </div>
         <div className="mt-3 text-sm text-gray-500 dark:text-slate-400">
-          Hiển thị {filteredUsers.length} / {allUsers.length} users
+          {t("admin.filters.showing", {
+            shown: filteredUsers.length,
+            total: allUsers.length,
+          })}
         </div>
       </div>
 
       <div className="overflow-hidden rounded-[3rem] border border-gray-100 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-800">
         <div className="flex flex-col gap-3 border-b border-gray-100 bg-gray-50/50 p-6 dark:border-slate-700 dark:bg-slate-900/70 sm:flex-row sm:items-center sm:justify-between sm:p-8">
           <h3 className="flex items-center gap-2 text-sm font-black uppercase tracking-widest">
-            <UsersIcon size={18} /> Thành viên hệ thống
+            <UsersIcon size={18} /> {content.table.title}
           </h3>
           <span className="w-fit rounded-full bg-gray-900 px-3 py-1 text-[10px] font-bold text-white">
-            {filteredUsers.length} Users
+            {t("admin.table.count", { count: filteredUsers.length })}
           </span>
         </div>
 
         <div className="divide-y divide-gray-100 dark:divide-slate-700">
           {adminLoading ? (
             <div className="p-20 text-center font-bold text-gray-300">
-              Loading users...
+              {content.table.loading}
             </div>
           ) : filteredUsers.length === 0 ? (
             <div className="p-20 text-center font-medium italic text-gray-400">
-              Không tìm thấy người dùng nào.
+              {content.table.empty}
             </div>
           ) : (
-            filteredUsers.map((u) => (
+            filteredUsers.map((user) => (
               <div
-                key={u.id}
+                key={user.id}
                 className="flex cursor-pointer flex-col gap-4 p-4 transition-all hover:bg-gray-50 dark:hover:bg-slate-900/70 sm:gap-6 sm:p-6 xl:flex-row xl:items-center xl:justify-between"
-                onClick={() => setSelectedUser(u)}
+                onClick={() => setSelectedUser(user)}
               >
                 <div className="flex w-full flex-1 items-start gap-4 sm:items-center">
                   <div className="relative h-12 w-12">
-                    {u.avatar_url ? (
+                    {user.avatar_url ? (
                       <img
-                        src={u.avatar_url}
+                        src={user.avatar_url}
                         className="h-12 w-12 rounded-full bg-gray-100 object-cover shadow-md ring-2 ring-white"
                         onError={(e) => {
                           e.currentTarget.style.display = "none";
@@ -562,7 +608,7 @@ export const AdminPanel = ({
                     <div
                       className={cn(
                         "avatar-placeholder flex h-12 w-12 items-center justify-center rounded-full bg-gray-100 text-gray-400 shadow-md ring-2 ring-white",
-                        u.avatar_url ? "hidden" : "",
+                        user.avatar_url ? "hidden" : "",
                       )}
                     >
                       <User size={24} />
@@ -570,56 +616,58 @@ export const AdminPanel = ({
                     <span
                       className={cn(
                         "absolute bottom-0 right-0 h-3.5 w-3.5 rounded-full border-2 border-white shadow-sm",
-                        onlineUserIds.includes(u.id)
+                        onlineUserIds.includes(user.id)
                           ? "bg-green-500"
                           : "bg-gray-300",
                       )}
                     />
                   </div>
+
                   <div className="flex-1">
                     <h4 className="font-black text-gray-900 dark:text-slate-100">
-                      {u.full_name || "Chưa đặt tên"}
+                      {user.full_name || content.table.unnamed}
                     </h4>
                     <p className="text-sm text-gray-500 dark:text-slate-400">
-                      {u.email}
+                      {user.email}
                     </p>
                     <div className="mt-1 flex flex-wrap items-center gap-2">
                       <span
                         className={cn(
                           "rounded-full px-2 py-0.5 text-[10px] font-black uppercase tracking-widest",
-                          u.status === "approved"
+                          user.status === "approved"
                             ? "bg-green-100 text-green-700"
                             : "bg-orange-100 text-orange-700",
                         )}
                       >
-                        {u.status === "approved" ? "ĐÃ DUYỆT" : "CHỜ DUYỆT"}
+                        {getStatusLabel(user.status)}
                       </span>
                       <span
                         className={cn(
                           "rounded-full px-2 py-0.5 text-[10px] font-black uppercase tracking-widest",
-                          u.subscription_plan === "monthly"
+                          user.subscription_plan === "monthly"
                             ? "bg-blue-100 text-blue-700"
-                            : u.subscription_plan === "yearly"
+                            : user.subscription_plan === "yearly"
                               ? "bg-purple-100 text-purple-700"
                               : "bg-gray-100 text-gray-700",
                         )}
                       >
-                        {u.subscription_plan?.toUpperCase() || "FREE"}
+                        {getPlanLabel(user.subscription_plan)}
                       </span>
-                      {onlineUserIds.includes(u.id) && (
+                      {onlineUserIds.includes(user.id) && (
                         <span className="rounded-full bg-green-100 px-2 py-0.5 text-[10px] font-black uppercase tracking-widest text-green-700">
-                          ONLINE
+                          {content.table.online}
                         </span>
                       )}
                     </div>
                   </div>
+
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
-                      setSelectedUser(u);
+                      setSelectedUser(user);
                     }}
                     className="rounded-xl bg-gray-100 p-2 transition-all hover:bg-gray-200 dark:bg-slate-700 dark:hover:bg-slate-600"
-                    title="Xem chi tiết"
+                    title={content.table.viewDetails}
                   >
                     <Eye size={18} className="text-gray-600" />
                   </button>
@@ -631,32 +679,30 @@ export const AdminPanel = ({
                 >
                   <select
                     className="min-w-0 flex-1 cursor-pointer rounded-lg border border-gray-200 bg-gray-50 px-2 py-2 text-[10px] font-bold focus:outline-none focus:ring-2 focus:ring-orange-500/20 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 sm:flex-none"
-                    value={u.subscription_plan || "free"}
+                    value={user.subscription_plan || "free"}
                     onChange={(e) =>
-                      handleUpdateSubscription(u.id, e.target.value as any)
+                      handleUpdateSubscription(
+                        user.id,
+                        e.target.value as "free" | "monthly" | "yearly",
+                      )
                     }
                   >
-                    <option value="free">FREE</option>
-                    <option value="monthly">MONTHLY</option>
-                    <option value="yearly">YEARLY</option>
+                    <option value="free">{content.plans.free}</option>
+                    <option value="monthly">{content.plans.monthly}</option>
+                    <option value="yearly">{content.plans.yearly}</option>
                   </select>
 
-                  {u.status !== "approved" && (
+                  {user.status !== "approved" && (
                     <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleApproveUser(u.id);
-                      }}
+                      onClick={() => handleApproveUser(user.id)}
                       className="flex flex-1 items-center justify-center gap-2 rounded-2xl bg-orange-600 px-4 py-3 text-[11px] font-black uppercase tracking-widest text-white transition-all hover:bg-orange-700 active:scale-95 sm:flex-none sm:px-6"
                     >
-                      <UserCheck size={16} /> Duyệt Ngay
+                      <UserCheck size={16} /> {content.actions.approveNow}
                     </button>
                   )}
+
                   <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setDeleteId(u.id);
-                    }}
+                    onClick={() => setDeleteId(user.id)}
                     className="rounded-xl bg-gray-100 p-3 text-gray-400 transition-all hover:bg-red-50 hover:text-red-500 active:scale-90 dark:bg-slate-700 dark:text-slate-400 dark:hover:bg-red-500/10"
                   >
                     <Trash2 size={16} />
@@ -677,7 +723,7 @@ export const AdminPanel = ({
           <div className="relative max-h-[90vh] w-full max-w-3xl overflow-auto rounded-4xl border border-gray-100 bg-white shadow-2xl dark:border-slate-700 dark:bg-slate-800">
             <div className="sticky top-0 flex items-center justify-between border-b border-gray-100 bg-white p-6 dark:border-slate-700 dark:bg-slate-800">
               <h3 className="text-xl font-black text-gray-900 dark:text-slate-100">
-                Chi tiết người dùng
+                {content.detail.title}
               </h3>
               <button
                 onClick={() => setSelectedUser(null)}
@@ -706,7 +752,7 @@ export const AdminPanel = ({
                 </div>
                 <div>
                   <h4 className="text-xl font-black text-gray-900 dark:text-slate-100">
-                    {selectedUser.full_name || "Chưa đặt tên"}
+                    {selectedUser.full_name || content.table.unnamed}
                   </h4>
                   <p className="text-gray-500 dark:text-slate-400">
                     {selectedUser.email}
@@ -720,9 +766,7 @@ export const AdminPanel = ({
                           : "bg-orange-100 text-orange-700",
                       )}
                     >
-                      {selectedUser.status === "approved"
-                        ? "ĐÃ DUYỆT"
-                        : "CHỜ DUYỆT"}
+                      {getStatusLabel(selectedUser.status)}
                     </span>
                     <span
                       className={cn(
@@ -734,7 +778,7 @@ export const AdminPanel = ({
                             : "bg-gray-100 text-gray-700",
                       )}
                     >
-                      {selectedUser.subscription_plan?.toUpperCase() || "FREE"}
+                      {getPlanLabel(selectedUser.subscription_plan)}
                     </span>
                   </div>
                 </div>
@@ -749,9 +793,10 @@ export const AdminPanel = ({
                     }}
                     className="flex items-center gap-2 rounded-xl bg-green-600 px-4 py-3 text-sm font-bold text-white transition-all hover:bg-green-700"
                   >
-                    <Check size={18} /> Duyệt User
+                    <Check size={18} /> {content.actions.approveUser}
                   </button>
                 )}
+
                 <select
                   value={selectedUser.subscription_plan || "free"}
                   onChange={(e) => {
@@ -767,10 +812,11 @@ export const AdminPanel = ({
                   }}
                   className="rounded-xl border border-gray-200 px-4 py-3 text-sm font-bold focus:border-gray-900 focus:outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
                 >
-                  <option value="free">FREE</option>
-                  <option value="monthly">MONTHLY</option>
-                  <option value="yearly">YEARLY</option>
+                  <option value="free">{content.plans.free}</option>
+                  <option value="monthly">{content.plans.monthly}</option>
+                  <option value="yearly">{content.plans.yearly}</option>
                 </select>
+
                 <button
                   onClick={() => {
                     setDeleteId(selectedUser.id);
@@ -778,21 +824,22 @@ export const AdminPanel = ({
                   }}
                   className="flex items-center gap-2 rounded-xl bg-red-600 px-4 py-3 text-sm font-bold text-white transition-all hover:bg-red-700"
                 >
-                  <Trash2 size={18} /> Xóa User
+                  <Trash2 size={18} /> {content.actions.deleteUser}
                 </button>
               </div>
 
               <div className="border-t border-gray-100 pt-6 dark:border-slate-700">
                 <h4 className="mb-4 flex items-center gap-2 text-lg font-black text-gray-900 dark:text-slate-100">
-                  <Link2 size={20} /> Link của user ({userLinks.length})
+                  <Link2 size={20} />{" "}
+                  {t("admin.detail.linksTitle", { count: userLinks.length })}
                 </h4>
                 {userLinksLoading ? (
                   <div className="py-8 text-center text-gray-400">
-                    Đang tải...
+                    {content.detail.linksLoading}
                   </div>
                 ) : userLinks.length === 0 ? (
                   <div className="py-8 text-center text-gray-400">
-                    Chưa có link nào
+                    {content.detail.linksEmpty}
                   </div>
                 ) : (
                   <div className="max-h-75 space-y-3 overflow-auto">
@@ -810,11 +857,13 @@ export const AdminPanel = ({
                           </p>
                           <div className="mt-1 flex items-center gap-4">
                             <span className="text-xs font-black text-orange-600">
-                              {link.clicks || 0} CLICKS
+                              {t("admin.detail.clicks", {
+                                count: link.clicks || 0,
+                              })}
                             </span>
                             <span className="text-xs text-gray-400">
                               {new Date(link.created_at).toLocaleDateString(
-                                "vi-VN",
+                                dateLocale,
                               )}
                             </span>
                           </div>

@@ -51,17 +51,23 @@ export function usePWAInstall() {
     if (!deferredPrompt) return false;
 
     setIsInstalling(true);
-    await deferredPrompt.prompt();
-    const choice = await deferredPrompt.userChoice;
-    setDeferredPrompt(null);
-    setIsInstalling(false);
+    try {
+      await deferredPrompt.prompt();
+      const choice = await deferredPrompt.userChoice;
+      setDeferredPrompt(null);
 
-    if (choice.outcome === "accepted") {
-      setIsInstalled(true);
-      return true;
+      if (choice.outcome === "accepted") {
+        setIsInstalled(true);
+        return true;
+      }
+
+      return false;
+    } catch (error) {
+      console.warn("PWA install prompt was not completed:", error);
+      return false;
+    } finally {
+      setIsInstalling(false);
     }
-
-    return false;
   };
 
   return {

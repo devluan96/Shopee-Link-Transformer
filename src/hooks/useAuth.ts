@@ -6,6 +6,7 @@
   type FormEvent,
 } from "react";
 import { User, Session } from "@supabase/supabase-js";
+import { useLocale } from "@/src/hooks/useLocale";
 import {
   supabase,
   logout,
@@ -61,6 +62,7 @@ export interface AuthActions {
 }
 
 export function useAuth(): AuthState & AuthActions {
+  const { t } = useLocale();
   const [user, setUser] = useState<User | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
   const [loginEmail, setLoginEmail] = useState(() => getRememberedEmail());
@@ -168,7 +170,7 @@ export function useAuth(): AuthState & AuthActions {
     ): Promise<Response> => {
       const token = await getAccessToken();
       if (!token) {
-        throw new Error("Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.");
+        throw new Error(t("auth.panel.feedback.sessionExpired"));
       }
 
       const headers = new Headers(init.headers ?? {});
@@ -226,7 +228,7 @@ export function useAuth(): AuthState & AuthActions {
 
       return response;
     },
-    [getAccessToken],
+    [getAccessToken, t],
   );
 
   const handleLogout = useCallback(async () => {
@@ -276,21 +278,18 @@ export function useAuth(): AuthState & AuthActions {
       try {
         if (isRegistering) {
           if (registerPassword !== registerConfirmPassword) {
-            setAuthError("Mật khẩu nhập lại không khớp.");
+            setAuthError(t("auth.panel.feedback.registerPasswordMismatch"));
             return;
           }
 
           const newUser = await registerWithEmail(registerEmail, registerPassword);
           const existingAccount = newUser?.identities?.length === 0;
           if (existingAccount) {
-            setAuthError(
-              "Email này đã được sử dụng. Hãy đăng nhập hoặc đổi email khác.",
-            );
+            setAuthError(t("auth.panel.feedback.emailInUse"));
             return;
           }
 
-          const notice =
-            "Đăng ký thành công. Supabase đã gửi email xác nhận. Vui lòng mở hộp thư và bấm vào liên kết xác nhận trước khi đăng nhập.";
+          const notice = t("auth.panel.feedback.registerSuccess");
           setAuthNotice(notice);
           setIsRegistering(false);
           setLoginEmail(registerEmail);
@@ -310,23 +309,18 @@ export function useAuth(): AuthState & AuthActions {
         const errorMessage =
           err instanceof Error
             ? err.message
-            : "Đăng nhập thất bại. Vui lòng thử lại.";
+            : t("auth.panel.feedback.loginFailed");
         const rawMessage = String(errorMessage || "");
-        // Translate common error messages to Vietnamese
         if (rawMessage.toLowerCase().includes("invalid login credentials")) {
-          setAuthError(
-            "Email hoặc mật khẩu không đúng. Vui lòng kiểm tra lại.",
-          );
+          setAuthError(t("auth.panel.feedback.invalidCredentials"));
         } else if (
           rawMessage.toLowerCase().includes("email rate limit exceeded")
         ) {
-          setAuthError(
-            "Supabase đang chậm giới hạn gửi email xác nhận. Email này chưa chắc đã tồn tại. Hãy đổi trong vài phút rồi thử đăng ký lại.",
-          );
+          setAuthError(t("auth.panel.feedback.emailRateLimit"));
         } else if (rawMessage.toLowerCase().includes("user not found")) {
-          setAuthError("Không tìm thấy tài khoản với email này.");
+          setAuthError(t("auth.panel.feedback.userNotFound"));
         } else if (rawMessage.toLowerCase().includes("invalid email")) {
-          setAuthError("Email không hợp lệ. Vui lòng kiểm tra lại.");
+          setAuthError(t("auth.panel.feedback.invalidEmail"));
         } else {
           setAuthError(errorMessage);
         }
@@ -349,6 +343,7 @@ export function useAuth(): AuthState & AuthActions {
       isRegistering,
       authLoading,
       rememberMe,
+      t,
     ],
   );
 
@@ -363,28 +358,26 @@ export function useAuth(): AuthState & AuthActions {
         setRememberedEmail(loginEmail);
       }
       setAuthNotice(
-        "Đã gửi email đặt lại mật khẩu. Hãy mở hộp thư và bấm vào liên kết để nhập mật khẩu mới.",
+        t("auth.panel.feedback.resetEmailSent"),
       );
     } catch (err: unknown) {
       const errorMessage =
         err instanceof Error
           ? err.message
-          : "Không gửi được email đặt lại mật khẩu.";
+          : t("auth.panel.feedback.resetEmailFailed");
       const rawMessage = errorMessage.toLowerCase();
 
       if (rawMessage.includes("invalid email")) {
-        setAuthError("Email không hợp lệ. Vui lòng kiểm tra lại.");
+        setAuthError(t("auth.panel.feedback.invalidEmail"));
       } else if (rawMessage.includes("for security purposes")) {
-        setAuthError(
-          "Bạn vừa yêu cầu quá nhiều lần. Vui lòng chờ vài phút rồi thử lại.",
-        );
+        setAuthError(t("auth.panel.feedback.tooManyRequests"));
       } else {
         setAuthError(errorMessage);
       }
     } finally {
       setAuthLoading(false);
     }
-  }, [loginEmail, rememberMe]);
+  }, [loginEmail, rememberMe, t]);
 
   const handlePasswordRecovery = useCallback(
     async (e: FormEvent) => {
@@ -396,12 +389,12 @@ export function useAuth(): AuthState & AuthActions {
       setAuthNotice(null);
 
       if (recoveryPassword.length < 6) {
-        setAuthError("Mật khẩu mới cần tối thiểu 6 ký tự.");
+        setAuthError(t("auth.panel.feedback.newPasswordMin"));
         return;
       }
 
       if (recoveryPassword !== recoveryConfirmPassword) {
-        setAuthError("Mật khẩu xác nhận không khớp.");
+        setAuthError(t("auth.panel.feedback.recoveryPasswordMismatch"));
         return;
       }
 
@@ -414,14 +407,12 @@ export function useAuth(): AuthState & AuthActions {
         setRecoveryConfirmPassword("");
         setPasswordRecoveryMode(false);
         clearRecoveryUrl();
-        setAuthNotice(
-          "Mật khẩu đã được cập nhật thành công. Bạn có thể tiếp tục sử dụng tài khoản.",
-        );
+        setAuthNotice(t("auth.panel.feedback.passwordUpdated"));
       } catch (err: unknown) {
         const errorMessage =
           err instanceof Error
             ? err.message
-            : "Không thể cập nhật mật khẩu mới.";
+            : t("auth.panel.feedback.updatePasswordFailed");
         setAuthError(errorMessage);
       } finally {
         setAuthLoading(false);
@@ -432,6 +423,7 @@ export function useAuth(): AuthState & AuthActions {
       clearRecoveryUrl,
       recoveryConfirmPassword,
       recoveryPassword,
+      t,
     ],
   );
 
@@ -451,7 +443,7 @@ export function useAuth(): AuthState & AuthActions {
         setRecoveryPassword("");
         setRecoveryConfirmPassword("");
         setAuthError(null);
-        setAuthNotice("Liên kết hợp lệ. Hãy nhập mật khẩu mới cho tài khoản.");
+        setAuthNotice(t("auth.panel.feedback.validRecoveryLink"));
       }
 
       if (event === "SIGNED_OUT") {
@@ -489,9 +481,7 @@ export function useAuth(): AuthState & AuthActions {
         }
         if (isRecoveryLinkOpen()) {
           setPasswordRecoveryMode(true);
-          setAuthNotice(
-            "Liên kết hợp lệ. Hãy nhập mật khẩu mới cho tài khoản.",
-          );
+          setAuthNotice(t("auth.panel.feedback.validRecoveryLink"));
         }
       }
       setAuthLoading(false);
@@ -509,7 +499,7 @@ export function useAuth(): AuthState & AuthActions {
       subscription.unsubscribe();
       clearTimeout(timer);
     };
-  }, [isRecoveryLinkOpen]);
+  }, [isRecoveryLinkOpen, t]);
 
   // Global error handlers
   useEffect(() => {

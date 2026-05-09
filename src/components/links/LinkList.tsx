@@ -21,37 +21,19 @@ import {
 } from "lucide-react";
 import { ConvertedLink, LinkUpdatePayload } from "@/src/types";
 import { formatDistanceToNow } from "date-fns";
+import { enUS, vi as viLocale } from "date-fns/locale";
 import { QRCodeCanvas } from "qrcode.react";
 import {
   LINK_USAGE_OPTIONS_WITH_PLACEHOLDER,
   normalizeUsageContext,
 } from "@/src/lib/linkUsage";
+import { useLocale } from "@/src/hooks/useLocale";
 
 const TIKTOK_HOST_REGEX =
   /(^|\.)tiktok\.com$|(^|\.)vt\.tiktok\.com$|(^|\.)vm\.tiktok\.com$/i;
 const DAY_IN_MS = 1000 * 60 * 60 * 24;
 
-const usageOptions = [
-  { value: "", label: "Chọn vị trí sử dụng" },
-  { value: "Bai viet Facebook", label: "Bài viết Facebook" },
-  { value: "Reel Facebook", label: "Reel Facebook" },
-  { value: "Bio TikTok", label: "Bio TikTok" },
-  { value: "Video TikTok", label: "Video TikTok" },
-  { value: "Zalo OA", label: "Zalo OA" },
-  { value: "Nhom seeding", label: "Nhóm seeding" },
-  { value: "Livestream", label: "Livestream" },
-];
-
 type QuickFilter = "all" | "choice" | "video" | "tiktok" | "expiring" | "top";
-
-const quickFilterOptions: Array<{ value: QuickFilter; label: string }> = [
-  { value: "all", label: "Toàn bộ" },
-  { value: "choice", label: "Choice Mode" },
-  { value: "video", label: "Có video" },
-  { value: "tiktok", label: "Có TikTok" },
-  { value: "expiring", label: "Sắp hết hạn" },
-  { value: "top", label: "Click cao" },
-];
 
 interface LinkListProps {
   links: ConvertedLink[];
@@ -78,6 +60,9 @@ export const LinkList = ({
   onUpdateLink,
   onDeleteManyLinks,
 }: LinkListProps) => {
+  const { locale, messages, t } = useLocale();
+  const content = messages.linkList;
+  const dateFnsLocale = locale === "vi" ? viLocale : enUS;
   const [editingLink, setEditingLink] = useState<ConvertedLink | null>(null);
   const [deletingLink, setDeletingLink] = useState<ConvertedLink | null>(null);
   const [qrLink, setQrLink] = useState<ConvertedLink | null>(null);
@@ -104,20 +89,74 @@ export const LinkList = ({
   >(null);
   const qrCanvasRef = useRef<React.ElementRef<"canvas"> | null>(null);
 
-  const toggleSelect = (id: string) => {
-    const nextSet = new Set(selectedIds);
-    if (nextSet.has(id)) {
-      nextSet.delete(id);
-    } else {
-      nextSet.add(id);
+  const localizedQuickFilterOptions: Array<{
+    value: QuickFilter;
+    label: string;
+  }> = [
+    { value: "all", label: content.filters.all },
+    { value: "choice", label: content.filters.choice },
+    { value: "video", label: content.filters.video },
+    { value: "tiktok", label: content.filters.tiktok },
+    { value: "expiring", label: content.filters.expiring },
+    { value: "top", label: content.filters.top },
+  ];
+
+  const localizedUsageOptions = LINK_USAGE_OPTIONS_WITH_PLACEHOLDER.map(
+    (option) => {
+      switch (option.value) {
+        case "":
+          return { ...option, label: content.filters.usagePlaceholder };
+        case "Bai viet Facebook":
+        case "Bài viết Facebook":
+          return { ...option, label: content.filters.usageFacebookPost };
+        case "Reel Facebook":
+          return { ...option, label: content.filters.usageFacebookReel };
+        case "Bio TikTok":
+          return { ...option, label: content.filters.usageTikTokBio };
+        case "Video TikTok":
+          return { ...option, label: content.filters.usageTikTokVideo };
+        case "Zalo OA":
+          return { ...option, label: content.filters.usageZalo };
+        case "Nhom seeding":
+        case "Nhóm seeding":
+          return { ...option, label: content.filters.usageSeeding };
+        case "Livestream":
+          return { ...option, label: content.filters.usageLivestream };
+        default:
+          return option;
+      }
+    },
+  );
+
+  const getLocalizedUsageLabel = (value?: string | null) => {
+    if (!value) return null;
+
+    switch (normalizeUsageContext(value)) {
+      case "Bai viet Facebook":
+        return content.filters.usageFacebookPost;
+      case "Reel Facebook":
+        return content.filters.usageFacebookReel;
+      case "Bio TikTok":
+        return content.filters.usageTikTokBio;
+      case "Video TikTok":
+        return content.filters.usageTikTokVideo;
+      case "Zalo OA":
+        return content.filters.usageZalo;
+      case "Nhom seeding":
+        return content.filters.usageSeeding;
+      case "Livestream":
+        return content.filters.usageLivestream;
+      default:
+        return value;
     }
-    setSelectedIds(nextSet);
   };
 
-  const buildTrackedLink = (
-    shortCode: string,
-    source: "facebook" | "tiktok" | "zalo",
-  ) => `https://hotsnew.click/s/${shortCode}?src=${source}`;
+  const toggleSelect = (id: string) => {
+    const nextSet = new Set(selectedIds);
+    if (nextSet.has(id)) nextSet.delete(id);
+    else nextSet.add(id);
+    setSelectedIds(nextSet);
+  };
 
   const buildChoiceModeLink = (shortCode: string) =>
     `https://hotsnew.click/s-choice/${shortCode}`;
@@ -128,7 +167,7 @@ export const LinkList = ({
       const hostname = new URL(value).hostname.trim().toLowerCase();
       return TIKTOK_HOST_REGEX.test(hostname) ? "TikTok" : "Shopee";
     } catch {
-      return "Buoc 2";
+      return content.card.stepTwo;
     }
   };
 
@@ -138,14 +177,14 @@ export const LinkList = ({
 
     if (targetLabel === "TikTok") {
       return {
-        label: "Shopee -> TikTok",
+        label: content.card.secondaryTikTok,
         className:
           "rounded-full border border-cyan-200/70 bg-cyan-50 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.16em] text-cyan-700 dark:border-cyan-500/20 dark:bg-cyan-500/10 dark:text-cyan-200",
       };
     }
 
     return {
-      label: "Shopee -> Shopee",
+      label: content.card.secondaryShopee,
       className:
         "rounded-full border border-amber-200/70 bg-amber-50 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.16em] text-amber-700 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-200",
     };
@@ -200,11 +239,9 @@ export const LinkList = ({
         redirect_delay_ms: editForm.redirectDelayMs,
       };
 
-      if (editForm.expiresAt) {
-        updates.expires_at = new Date(editForm.expiresAt).toISOString();
-      } else {
-        updates.expires_at = null;
-      }
+      updates.expires_at = editForm.expiresAt
+        ? new Date(editForm.expiresAt).toISOString()
+        : null;
 
       await onUpdateLink(editingLink.id, updates);
       setEditingLink(null);
@@ -240,11 +277,11 @@ export const LinkList = ({
   };
 
   const getHostLabel = (value?: string) => {
-    if (!value) return "unknown";
+    if (!value) return content.card.unknown;
     try {
       return new URL(value).hostname.replace(/^www\./i, "");
     } catch {
-      return "unknown";
+      return content.card.unknown;
     }
   };
 
@@ -302,11 +339,8 @@ export const LinkList = ({
 
   const toggleSelectAll = () => {
     const nextSet = new Set(selectedIds);
-    if (allVisibleSelected) {
-      visibleLinkIds.forEach((id) => nextSet.delete(id));
-    } else {
-      visibleLinkIds.forEach((id) => nextSet.add(id));
-    }
+    if (allVisibleSelected) visibleLinkIds.forEach((id) => nextSet.delete(id));
+    else visibleLinkIds.forEach((id) => nextSet.add(id));
     setSelectedIds(nextSet);
   };
 
@@ -339,6 +373,44 @@ export const LinkList = ({
     }
   };
 
+  const renderStats = [
+    {
+      label: content.stats.total,
+      value: totalLinks,
+      note: t("linkList.stats.totalNote", { shown: displayedLinks.length }),
+      icon: <Sparkles size={15} />,
+      tone: "border-orange-200/70 bg-orange-50/80 text-orange-700 dark:border-orange-500/20 dark:bg-orange-500/10 dark:text-orange-200",
+    },
+    {
+      label: content.stats.shopee,
+      value: totalShopeeClicks,
+      note: content.stats.shopeeNote,
+      icon: <MousePointer2 size={15} />,
+      tone: "border-blue-200/70 bg-blue-50/80 text-blue-700 dark:border-blue-500/20 dark:bg-blue-500/10 dark:text-blue-200",
+    },
+    {
+      label: content.stats.tiktok,
+      value: totalTiktokClicks,
+      note: content.stats.tiktokNote,
+      icon: <BarChart3 size={15} />,
+      tone: "border-cyan-200/70 bg-cyan-50/80 text-cyan-700 dark:border-cyan-500/20 dark:bg-cyan-500/10 dark:text-cyan-200",
+    },
+    {
+      label: content.stats.choice,
+      value: choiceModeCount,
+      note: content.stats.choiceNote,
+      icon: <ShieldCheck size={15} />,
+      tone: "border-amber-200/70 bg-amber-50/80 text-amber-700 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-200",
+    },
+    {
+      label: content.stats.expiring,
+      value: expiringSoonCount,
+      note: t("linkList.stats.expiringNote", { count: averageClicks }),
+      icon: <Clock3 size={15} />,
+      tone: "border-rose-200/70 bg-rose-50/80 text-rose-700 dark:border-rose-500/20 dark:bg-rose-500/10 dark:text-rose-200",
+    },
+  ];
+
   return (
     <div key="list" className="space-y-5">
       <section className="relative overflow-hidden rounded-4xl border border-slate-200/70 bg-white/90 shadow-[0_20px_60px_-35px_rgba(15,23,42,0.42)] backdrop-blur-xl dark:border-slate-700/80 dark:bg-slate-900/80">
@@ -348,15 +420,16 @@ export const LinkList = ({
             <div className="max-w-3xl">
               <span className="mb-3 inline-flex items-center gap-2 rounded-full border border-orange-200/80 bg-orange-50 px-3.5 py-1.5 text-[10px] font-black uppercase tracking-[0.24em] text-orange-700 dark:border-orange-500/20 dark:bg-orange-500/10 dark:text-orange-200">
                 <Sparkles size={12} />
-                Compact Pro
+                {content.hero.badge}
               </span>
               <h2 className="text-2xl font-black tracking-tight text-slate-900 dark:text-slate-50 sm:text-3xl">
-                Quản lý liên kết
+                {content.hero.title}
               </h2>
               <p className="mt-2 max-w-2xl text-sm font-medium leading-6 text-slate-500 dark:text-slate-400">
-                Hiển thị {displayedLinks.length}/{links.length} tài nguyên. Bản
-                này ưu tiên tốc độ quét danh sách, thao tác nhanh và mật độ hiển
-                thị gọn hơn.
+                {t("linkList.hero.description", {
+                  shown: displayedLinks.length,
+                  total: links.length,
+                })}
               </p>
             </div>
 
@@ -368,7 +441,7 @@ export const LinkList = ({
                 />
                 <input
                   type="text"
-                  placeholder="Tìm theo tiêu đề, mã, nguồn, tag..."
+                  placeholder={content.hero.searchPlaceholder}
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="w-full rounded-[1.2rem] border border-slate-200 bg-slate-50/80 py-3.5 pl-12 pr-5 text-sm font-semibold text-slate-900 outline-none transition-all placeholder:text-slate-400 focus:border-orange-400 focus:bg-white focus:ring-4 focus:ring-orange-500/10 dark:border-slate-600 dark:bg-slate-800/90 dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:border-orange-400"
@@ -378,43 +451,7 @@ export const LinkList = ({
           </div>
 
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
-            {[
-              {
-                label: "Tổng link",
-                value: totalLinks,
-                note: `${displayedLinks.length} đang hiển thị`,
-                icon: <Sparkles size={15} />,
-                tone: "border-orange-200/70 bg-orange-50/80 text-orange-700 dark:border-orange-500/20 dark:bg-orange-500/10 dark:text-orange-200",
-              },
-              {
-                label: "Click Shopee",
-                value: totalShopeeClicks,
-                note: "Outbound chính",
-                icon: <MousePointer2 size={15} />,
-                tone: "border-blue-200/70 bg-blue-50/80 text-blue-700 dark:border-blue-500/20 dark:bg-blue-500/10 dark:text-blue-200",
-              },
-              {
-                label: "Click TikTok",
-                value: totalTiktokClicks,
-                note: "Flow phụ",
-                icon: <BarChart3 size={15} />,
-                tone: "border-cyan-200/70 bg-cyan-50/80 text-cyan-700 dark:border-cyan-500/20 dark:bg-cyan-500/10 dark:text-cyan-200",
-              },
-              {
-                label: "Choice Mode",
-                value: choiceModeCount,
-                note: "Link có bước 2",
-                icon: <ShieldCheck size={15} />,
-                tone: "border-amber-200/70 bg-amber-50/80 text-amber-700 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-200",
-              },
-              {
-                label: "Sắp hết hạn",
-                value: expiringSoonCount,
-                note: `TB ${averageClicks} click/link`,
-                icon: <Clock3 size={15} />,
-                tone: "border-rose-200/70 bg-rose-50/80 text-rose-700 dark:border-rose-500/20 dark:bg-rose-500/10 dark:text-rose-200",
-              },
-            ].map((stat) => (
+            {renderStats.map((stat) => (
               <div
                 key={stat.label}
                 className="rounded-[1.35rem] border border-slate-200/70 bg-white/80 p-3.5 shadow-sm dark:border-slate-700/70 dark:bg-slate-800/80"
@@ -444,10 +481,10 @@ export const LinkList = ({
           <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
             <div className="inline-flex items-center gap-2 text-[11px] font-black uppercase tracking-[0.22em] text-slate-400 dark:text-slate-500">
               <Filter size={14} />
-              Bộ lọc nhanh
+              {content.filters.quick}
             </div>
             <div className="flex flex-wrap gap-2">
-              {quickFilterOptions.map((option) => {
+              {localizedQuickFilterOptions.map((option) => {
                 const isActive = quickFilter === option.value;
                 return (
                   <button
@@ -483,21 +520,17 @@ export const LinkList = ({
                   <Square size={16} />
                 )}
                 {allVisibleSelected
-                  ? "Bỏ chọn đang xem"
-                  : "Chọn tất cả đang xem"}
+                  ? content.bulk.deselectVisible
+                  : content.bulk.selectVisible}
               </button>
               <div className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">
-                Đã chọn{" "}
-                <span className="font-black text-slate-900 dark:text-slate-100">
-                  {selectedIds.size}
-                </span>{" "}
-                link
+                {t("linkList.bulk.selected", { count: selectedIds.size })}
               </div>
               <div className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">
-                Hiện tại:{" "}
-                <span className="font-black text-slate-900 dark:text-slate-100">
-                  {visibleSelectedCount}/{displayedLinks.length}
-                </span>
+                {t("linkList.bulk.current", {
+                  selected: visibleSelectedCount,
+                  total: displayedLinks.length,
+                })}
               </div>
             </div>
 
@@ -507,11 +540,11 @@ export const LinkList = ({
                 className="inline-flex items-center justify-center gap-2 rounded-xl bg-red-600 px-5 py-3 text-xs font-black uppercase tracking-[0.2em] text-white transition-all hover:bg-red-700"
               >
                 <Trash2 size={14} />
-                Xóa {selectedIds.size} link
+                {t("linkList.bulk.delete", { count: selectedIds.size })}
               </button>
             ) : (
               <p className="text-xs font-semibold text-slate-400 dark:text-slate-500">
-                Chọn nhiều link để thao tác nhanh.
+                {content.bulk.hint}
               </p>
             )}
           </div>
@@ -529,21 +562,19 @@ export const LinkList = ({
         ) : displayedLinks.length === 0 ? (
           <div className="rounded-[1.75rem] border border-dashed border-slate-300 bg-white/70 px-6 py-20 text-center shadow-sm dark:border-slate-700 dark:bg-slate-900/40">
             <p className="text-lg font-black tracking-tight text-slate-900 dark:text-slate-100">
-              {links.length === 0
-                ? "Chưa có link nào được tạo."
-                : "Không có link nào khớp bộ lọc hiện tại."}
+              {links.length === 0 ? content.empty.noLinks : content.empty.noResults}
             </p>
             <p className="mt-3 text-sm font-medium text-slate-500 dark:text-slate-400">
-              Thử đổi từ khóa tìm kiếm hoặc đổi bộ lọc.
+              {content.empty.hint}
             </p>
           </div>
         ) : (
-          displayedLinks.map((l) => {
-            const linkId = l.id ?? l.short_code;
-            const flowBadge = getSecondaryFlowBadge(l.secondary_url);
-            const topSource = l.tracked_sources?.[0];
-            const shopeeClicks = l.clicks || 0;
-            const tiktokClicks = l.tiktok_clicks || 0;
+          displayedLinks.map((link) => {
+            const linkId = link.id ?? link.short_code;
+            const flowBadge = getSecondaryFlowBadge(link.secondary_url);
+            const topSource = link.tracked_sources?.[0];
+            const shopeeClicks = link.clicks || 0;
+            const tiktokClicks = link.tiktok_clicks || 0;
             const totalClicksForLink = shopeeClicks + tiktokClicks;
 
             return (
@@ -576,13 +607,13 @@ export const LinkList = ({
                       )}
 
                       <div className="relative flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-[0.9rem] border border-slate-200 bg-slate-100 shadow-sm dark:border-slate-700 dark:bg-slate-800">
-                        {l.custom_image_url ? (
+                        {link.custom_image_url ? (
                           <img
-                            src={l.custom_image_url}
-                            alt={l.custom_title || l.short_code}
+                            src={link.custom_image_url}
+                            alt={link.custom_title || link.short_code}
                             className="h-full w-full object-cover"
                           />
-                        ) : l.video_url ? (
+                        ) : link.video_url ? (
                           <div className="flex h-full w-full items-center justify-center bg-slate-900 text-white">
                             <VideoIcon size={22} />
                           </div>
@@ -590,7 +621,7 @@ export const LinkList = ({
                           <ImageIcon size={22} className="text-slate-300" />
                         )}
 
-                        {l.video_url && l.custom_image_url && (
+                        {link.video_url && link.custom_image_url && (
                           <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-slate-950/25">
                             <VideoIcon
                               size={14}
@@ -602,23 +633,29 @@ export const LinkList = ({
 
                       <div className="min-w-0 flex-1 space-y-2">
                         <h4 className="line-clamp-2 text-base font-black tracking-tight text-slate-900 dark:text-slate-100 sm:text-lg">
-                          {l.custom_title || "Untitled link"}
+                          {link.custom_title || content.card.untitled}
                         </h4>
 
                         <div className="flex flex-wrap items-center gap-1.5">
                           <span className="rounded-full border border-slate-200 bg-slate-100 px-2 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-slate-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">
-                            {getHostLabel(l.original_url)}
+                            {getHostLabel(link.original_url)}
                           </span>
                           <span className="rounded-full border border-slate-200 bg-white/80 px-2 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-slate-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-400">
-                            {l.created_at &&
-                              `${formatDistanceToNow(new Date(l.created_at))} ago`}
+                            {link.created_at
+                              ? t("linkList.card.createdAgo", {
+                                  time: formatDistanceToNow(
+                                    new Date(link.created_at),
+                                    { locale: dateFnsLocale },
+                                  ),
+                                })
+                              : ""}
                           </span>
                           <span className="max-w-full truncate rounded-full border border-slate-200 bg-white/80 px-2 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-slate-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-400">
-                            {l.short_code}
+                            {link.short_code}
                           </span>
-                          {l.usage_context && (
+                          {link.usage_context && (
                             <span className="rounded-full border border-orange-200/70 bg-orange-50 px-2 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-orange-700 dark:border-orange-500/20 dark:bg-orange-500/10 dark:text-orange-200">
-                              {l.usage_context}
+                              {getLocalizedUsageLabel(link.usage_context)}
                             </span>
                           )}
                         </div>
@@ -632,10 +669,12 @@ export const LinkList = ({
                           </span>
                           <span className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-100 px-2 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-slate-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">
                             <Sparkles size={11} className="text-orange-500" />
-                            Tổng {totalClicksForLink}
+                            {t("linkList.card.totalClicks", {
+                              count: totalClicksForLink,
+                            })}
                           </span>
                           <span className="rounded-full border border-orange-200/70 bg-orange-50 px-2 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-orange-700 dark:border-orange-500/20 dark:bg-orange-500/10 dark:text-orange-200">
-                            Protected
+                            {content.card.protected}
                           </span>
                           {flowBadge && (
                             <span className={flowBadge.className}>
@@ -654,51 +693,51 @@ export const LinkList = ({
 
                   <div className="flex flex-wrap items-center gap-2 xl:justify-end">
                     <button
-                      onClick={() => startEdit(l)}
+                      onClick={() => startEdit(link)}
                       className="inline-flex min-w-24 items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-[11px] font-black uppercase tracking-[0.16em] text-slate-600 transition-all hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:border-blue-500/30 dark:hover:bg-blue-500/10 dark:hover:text-blue-200"
-                      title="Chỉnh sửa"
+                      title={content.card.edit}
                     >
                       <Pencil size={14} />
-                      Edit
+                      {content.card.editShort}
                     </button>
                     <button
-                      onClick={() => setDeletingLink(l)}
+                      onClick={() => setDeletingLink(link)}
                       className="inline-flex min-w-24 items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-[11px] font-black uppercase tracking-[0.16em] text-slate-600 transition-all hover:border-red-200 hover:bg-red-50 hover:text-red-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:border-red-500/30 dark:hover:bg-red-500/10 dark:hover:text-red-200"
-                      title="Xóa link"
+                      title={content.card.delete}
                     >
                       <Trash2 size={14} />
-                      Delete
+                      {content.card.deleteShort}
                     </button>
                     <button
                       onClick={() =>
                         copyToClipboard(
-                          `https://hotsnew.click/s/${l.short_code}`,
+                          `https://hotsnew.click/s/${link.short_code}`,
                           linkId,
                         )
                       }
                       className="inline-flex min-w-30 items-center justify-center gap-2 rounded-2xl bg-slate-950 px-4 py-2.5 text-[11px] font-black uppercase tracking-[0.16em] text-white transition-all hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-200"
                     >
-                      {copiedId === linkId ? "DONE" : "COPY"}
+                      {copiedId === linkId ? content.card.copied : content.card.copy}
                     </button>
                     <button
-                      onClick={() => setQrLink(l)}
+                      onClick={() => setQrLink(link)}
                       className="inline-flex min-w-20 items-center justify-center gap-2 rounded-2xl border border-fuchsia-200/70 bg-fuchsia-50 px-3 py-2.5 text-[11px] font-black uppercase tracking-[0.16em] text-fuchsia-700 transition-all hover:bg-fuchsia-100 dark:border-fuchsia-500/20 dark:bg-fuchsia-500/10 dark:text-fuchsia-200 dark:hover:bg-fuchsia-500/20"
-                      title="Mã QR"
+                      title={content.card.qr}
                     >
                       <QrCode size={15} />
                       QR
                     </button>
-                    {showChoiceModeActions && l.secondary_url && (
+                    {showChoiceModeActions && link.secondary_url && (
                       <button
                         onClick={() =>
                           window.open(
-                            buildChoiceModeLink(l.short_code),
+                            buildChoiceModeLink(link.short_code),
                             "_blank",
                             "noopener,noreferrer",
                           )
                         }
                         className="inline-flex min-w-24 items-center justify-center rounded-2xl border border-amber-200/70 bg-amber-50 px-3 py-2.5 text-[11px] font-black uppercase tracking-[0.16em] text-amber-700 transition-all hover:bg-amber-100 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-200 dark:hover:bg-amber-500/20"
-                        title="Mo landing page Choice Mode"
+                        title={content.card.choiceLanding}
                       >
                         Choice
                       </button>
@@ -713,10 +752,10 @@ export const LinkList = ({
 
       {editingLink && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-6 backdrop-blur-sm">
-          <div className="flex max-h-[90vh] w-full max-w-5xl flex-col overflow-hidden rounded-[3rem] bg-white shadow-2xl animate-in fade-in zoom-in duration-300 dark:bg-slate-800">
+          <div className="flex max-h-[90vh] w-full max-w-5xl flex-col overflow-hidden rounded-[3rem] bg-white shadow-2xl dark:bg-slate-800">
             <div className="flex items-center justify-between border-b border-gray-100 bg-gray-50/50 p-8 dark:border-slate-700 dark:bg-slate-700/50">
               <h3 className="text-xl font-black text-gray-900 dark:text-slate-100">
-                Chỉnh sửa link
+                {content.editModal.title}
               </h3>
               <button
                 onClick={() => setEditingLink(null)}
@@ -727,9 +766,9 @@ export const LinkList = ({
             </div>
 
             <div className="grid flex-1 gap-6 overflow-y-auto p-6 md:p-8 lg:grid-cols-2 lg:gap-8">
-              <div className="space-y-1 lg:col-start-1 lg:row-start-1">
+              <div className="space-y-1">
                 <label className="ml-1 text-[10px] font-black uppercase tracking-widest text-gray-400">
-                  Original URL
+                  {content.editModal.originalUrl}
                 </label>
                 <input
                   type="url"
@@ -741,95 +780,13 @@ export const LinkList = ({
                   className="w-full rounded-2xl border-2 border-orange-100 bg-orange-50/50 px-6 py-4 text-sm font-bold text-orange-900 outline-none transition-all focus:border-orange-500 dark:border-orange-500/20 dark:bg-orange-500/10 dark:text-orange-200"
                 />
                 <p className="px-1 text-[9px] font-medium text-gray-400 dark:text-slate-500">
-                  Link thuc te ma nguoi dung se duoc chuyen toi.
+                  {content.editModal.originalHelp}
                 </p>
               </div>
 
-              <div className="space-y-1 lg:col-start-1 lg:row-start-2">
+              <div className="space-y-1">
                 <label className="ml-1 text-[10px] font-black uppercase tracking-widest text-gray-400">
-                  Tiêu đề
-                </label>
-                <input
-                  type="text"
-                  value={editForm.title}
-                  onChange={(e) =>
-                    setEditForm({ ...editForm, title: e.target.value })
-                  }
-                  placeholder="Tiêu đề hiển thị..."
-                  className="w-full rounded-2xl border-2 border-transparent bg-gray-50 px-6 py-4 text-sm font-bold text-gray-900 outline-none transition-all focus:border-orange-500 dark:bg-slate-700 dark:text-slate-100"
-                />
-              </div>
-
-              <div className="space-y-1 lg:col-start-1 lg:row-start-3">
-                <label className="ml-1 text-[10px] font-black uppercase tracking-widest text-gray-400">
-                  Mô tả
-                </label>
-                <textarea
-                  value={editForm.desc}
-                  onChange={(e) =>
-                    setEditForm({ ...editForm, desc: e.target.value })
-                  }
-                  placeholder="Mô tả nội dung..."
-                  rows={6}
-                  className="min-h-36 w-full resize-none rounded-2xl border-2 border-transparent bg-gray-50 px-6 py-4 text-sm font-medium text-gray-900 outline-none transition-all focus:border-orange-500 dark:bg-slate-700 dark:text-slate-100"
-                />
-              </div>
-
-              <div className="space-y-1 lg:col-start-1 lg:row-start-4">
-                <label className="ml-1 text-[10px] font-black uppercase tracking-widest text-gray-400">
-                  Dùng ở đâu
-                </label>
-                <select
-                  value={editForm.usage}
-                  onChange={(e) =>
-                    setEditForm({ ...editForm, usage: e.target.value })
-                  }
-                  className="w-full rounded-2xl border-2 border-transparent bg-gray-50 px-6 py-4 text-sm font-medium text-gray-900 outline-none transition-all focus:border-orange-500 dark:bg-slate-700 dark:text-slate-100"
-                >
-                  {LINK_USAGE_OPTIONS_WITH_PLACEHOLDER.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="space-y-1 lg:col-start-1 lg:row-start-5">
-                <label className="ml-1 text-[10px] font-black uppercase tracking-widest text-gray-400">
-                  Folder chiến dịch
-                </label>
-                <input
-                  type="text"
-                  value={editForm.folder}
-                  onChange={(e) =>
-                    setEditForm({ ...editForm, folder: e.target.value })
-                  }
-                  placeholder="sale-6-6, remarketing..."
-                  className="w-full rounded-2xl border-2 border-transparent bg-gray-50 px-6 py-4 text-sm font-medium text-gray-900 outline-none transition-all focus:border-orange-500 dark:bg-slate-700 dark:text-slate-100"
-                />
-              </div>
-
-              <div className="space-y-1 lg:col-start-2 lg:row-start-4">
-                <label className="ml-1 text-[10px] font-black uppercase tracking-widest text-gray-400">
-                  Tags
-                </label>
-                <input
-                  type="text"
-                  value={editForm.tagsText}
-                  onChange={(e) =>
-                    setEditForm({ ...editForm, tagsText: e.target.value })
-                  }
-                  placeholder="facebook, retarget, campaign-a"
-                  className="w-full rounded-2xl border-2 border-transparent bg-gray-50 px-6 py-4 text-sm font-medium text-gray-900 outline-none transition-all focus:border-orange-500 dark:bg-slate-700 dark:text-slate-100"
-                />
-                <p className="px-1 text-[9px] font-medium text-gray-400 dark:text-slate-500">
-                  Phân tách nhiều tag bằng dấu phẩy.
-                </p>
-              </div>
-
-              <div className="space-y-1 lg:col-start-2 lg:row-start-2">
-                <label className="ml-1 text-[10px] font-black uppercase tracking-widest text-gray-400">
-                  Thumbnail URL
+                  {content.editModal.thumbnailField}
                 </label>
                 <input
                   type="text"
@@ -842,11 +799,108 @@ export const LinkList = ({
                 />
               </div>
 
-              <div className="space-y-2 lg:col-start-2 lg:row-start-3">
+              <div className="space-y-1">
                 <label className="ml-1 text-[10px] font-black uppercase tracking-widest text-gray-400">
-                  Thời hạn link
+                  {content.editModal.titleField}
                 </label>
-                <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-2">
+                <input
+                  type="text"
+                  value={editForm.title}
+                  onChange={(e) =>
+                    setEditForm({ ...editForm, title: e.target.value })
+                  }
+                  placeholder={content.editModal.titlePlaceholder}
+                  className="w-full rounded-2xl border-2 border-transparent bg-gray-50 px-6 py-4 text-sm font-bold text-gray-900 outline-none transition-all focus:border-orange-500 dark:bg-slate-700 dark:text-slate-100"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="ml-1 text-[10px] font-black uppercase tracking-widest text-gray-400">
+                  {content.editModal.secondaryField}
+                </label>
+                <input
+                  type="url"
+                  value={editForm.secondary}
+                  onChange={(e) =>
+                    setEditForm({ ...editForm, secondary: e.target.value })
+                  }
+                  placeholder="https://shopee.vn/..."
+                  className="w-full rounded-2xl border-2 border-transparent bg-gray-50 px-6 py-4 text-sm font-medium text-gray-900 outline-none transition-all focus:border-orange-500 dark:bg-slate-700 dark:text-slate-100"
+                />
+              </div>
+
+              <div className="space-y-1 lg:col-span-2">
+                <label className="ml-1 text-[10px] font-black uppercase tracking-widest text-gray-400">
+                  {content.editModal.descriptionField}
+                </label>
+                <textarea
+                  value={editForm.desc}
+                  onChange={(e) =>
+                    setEditForm({ ...editForm, desc: e.target.value })
+                  }
+                  placeholder={content.editModal.descriptionPlaceholder}
+                  rows={5}
+                  className="min-h-32 w-full resize-none rounded-2xl border-2 border-transparent bg-gray-50 px-6 py-4 text-sm font-medium text-gray-900 outline-none transition-all focus:border-orange-500 dark:bg-slate-700 dark:text-slate-100"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="ml-1 text-[10px] font-black uppercase tracking-widest text-gray-400">
+                  {content.editModal.usageField}
+                </label>
+                <select
+                  value={editForm.usage}
+                  onChange={(e) =>
+                    setEditForm({ ...editForm, usage: e.target.value })
+                  }
+                  className="w-full rounded-2xl border-2 border-transparent bg-gray-50 px-6 py-4 text-sm font-medium text-gray-900 outline-none transition-all focus:border-orange-500 dark:bg-slate-700 dark:text-slate-100"
+                >
+                  {localizedUsageOptions.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="space-y-1">
+                <label className="ml-1 text-[10px] font-black uppercase tracking-widest text-gray-400">
+                  {content.editModal.folderField}
+                </label>
+                <input
+                  type="text"
+                  value={editForm.folder}
+                  onChange={(e) =>
+                    setEditForm({ ...editForm, folder: e.target.value })
+                  }
+                  placeholder={content.editModal.folderPlaceholder}
+                  className="w-full rounded-2xl border-2 border-transparent bg-gray-50 px-6 py-4 text-sm font-medium text-gray-900 outline-none transition-all focus:border-orange-500 dark:bg-slate-700 dark:text-slate-100"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="ml-1 text-[10px] font-black uppercase tracking-widest text-gray-400">
+                  {content.editModal.tagsField}
+                </label>
+                <input
+                  type="text"
+                  value={editForm.tagsText}
+                  onChange={(e) =>
+                    setEditForm({ ...editForm, tagsText: e.target.value })
+                  }
+                  placeholder={content.editModal.tagsPlaceholder}
+                  className="w-full rounded-2xl border-2 border-transparent bg-gray-50 px-6 py-4 text-sm font-medium text-gray-900 outline-none transition-all focus:border-orange-500 dark:bg-slate-700 dark:text-slate-100"
+                />
+                <p className="px-1 text-[9px] font-medium text-gray-400 dark:text-slate-500">
+                  {content.editModal.tagsHelp}
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <label className="ml-1 text-[10px] font-black uppercase tracking-widest text-gray-400">
+                  {content.editModal.expiresField}
+                </label>
+                <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
                   <button
                     type="button"
                     onClick={() => {
@@ -859,15 +913,9 @@ export const LinkList = ({
                         : "bg-gray-50 text-gray-500 hover:bg-gray-100 dark:bg-slate-700 dark:text-slate-300 dark:hover:bg-slate-600"
                     }`}
                   >
-                    Khong het han
+                    {content.editModal.expiresNone}
                   </button>
-                  {[
-                    { days: 1, label: "1 ngay" },
-                    { days: 3, label: "3 ngay" },
-                    { days: 7, label: "7 ngay" },
-                    { days: 15, label: "15 ngay" },
-                    { days: 30, label: "30 ngay" },
-                  ].map(({ days, label }) => {
+                  {[1, 3, 7, 15, 30].map((days) => {
                     const isSelected = selectedExpirePresetDays === days;
                     return (
                       <button
@@ -888,31 +936,14 @@ export const LinkList = ({
                             : "bg-gray-50 text-gray-500 hover:bg-gray-100 dark:bg-slate-700 dark:text-slate-300 dark:hover:bg-slate-600"
                         }`}
                       >
-                        {label}
+                        {t("linkList.editModal.expiresDay", { count: days })}
                       </button>
                     );
                   })}
                 </div>
                 <p className="px-1 text-[9px] font-medium text-gray-400 dark:text-slate-500">
-                  Link sẽ tự động vô hiệu sau thời gian đã chọn.
+                  {content.editModal.expiresHelp}
                 </p>
-              </div>
-
-              <div className="grid grid-cols-1 gap-4 lg:col-start-2 lg:row-start-1">
-                <div className="space-y-1">
-                  <label className="ml-1 text-[10px] font-black uppercase tracking-widest text-gray-400">
-                    Secondary URL
-                  </label>
-                  <input
-                    type="url"
-                    value={editForm.secondary}
-                    onChange={(e) =>
-                      setEditForm({ ...editForm, secondary: e.target.value })
-                    }
-                    placeholder="https://shopee.vn/..."
-                    className="w-full rounded-2xl border-2 border-transparent bg-gray-50 px-6 py-4 text-sm font-medium text-gray-900 outline-none transition-all focus:border-orange-500 dark:bg-slate-700 dark:text-slate-100"
-                  />
-                </div>
               </div>
             </div>
 
@@ -921,7 +952,7 @@ export const LinkList = ({
                 onClick={() => setEditingLink(null)}
                 className="flex-1 rounded-2xl border border-gray-200 bg-white py-4 text-[10px] font-black uppercase tracking-widest text-gray-600 transition-all hover:bg-gray-100 dark:border-slate-600 dark:bg-slate-600 dark:text-slate-300 dark:hover:bg-slate-500"
               >
-                Hủy bỏ
+                {content.editModal.cancel}
               </button>
               <button
                 onClick={handleUpdate}
@@ -933,7 +964,7 @@ export const LinkList = ({
                 ) : (
                   <Save size={14} />
                 )}
-                Lưu thay đổi
+                {content.editModal.save}
               </button>
             </div>
           </div>
@@ -942,20 +973,18 @@ export const LinkList = ({
 
       {deletingLink && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-6 backdrop-blur-sm">
-          <div className="w-full max-w-md overflow-hidden rounded-[3rem] bg-white shadow-2xl animate-in fade-in zoom-in duration-300 dark:bg-slate-800">
+          <div className="w-full max-w-md overflow-hidden rounded-[3rem] bg-white shadow-2xl dark:bg-slate-800">
             <div className="p-10 text-center">
               <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-3xl bg-red-50 text-red-600 shadow-sm shadow-red-100 dark:bg-red-500/10 dark:shadow-red-900/20">
                 <AlertTriangle size={40} />
               </div>
               <h3 className="mb-4 text-2xl font-black tracking-tight text-gray-900 dark:text-slate-100">
-                Xác nhận xóa link?
+                {content.deleteModal.title}
               </h3>
               <p className="mb-10 px-4 font-medium leading-relaxed text-gray-500 dark:text-slate-400">
-                Hành động này sẽ xóa vĩnh viễn link{" "}
-                <span className="font-bold tracking-tight text-gray-900 dark:text-slate-100">
-                  {deletingLink.short_code}
-                </span>{" "}
-                và mọi dữ liệu thống kê. Không thể khôi phục sau khi xóa.
+                {t("linkList.deleteModal.description", {
+                  code: deletingLink.short_code,
+                })}
               </p>
               <div className="flex flex-col gap-3">
                 <button
@@ -968,14 +997,14 @@ export const LinkList = ({
                   ) : (
                     <Trash2 size={18} />
                   )}
-                  Xóa vĩnh viễn
+                  {content.deleteModal.confirm}
                 </button>
                 <button
                   onClick={() => setDeletingLink(null)}
                   disabled={isDeleting}
                   className="w-full rounded-2xl bg-gray-100 py-5 text-[11px] font-black uppercase tracking-widest text-gray-600 transition-all hover:bg-gray-200 active:scale-95 dark:bg-slate-700 dark:text-slate-300 dark:hover:bg-slate-600"
                 >
-                  Hủy bỏ
+                  {content.deleteModal.cancel}
                 </button>
               </div>
             </div>
@@ -985,10 +1014,10 @@ export const LinkList = ({
 
       {qrLink && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-6 backdrop-blur-sm">
-          <div className="w-full max-w-sm overflow-hidden rounded-[3rem] bg-white shadow-2xl animate-in fade-in zoom-in duration-300 dark:bg-slate-800">
+          <div className="w-full max-w-sm overflow-hidden rounded-[3rem] bg-white shadow-2xl dark:bg-slate-800">
             <div className="flex items-center justify-between border-b border-gray-100 bg-gray-50/50 p-8 dark:border-slate-700 dark:bg-slate-700/50">
               <h3 className="text-xl font-black tracking-tight text-gray-900 dark:text-slate-100">
-                Mã QR của bạn
+                {content.qrModal.title}
               </h3>
               <button
                 onClick={() => setQrLink(null)}
@@ -1012,7 +1041,7 @@ export const LinkList = ({
                   {qrLink.short_code}
                 </p>
                 <p className="inline-block rounded-full border border-purple-100 bg-purple-50 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-purple-600 dark:border-purple-500/20 dark:bg-purple-500/10 dark:text-purple-200">
-                  Quét để truy cập link
+                  {content.qrModal.hint}
                 </p>
               </div>
               <button
@@ -1028,7 +1057,7 @@ export const LinkList = ({
                 }}
                 className="flex w-full items-center justify-center gap-3 rounded-2xl bg-purple-600 py-5 text-[11px] font-black uppercase tracking-widest text-white shadow-xl shadow-purple-100 transition-all hover:bg-purple-700 active:scale-95"
               >
-                <Save size={18} /> Tải mã QR (.png)
+                <Save size={18} /> {content.qrModal.download}
               </button>
             </div>
           </div>
@@ -1037,17 +1066,18 @@ export const LinkList = ({
 
       {showBulkDeleteConfirm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-6 backdrop-blur-sm">
-          <div className="w-full max-w-md overflow-hidden rounded-[3rem] bg-white shadow-2xl animate-in fade-in zoom-in duration-300 dark:bg-slate-800">
+          <div className="w-full max-w-md overflow-hidden rounded-[3rem] bg-white shadow-2xl dark:bg-slate-800">
             <div className="p-10 text-center">
               <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-3xl bg-red-50 text-red-600 shadow-sm shadow-red-100 dark:bg-red-500/10 dark:shadow-red-900/20">
                 <AlertTriangle size={40} />
               </div>
               <h3 className="mb-4 text-2xl font-black tracking-tight text-gray-900 dark:text-slate-100">
-                Xác nhận xóa {selectedIds.size} link?
+                {t("linkList.bulk.confirmTitle", { count: selectedIds.size })}
               </h3>
               <p className="mb-10 px-4 font-medium leading-relaxed text-gray-500 dark:text-slate-400">
-                Hành động này sẽ xóa vĩnh viễn {selectedIds.size} link và mọi dữ
-                liệu thống kê. Không thể khôi phục sau khi xóa.
+                {t("linkList.bulk.confirmDescription", {
+                  count: selectedIds.size,
+                })}
               </p>
               <div className="flex flex-col gap-3">
                 <button
@@ -1060,14 +1090,14 @@ export const LinkList = ({
                   ) : (
                     <Trash2 size={18} />
                   )}
-                  Xóa {selectedIds.size} link vĩnh viễn
+                  {t("linkList.bulk.confirmAction", { count: selectedIds.size })}
                 </button>
                 <button
                   onClick={() => setShowBulkDeleteConfirm(false)}
                   disabled={bulkDeleting}
                   className="w-full rounded-2xl bg-gray-100 py-5 text-[11px] font-black uppercase tracking-widest text-gray-600 transition-all hover:bg-gray-200 active:scale-95 dark:bg-slate-700 dark:text-slate-300 dark:hover:bg-slate-600"
                 >
-                  hủy bỏ
+                  {content.bulk.cancel}
                 </button>
               </div>
             </div>

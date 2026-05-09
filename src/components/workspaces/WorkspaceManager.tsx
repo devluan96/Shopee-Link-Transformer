@@ -1,6 +1,5 @@
 import React from "react";
 import {
-  ArrowRight,
   Building2,
   Check,
   Crown,
@@ -13,6 +12,7 @@ import {
   Users,
   X,
 } from "lucide-react";
+import { useLocale } from "@/src/hooks/useLocale";
 import { cn } from "@/src/lib/utils";
 import {
   UserLimits,
@@ -56,12 +56,6 @@ interface WorkspaceManagerProps {
     invitationId: string,
   ) => Promise<WorkspaceInvitation>;
 }
-
-const roleLabel: Record<WorkspaceRole, string> = {
-  owner: "Owner",
-  editor: "Editor",
-  viewer: "Viewer",
-};
 
 const roleBadgeClass: Record<WorkspaceRole, string> = {
   owner:
@@ -154,6 +148,14 @@ export function WorkspaceManager({
   onDeclineInvitation,
   onCancelInvitation,
 }: WorkspaceManagerProps) {
+  const { messages, t } = useLocale();
+  const copy = messages.workspace;
+  const roleLabel: Record<WorkspaceRole, string> = {
+    owner: copy.roles.owner,
+    editor: copy.roles.editor,
+    viewer: copy.roles.viewer,
+  };
+
   const [workspaceName, setWorkspaceName] = React.useState("");
   const [workspaceDescription, setWorkspaceDescription] = React.useState("");
   const [inviteEmail, setInviteEmail] = React.useState("");
@@ -181,8 +183,8 @@ export function WorkspaceManager({
     (workspace) => !workspace.is_personal,
   ).length;
   const currentWorkspaceType = currentWorkspace?.is_personal
-    ? "Personal"
-    : "Team";
+    ? copy.hero.currentWorkspace.personal
+    : copy.hero.currentWorkspace.team;
   const showIncomingInvitations =
     pendingInvitationsLoading ||
     (!canManageMembers && pendingInvitations.length > 0);
@@ -285,22 +287,21 @@ export function WorkspaceManager({
           <div className="space-y-5">
             <div className="inline-flex items-center gap-2 rounded-full border border-orange-200 bg-orange-50 px-3 py-1.5 text-[11px] font-black uppercase tracking-[0.24em] text-orange-700 dark:border-orange-500/20 dark:bg-orange-500/10 dark:text-orange-200">
               <ShieldCheck size={14} />
-              Team Workspace
+              {copy.hero.badge}
             </div>
 
             <div className="max-w-2xl">
               <h2 className="text-3xl font-black tracking-tight text-slate-950 dark:text-slate-50">
-                Team gọn, role rõ, thao tác nhanh.
+                {copy.hero.title}
               </h2>
               <p className="mt-3 text-sm leading-6 text-slate-600 dark:text-slate-300">
-                Giữ lại đúng phần cần dùng để quản lý workspace, lời mời và
-                thành viên trong một màn hình ngắn gọn.
+                {copy.hero.description}
               </p>
             </div>
 
             <div className="grid gap-3 sm:grid-cols-3">
               <StatPill
-                label="Workspace team"
+                label={copy.hero.stats.teamWorkspaces}
                 value={
                   maxTeamWorkspaces === null
                     ? `${teamWorkspaceCount}`
@@ -308,7 +309,7 @@ export function WorkspaceManager({
                 }
               />
               <StatPill
-                label="Thành viên"
+                label={copy.hero.stats.members}
                 value={
                   maxMembersPerWorkspace === null
                     ? `${members.length}`
@@ -316,7 +317,7 @@ export function WorkspaceManager({
                 }
               />
               <StatPill
-                label="Lời mời chờ"
+                label={copy.hero.stats.pendingInvites}
                 value={`${pendingInvitations.length}`}
               />
             </div>
@@ -326,14 +327,14 @@ export function WorkspaceManager({
             <div className="flex items-start justify-between gap-4">
               <div>
                 <p className="text-[11px] font-black uppercase tracking-[0.24em] text-orange-300">
-                  Workspace đang chạy
+                  {copy.hero.currentWorkspace.eyebrow}
                 </p>
                 <h3 className="mt-5 text-2xl font-black tracking-tight">
-                  {currentWorkspace?.name || "Chưa chọn workspace"}
+                  {currentWorkspace?.name || copy.hero.currentWorkspace.emptyTitle}
                 </h3>
                 <p className="mt-2 text-sm text-slate-300">
                   {currentWorkspace?.description ||
-                    "Chọn workspace để bắt đầu quản lý team."}
+                    copy.hero.currentWorkspace.emptyDescription}
                 </p>
               </div>
               <div className="rounded-2xl bg-white/10 p-3 text-orange-300">
@@ -358,10 +359,10 @@ export function WorkspaceManager({
                 </>
               )}
               <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-[11px] font-black uppercase tracking-[0.22em] text-slate-200">
-                {members.length} member
+                {members.length} {copy.hero.currentWorkspace.membersSuffix}
               </span>
               <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-[11px] font-black uppercase tracking-[0.22em] text-slate-200">
-                {sentInvitations.length} pending invite
+                {sentInvitations.length} {copy.hero.currentWorkspace.pendingInvitesSuffix}
               </span>
             </div>
           </div>
@@ -371,8 +372,8 @@ export function WorkspaceManager({
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-[0.88fr_1.12fr]">
         <section className={cn(surfaceClass, "space-y-5 p-6")}>
           <WorkspaceSectionTitle
-            eyebrow="Workspace"
-            title="Danh sách workspace"
+            eyebrow={copy.sections.list.eyebrow}
+            title={copy.sections.list.title}
             icon={Building2}
           />
 
@@ -380,7 +381,7 @@ export function WorkspaceManager({
             {workspaceLoading ? (
               <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 text-sm font-bold text-slate-500 dark:border-slate-700 dark:bg-slate-950/50 dark:text-slate-400">
                 <Loader2 size={16} className="animate-spin" />
-                Đang tải workspace...
+                {copy.sections.list.loading}
               </div>
             ) : (
               workspaces.map((workspace) => {
@@ -406,14 +407,16 @@ export function WorkspaceManager({
                           </p>
                           {isActive && (
                             <span className="rounded-full border border-orange-200 bg-orange-100 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.22em] text-orange-700 dark:border-orange-500/20 dark:bg-orange-500/10 dark:text-orange-200">
-                              Active
+                              {copy.sections.list.active}
                             </span>
                           )}
                         </div>
 
                         <div className="mt-3 flex flex-wrap gap-2">
                           <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.22em] text-slate-500 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-300">
-                            {workspace.is_personal ? "Personal" : "Team"}
+                            {workspace.is_personal
+                              ? copy.sections.list.personal
+                              : copy.sections.list.team}
                           </span>
                           <span
                             className={cn(
@@ -426,7 +429,7 @@ export function WorkspaceManager({
                         </div>
 
                         <p className="mt-3 text-sm leading-6 text-slate-500 dark:text-slate-400">
-                          {workspace.description || "Chưa có mô tả."}
+                          {workspace.description || copy.sections.list.noDescription}
                         </p>
                       </div>
 
@@ -450,8 +453,10 @@ export function WorkspaceManager({
           {userLimits && createWorkspaceBlocked && (
             <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-4 text-sm font-medium text-amber-800 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-200">
               {maxTeamWorkspaces === 0
-                ? "Gói hiện tại chưa hỗ trợ Team Workspace."
-                : `Bạn đã dùng hết ${maxTeamWorkspaces} Team Workspace.`}
+                ? copy.sections.warnings.noWorkspaceSupport
+                : t("workspace.sections.warnings.workspaceLimit", {
+                    limit: maxTeamWorkspaces,
+                  })}
             </div>
           )}
 
@@ -462,10 +467,10 @@ export function WorkspaceManager({
             <div className="flex items-center justify-between gap-4">
               <div>
                 <p className="text-[11px] font-black uppercase tracking-[0.24em] text-orange-300">
-                  Tạo workspace
+                  {copy.sections.create.eyebrow}
                 </p>
                 <p className="mt-2 text-sm text-slate-300">
-                  Tách team hoặc campaign mới.
+                  {copy.sections.create.description}
                 </p>
               </div>
               <div className="rounded-2xl bg-white/10 p-3 text-orange-300">
@@ -478,14 +483,14 @@ export function WorkspaceManager({
                 type="text"
                 value={workspaceName}
                 onChange={(e) => setWorkspaceName(e.target.value)}
-                placeholder="Tên workspace"
+                placeholder={copy.sections.create.namePlaceholder}
                 className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3.5 text-sm font-medium text-white outline-none transition-all placeholder:text-slate-400 focus:border-orange-300 focus:ring-4 focus:ring-orange-500/20"
               />
               <textarea
                 value={workspaceDescription}
                 onChange={(e) => setWorkspaceDescription(e.target.value)}
                 rows={3}
-                placeholder="Mô tả ngắn"
+                placeholder={copy.sections.create.descriptionPlaceholder}
                 className="w-full resize-none rounded-2xl border border-white/10 bg-white/5 px-4 py-3.5 text-sm font-medium text-white outline-none transition-all placeholder:text-slate-400 focus:border-orange-300 focus:ring-4 focus:ring-orange-500/20"
               />
             </div>
@@ -500,7 +505,7 @@ export function WorkspaceManager({
               ) : (
                 <PlusCircle size={16} />
               )}
-              Tạo workspace
+              {copy.sections.create.submit}
             </button>
           </form>
         </section>
@@ -509,8 +514,8 @@ export function WorkspaceManager({
           {showIncomingInvitations && (
             <div className={cn(surfaceClass, "p-6")}>
               <WorkspaceSectionTitle
-                eyebrow="Lời mời"
-                title="Lời mời vào team"
+                eyebrow={copy.sections.incomingInvites.eyebrow}
+                title={copy.sections.incomingInvites.title}
                 icon={Mail}
                 tone="blue"
               />
@@ -519,7 +524,7 @@ export function WorkspaceManager({
                 {pendingInvitationsLoading ? (
                   <div className="flex items-center gap-3 rounded-2xl border border-sky-200 bg-sky-50 px-4 py-4 text-sm font-bold text-sky-700 dark:border-sky-500/20 dark:bg-sky-500/10 dark:text-sky-200">
                     <Loader2 size={16} className="animate-spin" />
-                    Đang tải lời mời...
+                    {copy.sections.incomingInvites.loading}
                   </div>
                 ) : (
                   pendingInvitations.map((invitation) => {
@@ -550,10 +555,12 @@ export function WorkspaceManager({
                             </span>
                           </div>
                           <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
-                            Mời bởi{" "}
-                            {invitation.invited_by_name ||
-                              invitation.invited_by_email ||
-                              "Owner"}
+                            {t("workspace.sections.incomingInvites.invitedBy", {
+                              name:
+                                invitation.invited_by_name ||
+                                invitation.invited_by_email ||
+                                copy.sections.incomingInvites.ownerFallback,
+                            })}
                           </p>
                         </div>
 
@@ -571,7 +578,7 @@ export function WorkspaceManager({
                             ) : (
                               <Check size={14} />
                             )}
-                            Chấp nhận
+                            {copy.sections.incomingInvites.accept}
                           </button>
                           <button
                             type="button"
@@ -582,7 +589,7 @@ export function WorkspaceManager({
                             className="flex items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-xs font-black uppercase tracking-[0.22em] text-slate-600 transition-all hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
                           >
                             <X size={14} />
-                            Từ chối
+                            {copy.sections.incomingInvites.decline}
                           </button>
                         </div>
                       </div>
@@ -596,8 +603,8 @@ export function WorkspaceManager({
           {currentWorkspace && canManageMembers && (
             <div className={cn(surfaceClass, "p-6")}>
               <WorkspaceSectionTitle
-                eyebrow="Quản lý lời mời"
-                title="Mời thành viên"
+                eyebrow={copy.sections.manageInvites.eyebrow}
+                title={copy.sections.manageInvites.title}
                 icon={UserPlus}
               />
 
@@ -609,7 +616,7 @@ export function WorkspaceManager({
                   type="email"
                   value={inviteEmail}
                   onChange={(e) => setInviteEmail(e.target.value)}
-                  placeholder="Email thành viên"
+                  placeholder={copy.sections.manageInvites.emailPlaceholder}
                   className={inputClass}
                 />
                 <select
@@ -621,8 +628,8 @@ export function WorkspaceManager({
                   }
                   className={inputClass}
                 >
-                  <option value="editor">Editor</option>
-                  <option value="viewer">Viewer</option>
+                  <option value="editor">{copy.sections.roles.editor}</option>
+                  <option value="viewer">{copy.sections.roles.viewer}</option>
                 </select>
                 <button
                   type="submit"
@@ -634,14 +641,14 @@ export function WorkspaceManager({
                   ) : (
                     <UserPlus size={16} />
                   )}
-                  Mời
+                  {copy.sections.manageInvites.invite}
                 </button>
               </form>
 
               <div className="mt-5 border-t border-slate-200 pt-5 dark:border-slate-700">
                 <div className="mb-3">
                   <p className="text-[11px] font-black uppercase tracking-[0.24em] text-slate-400">
-                    Lời mời đã gửi
+                    {copy.sections.manageInvites.sentTitle}
                   </p>
                 </div>
 
@@ -649,7 +656,7 @@ export function WorkspaceManager({
                   {sentInvitationsLoading ? (
                     <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 text-sm font-bold text-slate-500 dark:border-slate-700 dark:bg-slate-950/40 dark:text-slate-400">
                       <Loader2 size={16} className="animate-spin" />
-                      Đang tải lời mời đã gửi...
+                      {copy.sections.manageInvites.loading}
                     </div>
                   ) : sentInvitations.length > 0 ? (
                     sentInvitations.map((invitation) => {
@@ -665,7 +672,10 @@ export function WorkspaceManager({
                               {invitation.invited_email}
                             </p>
                             <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
-                              {roleLabel[invitation.role]} · chờ xác nhận
+                              {t(
+                                "workspace.sections.manageInvites.pendingConfirmation",
+                                { role: roleLabel[invitation.role] },
+                              )}
                             </p>
                           </div>
 
@@ -682,14 +692,14 @@ export function WorkspaceManager({
                             ) : (
                               <X size={14} />
                             )}
-                            Hủy
+                            {copy.sections.manageInvites.cancel}
                           </button>
                         </div>
                       );
                     })
                   ) : (
                     <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 text-sm font-medium text-slate-500 dark:border-slate-700 dark:bg-slate-950/40 dark:text-slate-400">
-                      Chưa có lời mời nào đã gửi.
+                      {copy.sections.manageInvites.none}
                     </div>
                   )}
                 </div>
@@ -703,22 +713,25 @@ export function WorkspaceManager({
             inviteMembersBlocked && (
               <div className="rounded-2xl border border-amber-200 bg-amber-50 px-5 py-4 text-sm font-medium text-amber-800 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-200">
                 {maxMembersPerWorkspace === 0
-                  ? "Gói hiện tại chưa hỗ trợ mời thành viên."
-                  : `Workspace này đã dùng hết ${maxMembersPerWorkspace} slot thành viên.`}
+                  ? copy.sections.warnings.noMemberSupport
+                  : t("workspace.sections.warnings.memberLimit", {
+                      limit: maxMembersPerWorkspace,
+                    })}
               </div>
             )}
 
           {currentWorkspace && !canManageMembers && (
             <div className="rounded-2xl border border-amber-200 bg-amber-50 px-5 py-4 text-sm font-medium text-amber-800 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-200">
-              Chỉ owner mới có thể thêm hoặc đổi role thành viên. Bạn hiện là{" "}
-              {roleLabel[currentWorkspace.role]}.
+              {t("workspace.sections.warnings.ownerOnly", {
+                role: roleLabel[currentWorkspace.role],
+              })}
             </div>
           )}
 
           <div className={cn(surfaceClass, "p-6")}>
             <WorkspaceSectionTitle
-              eyebrow="Thành viên"
-              title="Danh sách thành viên"
+              eyebrow={copy.sections.members.eyebrow}
+              title={copy.sections.members.title}
               icon={Crown}
               tone="slate"
             />
@@ -727,7 +740,7 @@ export function WorkspaceManager({
               {membersLoading ? (
                 <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 text-sm font-bold text-slate-500 dark:border-slate-700 dark:bg-slate-950/40 dark:text-slate-400">
                   <Loader2 size={16} className="animate-spin" />
-                  Đang tải thành viên...
+                  {copy.sections.members.loading}
                 </div>
               ) : members.length > 0 ? (
                 members.map((member) => {
@@ -746,7 +759,7 @@ export function WorkspaceManager({
                             alt={
                               member.full_name ||
                               member.email ||
-                              "Member avatar"
+                              copy.sections.members.avatarAlt
                             }
                             className="h-12 w-12 rounded-2xl object-cover ring-1 ring-slate-200 dark:ring-slate-700"
                           />
@@ -765,7 +778,7 @@ export function WorkspaceManager({
                             </p>
                             {isOwner && (
                               <span className="rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.22em] text-amber-700 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-200">
-                                Owner
+                                {copy.sections.members.ownerBadge}
                               </span>
                             )}
                           </div>
@@ -774,7 +787,7 @@ export function WorkspaceManager({
                               size={13}
                               className="mr-1 inline-block align-[-2px]"
                             />
-                            {member.email || "Không có email"}
+                            {member.email || copy.sections.members.noEmail}
                           </p>
                         </div>
                       </div>
@@ -793,9 +806,9 @@ export function WorkspaceManager({
                           "py-3 font-bold disabled:cursor-not-allowed disabled:opacity-60",
                         )}
                       >
-                        <option value="owner">Owner</option>
-                        <option value="editor">Editor</option>
-                        <option value="viewer">Viewer</option>
+                        <option value="owner">{copy.roles.owner}</option>
+                        <option value="editor">{copy.roles.editor}</option>
+                        <option value="viewer">{copy.roles.viewer}</option>
                       </select>
 
                       <button
@@ -809,14 +822,14 @@ export function WorkspaceManager({
                         ) : (
                           <Trash2 size={16} />
                         )}
-                        Xóa
+                        {copy.sections.members.remove}
                       </button>
                     </div>
                   );
                 })
               ) : (
                 <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 text-sm font-medium text-slate-500 dark:border-slate-700 dark:bg-slate-950/40 dark:text-slate-400">
-                  Chưa có thành viên nào trong workspace này.
+                  {copy.sections.members.none}
                 </div>
               )}
             </div>
