@@ -14,7 +14,7 @@ VITE_DESKTOP_APP_URL=
 Recommended production example with a Cloudflare R2 custom domain:
 
 ```env
-VITE_DESKTOP_APP_URL=https://downloads.hotsnew.click/hotsnew-click-setup-0.0.1-x64.exe
+VITE_DESKTOP_APP_URL=https://github.com/devluan96/Shopee-Link-Transformer/releases/download/v0.0.1/hotsnew-click-setup-0.0.1-x64.exe
 ```
 
 ## Desktop app flow
@@ -40,31 +40,23 @@ npm run desktop:build
 - `release/hotsnew-click-portable-<version>-x64.exe` for the portable app
 - `release/hotsnew-click-<version>-win-unpacked.zip` as a fallback archive
 
-4. If you want to keep the small web installer on your web host but store the large package file elsewhere, set:
+4. Point `VITE_DESKTOP_APP_URL` directly at the GitHub Release installer:
 
 ```env
-DESKTOP_APP_PACKAGE_URL=https://files.your-host.com/hotsnew-click-desktop-0.0.1-x64.nsis.7z
+VITE_DESKTOP_APP_URL=https://github.com/devluan96/Shopee-Link-Transformer/releases/download/v0.0.1/hotsnew-click-setup-0.0.1-x64.exe
 ```
 
-The `nsis-web` installer will download that package during installation.
-
-5. Point `VITE_DESKTOP_APP_URL` at the small installer:
-
-```env
-VITE_DESKTOP_APP_URL=https://hotsnew.click/downloads/hotsnew-click-setup-0.0.1-x64.exe
-```
-
-6. Build the desktop artifacts:
+5. Build the desktop artifacts:
 
 ```bash
 npm run desktop:build
 ```
 
-7. After the build:
+6. After the build:
 
-- `public/downloads/hotsnew-click-setup-<version>-x64.exe` is the small installer you can keep in the repo/web app host
-- `release/nsis-web/hotsnew-click-desktop-<version>-x64.nsis.7z` is the large package you can upload to a separate file host
-- `public/downloads/latest.yml` remains small metadata
+- `release/hotsnew-click-setup-<version>-x64.exe` is the offline Windows installer to upload to GitHub Releases
+- `release/hotsnew-click-portable-<version>-x64.exe` is the portable build
+- `release/hotsnew-click-<version>-win-unpacked.zip` is the unpacked fallback archive
 
 ## Desktop development
 
@@ -84,7 +76,7 @@ npm run desktop:dev
 
 - Supported browser install remains available through the in-app install flow when the desktop build URL is not configured.
 - Windows artifacts are written into `release/`.
-- `nsis-web` supports `appPackageUrl`, so the `.exe` and the large `.nsis.7z` package can live on different hosts.
+- For the simplest production flow, host the installer directly on GitHub Releases and point `VITE_DESKTOP_APP_URL` at that asset.
 
 ## Release checklist
 
@@ -104,17 +96,14 @@ v0.0.1
 
 3. Upload this required asset to the GitHub Release:
 
-- `release/nsis-web/hotsnew-click-desktop-0.0.1-x64.nsis.7z`
+- `release/hotsnew-click-setup-0.0.1-x64.exe`
 
-4. Redeploy the web app so these files go live:
-
-- `public/downloads/hotsnew-click-setup-0.0.1-x64.exe`
-- `public/downloads/latest.yml`
+4. Redeploy the web app so the install button uses the new `VITE_DESKTOP_APP_URL`.
 
 5. Confirm the production installer URL works:
 
 ```text
-https://hotsnew.click/downloads/hotsnew-click-setup-0.0.1-x64.exe
+https://github.com/devluan96/Shopee-Link-Transformer/releases/download/v0.0.1/hotsnew-click-setup-0.0.1-x64.exe
 ```
 
 Detailed release notes are in:

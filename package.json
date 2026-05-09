@@ -102,20 +102,11 @@
       "icon": "desktop-assets/icon.ico",
       "executableName": "HotsNew Click",
       "target": [
-        "nsis-web",
+        "nsis",
         "portable"
       ]
     },
     "nsis": {
-      "oneClick": false,
-      "allowToChangeInstallationDirectory": true,
-      "createDesktopShortcut": "always",
-      "createStartMenuShortcut": true,
-      "shortcutName": "HotsNew Click",
-      "runAfterFinish": false,
-      "artifactName": "hotsnew-click-setup-${version}-${arch}.${ext}"
-    },
-    "nsisWeb": {
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": "always",

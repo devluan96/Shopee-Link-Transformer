@@ -27,12 +27,9 @@ const sevenZip =
     : "7za";
 
 const releaseDir = path.join(repoRoot, "release");
-const nsisWebDir = path.join(releaseDir, "nsis-web");
 const unpackedDir = path.join(releaseDir, "win-unpacked");
 const zipName = `hotsnew-click-${rootPkg.version}-win-unpacked.zip`;
 const zipPath = path.join(releaseDir, zipName);
-const publicDownloadsDir = path.join(repoRoot, "public", "downloads");
-const desktopAppPackageUrl = process.env.DESKTOP_APP_PACKAGE_URL || "";
 
 const run = (command, args, extraEnv = {}) => {
   const result = spawnSync(
@@ -58,58 +55,6 @@ const run = (command, args, extraEnv = {}) => {
   }
 };
 
-const syncPublicDownloads = () => {
-  fs.mkdirSync(publicDownloadsDir, { recursive: true });
-
-  for (const entry of fs.readdirSync(publicDownloadsDir, {
-    withFileTypes: true,
-  })) {
-    if (!entry.isFile()) continue;
-    if (
-      /^hotsnew-click-setup-.*-x64\.exe$/i.test(entry.name) ||
-      /^hotsnew-click-desktop-.*-x64\.nsis\.7z$/i.test(entry.name) ||
-      /^hotsnew-click-portable-.*-x64\.exe$/i.test(entry.name) ||
-      /^hotsnew-click-setup-.*-x64\.exe\.blockmap$/i.test(entry.name)
-    ) {
-      fs.rmSync(path.join(publicDownloadsDir, entry.name), { force: true });
-    }
-  }
-
-  const desktopArtifacts = [
-    {
-      from: path.join(nsisWebDir, `hotsnew-click-setup-${rootPkg.version}-x64.exe`),
-      to: `hotsnew-click-setup-${rootPkg.version}-x64.exe`,
-    },
-    {
-      from: path.join(nsisWebDir, "latest.yml"),
-      to: "latest.yml",
-    },
-  ];
-
-  for (const artifact of desktopArtifacts) {
-    if (!fs.existsSync(artifact.from)) {
-      continue;
-    }
-    fs.copyFileSync(artifact.from, path.join(publicDownloadsDir, artifact.to));
-  }
-
-  const staleLocalPackage = path.join(
-    publicDownloadsDir,
-    `hotsnew-click-desktop-${rootPkg.version}-x64.nsis.7z`,
-  );
-  if (fs.existsSync(staleLocalPackage)) {
-    fs.rmSync(staleLocalPackage, { force: true });
-  }
-
-  const stalePortable = path.join(
-    publicDownloadsDir,
-    `hotsnew-click-portable-${rootPkg.version}-x64.exe`,
-  );
-  if (fs.existsSync(stalePortable)) {
-    fs.rmSync(stalePortable, { force: true });
-  }
-};
-
 if (fs.existsSync(zipPath)) {
   fs.rmSync(zipPath, { force: true });
 }
@@ -119,10 +64,7 @@ fs.writeFileSync(appPkgPath, `${JSON.stringify(appPkg, null, 2)}\n`);
 
 run(process.execPath, [path.join(repoRoot, "scripts", "generate-windows-icon.cjs")]);
 
-const electronBuilderArgs = ["--win", "nsis-web", "portable"];
-if (desktopAppPackageUrl) {
-  electronBuilderArgs.push(`-c.nsisWeb.appPackageUrl=${desktopAppPackageUrl}`);
-}
+const electronBuilderArgs = ["--win", "nsis", "portable"];
 
 run(electronBuilder, electronBuilderArgs, {
   CSC_IDENTITY_AUTO_DISCOVERY: "false",
@@ -132,8 +74,5 @@ if (fs.existsSync(unpackedDir)) {
   run(sevenZip, ["a", "-tzip", zipPath, ".\\release\\win-unpacked\\*"]);
   console.log(`Desktop app archive created: ${zipPath}`);
 }
-
-syncPublicDownloads();
-console.log(`Public downloads synced: ${publicDownloadsDir}`);
 
 console.log(`Unpacked app directory: ${unpackedDir}`);
