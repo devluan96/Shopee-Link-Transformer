@@ -204,6 +204,7 @@ export default function App() {
     searchTerm,
     setSearchTerm,
     setLinksDirty,
+    upsertLink,
     handleDeleteLink,
     handleUpdateLink,
     handleShareLink,
@@ -398,7 +399,13 @@ export default function App() {
       (profile?.subscription_plan && profile.subscription_plan !== "free") ||
       profile?.role === "admin"
     ),
-    onSuccess: () => {
+    onSuccess: async (createdLink) => {
+      const belongsToCurrentWorkspace =
+        !currentWorkspaceId || createdLink.workspace_id === currentWorkspaceId;
+
+      if (belongsToCurrentWorkspace) {
+        upsertLink(createdLink);
+      }
       setLinksDirty(true);
       setStatsDirty(true);
       setAnalyticsDirty(true);
