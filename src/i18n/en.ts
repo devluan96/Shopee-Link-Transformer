@@ -1357,6 +1357,8 @@ export const en = {
         noMemberSupport:
           "Your current plan does not support member invitations.",
         memberLimit: "This workspace has used all {limit} member slots.",
+        personalWorkspaceNoMembers:
+          "Personal workspaces do not support adding members. Create a team workspace when you need sharing.",
         ownerOnly:
           "Only the owner can add members or change permissions. Your current role is {role}.",
       },

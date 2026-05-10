@@ -1327,6 +1327,8 @@ export const vi = {
         workspaceLimit: "Bạn đã dùng hết {limit} không gian nhóm.",
         noMemberSupport: "Gói hiện tại chưa hỗ trợ mời thành viên.",
         memberLimit: "Không gian này đã dùng hết {limit} chỗ thành viên.",
+        personalWorkspaceNoMembers:
+          "Không thêm thành viên vào workspace cá nhân. Hãy tạo workspace nhóm nếu cần chia sẻ.",
         ownerOnly:
           "Chỉ chủ sở hữu mới có thể thêm hoặc đổi quyền thành viên. Bạn hiện là {role}.",
       },

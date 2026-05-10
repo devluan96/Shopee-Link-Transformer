@@ -30,6 +30,7 @@ import {
 } from "@/src/lib/linkUsage";
 import { useLocale } from "@/src/hooks/useLocale";
 import { toast } from "sonner";
+import { normalizeVietnameseSlug } from "@/src/lib/utils";
 
 const TIKTOK_HOST_REGEX =
   /(^|\.)tiktok\.com$|(^|\.)vt\.tiktok\.com$|(^|\.)vm\.tiktok\.com$/i;
@@ -85,6 +86,7 @@ export const LinkList = ({
   const [showBulkDeleteConfirm, setShowBulkDeleteConfirm] = useState(false);
   const [quickFilter, setQuickFilter] = useState<QuickFilter>("all");
   const [editForm, setEditForm] = useState({
+    shortCode: "",
     title: "",
     desc: "",
     usage: "",
@@ -226,6 +228,7 @@ export const LinkList = ({
     }
 
     setEditForm({
+      shortCode: link.short_code || "",
       title: link.custom_title || "",
       desc: link.custom_description || "",
       usage: normalizeUsageContext(link.usage_context),
@@ -261,6 +264,8 @@ export const LinkList = ({
     setIsUpdating(true);
     try {
       const updates: LinkUpdatePayload = {
+        short_code:
+          normalizeVietnameseSlug(editForm.shortCode) || editingLink.short_code,
         custom_title: editForm.title,
         custom_description: editForm.desc,
         usage_context: normalizeUsageContext(editForm.usage),
@@ -870,6 +875,21 @@ export const LinkList = ({
                   }
                   placeholder={content.editModal.titlePlaceholder}
                   className="w-full rounded-2xl border-2 border-transparent bg-gray-50 px-6 py-4 text-sm font-bold text-gray-900 outline-none transition-all focus:border-orange-500 dark:bg-slate-700 dark:text-slate-100"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="ml-1 text-[10px] font-black uppercase tracking-widest text-gray-400">
+                  {t("createLink.page.shortCodeLabel")}
+                </label>
+                <input
+                  type="text"
+                  value={editForm.shortCode}
+                  onChange={(e) =>
+                    setEditForm({ ...editForm, shortCode: e.target.value })
+                  }
+                  placeholder={t("createLink.page.shortCodePlaceholder")}
+                  className="w-full rounded-2xl border-2 border-transparent bg-gray-50 px-6 py-4 text-sm font-medium text-gray-900 outline-none transition-all focus:border-orange-500 dark:bg-slate-700 dark:text-slate-100"
                 />
               </div>
 

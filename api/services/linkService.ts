@@ -403,6 +403,7 @@ export const updateLink = async (
   linkId: string,
   userId: string,
   data: Partial<{
+    short_code: string;
     custom_title: string;
     custom_description: string;
     custom_image_url: string;
@@ -446,6 +447,26 @@ export const updateLink = async (
       normalizedData.custom_domain,
       await getLinkOutputDomains(supabase).catch(() => fallbackOutputDomains),
     );
+  }
+  if ("short_code" in normalizedData) {
+    const normalizedShortCode = normalizeShortCode(normalizedData.short_code);
+    if (!normalizedShortCode) {
+      throw new Error("Mã rút gọn không hợp lệ sau khi chuẩn hóa.");
+    }
+
+    const { data: existingLink, error: existingLinkError } = await supabase
+      .from("links")
+      .select("id")
+      .eq("short_code", normalizedShortCode)
+      .neq("id", linkId)
+      .maybeSingle();
+
+    if (existingLinkError) throw existingLinkError;
+    if (existingLink?.id) {
+      throw new Error(`Mã rút gọn "${normalizedShortCode}" đã được sử dụng.`);
+    }
+
+    normalizedData.short_code = normalizedShortCode;
   }
 
   const { data: link, error } = await supabase

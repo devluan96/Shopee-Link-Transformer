@@ -178,7 +178,9 @@ export function WorkspaceManager({
       ? true
       : members.length < maxMembersPerWorkspace;
   const createWorkspaceBlocked = !canCreateMoreWorkspaces;
-  const inviteMembersBlocked = !canInviteMoreMembers;
+  const personalWorkspaceSelected = !!currentWorkspace?.is_personal;
+  const inviteMembersBlocked =
+    personalWorkspaceSelected || !canInviteMoreMembers;
   const teamWorkspaceCount = workspaces.filter(
     (workspace) => !workspace.is_personal,
   ).length;
@@ -208,7 +210,12 @@ export function WorkspaceManager({
 
   const handleInviteMember = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!currentWorkspace?.id || !inviteEmail.trim() || inviteMembersBlocked) {
+    if (
+      !currentWorkspace?.id ||
+      currentWorkspace.is_personal ||
+      !inviteEmail.trim() ||
+      inviteMembersBlocked
+    ) {
       return;
     }
 
@@ -600,7 +607,9 @@ export function WorkspaceManager({
             </div>
           )}
 
-          {currentWorkspace && canManageMembers && (
+          {currentWorkspace &&
+            canManageMembers &&
+            !personalWorkspaceSelected && (
             <div className={cn(surfaceClass, "p-6")}>
               <WorkspaceSectionTitle
                 eyebrow={copy.sections.manageInvites.eyebrow}
@@ -709,6 +718,15 @@ export function WorkspaceManager({
 
           {currentWorkspace &&
             canManageMembers &&
+            personalWorkspaceSelected && (
+              <div className="rounded-2xl border border-amber-200 bg-amber-50 px-5 py-4 text-sm font-medium text-amber-800 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-200">
+                {copy.sections.warnings.personalWorkspaceNoMembers}
+              </div>
+            )}
+
+          {currentWorkspace &&
+            canManageMembers &&
+            !personalWorkspaceSelected &&
             userLimits &&
             inviteMembersBlocked && (
               <div className="rounded-2xl border border-amber-200 bg-amber-50 px-5 py-4 text-sm font-medium text-amber-800 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-200">

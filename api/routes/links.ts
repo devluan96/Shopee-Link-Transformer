@@ -329,6 +329,7 @@ router.patch(
       }
 
       const allowedUpdates = [
+        "short_code",
         "custom_title",
         "custom_description",
         "custom_image_url",

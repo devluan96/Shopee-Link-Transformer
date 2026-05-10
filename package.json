@@ -104,7 +104,7 @@
       }
     ],
     "win": {
-      "signAndEditExecutable": false,
+      "signAndEditExecutable": true,
       "icon": "icon.ico",
       "executableName": "HotsNew Click",
       "target": [
@@ -117,6 +117,9 @@
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": "always",
       "createStartMenuShortcut": true,
+      "installerIcon": "icon.ico",
+      "uninstallerIcon": "icon.ico",
+      "installerHeaderIcon": "icon.ico",
       "shortcutName": "HotsNew Click",
       "runAfterFinish": false,
       "artifactName": "hotsnew-click-setup-${version}-${arch}.${ext}"

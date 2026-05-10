@@ -422,6 +422,20 @@ export const inviteWorkspaceMember = async (
 ) => {
   await assertWorkspaceOwner(supabase, workspaceId, actorUserId);
 
+  const { data: workspace, error: workspaceError } = await supabase
+    .from("workspaces")
+    .select("id, is_personal")
+    .eq("id", workspaceId)
+    .maybeSingle();
+
+  if (workspaceError) throw workspaceError;
+  if (!workspace) {
+    throw new Error("Workspace không tồn tại.");
+  }
+  if (workspace.is_personal) {
+    throw new Error("Workspace cá nhân không hỗ trợ thêm thành viên.");
+  }
+
   const email = payload.email.trim().toLowerCase();
   if (!email) {
     throw new Error("Email thành viên không được để trống.");

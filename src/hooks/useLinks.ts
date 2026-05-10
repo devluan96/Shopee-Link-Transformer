@@ -3,6 +3,7 @@ import { User } from "@supabase/supabase-js";
 import { UserProfile, ConvertedLink, LinkUpdatePayload } from "@/src/types";
 import { toast } from "sonner";
 import { useLocale } from "@/src/hooks/useLocale";
+import { supabase } from "@/src/lib/supabase";
 
 interface UseLinksProps {
   user: User | null;
@@ -160,6 +161,30 @@ export function useLinks({
     setListLoading(false);
     setLinksDirty(!!user);
   }, [user?.id, currentWorkspaceId]);
+
+  useEffect(() => {
+    if (!user?.id || !currentWorkspaceId) return;
+
+    const channel = supabase
+      .channel(`links-sync:${user.id}:${currentWorkspaceId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "links",
+          filter: `workspace_id=eq.${currentWorkspaceId}`,
+        },
+        () => {
+          setLinksDirty(true);
+        },
+      )
+      .subscribe();
+
+    return () => {
+      void supabase.removeChannel(channel);
+    };
+  }, [currentWorkspaceId, user?.id]);
 
   // Auto-fetch when tab is list and data is dirty
   useEffect(() => {
