@@ -14,7 +14,6 @@ import {
 } from "lucide-react";
 import { cn } from "@/src/lib/utils";
 import { Tab, UserProfile, Workspace } from "@/src/types";
-import { InstallAppButton } from "@/src/components/common/InstallAppButton";
 import { AccountMenu } from "@/src/components/common/AccountMenu";
 import { useLocale } from "@/src/hooks/useLocale";
 
@@ -88,8 +87,10 @@ export const Sidebar = ({
   onClose,
   compactDesktop = false,
 }: SidebarProps) => {
-  const { t } = useLocale();
+  const { locale, t } = useLocale();
   const zaloContactUrl = "https://zalo.me/0969361607";
+  const adminCenterLabel =
+    locale === "vi" ? "Trung tâm quản trị" : "Admin center";
 
   const handleTabClick = (tab: Tab) => {
     setActiveTab(tab);
@@ -225,7 +226,7 @@ export const Sidebar = ({
               </div>
               <SidebarItem
                 icon={UsersIcon}
-                label={t("sidebar.userManagement")}
+                label={adminCenterLabel}
                 active={activeTab === "admin"}
                 onClick={() => handleTabClick("admin")}
                 compact={compactDesktop}
@@ -244,10 +245,6 @@ export const Sidebar = ({
             <MessageCircle size={16} />
             {t("sidebar.contactAdmin")}
           </a>
-          <div className="mb-4">
-            <InstallAppButton />
-          </div>
-
           <div className="lg:hidden">
             <AccountMenu
               activeTab={activeTab}

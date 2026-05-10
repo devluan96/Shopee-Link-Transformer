@@ -2,7 +2,6 @@ import { useState, useCallback, useEffect } from "react";
 import { User } from "@supabase/supabase-js";
 import { UserProfile } from "@/src/types";
 import { toast } from "sonner";
-import { supabase } from "@/src/lib/supabase";
 
 interface UseAdminProps {
   user: User | null;
@@ -15,7 +14,6 @@ export interface AdminState {
   allUsers: UserProfile[];
   adminLoading: boolean;
   adminDirty: boolean;
-  onlineUserIds: string[];
   outputDomains: string[];
   outputDomainsLoading: boolean;
 }
@@ -34,7 +32,6 @@ export function useAdmin({ user, profile, fetchWithAuth, activeTab }: UseAdminPr
   const [allUsers, setAllUsers] = useState<UserProfile[]>([]);
   const [adminLoading, setAdminLoading] = useState(false);
   const [adminDirty, setAdminDirty] = useState(true);
-  const [onlineUserIds, setOnlineUserIds] = useState<string[]>([]);
   const [outputDomains, setOutputDomains] = useState<string[]>(["hotsnew.click"]);
   const [outputDomainsLoading, setOutputDomainsLoading] = useState(false);
 
@@ -163,44 +160,8 @@ export function useAdmin({ user, profile, fetchWithAuth, activeTab }: UseAdminPr
     [user, isAdminRole, fetchWithAuth],
   );
 
-  // Presence/online users tracking
-  useEffect(() => {
-    if (!user?.id || !isAdminRole) {
-      setOnlineUserIds([]);
-      return;
-    }
-
-    const presenceChannel = supabase.channel("online-users", {
-      config: { presence: { key: user.id } },
-    });
-
-    const syncOnlineUsers = () => {
-      const state = presenceChannel.presenceState();
-      setOnlineUserIds(Object.keys(state));
-    };
-
-    presenceChannel
-      .on("presence", { event: "sync" }, syncOnlineUsers)
-      .on("presence", { event: "join" }, syncOnlineUsers)
-      .on("presence", { event: "leave" }, syncOnlineUsers)
-      .subscribe(async (status) => {
-        if (status === "SUBSCRIBED") {
-          await presenceChannel.track({
-            user_id: user.id,
-            online_at: new Date().toISOString(),
-          });
-        }
-      });
-
-    return () => {
-      setOnlineUserIds((current) => current.filter((id) => id !== user.id));
-      supabase.removeChannel(presenceChannel);
-    };
-  }, [user?.id, isAdminRole]);
-
   useEffect(() => {
     setAllUsers([]);
-    setOnlineUserIds([]);
     setAdminLoading(false);
     setAdminDirty(!!user);
   }, [user?.id]);
@@ -217,7 +178,6 @@ export function useAdmin({ user, profile, fetchWithAuth, activeTab }: UseAdminPr
     allUsers,
     adminLoading,
     adminDirty,
-    onlineUserIds,
     outputDomains,
     outputDomainsLoading,
     fetchAllUsers,

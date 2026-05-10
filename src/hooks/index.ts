@@ -12,3 +12,4 @@ export { useClipboard, type ClipboardState, type ClipboardActions } from "./useC
 export { useWorkspaces } from "./useWorkspaces";
 export { useSecurity } from "./useSecurity";
 export { useNotifications } from "./useNotifications";
+export { usePresence } from "./usePresence";

@@ -23,6 +23,7 @@ import {
   useWorkspaces,
   useSecurity,
   useNotifications,
+  usePresence,
 } from "./hooks";
 
 // Static Components
@@ -192,6 +193,8 @@ export default function App() {
     markNotificationRead,
     markAllNotificationsRead,
   } = useNotifications({ user, fetchWithAuth });
+
+  const { onlineUserIds } = usePresence({ user });
 
   // Links Hook
   const {
@@ -414,7 +417,6 @@ export default function App() {
   const {
     allUsers,
     adminLoading,
-    onlineUserIds,
     outputDomains,
     outputDomainsLoading,
     handleApproveUser,

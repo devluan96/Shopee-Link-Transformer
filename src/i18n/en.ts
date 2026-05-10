@@ -124,6 +124,7 @@ export const en = {
     team: "Workspace team",
     installApp: "Install app",
     admin: "Admin",
+    adminCenter: "Admin center",
     userManagement: "User management",
     contactAdmin: "Contact admin on Zalo",
     plans: "Plans",

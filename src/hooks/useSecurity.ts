@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { User } from "@supabase/supabase-js";
 import { toast } from "sonner";
 import {
@@ -7,6 +7,7 @@ import {
   SecurityOverview,
   UserProfile,
 } from "@/src/types";
+import { supabase } from "@/src/lib/supabase";
 
 interface UseSecurityProps {
   user: User | null;
@@ -52,6 +53,7 @@ export function useSecurity({
   const [adminAccessLogs, setAdminAccessLogs] = useState<AccessLogEntry[]>([]);
   const [blockedIps, setBlockedIps] = useState<BlockedIpEntry[]>([]);
   const [adminSecurityLoading, setAdminSecurityLoading] = useState(false);
+  const accessLogsRefreshTimeoutRef = useRef<number | null>(null);
 
   const isAdminRole =
     profile?.role === "admin" || user?.email === "devluan1996@gmail.com";
@@ -64,7 +66,7 @@ export function useSecurity({
       const data = await response.json();
       setSecurityOverview(data as SecurityOverview);
     } catch (e: any) {
-      toast.error(e.message || "Không thể tải dữ liệu bảo mật");
+      toast.error(e.message || "Khong the tai du lieu bao mat");
     } finally {
       setSecurityLoading(false);
     }
@@ -76,7 +78,7 @@ export function useSecurity({
     });
     const data = await response.json();
     setTwoFactorSetup(data as TwoFactorSetupState);
-    toast.success("Đã tạo secret 2FA. Hãy nhập mã để bật.");
+    toast.success("Da tao secret 2FA. Hay nhap ma de bat.");
     return data as TwoFactorSetupState;
   }, [fetchWithAuth]);
 
@@ -99,7 +101,7 @@ export function useSecurity({
           : createEmptySecurityOverview(true, verifiedAt),
       );
       setTwoFactorSetup(null);
-      toast.success("Đã bật xác thực 2 lớp.");
+      toast.success("Da bat xac thuc 2 lop.");
       await fetchSecurityOverview();
     },
     [fetchWithAuth, fetchSecurityOverview],
@@ -126,7 +128,7 @@ export function useSecurity({
           : createEmptySecurityOverview(false, null),
       );
       setTwoFactorSetup(null);
-      toast.success("Đã tắt xác thực 2 lớp.");
+      toast.success("Da tat xac thuc 2 lop.");
       await fetchSecurityOverview();
     },
     [fetchWithAuth, fetchSecurityOverview],
@@ -148,7 +150,7 @@ export function useSecurity({
           window.sessionStorage.setItem(getTwoFactorSessionKey(user.id), "1");
         }
         setTwoFactorSessionVerified(true);
-        toast.success("Đã xác minh 2FA cho phiên hiện tại.");
+        toast.success("Da xac minh 2FA cho phien hien tai.");
         await fetchSecurityOverview();
       } finally {
         setSecurityLoading(false);
@@ -157,26 +159,51 @@ export function useSecurity({
     [fetchWithAuth, fetchSecurityOverview, user?.id],
   );
 
+  const fetchAdminAccessLogs = useCallback(
+    async (options?: { reportError?: boolean }) => {
+      if (!user || !isAdminRole) return;
+      try {
+        const response = await fetchWithAuth(
+          "/api/v1/admin/security/access-logs?limit=100",
+        );
+        const logs = await response.json();
+        setAdminAccessLogs(logs as AccessLogEntry[]);
+      } catch (e: any) {
+        if (options?.reportError !== false) {
+          toast.error(e.message || "Khong the tai nhat ky truy cap");
+        }
+      }
+    },
+    [user, isAdminRole, fetchWithAuth],
+  );
+
+  const fetchBlockedIpList = useCallback(
+    async (options?: { reportError?: boolean }) => {
+      if (!user || !isAdminRole) return;
+      try {
+        const response = await fetchWithAuth(
+          "/api/v1/admin/security/blocked-ips",
+        );
+        const blocked = await response.json();
+        setBlockedIps(blocked as BlockedIpEntry[]);
+      } catch (e: any) {
+        if (options?.reportError !== false) {
+          toast.error(e.message || "Khong the tai danh sach IP bi chan");
+        }
+      }
+    },
+    [user, isAdminRole, fetchWithAuth],
+  );
+
   const fetchAdminSecurity = useCallback(async () => {
     if (!user || !isAdminRole) return;
     setAdminSecurityLoading(true);
     try {
-      const [logsResponse, blockedIpsResponse] = await Promise.all([
-        fetchWithAuth("/api/v1/admin/security/access-logs?limit=100"),
-        fetchWithAuth("/api/v1/admin/security/blocked-ips"),
-      ]);
-      const [logs, blocked] = await Promise.all([
-        logsResponse.json(),
-        blockedIpsResponse.json(),
-      ]);
-      setAdminAccessLogs(logs as AccessLogEntry[]);
-      setBlockedIps(blocked as BlockedIpEntry[]);
-    } catch (e: any) {
-      toast.error(e.message || "Không thể tải dữ liệu admin security");
+      await Promise.all([fetchAdminAccessLogs(), fetchBlockedIpList()]);
     } finally {
       setAdminSecurityLoading(false);
     }
-  }, [user, isAdminRole, fetchWithAuth]);
+  }, [user, isAdminRole, fetchAdminAccessLogs, fetchBlockedIpList]);
 
   const blockIp = useCallback(
     async (payload: {
@@ -192,11 +219,11 @@ export function useSecurity({
         },
       );
       const data = await response.json();
-      toast.success("Đã chặn IP.");
-      await fetchAdminSecurity();
+      toast.success("Da chan IP.");
+      await fetchBlockedIpList({ reportError: false });
       return data as BlockedIpEntry;
     },
-    [fetchWithAuth, fetchAdminSecurity],
+    [fetchWithAuth, fetchBlockedIpList],
   );
 
   const unblockIp = useCallback(
@@ -206,10 +233,10 @@ export function useSecurity({
         { method: "DELETE" },
       );
       await response.json();
-      toast.success("Đã bỏ chặn IP.");
-      await fetchAdminSecurity();
+      toast.success("Da bo chan IP.");
+      await fetchBlockedIpList({ reportError: false });
     },
-    [fetchWithAuth, fetchAdminSecurity],
+    [fetchWithAuth, fetchBlockedIpList],
   );
 
   useEffect(() => {
@@ -232,15 +259,66 @@ export function useSecurity({
 
   useEffect(() => {
     if (user && !securityOverview && !securityLoading) {
-      fetchSecurityOverview();
+      void fetchSecurityOverview();
     }
   }, [user?.id, securityOverview, securityLoading, fetchSecurityOverview]);
 
   useEffect(() => {
     if (activeTab === "admin" && user && isAdminRole) {
-      fetchAdminSecurity();
+      void fetchAdminSecurity();
     }
   }, [activeTab, user?.id, isAdminRole, fetchAdminSecurity]);
+
+  useEffect(() => {
+    if (activeTab !== "admin" || !user?.id || !isAdminRole) {
+      return;
+    }
+
+    const scheduleAccessLogsRefresh = () => {
+      if (accessLogsRefreshTimeoutRef.current) {
+        window.clearTimeout(accessLogsRefreshTimeoutRef.current);
+      }
+
+      accessLogsRefreshTimeoutRef.current = window.setTimeout(() => {
+        accessLogsRefreshTimeoutRef.current = null;
+        void fetchAdminAccessLogs({ reportError: false });
+      }, 1500);
+    };
+
+    const adminSecurityChannel = supabase
+      .channel(`admin-security-sync:${user.id}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "blocked_ips",
+        },
+        () => {
+          void fetchBlockedIpList({ reportError: false });
+        },
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "access_logs",
+        },
+        () => {
+          scheduleAccessLogsRefresh();
+        },
+      )
+      .subscribe();
+
+    return () => {
+      if (accessLogsRefreshTimeoutRef.current) {
+        window.clearTimeout(accessLogsRefreshTimeoutRef.current);
+        accessLogsRefreshTimeoutRef.current = null;
+      }
+      void supabase.removeChannel(adminSecurityChannel);
+    };
+  }, [activeTab, user?.id, isAdminRole, fetchAdminAccessLogs, fetchBlockedIpList]);
 
   return {
     securityOverview,

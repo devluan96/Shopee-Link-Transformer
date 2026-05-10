@@ -98,6 +98,39 @@ export const AdminPanel = ({
   const [domainDraft, setDomainDraft] = React.useState("");
   const [domainList, setDomainList] = React.useState<string[]>(outputDomains);
   const [savingDomains, setSavingDomains] = React.useState(false);
+  const [adminView, setAdminView] = React.useState<"users" | "system">(
+    "users",
+  );
+
+  const adminViewCopy =
+    locale === "vi"
+      ? {
+          centerTitle: "Trung tâm quản trị",
+          centerDescription:
+            "Theo dõi người dùng, cấu hình hệ thống và các tác vụ vận hành.",
+          usersTab: "Quản lý user",
+          systemTab: "Quản trị hệ thống",
+          usersTitle: "Quản lý user",
+          usersDescription:
+            "Quản lý, phê duyệt và theo dõi hoạt động thành viên.",
+          systemTitle: "Quản trị hệ thống",
+          systemDescription:
+            "Cấu hình domain đầu ra, nhật ký truy cập và chặn IP.",
+          searchPlaceholder: "Tìm theo tên hoặc email...",
+        }
+      : {
+          centerTitle: "Admin center",
+          centerDescription:
+            "Manage users, system settings, and operational controls.",
+          usersTab: "User management",
+          systemTab: "System management",
+          usersTitle: "User management",
+          usersDescription: "Manage, approve, and monitor member activity.",
+          systemTitle: "System management",
+          systemDescription:
+            "Configure output domains, access logs, and IP blocking.",
+          searchPlaceholder: "Search by name or email...",
+        };
 
   React.useEffect(() => {
     setDomainList(outputDomains);
@@ -243,7 +276,12 @@ export const AdminPanel = ({
         </div>
       )}
 
-      <div className="mb-8 grid grid-cols-1 gap-6 md:grid-cols-4">
+      <div
+        className={cn(
+          "mb-8 grid grid-cols-1 gap-6 md:grid-cols-4",
+          adminView !== "users" && "hidden",
+        )}
+      >
         <div className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-800">
           <div className="mb-2 flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-100">
@@ -303,14 +341,48 @@ export const AdminPanel = ({
 
       <header className="mb-8">
         <h2 className="mb-2 text-3xl font-black text-gray-900 dark:text-slate-100">
-          {content.header.title}
+          {adminViewCopy.centerTitle}
         </h2>
         <p className="font-medium text-gray-500 dark:text-slate-400">
-          {content.header.description}
+          {adminViewCopy.centerDescription}
         </p>
       </header>
 
-      <div className="mb-8 grid grid-cols-1 gap-8 xl:grid-cols-[1.05fr_0.95fr]">
+      <div className="mb-8 flex flex-wrap gap-3">
+        <button
+          type="button"
+          onClick={() => setAdminView("users")}
+          className={cn(
+            "inline-flex items-center gap-2 rounded-2xl px-5 py-3 text-sm font-black transition-all",
+            adminView === "users"
+              ? "bg-orange-600 text-white shadow-lg shadow-orange-200"
+              : "bg-white text-gray-600 shadow-sm ring-1 ring-gray-100 hover:bg-gray-50 dark:bg-slate-800 dark:text-slate-200 dark:ring-slate-700 dark:hover:bg-slate-700",
+          )}
+        >
+          <UsersIcon size={18} />
+          {adminViewCopy.usersTab}
+        </button>
+        <button
+          type="button"
+          onClick={() => setAdminView("system")}
+          className={cn(
+            "inline-flex items-center gap-2 rounded-2xl px-5 py-3 text-sm font-black transition-all",
+            adminView === "system"
+              ? "bg-sky-600 text-white shadow-lg shadow-sky-200"
+              : "bg-white text-gray-600 shadow-sm ring-1 ring-gray-100 hover:bg-gray-50 dark:bg-slate-800 dark:text-slate-200 dark:ring-slate-700 dark:hover:bg-slate-700",
+          )}
+        >
+          <Shield size={18} />
+          {adminViewCopy.systemTab}
+        </button>
+      </div>
+
+      <div
+        className={cn(
+          "mb-8 grid grid-cols-1 gap-8 xl:grid-cols-[1.05fr_0.95fr]",
+          adminView !== "system" && "hidden",
+        )}
+      >
         <section className="rounded-[2.5rem] border border-gray-100 bg-white p-8 shadow-sm dark:border-slate-700 dark:bg-slate-800 xl:col-span-2">
           <div className="mb-6 flex items-center gap-3">
             <Globe className="text-sky-500" size={20} />
@@ -508,7 +580,12 @@ export const AdminPanel = ({
         </section>
       </div>
 
-      <div className="mb-6 rounded-2xl border border-gray-100 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-800">
+      <div
+        className={cn(
+          "mb-6 rounded-2xl border border-gray-100 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-800",
+          adminView !== "users" && "hidden",
+        )}
+      >
         <div className="flex flex-wrap gap-4">
           <div className="relative min-w-50 flex-1">
             <Search
@@ -517,7 +594,7 @@ export const AdminPanel = ({
             />
             <input
               type="text"
-              placeholder={content.filters.searchPlaceholder}
+              placeholder={adminViewCopy.searchPlaceholder}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full rounded-xl border border-gray-200 py-3 pl-11 pr-4 text-sm focus:border-gray-900 focus:outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:focus:border-orange-500"
@@ -565,7 +642,12 @@ export const AdminPanel = ({
         </div>
       </div>
 
-      <div className="overflow-hidden rounded-[3rem] border border-gray-100 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-800">
+      <div
+        className={cn(
+          "overflow-hidden rounded-[3rem] border border-gray-100 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-800",
+          adminView !== "users" && "hidden",
+        )}
+      >
         <div className="flex flex-col gap-3 border-b border-gray-100 bg-gray-50/50 p-6 dark:border-slate-700 dark:bg-slate-900/70 sm:flex-row sm:items-center sm:justify-between sm:p-8">
           <h3 className="flex items-center gap-2 text-sm font-black uppercase tracking-widest">
             <UsersIcon size={18} /> {content.table.title}
