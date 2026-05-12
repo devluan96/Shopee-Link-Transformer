@@ -1,4 +1,4 @@
-import { PublicLinkRecord } from "../types/index.js";
+﻿import { PublicLinkRecord } from "../types/index.js";
 
 const SHOPEE_HOST_REGEX = /(^|\.)shopee\.[a-z.]+$/i;
 const TIKTOK_HOST_REGEX =
@@ -74,9 +74,9 @@ export const renderChoiceLandingPage = (
   const variantBadgeMarkup = isExperimental
     ? `<div class="variant-badge">Choice Mode</div>`
     : "";
-  const overlayHintMarkup = hasSecondaryRedirect
-    ? `<div class="overlay-hint" aria-hidden="true"><div class="overlay-hint-icon">&#128070;</div><div class="overlay-hint-text">Click vào đây để ủng hộ rồi trở về để xem tiếp</div></div>`
-    : "";
+
+  const overlayHintMarkup = `<div class="overlay-hint" aria-hidden="true"><div class="overlay-hint-icon">&#128070;</div><div class="overlay-hint-text">Click vào đây để ủng hộ rồi trở về để xem tiếp</div></div>`;
+  const overlayAriaLabel = "Mở tiếp tục";
 
   const previewMedia = `<div class="video-container"><video class="hero-media hero-video" src="${escapeHtml(videoUrl)}" controls muted autoplay loop playsinline webkit-playsinline x5-playsinline preload="auto" poster="${escapeHtml(imageUrl || socialImageUrl)}"></video></div>`;
 
@@ -252,7 +252,7 @@ export const renderChoiceLandingPage = (
       </section>
     </main>
 
-    <div id="overlay" class="overlay delayed-hidden" role="button" tabindex="0" aria-label="Mo buoc tiep theo">${overlayHintMarkup}</div>
+    <div id="overlay" class="overlay delayed-hidden" role="button" tabindex="0" aria-label="${overlayAriaLabel}">${overlayHintMarkup}</div>
 
     <script>
       (() => {
