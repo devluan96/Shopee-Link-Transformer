@@ -1,4 +1,8 @@
 import { SupabaseClient } from "../config/supabase.js";
+import {
+  countDisplayableOutboundClicks,
+  fetchOutboundEventsForLinkIds,
+} from "../utils/clickTracking.js";
 
 export interface NotificationSettings {
   webhook_url?: string;
@@ -36,6 +40,14 @@ export interface AppNotification {
 const CLICK_NOTIFICATION_THRESHOLDS = [5, 10, 20];
 const LINK_EXPIRY_WARNING_WINDOW_MS = 24 * 60 * 60 * 1000;
 const SUBSCRIPTION_EXPIRY_WARNING_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
+
+const getDisplayedClickCountForLink = async (
+  supabase: SupabaseClient,
+  linkId: string,
+) =>
+  countDisplayableOutboundClicks(
+    await fetchOutboundEventsForLinkIds(supabase, [linkId]),
+  );
 
 export const getNotificationSettings = async (
   supabase: SupabaseClient,
@@ -293,14 +305,7 @@ const maybeCreateClickThresholdNotification = async (
   shortCode: string,
   linkTitle?: string | null,
 ) => {
-  const { count, error } = await supabase
-    .from("link_outbound_events")
-    .select("id", { count: "exact", head: true })
-    .eq("link_id", linkId);
-
-  if (error) throw error;
-
-  const totalClicks = Number(count || 0);
+  const totalClicks = await getDisplayedClickCountForLink(supabase, linkId);
   if (!CLICK_NOTIFICATION_THRESHOLDS.includes(totalClicks)) {
     return;
   }
@@ -568,12 +573,9 @@ export const handleClickNotification = async (
   }
 
   if (settings.notify_threshold > 0) {
-    const { count } = await supabase
-      .from("clicks")
-      .select("*", { count: "exact", head: true })
-      .eq("link_id", linkId);
+    const totalClicks = await getDisplayedClickCountForLink(supabase, linkId);
 
-    if ((count || 0) % settings.notify_threshold !== 0) {
+    if (totalClicks === 0 || totalClicks % settings.notify_threshold !== 0) {
       return;
     }
   }
