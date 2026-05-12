@@ -2,6 +2,7 @@ import { useState, useCallback } from "react";
 import { User } from "@supabase/supabase-js";
 import { UserProfile } from "@/src/types";
 import { LINK_USAGE_DEFAULT } from "@/src/lib/linkUsage";
+import { buildPrettyLinkUrl } from "@/src/lib/linkPaths";
 import { useLocale } from "@/src/hooks/useLocale";
 import { normalizeVietnameseSlug } from "@/src/lib/utils";
 import { toast } from "sonner";
@@ -211,7 +212,15 @@ export function useLinkCreator({
           t("createLink.feedback.success", {
             url:
               nextResult.converted_url ||
-              `https://hotsnew.click/s/${nextResult.short_code}`,
+              buildPrettyLinkUrl(
+                "https://hotsnew.click",
+                {
+                  slug: nextResult.slug,
+                  shortCode: nextResult.short_code,
+                  title: customTitle,
+                  fallbackToLegacy: false,
+                },
+              ),
           }),
         );
         await onSuccess(nextResult);

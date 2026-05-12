@@ -23,7 +23,7 @@ const getFilteredLinks = async (
 
   let query = supabase
     .from("links")
-    .select("id, short_code, custom_title, workspace_id")
+    .select("id, short_code, slug, custom_title, workspace_id")
     .in("workspace_id", workspaceIds);
 
   const { data, error } = await query;
@@ -50,11 +50,12 @@ export const getUserStats = async (
   }
 
   const linkIds = links.map((link: any) => link.id).filter(Boolean);
-  const linkMetaMap = new Map<string, { short_code: string; title: string }>(
+  const linkMetaMap = new Map<string, { short_code: string; slug?: string; title: string }>(
     links.map((link: any) => [
       link.id,
       {
         short_code: link.short_code,
+        slug: link.slug || undefined,
         title: link.custom_title || link.short_code,
       },
     ]),
@@ -105,6 +106,7 @@ export const getUserStats = async (
   const topLinks = Array.from(linkClickMap.entries())
     .map(([id, total]) => ({
       short_code: linkMetaMap.get(id)?.short_code || "",
+      slug: linkMetaMap.get(id)?.slug,
       title: linkMetaMap.get(id)?.title || "",
       clicks: total,
     }))
@@ -202,11 +204,12 @@ export const getUserAnalytics = async (
     .map(([name, value]) => ({ name, value }))
     .sort((a, b) => b.value - a.value);
 
-  const linkMetaMap = new Map<string, { short_code: string; title: string }>(
+  const linkMetaMap = new Map<string, { short_code: string; slug?: string; title: string }>(
     links.map((link: any) => [
       link.id,
       {
         short_code: link.short_code,
+        slug: link.slug || undefined,
         title: link.custom_title || link.short_code,
       },
     ]),
@@ -216,6 +219,7 @@ export const getUserAnalytics = async (
     .map(([id, clicks]) => ({
       id,
       short_code: linkMetaMap.get(id)?.short_code || "",
+      slug: linkMetaMap.get(id)?.slug,
       title: linkMetaMap.get(id)?.title || "Unknown",
       clicks,
     }))

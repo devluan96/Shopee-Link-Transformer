@@ -47,7 +47,7 @@ const getScopedLinks = async (
 
   let query = supabase
     .from("links")
-    .select("id, short_code, custom_title, original_url, workspace_id")
+    .select("id, short_code, slug, custom_title, original_url, workspace_id")
     .in("workspace_id", workspaceIds);
 
   if (linkId) {

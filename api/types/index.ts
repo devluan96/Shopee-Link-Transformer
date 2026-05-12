@@ -24,6 +24,7 @@ export interface AuthenticatedRequest extends Request {
 export interface PublicLinkRecord {
   id: string;
   short_code: string;
+  slug?: string | null;
   original_url: string;
   custom_domain?: string | null;
   workspace_id?: string | null;
@@ -53,6 +54,7 @@ export interface PublicLinkRecord {
 
 export interface LinkMetaRecord {
   short_code: string;
+  slug?: string | null;
   title: string;
 }
 

@@ -1,6 +1,7 @@
 import { NextFunction, Request, Response } from "express";
 import { getSupabase } from "../config/supabase.js";
 import { getClientIp } from "../utils/helpers.js";
+import { isCandidatePublicSlugPath } from "../utils/linkPaths.js";
 import * as securityService from "../services/securityService.js";
 import { AuthenticatedRequest } from "../types/index.js";
 
@@ -8,7 +9,8 @@ const shouldAuditRequest = (req: Request) => {
   return (
     req.path.startsWith("/api/") ||
     req.path.startsWith("/s/") ||
-    req.path.startsWith("/s-choice/")
+    req.path.startsWith("/s-choice/") ||
+    isCandidatePublicSlugPath(req.path)
   );
 };
 

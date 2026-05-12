@@ -15,6 +15,11 @@ import {
   resolveWritableWorkspaceId,
 } from "./workspaceService.js";
 import { getLinkOutputDomains } from "./appSettingsService.js";
+import {
+  buildPrettyLinkUrl,
+  isReservedPublicSlug,
+  normalizeLinkSlug,
+} from "../utils/linkPaths.js";
 
 const DEFAULT_SHORT_DOMAIN = "hotsnew.click";
 const fallbackOutputDomains = (
@@ -103,8 +108,32 @@ const applyAffiliateParams = (
   return url.toString();
 };
 
-const buildConvertedUrl = (customDomain: string | null, shortCode: string) =>
-  `https://${customDomain || DEFAULT_SHORT_DOMAIN}/s/${shortCode}`;
+const generateUniquePublicSlug = async (
+  supabase: SupabaseClient,
+  sourceTitle?: string | null,
+) => {
+  const baseSlug = normalizeLinkSlug(sourceTitle);
+  let candidateSlug = baseSlug;
+  let suffix = 2;
+
+  while (true) {
+    if (!isReservedPublicSlug(candidateSlug)) {
+      const { data: existingLink, error } = await supabase
+        .from("links")
+        .select("id")
+        .eq("slug", candidateSlug)
+        .maybeSingle();
+
+      if (error) throw error;
+      if (!existingLink) {
+        return candidateSlug;
+      }
+    }
+
+    candidateSlug = `${baseSlug}-${suffix}`;
+    suffix += 1;
+  }
+};
 
 const inferSecondaryTargetType = (
   value?: string | null,
@@ -224,6 +253,10 @@ export const createLink = async (
   } else {
     shortCode = nanoid(8);
   }
+  const publicSlug = await generateUniquePublicSlug(
+    supabase,
+    data.customTitle || data.customShortCode || shortCode,
+  );
 
   let secondaryUrl: string | null = null;
   if (data.secondaryUrl && data.secondaryUrl.trim()) {
@@ -316,6 +349,7 @@ export const createLink = async (
       user_id: userId,
       original_url: primaryUrl,
       short_code: shortCode,
+      slug: publicSlug,
       custom_domain: customDomain,
       workspace_id: workspaceId,
       folder_name: folderName,
@@ -355,7 +389,14 @@ export const createLink = async (
 
   return {
     ...link,
-    converted_url: buildConvertedUrl(customDomain, shortCode),
+    converted_url: buildPrettyLinkUrl(
+      `https://${customDomain || DEFAULT_SHORT_DOMAIN}`,
+      {
+        slug: publicSlug,
+        shortCode,
+        title: data.customTitle,
+      },
+    ),
   };
 };
 
@@ -389,7 +430,7 @@ export const getUserLinks = async (
   const { data, error } = await supabase
     .from("links")
     .select(
-      "id, short_code, original_url, custom_domain, workspace_id, folder_name, tags, custom_title, custom_description, custom_image_url, video_url, created_at, expires_at, secondary_url, redirect_delay_ms, usage_context, user_id, utm_source, utm_medium, utm_campaign, utm_content, utm_term, shopee_affiliate_params, tiktok_affiliate_params, ab_test_enabled, ab_variant_b_title, ab_variant_b_description, ab_variant_b_image_url, ab_variant_b_video_url, ab_variant_b_original_url, ab_variant_b_secondary_url",
+      "id, short_code, slug, original_url, custom_domain, workspace_id, folder_name, tags, custom_title, custom_description, custom_image_url, video_url, created_at, expires_at, secondary_url, redirect_delay_ms, usage_context, user_id, utm_source, utm_medium, utm_campaign, utm_content, utm_term, shopee_affiliate_params, tiktok_affiliate_params, ab_test_enabled, ab_variant_b_title, ab_variant_b_description, ab_variant_b_image_url, ab_variant_b_video_url, ab_variant_b_original_url, ab_variant_b_secondary_url",
     )
     .in("workspace_id", filteredWorkspaceIds)
     .order("created_at", { ascending: false });

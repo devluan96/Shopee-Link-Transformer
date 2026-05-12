@@ -13,6 +13,7 @@ import {
   TrendingUp,
   Zap,
 } from "lucide-react";
+import { buildPrettyLinkPath } from "@/src/lib/linkPaths";
 import { useLocale } from "@/src/hooks/useLocale";
 import { Tab } from "@/src/types";
 
@@ -23,7 +24,7 @@ interface OverviewProps {
     totalShopeeClicks?: number;
     totalTiktokClicks?: number;
     recentClicks: Array<{ date: string; clicks: number }>;
-    topLinks: Array<{ short_code: string; title: string; clicks: number }>;
+    topLinks: Array<{ short_code: string; slug?: string; title: string; clicks: number }>;
     growthPercentage: number;
   } | null;
   setActiveTab: (tab: Tab) => void;
@@ -626,7 +627,13 @@ export const Overview = ({
                                 {link.title || `/${link.short_code}`}
                               </p>
                               <p className="mt-1 truncate font-mono text-[11px] text-slate-400 dark:text-slate-500">
-                                /s/{link.short_code}
+                                {buildPrettyLinkPath(
+                                  {
+                                    slug: link.slug,
+                                    shortCode: link.short_code,
+                                    title: link.title,
+                                  },
+                                )}
                               </p>
                             </div>
                             <div className="text-right">
