@@ -25,6 +25,11 @@ import {
   getClientIp,
 } from "./utils/helpers.js";
 import {
+  buildPrettyLinkUrl,
+  isCandidatePublicSlugPath,
+  normalizeLinkSlug,
+} from "./utils/linkPaths.js";
+import {
   insertClickWithTracking,
   insertOutboundEvent,
 } from "./utils/clickTracking.js";
@@ -181,7 +186,7 @@ app.get("/s-choice/:shortCode", async (req, res) => {
     const { data: link, error } = await supabase
       .from("links")
       .select(
-        "id, user_id, short_code, original_url, custom_domain, custom_title, custom_description, custom_image_url, video_url, secondary_url, redirect_delay_ms, expires_at, ab_test_enabled, ab_variant_b_title, ab_variant_b_description, ab_variant_b_image_url, ab_variant_b_video_url, ab_variant_b_original_url, ab_variant_b_secondary_url",
+        "id, user_id, short_code, slug, original_url, custom_domain, custom_title, custom_description, custom_image_url, video_url, secondary_url, redirect_delay_ms, expires_at, ab_test_enabled, ab_variant_b_title, ab_variant_b_description, ab_variant_b_image_url, ab_variant_b_video_url, ab_variant_b_original_url, ab_variant_b_secondary_url",
       )
       .eq("short_code", shortCode)
       .maybeSingle();
@@ -236,9 +241,11 @@ app.get("/s-choice/:shortCode", async (req, res) => {
 
     const publicBaseUrl =
       getPublicBaseUrl(req) || `${req.protocol}://${req.get("host")}`;
-    const canonicalUrl = `${publicBaseUrl}/s-choice/${encodeURIComponent(
-      effectiveLink.short_code,
-    )}`;
+    const canonicalUrl = buildPrettyLinkUrl(publicBaseUrl, {
+      slug: effectiveLink.slug,
+      shortCode: effectiveLink.short_code,
+      title: effectiveLink.custom_title,
+    });
     const clickTrackingUrl = `${publicBaseUrl}/api/v1/links/${link.id}/track`;
 
     if (!effectiveLink.video_url?.trim()) {
@@ -266,8 +273,12 @@ app.get("/s-choice/:shortCode", async (req, res) => {
   }
 });
 
-app.get("/s/:shortCode", async (req, res) => {
-  const { shortCode } = req.params;
+const handlePublicShortLinkRequest = async (
+  req: Request,
+  res: Response,
+  shortCode: string,
+  lookupField: "short_code" | "slug" = "short_code",
+) => {
   if (!shortCode) {
     return res.status(400).send("Missing short code");
   }
@@ -285,9 +296,9 @@ app.get("/s/:shortCode", async (req, res) => {
     const { data: link, error } = await supabase
       .from("links")
       .select(
-        "id, user_id, short_code, original_url, custom_domain, custom_title, custom_description, custom_image_url, video_url, secondary_url, redirect_delay_ms, expires_at, ab_test_enabled, ab_variant_b_title, ab_variant_b_description, ab_variant_b_image_url, ab_variant_b_video_url, ab_variant_b_original_url, ab_variant_b_secondary_url",
+        "id, user_id, short_code, slug, original_url, custom_domain, custom_title, custom_description, custom_image_url, video_url, secondary_url, redirect_delay_ms, expires_at, ab_test_enabled, ab_variant_b_title, ab_variant_b_description, ab_variant_b_image_url, ab_variant_b_video_url, ab_variant_b_original_url, ab_variant_b_secondary_url",
       )
-      .eq("short_code", shortCode)
+      .eq(lookupField, shortCode)
       .maybeSingle();
 
     if (error) throw error;
@@ -379,9 +390,11 @@ app.get("/s/:shortCode", async (req, res) => {
     if (shouldRenderPreviewPage) {
       const publicBaseUrl =
         getPublicBaseUrl(req) || `${req.protocol}://${req.get("host")}`;
-      const canonicalUrl = `${publicBaseUrl}/s/${encodeURIComponent(
-        effectiveLink.short_code,
-      )}`;
+      const canonicalUrl = buildPrettyLinkUrl(publicBaseUrl, {
+        slug: effectiveLink.slug,
+        shortCode: effectiveLink.short_code,
+        title: effectiveLink.custom_title,
+      });
       const clickTrackingUrl = `${publicBaseUrl}/api/v1/links/${link.id}/track`;
 
       return res
@@ -471,6 +484,38 @@ app.get("/s/:shortCode", async (req, res) => {
     });
     return res.status(500).send("Server error: " + (e.message || "Unknown"));
   }
+};
+
+app.get("/:slug", async (req, res, next) => {
+  const slugParam =
+    typeof req.params.slug === "string" ? req.params.slug.trim() : "";
+
+  if (!isCandidatePublicSlugPath(req.path) || !slugParam) {
+    return next();
+  }
+
+  const normalizedSlug = normalizeLinkSlug(slugParam);
+  const supabase = getSupabase();
+  const { data: existingLink, error } = await supabase
+    .from("links")
+    .select("id")
+    .eq("slug", normalizedSlug)
+    .maybeSingle();
+
+  if (error) {
+    console.error("[SLUG LOOKUP ERROR]", error);
+    return next();
+  }
+
+  if (!existingLink) {
+    return next();
+  }
+
+  return handlePublicShortLinkRequest(req, res, normalizedSlug, "slug");
+});
+
+app.get("/s/:shortCode", async (req, res) => {
+  return handlePublicShortLinkRequest(req, res, req.params.shortCode);
 });
 
 // F. OUTBOUND TRACKING
@@ -701,7 +746,7 @@ app.get("/sitemap.xml", async (req, res) => {
 
     const { data: links, error } = await supabase
       .from("links")
-      .select("short_code, created_at, updated_at")
+      .select("short_code, slug, custom_title, created_at, updated_at")
       .order("created_at", { ascending: false })
       .limit(5000);
 
@@ -721,7 +766,13 @@ app.get("/sitemap.xml", async (req, res) => {
             ? `\n    <lastmod>${new Date(lastModified).toISOString()}</lastmod>`
             : "";
           return `  <url>
-    <loc>${escapeHtml(`${publicBaseUrl}/s/${encodeURIComponent(link.short_code)}`)}</loc>${lastmod}
+    <loc>${escapeHtml(
+      buildPrettyLinkUrl(publicBaseUrl, {
+        slug: link.slug || undefined,
+        shortCode: link.short_code,
+        title: link.custom_title || undefined,
+      }),
+    )}</loc>${lastmod}
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>`;

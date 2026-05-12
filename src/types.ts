@@ -1,6 +1,7 @@
 export interface ConvertedLink {
   id?: string;
   short_code: string;
+  slug?: string;
   original_url: string;
   converted_url?: string;
   custom_domain?: string;
@@ -178,13 +179,13 @@ export interface LinkStats {
   totalShopeeClicks?: number;
   totalTiktokClicks?: number;
   recentClicks: Array<{ date: string; clicks: number }>;
-  topLinks: Array<{ short_code: string; title: string; clicks: number }>;
+  topLinks: Array<{ short_code: string; slug?: string; title: string; clicks: number }>;
   growthPercentage: number;
 }
 
 export interface AnalyticsData {
   history: Array<{ date: string; clicks: number }>;
-  topLinks: Array<{ id: string; short_code: string; title: string; clicks: number }>;
+  topLinks: Array<{ id: string; short_code: string; slug?: string; title: string; clicks: number }>;
   trafficSources: Array<{ name: string; value: number }>;
   growthPercentage: number;
   totalShopeeClicks?: number;

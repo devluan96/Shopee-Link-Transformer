@@ -47,8 +47,9 @@ export const renderLinkLandingPage = (
   const secondaryUrl = link.secondary_url?.trim() || "";
   const redirectDelayMs = normalizeRedirectDelayMs(link.redirect_delay_ms);
   const hasSecondaryRedirect = Boolean(secondaryUrl);
-  const defaultOgImage = `${canonicalUrl.replace(/\/s\/[^/]+$/, "")}/og-image.png`;
-  const fallbackFavicon = `${canonicalUrl.replace(/\/s\/[^/]+$/, "")}/logo-app-192.png`;
+  const originBase = new URL(canonicalUrl).origin;
+  const defaultOgImage = `${originBase}/og-image.png`;
+  const fallbackFavicon = `${originBase}/logo-app-192.png`;
   const faviconUrl = imageUrl || fallbackFavicon;
   const socialImageUrl = imageUrl || defaultOgImage;
   const hasVideo = Boolean(videoUrl);
@@ -77,7 +78,7 @@ export const renderLinkLandingPage = (
     isPartOf: {
       "@type": "WebSite",
       name: "HotsNew Click",
-      url: canonicalUrl.replace(/\/s\/[^/]+$/, "/"),
+      url: `${originBase}/`,
     },
   };
 

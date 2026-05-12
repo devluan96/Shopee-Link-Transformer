@@ -17,6 +17,7 @@ import {
   Unlock,
   Globe,
 } from "lucide-react";
+import { buildPrettyLinkPath } from "@/src/lib/linkPaths";
 import { cn } from "@/src/lib/utils";
 import { AccessLogEntry, BlockedIpEntry, UserProfile } from "@/src/types";
 import { useLocale } from "@/src/hooks/useLocale";
@@ -24,6 +25,7 @@ import { useLocale } from "@/src/hooks/useLocale";
 interface UserLink {
   id: string;
   short_code: string;
+  slug?: string;
   custom_title?: string;
   original_url: string;
   clicks?: number;
@@ -952,7 +954,13 @@ export const AdminPanel = ({
                         </div>
                         <div className="flex items-center gap-2">
                           <a
-                            href={`/s/${link.short_code}`}
+                            href={buildPrettyLinkPath(
+                              {
+                                slug: link.slug,
+                                shortCode: link.short_code,
+                                title: link.custom_title,
+                              },
+                            )}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="rounded-lg border border-gray-200 bg-white p-2 transition-all hover:bg-gray-100 dark:border-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700"

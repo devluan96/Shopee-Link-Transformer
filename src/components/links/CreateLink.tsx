@@ -14,6 +14,7 @@ import {
   Video as VideoIcon,
   X,
 } from "lucide-react";
+import { buildPrettyLinkUrl } from "@/src/lib/linkPaths";
 import { cn, normalizeVietnameseSlug } from "@/src/lib/utils";
 import { LINK_USAGE_OPTIONS } from "@/src/lib/linkUsage";
 import { ConvertedLink, UserLimits } from "@/src/types";
@@ -123,7 +124,7 @@ interface CreateLinkProps {
   loading: boolean;
   error: string | null;
   setError: (v: string | null) => void;
-  result: Pick<ConvertedLink, "short_code" | "converted_url"> | null;
+  result: Pick<ConvertedLink, "short_code" | "slug" | "converted_url"> | null;
   copyToClipboard: (text: string, id: string) => void;
   copiedId: string;
 }
@@ -240,8 +241,19 @@ export const CreateLink = ({
   const convertedResultUrl = result?.converted_url
     ? result.converted_url
     : result?.short_code
-      ? `https://hotsnew.click/s/${result.short_code}`
-      : "https://hotsnew.click/s/########";
+      ? buildPrettyLinkUrl(
+          "https://hotsnew.click",
+          {
+            slug: result.slug,
+            shortCode: result.short_code,
+            title: customTitle,
+            fallbackToLegacy: false,
+          },
+        )
+      : buildPrettyLinkUrl("https://hotsnew.click", {
+          title: customTitle || "link",
+          fallbackToLegacy: false,
+        });
   const uploadProgressOffset = 87.96 - (87.96 * videoUploadProgress) / 100;
   const canUseAbTesting = userLimits?.canUseAbTesting ?? true;
   const videoUploadsRemainingToday =
@@ -790,9 +802,13 @@ export const CreateLink = ({
                 <p className="mt-2 px-1 text-[11px] font-medium text-gray-400">
                   {page.previewPrefix}{" "}
                   <span className="font-black text-orange-600">
-                    {normalizedShortCodePreview
-                      ? `https://${customDomain || "hotsnew.click"}/s/${normalizedShortCodePreview}`
-                      : `https://${customDomain || "hotsnew.click"}/s/${page.previewFallback}`}
+                    {buildPrettyLinkUrl(
+                      `https://${customDomain || "hotsnew.click"}`,
+                      {
+                        title: customTitle || normalizedShortCodePreview || page.previewFallback,
+                        fallbackToLegacy: false,
+                      },
+                    )}
                   </span>
                 </p>
                 <p className="mt-1 px-1 text-[11px] font-medium text-gray-400">
@@ -1622,7 +1638,12 @@ export const CreateLink = ({
             </div>
 
             <div className="relative z-10 mb-6 truncate rounded-2xl border border-gray-100 bg-gray-50/50 p-4 font-mono text-[11px] font-black text-gray-400 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-400 sm:mb-10 sm:p-6 sm:text-xs">
-              {result ? convertedResultUrl : "https://hotsnew.click/s/########"}
+              {result
+                ? convertedResultUrl
+                : buildPrettyLinkUrl("https://hotsnew.click", {
+                    title: customTitle || "link",
+                    fallbackToLegacy: false,
+                  })}
             </div>
 
             <div className="relative z-10 grid grid-cols-1 gap-4 sm:grid-cols-2">

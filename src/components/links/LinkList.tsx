@@ -29,6 +29,7 @@ import {
   normalizeUsageContext,
 } from "@/src/lib/linkUsage";
 import { useLocale } from "@/src/hooks/useLocale";
+import { buildPrettyLinkUrl } from "@/src/lib/linkPaths";
 import { toast } from "sonner";
 import { normalizeVietnameseSlug } from "@/src/lib/utils";
 
@@ -765,7 +766,14 @@ export const LinkList = ({
                     <button
                       onClick={() =>
                         copyToClipboard(
-                          `https://hotsnew.click/s/${link.short_code}`,
+                          buildPrettyLinkUrl(
+                            `https://${link.custom_domain || "hotsnew.click"}`,
+                            {
+                              slug: link.slug,
+                              shortCode: link.short_code,
+                              title: link.custom_title,
+                            },
+                          ),
                           linkId,
                         )
                       }
@@ -1108,7 +1116,14 @@ export const LinkList = ({
             <div className="flex flex-col items-center p-10">
               <div className="mb-8 rounded-[2.5rem] border border-gray-100 bg-white p-6 shadow-xl ring-4 ring-gray-50 dark:border-slate-600 dark:bg-slate-700 dark:ring-slate-700">
                 <QRCodeCanvas
-                  value={`https://hotsnew.click/s/${qrLink.short_code}`}
+                  value={buildPrettyLinkUrl(
+                    `https://${qrLink.custom_domain || "hotsnew.click"}`,
+                    {
+                      slug: qrLink.slug,
+                      shortCode: qrLink.short_code,
+                      title: qrLink.custom_title,
+                    },
+                  )}
                   size={200}
                   level="H"
                   includeMargin={false}

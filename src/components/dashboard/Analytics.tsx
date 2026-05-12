@@ -20,6 +20,7 @@ import {
   Bar,
   Cell,
 } from "recharts";
+import { buildPrettyLinkPath } from "@/src/lib/linkPaths";
 import { AnalyticsData } from "@/src/types";
 import { AdvancedAnalytics } from "./AdvancedAnalytics";
 import { useLocale } from "@/src/hooks/useLocale";
@@ -276,10 +277,17 @@ export const Analytics = ({
                           {item.title}
                         </div>
                         <div className="text-[10px] font-black uppercase tracking-widest text-orange-500">
-                          {t("analytics.topLinks.itemMeta", {
-                            count: item.clicks ?? 0,
-                            code: item.short_code,
-                          })}
+                          {locale === "vi"
+                            ? `${item.clicks ?? 0} lượt chuyển hướng · ${buildPrettyLinkPath({
+                                slug: item.slug,
+                                shortCode: item.short_code,
+                                title: item.title,
+                              })}`
+                            : `${item.clicks ?? 0} redirects · ${buildPrettyLinkPath({
+                                slug: item.slug,
+                                shortCode: item.short_code,
+                                title: item.title,
+                              })}`}
                         </div>
                       </div>
                       <div className="h-1.5 w-24 overflow-hidden rounded-full bg-gray-100 dark:bg-slate-700">

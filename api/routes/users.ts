@@ -218,7 +218,7 @@ router.get(
       // 1. Get all links for this user
       const { data: links, error: linksError } = await supabase
         .from("links")
-        .select("id, short_code, custom_title, original_url, created_at")
+        .select("id, short_code, slug, custom_title, original_url, created_at")
         .eq("user_id", targetUid)
         .order("created_at", { ascending: false });
 
