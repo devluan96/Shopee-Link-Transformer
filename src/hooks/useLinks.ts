@@ -9,6 +9,7 @@ interface UseLinksProps {
   user: User | null;
   profile: UserProfile | null;
   currentWorkspaceId?: string;
+  workspaceResolved?: boolean;
   fetchWithAuth: (
     input: RequestInfo | URL,
     init?: RequestInit,
@@ -39,6 +40,7 @@ export function useLinks({
   user,
   profile,
   currentWorkspaceId,
+  workspaceResolved = false,
   fetchWithAuth,
   activeTab,
 }: UseLinksProps): LinksState & LinksActions {
@@ -103,8 +105,9 @@ export function useLinks({
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(data),
         });
-        if (!res.ok) throw new Error("Update failed");
-        const updated = await res.json();
+        const payload = await res.json();
+        if (!res.ok) throw new Error(payload.error || "Update failed");
+        const updated = payload;
         setLinks((prev) =>
           prev.map((l) => (l.id === id ? { ...l, ...updated } : l)),
         );
@@ -207,13 +210,22 @@ export function useLinks({
 
     if (
       user &&
+      workspaceResolved &&
       isApproved &&
       activeTab === "list" &&
       (linksDirty || links.length === 0)
     ) {
       fetchLinks();
     }
-  }, [user, profile, activeTab, linksDirty, links.length, fetchLinks]);
+  }, [
+    user,
+    profile,
+    workspaceResolved,
+    activeTab,
+    linksDirty,
+    links.length,
+    fetchLinks,
+  ]);
 
   return {
     links,

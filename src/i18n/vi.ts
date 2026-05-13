@@ -1095,6 +1095,8 @@ export const vi = {
       description:
         "Hệ thống sẽ tự động lấy dữ liệu và tối ưu hiển thị trên Facebook.",
       closeError: "Đóng thông báo",
+      guideButton: "Mở hướng dẫn",
+      guideDialogClose: "Đóng hướng dẫn",
       sectionEyebrow: "Thiết lập liên kết",
       formTitle: "Rút gọn liên kết",
       quotaExhausted: "Hết lượt hôm nay",

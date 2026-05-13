@@ -20,7 +20,32 @@ export type AppNotificationType =
   | "link_click_threshold"
   | "link_expiring_soon"
   | "quota_warning"
-  | "subscription_expiring";
+  | "subscription_expiring"
+  | "payment_confirmed";
+
+export const createPaymentConfirmedNotification = async (
+  supabase: SupabaseClient,
+  payload: {
+    userId: string;
+    plan: "monthly" | "yearly";
+    amount: number;
+    paymentRequestId: string;
+  },
+) => {
+  const planLabel = payload.plan === "monthly" ? "gói tháng" : "gói năm";
+  await createAppNotification(supabase, {
+    userId: payload.userId,
+    type: "payment_confirmed",
+    title: "Thanh toán đã được xác nhận",
+    message: `Quản trị viên đã xác nhận thanh toán ${payload.amount.toLocaleString("vi-VN")}đ cho ${planLabel}. Gói của bạn đã được kích hoạt.`,
+    metadata: {
+      payment_request_id: payload.paymentRequestId,
+      subscription_plan: payload.plan,
+      amount: payload.amount,
+    },
+    uniqueEventKey: `payment_confirmed:${payload.paymentRequestId}`,
+  });
+};
 
 export interface AppNotification {
   id: string;

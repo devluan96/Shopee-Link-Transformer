@@ -1,9 +1,10 @@
 import { Router } from "express";
-import { authenticate } from "../middleware/auth.js";
+import { authenticate, checkAdmin } from "../middleware/auth.js";
 import { getSupabase } from "../config/supabase.js";
 import { getPublicBaseUrl } from "../utils/helpers.js";
 import { AuthenticatedRequest, PaidSubscriptionPlan } from "../types/index.js";
 import * as paymentService from "../services/paymentService.js";
+import * as manualPaymentService from "../services/manualPaymentService.js";
 import * as userService from "../services/userService.js";
 
 const router = Router();
@@ -139,5 +140,130 @@ router.post("/billing/zalopay/callback", async (req, res) => {
     return res.status(500).json({ return_code: -1, return_message: e.message });
   }
 });
+
+router.get(
+  "/billing/manual-requests/mine",
+  authenticate,
+  async (req: AuthenticatedRequest, res) => {
+    try {
+      const userId = req.authUser?.id;
+      if (!userId) {
+        return res.status(400).json({ error: "Missing userId" });
+      }
+
+      const supabase = getSupabase();
+      const requests = await manualPaymentService.getUserManualPaymentRequests(
+        supabase,
+        userId,
+      );
+
+      return res.json(requests);
+    } catch (e: any) {
+      return res.status(500).json({ error: e.message });
+    }
+  },
+);
+
+router.post(
+  "/billing/manual-requests",
+  authenticate,
+  async (req: AuthenticatedRequest, res) => {
+    try {
+      const userId = req.authUser?.id;
+      if (!userId) {
+        return res.status(400).json({ error: "Missing userId" });
+      }
+
+      const { plan } = req.body as { plan: PaidSubscriptionPlan };
+      if (!plan || !["monthly", "yearly"].includes(plan)) {
+        return res.status(400).json({ error: "Invalid plan" });
+      }
+
+      const supabase = getSupabase();
+      const request = await manualPaymentService.createManualPaymentRequest(
+        supabase,
+        {
+          userId,
+          userEmail: req.authUser?.email || req.authProfile?.email || null,
+          userFullName: req.authProfile?.full_name || null,
+          plan,
+        },
+      );
+
+      return res.json(request);
+    } catch (e: any) {
+      return res.status(500).json({ error: e.message });
+    }
+  },
+);
+
+router.get(
+  "/admin/payment-requests",
+  authenticate,
+  checkAdmin,
+  async (_req, res) => {
+    try {
+      const supabase = getSupabase();
+      const requests =
+        await manualPaymentService.getAdminManualPaymentRequests(supabase);
+
+      return res.json(requests);
+    } catch (e: any) {
+      return res.status(500).json({ error: e.message });
+    }
+  },
+);
+
+router.post(
+  "/admin/payment-requests/:paymentRequestId/confirm",
+  authenticate,
+  checkAdmin,
+  async (req: AuthenticatedRequest, res) => {
+    try {
+      const { paymentRequestId } = req.params;
+      const adminUserId = req.authUser?.id;
+      if (!paymentRequestId || !adminUserId) {
+        return res.status(400).json({ error: "Missing required parameters" });
+      }
+
+      const supabase = getSupabase();
+      const request = await manualPaymentService.confirmManualPaymentRequest(
+        supabase,
+        paymentRequestId,
+        adminUserId,
+      );
+
+      return res.json(request);
+    } catch (e: any) {
+      return res.status(500).json({ error: e.message });
+    }
+  },
+);
+
+router.post(
+  "/admin/payment-requests/:paymentRequestId/reject",
+  authenticate,
+  checkAdmin,
+  async (req: AuthenticatedRequest, res) => {
+    try {
+      const { paymentRequestId } = req.params;
+      const adminUserId = req.authUser?.id;
+      if (!paymentRequestId || !adminUserId) {
+        return res.status(400).json({ error: "Missing required parameters" });
+      }
+
+      const supabase = getSupabase();
+      const request = await manualPaymentService.rejectManualPaymentRequest(
+        supabase,
+        paymentRequestId,
+        adminUserId,
+      );
+
+      return res.json(request);
+    } catch (e: any) {
+      return res.status(500).json({ error: e.message });
+    }
+  },
+);
 
 export default router;

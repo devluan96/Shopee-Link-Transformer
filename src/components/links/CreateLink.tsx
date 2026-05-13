@@ -2,6 +2,7 @@ import React, { type ChangeEvent, type FormEvent, type RefObject } from "react";
 import {
   AlertCircle,
   ArrowRight,
+  BookOpen,
   Check,
   ChevronDown,
   Copy,
@@ -17,9 +18,10 @@ import {
 import { buildPrettyLinkUrl } from "@/src/lib/linkPaths";
 import { cn, normalizeVietnameseSlug } from "@/src/lib/utils";
 import { LINK_USAGE_OPTIONS } from "@/src/lib/linkUsage";
-import { ConvertedLink, UserLimits } from "@/src/types";
+import { ConvertedLink, Tab, UserLimits } from "@/src/types";
 import { QRCodeCanvas } from "qrcode.react";
 import { useLocale } from "@/src/hooks/useLocale";
+import { WorkflowGuide } from "@/src/components/WorkflowGuide";
 
 const MAX_SHORT_CODE_LENGTH = 50;
 const DAY_IN_MS = 1000 * 60 * 60 * 24;
@@ -129,6 +131,10 @@ interface CreateLinkProps {
   result: Pick<ConvertedLink, "short_code" | "slug" | "converted_url"> | null;
   copyToClipboard: (text: string, id: string) => void;
   copiedId: string;
+  setActiveTab: (tab: Tab) => void;
+  guideDialogOpen: boolean;
+  onOpenGuide: () => void;
+  onCloseGuide: () => void;
 }
 
 export const CreateLink = ({
@@ -212,6 +218,10 @@ export const CreateLink = ({
   result,
   copyToClipboard,
   copiedId,
+  setActiveTab,
+  guideDialogOpen,
+  onOpenGuide,
+  onCloseGuide,
 }: CreateLinkProps) => {
   const { messages, t } = useLocale();
   const content = messages.createLink;
@@ -621,12 +631,24 @@ export const CreateLink = ({
   return (
     <div key="create">
       <header className="mb-8 md:mb-12">
-        <h2 className="mb-2 text-3xl font-black tracking-tight text-gray-900 dark:text-slate-100 md:text-4xl">
-          {page.title}
-        </h2>
-        <p className="font-medium italic text-gray-500 dark:text-slate-400">
-          {page.description}
-        </p>
+        <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+          <div>
+            <h2 className="mb-2 text-3xl font-black tracking-tight text-gray-900 dark:text-slate-100 md:text-4xl">
+              {page.title}
+            </h2>
+            <p className="font-medium italic text-gray-500 dark:text-slate-400">
+              {page.description}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={onOpenGuide}
+            className="inline-flex shrink-0 items-center justify-center gap-2 self-start rounded-2xl border border-orange-200 bg-orange-50 px-4 py-3 text-xs font-black uppercase tracking-widest text-orange-700 transition-all hover:bg-orange-100 dark:border-orange-500/20 dark:bg-orange-500/10 dark:text-orange-200 dark:hover:bg-orange-500/20"
+          >
+            <BookOpen size={16} />
+            {page.guideButton}
+          </button>
+        </div>
         {linkQuota && (
           <div className="mt-5 flex flex-wrap items-center gap-3 rounded-3xl border border-sky-100 bg-sky-50/80 px-5 py-4 text-sm font-bold text-sky-900 dark:border-sky-500/20 dark:bg-sky-500/10 dark:text-sky-100">
             <span className="rounded-full bg-white px-3 py-1 text-[10px] font-black uppercase tracking-widest text-sky-700 dark:bg-slate-800 dark:text-sky-200">
@@ -1754,6 +1776,33 @@ export const CreateLink = ({
               >
                 {content.qrModal.download}
               </a>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {guideDialogOpen && (
+        <div className="fixed inset-0 z-100 flex items-center justify-center p-4">
+          <div
+            onClick={onCloseGuide}
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+          />
+          <div className="relative max-h-[92vh] w-full max-w-6xl overflow-auto rounded-[2.5rem] border border-slate-200 bg-slate-50 shadow-2xl dark:border-slate-700 dark:bg-slate-900">
+            <button
+              type="button"
+              onClick={onCloseGuide}
+              aria-label={page.guideDialogClose}
+              className="absolute right-4 top-4 z-10 rounded-2xl bg-white/90 p-2 text-slate-500 shadow-sm transition-all hover:bg-white hover:text-slate-900 dark:bg-slate-800/90 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-slate-100"
+            >
+              <X size={18} />
+            </button>
+            <div className="p-3 md:p-4">
+              <WorkflowGuide
+                onSelectTab={(tab) => {
+                  setActiveTab(tab);
+                  onCloseGuide();
+                }}
+              />
             </div>
           </div>
         </div>

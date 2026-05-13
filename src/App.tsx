@@ -36,9 +36,9 @@ import { Overview } from "./components/dashboard/Overview";
 import { InstallCenter } from "./components/InstallCenter";
 
 const CHUNK_RELOAD_KEY = "hotsnew.chunk-reload";
-const ACTIVE_TAB_STORAGE_KEY = "hotsnew.active-tab";
 const PERSISTED_TABS: Tab[] = [
   "dashboard",
+  "guide",
   "install",
   "pricing",
   "create",
@@ -49,17 +49,36 @@ const PERSISTED_TABS: Tab[] = [
   "profile",
 ];
 
-const readPersistedTab = () => {
+const getActiveTabStorageKey = (userId?: string) =>
+  userId ? `hotsnew.active-tab.${userId}` : "hotsnew.active-tab";
+
+const readPersistedTab = (userId?: string) => {
   if (typeof window === "undefined") return null;
 
   try {
-    const storedTab = window.localStorage.getItem(ACTIVE_TAB_STORAGE_KEY);
+    const storedTab = window.localStorage.getItem(
+      getActiveTabStorageKey(userId),
+    );
     return storedTab && PERSISTED_TABS.includes(storedTab as Tab)
       ? (storedTab as Tab)
       : null;
   } catch {
     return null;
   }
+};
+
+const readPersistedTabForUser = (userId?: string) =>
+  readPersistedTab(userId) || readPersistedTab();
+
+const clearPersistedTab = (userId?: string) => {
+  if (typeof window === "undefined") return;
+
+  try {
+    if (userId) {
+      window.localStorage.removeItem(getActiveTabStorageKey(userId));
+    }
+    window.localStorage.removeItem(getActiveTabStorageKey());
+  } catch {}
 };
 
 const lazyWithChunkRetry = <T extends React.ComponentType<any>>(
@@ -121,7 +140,6 @@ const WorkspaceManager = lazyWithChunkRetry(() =>
     default: m.WorkspaceManager,
   })),
 );
-
 const TabLoading = () => (
   <div className="flex items-center justify-center min-h-100">
     <div className="w-12 h-12 border-4 border-orange-500/20 border-t-orange-500 rounded-full animate-spin" />
@@ -137,12 +155,15 @@ export default function App() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [linkQuota, setLinkQuota] = useState<LinkQuota | null>(null);
   const [userLimits, setUserLimits] = useState<UserLimits | null>(null);
+  const [tabRestoreReady, setTabRestoreReady] = useState(false);
+  const [guideDialogOpen, setGuideDialogOpen] = useState(false);
   const [viewportWidth, setViewportWidth] = useState(() =>
     typeof window === "undefined" ? 1600 : window.innerWidth,
   );
 
   // Auth Hook
   const {
+    handleLogout: handleLogoutBase,
     user,
     authLoading,
     authError,
@@ -169,7 +190,6 @@ export default function App() {
     handleEmailAuth,
     handleForgotPassword,
     handlePasswordRecovery,
-    handleLogout,
     fetchWithAuth,
   } = useAuth();
 
@@ -245,6 +265,7 @@ export default function App() {
     user,
     profile,
     currentWorkspaceId,
+    workspaceResolved,
     fetchWithAuth,
     activeTab,
   });
@@ -278,10 +299,12 @@ export default function App() {
     handleVideoUpload: handleVideoUploadBase,
     handleVideoFileUpload: handleVideoFileUploadBase,
   } = useVideoUpload({
-    canAccessCreate: !!(
-      (profile?.subscription_plan && profile.subscription_plan !== "free") ||
-      profile?.role === "admin"
-    ),
+    canAccessCreate:
+      !!user &&
+      (currentWorkspaceId
+        ? currentWorkspace?.role === "owner" ||
+          currentWorkspace?.role === "editor"
+        : true),
     uploadAssetToCloudinary,
   });
   const thumbnailInputRef = useRef<HTMLInputElement>(null);
@@ -426,17 +449,13 @@ export default function App() {
     profile,
     currentWorkspaceId,
     fetchWithAuth,
-    canAccessCreate: !!(
-      (profile?.subscription_plan && profile.subscription_plan !== "free") ||
-      profile?.role === "admin"
-    ),
-    onSuccess: async (createdLink) => {
-      const belongsToCurrentWorkspace =
-        !currentWorkspaceId || createdLink.workspace_id === currentWorkspaceId;
-
-      if (belongsToCurrentWorkspace) {
-        upsertLink(createdLink);
-      }
+    canAccessCreate:
+      !!user &&
+      (currentWorkspaceId
+        ? currentWorkspace?.role === "owner" ||
+          currentWorkspace?.role === "editor"
+        : true),
+    onSuccess: () => {
       setLinksDirty(true);
       setStatsDirty(true);
       setAnalyticsDirty(true);
@@ -455,11 +474,15 @@ export default function App() {
   const {
     allUsers,
     adminLoading,
+    paymentRequests,
+    paymentRequestsLoading,
     outputDomains,
     outputDomainsLoading,
     handleApproveUser,
     handleUpdateSubscription,
     handleDeleteUser,
+    handleConfirmPaymentRequest,
+    handleRejectPaymentRequest,
     updateOutputDomains,
   } = useAdmin({ user, profile, fetchWithAuth, activeTab });
 
@@ -540,28 +563,73 @@ export default function App() {
     : ["hotsnew.click"];
   const canEditCurrentWorkspace =
     currentWorkspace?.role === "owner" || currentWorkspace?.role === "editor";
-  const canAccessCreate = !!(
-    (isAdminRole || hasSub) &&
-    (currentWorkspaceId ? canEditCurrentWorkspace : true)
-  );
+  const canAccessCreate =
+    !!user && (currentWorkspaceId ? canEditCurrentWorkspace : true);
   const blockedByWorkspaceRole =
     !!currentWorkspaceId && !canEditCurrentWorkspace;
   const bootstrappingAccess =
     !!user && (authLoading || profileBootstrapLoading);
   const compactDesktop = viewportWidth >= 1024 && viewportWidth < 1520;
 
+  const handleLogout = React.useCallback(async () => {
+    clearPersistedTab(user?.id);
+    setTabRestoreReady(false);
+    setGuideDialogOpen(false);
+    setActiveTab("dashboard");
+    await handleLogoutBase();
+  }, [handleLogoutBase, user?.id]);
+
   useEffect(() => {
-    setActiveTab(readPersistedTab() || "dashboard");
+    if (!user?.id) {
+      setTabRestoreReady(false);
+      setIsSidebarOpen(false);
+      return;
+    }
+
+    const restoredTab = readPersistedTabForUser(user.id) || "dashboard";
+    const nextTab = restoredTab === "guide" ? "create" : restoredTab;
+    setActiveTab(nextTab);
+    setGuideDialogOpen(restoredTab === "guide");
+
+    try {
+      window.localStorage.setItem(getActiveTabStorageKey(user.id), nextTab);
+    } catch {}
+
+    setTabRestoreReady(true);
     setIsSidebarOpen(false);
   }, [user?.id]);
 
   useEffect(() => {
-    if (!user) return;
+    if (!user || !tabRestoreReady) return;
 
     try {
-      window.localStorage.setItem(ACTIVE_TAB_STORAGE_KEY, activeTab);
+      window.localStorage.setItem(getActiveTabStorageKey(user.id), activeTab);
     } catch {}
-  }, [activeTab, user?.id]);
+  }, [activeTab, tabRestoreReady, user?.id]);
+
+  useEffect(() => {
+    if (!user || !tabRestoreReady) return;
+
+    const nextAllowedTabs: Tab[] = [
+      "dashboard",
+      "install",
+      "pricing",
+      "list",
+      "analytics",
+      "team",
+      "profile",
+    ];
+    if (canAccessCreate) {
+      nextAllowedTabs.push("create");
+    }
+    if (isAdminRole) {
+      nextAllowedTabs.push("admin");
+    }
+
+    if (!nextAllowedTabs.includes(activeTab)) {
+      setActiveTab(canAccessCreate ? "dashboard" : "pricing");
+    }
+  }, [activeTab, canAccessCreate, tabRestoreReady, user]);
 
   useEffect(() => {
     const handleResize = () => {
@@ -571,6 +639,12 @@ export default function App() {
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
   }, []);
+
+  useEffect(() => {
+    if (activeTab !== "create") {
+      setGuideDialogOpen(false);
+    }
+  }, [activeTab]);
 
   useEffect(() => {
     void refreshLinkQuota();
@@ -583,7 +657,7 @@ export default function App() {
   ]);
 
   useEffect(() => {
-    if (!user) return;
+    if (!user || !tabRestoreReady) return;
 
     const params = new URLSearchParams(window.location.search);
     const prefilledUrl = params.get("url");
@@ -591,6 +665,7 @@ export default function App() {
     const requestedTab = params.get("tab");
     const tabMap: Record<string, Tab> = {
       dashboard: "dashboard",
+      guide: "guide",
       install: "install",
       pricing: "pricing",
       create: "create",
@@ -602,6 +677,14 @@ export default function App() {
 
     if (prefilledUrl) {
       setUrl(prefilledUrl);
+    }
+
+    if (requestedTab === "guide") {
+      if (canAccessCreate) {
+        setActiveTab("create");
+        setGuideDialogOpen(true);
+      }
+      return;
     }
 
     if (requestedTab && tabMap[requestedTab]) {
@@ -619,7 +702,7 @@ export default function App() {
     if (openCreate && canAccessCreate) {
       setActiveTab("create");
     }
-  }, [user, canAccessCreate, setUrl]);
+  }, [user, canAccessCreate, setUrl, tabRestoreReady]);
 
   // Loading screen
   if (bootstrappingAccess) {
@@ -861,6 +944,7 @@ export default function App() {
               userProfile={profile}
               linkQuota={linkQuota}
               userLimits={userLimits}
+              fetchWithAuth={fetchWithAuth}
             />
           )}
 
@@ -948,6 +1032,10 @@ export default function App() {
                 result={result}
                 copyToClipboard={copyToClipboard}
                 copiedId={copiedId || ""}
+                setActiveTab={setActiveTab}
+                guideDialogOpen={guideDialogOpen}
+                onOpenGuide={() => setGuideDialogOpen(true)}
+                onCloseGuide={() => setGuideDialogOpen(false)}
               />
             ) : (
               <div className="p-12 text-center bg-white rounded-[3rem] border border-gray-100 shadow-sm max-w-2xl mx-auto mt-12">
@@ -983,6 +1071,8 @@ export default function App() {
                 (u) => u.id !== user?.id && u.role !== "admin",
               )}
               adminLoading={adminLoading}
+              paymentRequests={paymentRequests}
+              paymentRequestsLoading={paymentRequestsLoading}
               adminAccessLogs={adminAccessLogs}
               blockedIps={blockedIps}
               adminSecurityLoading={adminSecurityLoading}
@@ -994,6 +1084,8 @@ export default function App() {
               handleApproveUser={handleApproveUser}
               handleUpdateSubscription={handleUpdateSubscription}
               handleDeleteUser={handleDeleteUser}
+              onConfirmPaymentRequest={handleConfirmPaymentRequest}
+              onRejectPaymentRequest={handleRejectPaymentRequest}
               onUpdateOutputDomains={updateOutputDomains}
               fetchWithAuth={fetchWithAuth}
             />

@@ -49,7 +49,9 @@ export const normalizeUsageContext = (value?: string | null) => {
 
   const normalizedValue = normalizeUsageKey(trimmedValue);
   const normalizedMatch = LINK_USAGE_OPTIONS.find(
-    (option) => normalizeUsageKey(option.value) === normalizedValue,
+    (option) =>
+      normalizeUsageKey(option.value) === normalizedValue ||
+      normalizeUsageKey(option.label) === normalizedValue,
   );
 
   return normalizedMatch?.value ?? trimmedValue;

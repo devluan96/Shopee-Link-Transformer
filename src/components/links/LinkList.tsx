@@ -208,20 +208,37 @@ export const LinkList = ({
     }
   };
 
-  const getSecondaryFlowBadge = (value?: string) => {
-    const targetLabel = getSecondaryTargetLabel(value);
+  const getSecondaryFlowBadge = (
+    originalValue?: string,
+    secondaryValue?: string,
+  ) => {
+    const sourceLabel = getSecondaryTargetLabel(originalValue);
+    const targetLabel = getSecondaryTargetLabel(secondaryValue);
     if (!targetLabel) return null;
+
+    const label =
+      sourceLabel === "TikTok"
+        ? targetLabel === "TikTok"
+          ? locale === "vi"
+            ? "TikTok sang TikTok"
+            : "TikTok to TikTok"
+          : locale === "vi"
+            ? "TikTok sang Shopee"
+            : "TikTok to Shopee"
+        : targetLabel === "TikTok"
+          ? content.card.secondaryTikTok
+          : content.card.secondaryShopee;
 
     if (targetLabel === "TikTok") {
       return {
-        label: content.card.secondaryTikTok,
+        label,
         className:
           "rounded-full border border-cyan-200/70 bg-cyan-50 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.16em] text-cyan-700 dark:border-cyan-500/20 dark:bg-cyan-500/10 dark:text-cyan-200",
       };
     }
 
     return {
-      label: content.card.secondaryShopee,
+      label,
       className:
         "rounded-full border border-amber-200/70 bg-amber-50 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.16em] text-amber-700 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-200",
     };
@@ -431,6 +448,9 @@ export const LinkList = ({
   const averageClicks = totalLinks
     ? Math.round(totalOutboundClicks / totalLinks)
     : 0;
+  const editUsageHasMatchingOption = localizedUsageOptions.some(
+    (option) => option.value === editForm.usage,
+  );
 
   const confirmDelete = async () => {
     if (!deletingLink?.id) return;
@@ -641,7 +661,10 @@ export const LinkList = ({
         ) : (
           displayedLinks.map((link) => {
             const linkId = link.id ?? link.short_code;
-            const flowBadge = getSecondaryFlowBadge(link.secondary_url);
+            const flowBadge = getSecondaryFlowBadge(
+              link.original_url,
+              link.secondary_url,
+            );
             const topSource = link.tracked_sources?.[0];
             const shopeeClicks = link.clicks || 0;
             const tiktokClicks = link.tiktok_clicks || 0;
@@ -991,6 +1014,9 @@ export const LinkList = ({
                   }
                   className="w-full rounded-2xl border-2 border-transparent bg-gray-50 px-6 py-4 text-sm font-medium text-gray-900 outline-none transition-all focus:border-orange-500 dark:bg-slate-700 dark:text-slate-100"
                 >
+                  {!editUsageHasMatchingOption && editForm.usage && (
+                    <option value={editForm.usage}>{editForm.usage}</option>
+                  )}
                   {localizedUsageOptions.map((option) => (
                     <option key={option.value} value={option.value}>
                       {option.label}

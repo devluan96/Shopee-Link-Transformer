@@ -3,6 +3,17 @@ import { Request } from "express";
 export type SubscriptionPlan = "free" | "monthly" | "yearly";
 export type PaidSubscriptionPlan = Exclude<SubscriptionPlan, "free">;
 export type WorkspaceRole = "owner" | "editor" | "viewer";
+export type ManualPaymentStatus = "pending" | "confirmed" | "rejected";
+export type AppNotificationType =
+  | "workspace_invitation"
+  | "workspace_invitation_response"
+  | "workspace_membership_updated"
+  | "workspace_membership_removed"
+  | "link_click_threshold"
+  | "link_expiring_soon"
+  | "quota_warning"
+  | "subscription_expiring"
+  | "payment_confirmed";
 
 export interface AuthenticatedRequest extends Request {
   authUser?: {
@@ -19,6 +30,23 @@ export interface AuthenticatedRequest extends Request {
     subscription_plan?: SubscriptionPlan;
     subscription_expiry?: string | null;
   } | null;
+}
+
+export interface ManualPaymentRequestRecord {
+  id: string;
+  user_id: string;
+  user_email?: string | null;
+  user_full_name?: string | null;
+  account_code: string;
+  plan: PaidSubscriptionPlan;
+  amount: number;
+  transfer_content: string;
+  status: ManualPaymentStatus;
+  user_confirmed_at: string;
+  admin_confirmed_at?: string | null;
+  admin_confirmed_by?: string | null;
+  created_at: string;
+  updated_at?: string | null;
 }
 
 export interface PublicLinkRecord {

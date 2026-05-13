@@ -41,7 +41,7 @@ const getNotificationIcon = (type: AppNotification["type"]) => {
   if (type === "quota_warning") {
     return TriangleAlert;
   }
-  if (type === "subscription_expiring") {
+  if (type === "subscription_expiring" || type === "payment_confirmed") {
     return Sparkles;
   }
   return MousePointerClick;
@@ -56,7 +56,11 @@ const getNotificationGroupKey = (type: AppNotification["type"]) => {
   ) {
     return "team";
   }
-  if (type === "subscription_expiring" || type === "quota_warning") {
+  if (
+    type === "subscription_expiring" ||
+    type === "quota_warning" ||
+    type === "payment_confirmed"
+  ) {
     return "system";
   }
   return "links";
@@ -284,7 +288,8 @@ export function NotificationBell({
         onOpenLinks();
       } else if (
         notification.type === "subscription_expiring" ||
-        notification.type === "quota_warning"
+        notification.type === "quota_warning" ||
+        notification.type === "payment_confirmed"
       ) {
         onOpenPricing();
       }
@@ -421,7 +426,8 @@ export function NotificationBell({
                                 ? "bg-sky-100 text-sky-700 dark:bg-sky-500/20 dark:text-sky-200"
                                 : notification.type === "quota_warning" ||
                                     notification.type ===
-                                      "subscription_expiring"
+                                      "subscription_expiring" ||
+                                    notification.type === "payment_confirmed"
                                   ? "bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-200"
                                   : "bg-orange-100 text-orange-700 dark:bg-orange-500/20 dark:text-orange-200",
                             )}

@@ -17,11 +17,11 @@ export const SUBSCRIPTION_PRICING: Record<
   { amount: number; label: string }
 > = {
   monthly: {
-    amount: 299000,
+    amount: 149000,
     label: "Goi thang Premium",
   },
   yearly: {
-    amount: 2490000,
+    amount: 1609200,
     label: "Goi nam Premium",
   },
 };
@@ -30,9 +30,9 @@ export const LINK_DAILY_LIMITS: Record<
   import("../types/index.js").SubscriptionPlan,
   number
 > = {
-  free: 0,
-  monthly: 5,
-  yearly: 50,
+  free: 1,
+  monthly: 10,
+  yearly: 30,
 };
 
 export const CLOUDINARY_UPLOAD_FOLDER =

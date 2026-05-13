@@ -15,21 +15,21 @@ export const PLAN_FEATURE_LIMITS: Record<SubscriptionPlan, FeatureLimits> = {
   free: {
     plan: "free",
     canUseAbTesting: false,
-    dailyVideoUploads: 0,
+    dailyVideoUploads: 1,
     maxTeamWorkspaces: 0,
     maxTeamMembersPerWorkspace: 0,
   },
   monthly: {
     plan: "monthly",
     canUseAbTesting: false,
-    dailyVideoUploads: 3,
+    dailyVideoUploads: 10,
     maxTeamWorkspaces: 1,
     maxTeamMembersPerWorkspace: 3,
   },
   yearly: {
     plan: "yearly",
     canUseAbTesting: true,
-    dailyVideoUploads: 20,
+    dailyVideoUploads: 30,
     maxTeamWorkspaces: 5,
     maxTeamMembersPerWorkspace: 20,
   },
@@ -79,12 +79,20 @@ export const getVideoUploadUsageToday = async (
   supabase: SupabaseClient,
   userId: string,
 ) => {
+  return getFeatureUsageToday(supabase, userId, "video_upload");
+};
+
+export const getFeatureUsageToday = async (
+  supabase: SupabaseClient,
+  userId: string,
+  featureKey: string,
+) => {
   const { startIso, endIso } = getVietnamDayRange();
   const { count, error } = await supabase
     .from("feature_usage_events")
     .select("id", { count: "exact", head: true })
     .eq("user_id", userId)
-    .eq("feature_key", "video_upload")
+    .eq("feature_key", featureKey)
     .gte("created_at", startIso)
     .lt("created_at", endIso);
 

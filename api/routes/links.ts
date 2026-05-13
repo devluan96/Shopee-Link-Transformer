@@ -49,6 +49,15 @@ function getDailyLinkLimit(req: AuthenticatedRequest) {
   return LINK_DAILY_LIMITS[plan];
 }
 
+function getDailyLinkEditLimit(req: AuthenticatedRequest) {
+  if (req.authProfile?.role === "admin") {
+    return null;
+  }
+
+  const plan = req.authProfile?.subscription_plan || "free";
+  return plan === "free" ? 1 : null;
+}
+
 async function getDailyLinkQuota(
   supabase: ReturnType<typeof getSupabase>,
   req: AuthenticatedRequest,
@@ -88,6 +97,45 @@ async function getDailyLinkQuota(
     usedToday,
     remainingToday,
     canCreate: remainingToday > 0,
+  };
+}
+
+async function getDailyLinkEditQuota(
+  supabase: ReturnType<typeof getSupabase>,
+  req: AuthenticatedRequest,
+  userId: string,
+) {
+  const dailyLimit = getDailyLinkEditLimit(req);
+
+  if (dailyLimit === null) {
+    return {
+      plan: (req.authProfile?.subscription_plan || "free") as
+        | "free"
+        | "monthly"
+        | "yearly",
+      dailyLimit: null,
+      usedToday: 0,
+      remainingToday: null,
+      canEdit: true,
+    };
+  }
+
+  const usedToday = await featureLimitService.getFeatureUsageToday(
+    supabase,
+    userId,
+    "link_edit",
+  );
+  const remainingToday = Math.max(0, dailyLimit - usedToday);
+
+  return {
+    plan: (req.authProfile?.subscription_plan || "free") as
+      | "free"
+      | "monthly"
+      | "yearly",
+    dailyLimit,
+    usedToday,
+    remainingToday,
+    canEdit: remainingToday > 0,
   };
 }
 
@@ -366,6 +414,19 @@ router.patch(
         }
       }
 
+      if (Object.keys(updates).length === 0) {
+        return res.status(400).json({ error: "No updates provided" });
+      }
+
+      const editQuota = await getDailyLinkEditQuota(supabase, req, userId);
+      if (!editQuota.canEdit) {
+        return res.status(429).json({
+          error:
+            "Goi mien phi chi duoc chinh sua 1 link moi ngay. Ban da dung het luot chinh sua hom nay.",
+          quota: editQuota,
+        });
+      }
+
       const featureLimits = featureLimitService.getFeatureLimitsForProfile(
         req.authProfile || undefined,
       );
@@ -390,6 +451,17 @@ router.patch(
         userId,
         updates,
       );
+      if (editQuota.dailyLimit !== null) {
+        await featureLimitService.recordFeatureUsage(
+          supabase,
+          userId,
+          "link_edit",
+          {
+            linkId,
+            plan: req.authProfile?.subscription_plan || "free",
+          },
+        );
+      }
       return res.json(link);
     } catch (e: any) {
       return res.status(400).json({ error: e.message });

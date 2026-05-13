@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect } from "react";
 import { User } from "@supabase/supabase-js";
-import { UserProfile } from "@/src/types";
+import { ManualPaymentRequest, UserProfile } from "@/src/types";
 import { toast } from "sonner";
 
 interface UseAdminProps {
@@ -14,15 +14,20 @@ export interface AdminState {
   allUsers: UserProfile[];
   adminLoading: boolean;
   adminDirty: boolean;
+  paymentRequests: ManualPaymentRequest[];
+  paymentRequestsLoading: boolean;
   outputDomains: string[];
   outputDomainsLoading: boolean;
 }
 
 export interface AdminActions {
   fetchAllUsers: () => Promise<void>;
+  fetchPaymentRequests: () => Promise<void>;
   handleApproveUser: (targetUid: string, status?: boolean) => Promise<void>;
   handleUpdateSubscription: (targetUid: string, plan: "free" | "monthly" | "yearly") => Promise<void>;
   handleDeleteUser: (targetUid: string) => Promise<void>;
+  handleConfirmPaymentRequest: (paymentRequestId: string) => Promise<void>;
+  handleRejectPaymentRequest: (paymentRequestId: string) => Promise<void>;
   fetchOutputDomains: () => Promise<void>;
   updateOutputDomains: (domains: string[]) => Promise<void>;
   setAdminDirty: (v: boolean) => void;
@@ -32,6 +37,8 @@ export function useAdmin({ user, profile, fetchWithAuth, activeTab }: UseAdminPr
   const [allUsers, setAllUsers] = useState<UserProfile[]>([]);
   const [adminLoading, setAdminLoading] = useState(false);
   const [adminDirty, setAdminDirty] = useState(true);
+  const [paymentRequests, setPaymentRequests] = useState<ManualPaymentRequest[]>([]);
+  const [paymentRequestsLoading, setPaymentRequestsLoading] = useState(false);
   const [outputDomains, setOutputDomains] = useState<string[]>(["hotsnew.click"]);
   const [outputDomainsLoading, setOutputDomainsLoading] = useState(false);
 
@@ -49,6 +56,21 @@ export function useAdmin({ user, profile, fetchWithAuth, activeTab }: UseAdminPr
       console.error(e);
     } finally {
       setAdminLoading(false);
+    }
+  }, [user, isAdminRole, fetchWithAuth]);
+
+  const fetchPaymentRequests = useCallback(async () => {
+    if (!user || !isAdminRole) return;
+    setPaymentRequestsLoading(true);
+    try {
+      const response = await fetchWithAuth("/api/v1/admin/payment-requests");
+      const data = await response.json();
+      setPaymentRequests(Array.isArray(data) ? data : []);
+    } catch (e) {
+      console.error(e);
+      setPaymentRequests([]);
+    } finally {
+      setPaymentRequestsLoading(false);
     }
   }, [user, isAdminRole, fetchWithAuth]);
 
@@ -125,6 +147,48 @@ export function useAdmin({ user, profile, fetchWithAuth, activeTab }: UseAdminPr
     }
   }, [user, isAdminRole, fetchWithAuth, fetchAllUsers]);
 
+  const handleConfirmPaymentRequest = useCallback(async (paymentRequestId: string) => {
+    if (!user || !isAdminRole) return;
+    try {
+      const response = await fetchWithAuth(
+        `/api/v1/admin/payment-requests/${paymentRequestId}/confirm`,
+        {
+          method: "POST",
+        },
+      );
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || "Khong the xac nhan thanh toan");
+      }
+      await Promise.all([fetchPaymentRequests(), fetchAllUsers()]);
+      toast.success("Da xac nhan thanh toan va kich hoat goi");
+    } catch (e) {
+      console.error(e);
+      toast.error(e instanceof Error ? e.message : "Loi he thong");
+    }
+  }, [user, isAdminRole, fetchWithAuth, fetchPaymentRequests, fetchAllUsers]);
+
+  const handleRejectPaymentRequest = useCallback(async (paymentRequestId: string) => {
+    if (!user || !isAdminRole) return;
+    try {
+      const response = await fetchWithAuth(
+        `/api/v1/admin/payment-requests/${paymentRequestId}/reject`,
+        {
+          method: "POST",
+        },
+      );
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || "Khong the tu choi thanh toan");
+      }
+      await fetchPaymentRequests();
+      toast.success("Da cap nhat yeu cau thanh toan");
+    } catch (e) {
+      console.error(e);
+      toast.error(e instanceof Error ? e.message : "Loi he thong");
+    }
+  }, [user, isAdminRole, fetchWithAuth, fetchPaymentRequests]);
+
   const fetchOutputDomains = useCallback(async () => {
     if (!user || !isAdminRole) return;
     setOutputDomainsLoading(true);
@@ -163,6 +227,8 @@ export function useAdmin({ user, profile, fetchWithAuth, activeTab }: UseAdminPr
   useEffect(() => {
     setAllUsers([]);
     setAdminLoading(false);
+    setPaymentRequests([]);
+    setPaymentRequestsLoading(false);
     setAdminDirty(!!user);
   }, [user?.id]);
 
@@ -171,19 +237,35 @@ export function useAdmin({ user, profile, fetchWithAuth, activeTab }: UseAdminPr
     if (user && isAdminRole && activeTab === "admin" && (adminDirty || allUsers.length === 0)) {
       fetchAllUsers();
       fetchOutputDomains();
+      fetchPaymentRequests();
     }
-  }, [user, isAdminRole, activeTab, adminDirty, allUsers.length, fetchAllUsers, fetchOutputDomains]);
+  }, [user, isAdminRole, activeTab, adminDirty, allUsers.length, fetchAllUsers, fetchOutputDomains, fetchPaymentRequests]);
+
+  useEffect(() => {
+    if (!user || !isAdminRole || activeTab !== "admin") return;
+
+    const interval = window.setInterval(() => {
+      void fetchPaymentRequests();
+    }, 15000);
+
+    return () => window.clearInterval(interval);
+  }, [user, isAdminRole, activeTab, fetchPaymentRequests]);
 
   return {
     allUsers,
     adminLoading,
     adminDirty,
+    paymentRequests,
+    paymentRequestsLoading,
     outputDomains,
     outputDomainsLoading,
     fetchAllUsers,
+    fetchPaymentRequests,
     handleApproveUser,
     handleUpdateSubscription,
     handleDeleteUser,
+    handleConfirmPaymentRequest,
+    handleRejectPaymentRequest,
     fetchOutputDomains,
     updateOutputDomains,
     setAdminDirty,
