@@ -96,6 +96,7 @@ export const LinkList = ({
     img: "",
     original: "",
     secondary: "",
+    secondaryTargetType: "shopee" as "shopee" | "tiktok",
     redirectDelayMs: 3000,
     expiresAt: "",
   });
@@ -195,6 +196,18 @@ export const LinkList = ({
     }
   };
 
+  const getSecondaryTargetType = (
+    value?: string,
+  ): "shopee" | "tiktok" => {
+    if (!value) return "shopee";
+    try {
+      const hostname = new URL(value).hostname.trim().toLowerCase();
+      return TIKTOK_HOST_REGEX.test(hostname) ? "tiktok" : "shopee";
+    } catch {
+      return "shopee";
+    }
+  };
+
   const getSecondaryFlowBadge = (value?: string) => {
     const targetLabel = getSecondaryTargetLabel(value);
     if (!targetLabel) return null;
@@ -238,6 +251,7 @@ export const LinkList = ({
       img: link.custom_image_url || "",
       original: link.original_url || "",
       secondary: link.secondary_url || "",
+      secondaryTargetType: getSecondaryTargetType(link.secondary_url),
       redirectDelayMs: link.redirect_delay_ms || 3000,
       expiresAt: link.expires_at
         ? new Date(link.expires_at).toISOString().slice(0, 16)
@@ -278,6 +292,7 @@ export const LinkList = ({
         custom_image_url: editForm.img,
         original_url: editForm.original,
         secondary_url: editForm.secondary,
+        secondaryTargetType: editForm.secondaryTargetType,
         redirect_delay_ms: editForm.redirectDelayMs,
       };
 
@@ -903,6 +918,31 @@ export const LinkList = ({
 
               <div className="space-y-1">
                 <label className="ml-1 text-[10px] font-black uppercase tracking-widest text-gray-400">
+                  {t("createLink.page.secondaryTargetLabel")}
+                </label>
+                <select
+                  value={editForm.secondaryTargetType}
+                  onChange={(e) =>
+                    setEditForm({
+                      ...editForm,
+                      secondaryTargetType: e.target.value as
+                        | "shopee"
+                        | "tiktok",
+                    })
+                  }
+                  className="w-full rounded-2xl border-2 border-transparent bg-gray-50 px-6 py-4 text-sm font-medium text-gray-900 outline-none transition-all focus:border-orange-500 dark:bg-slate-700 dark:text-slate-100"
+                >
+                  <option value="shopee">
+                    {t("createLink.page.secondaryTargetShopee")}
+                  </option>
+                  <option value="tiktok">
+                    {t("createLink.page.secondaryTargetTikTok")}
+                  </option>
+                </select>
+              </div>
+
+              <div className="space-y-1">
+                <label className="ml-1 text-[10px] font-black uppercase tracking-widest text-gray-400">
                   {content.editModal.secondaryField}
                 </label>
                 <input
@@ -911,9 +951,18 @@ export const LinkList = ({
                   onChange={(e) =>
                     setEditForm({ ...editForm, secondary: e.target.value })
                   }
-                  placeholder="https://shopee.vn/..."
+                  placeholder={
+                    editForm.secondaryTargetType === "tiktok"
+                      ? t("createLink.page.secondaryUrlPlaceholderTikTok")
+                      : t("createLink.page.secondaryUrlPlaceholderShopee")
+                  }
                   className="w-full rounded-2xl border-2 border-transparent bg-gray-50 px-6 py-4 text-sm font-medium text-gray-900 outline-none transition-all focus:border-orange-500 dark:bg-slate-700 dark:text-slate-100"
                 />
+                <p className="px-1 text-[9px] font-medium text-gray-400 dark:text-slate-500">
+                  {editForm.secondaryTargetType === "tiktok"
+                    ? t("createLink.page.secondaryUrlHelpTikTokOnly")
+                    : t("createLink.page.secondaryUrlHelpShopeeOnly")}
+                </p>
               </div>
 
               <div className="space-y-1 lg:col-span-2">

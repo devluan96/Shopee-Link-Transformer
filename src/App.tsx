@@ -36,6 +36,31 @@ import { Overview } from "./components/dashboard/Overview";
 import { InstallCenter } from "./components/InstallCenter";
 
 const CHUNK_RELOAD_KEY = "hotsnew.chunk-reload";
+const ACTIVE_TAB_STORAGE_KEY = "hotsnew.active-tab";
+const PERSISTED_TABS: Tab[] = [
+  "dashboard",
+  "install",
+  "pricing",
+  "create",
+  "list",
+  "analytics",
+  "team",
+  "admin",
+  "profile",
+];
+
+const readPersistedTab = () => {
+  if (typeof window === "undefined") return null;
+
+  try {
+    const storedTab = window.localStorage.getItem(ACTIVE_TAB_STORAGE_KEY);
+    return storedTab && PERSISTED_TABS.includes(storedTab as Tab)
+      ? (storedTab as Tab)
+      : null;
+  } catch {
+    return null;
+  }
+};
 
 const lazyWithChunkRetry = <T extends React.ComponentType<any>>(
   importer: () => Promise<{ default: T }>,
@@ -106,7 +131,9 @@ const TabLoading = () => (
 export default function App() {
   const { t } = useLocale();
   // UI State
-  const [activeTab, setActiveTab] = useState<Tab>("dashboard");
+  const [activeTab, setActiveTab] = useState<Tab>(
+    () => readPersistedTab() || "dashboard",
+  );
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [linkQuota, setLinkQuota] = useState<LinkQuota | null>(null);
   const [userLimits, setUserLimits] = useState<UserLimits | null>(null);
@@ -160,7 +187,11 @@ export default function App() {
   useMeta({ user, authLoading, activeTab });
 
   // Cloudinary Hook
-  const { uploadAssetToCloudinary } = useCloudinary({ fetchWithAuth });
+  const {
+    uploadAssetToCloudinary,
+    lastVideoUploadProvider,
+    lastImageUploadProvider,
+  } = useCloudinary({ fetchWithAuth });
 
   const {
     workspaces,
@@ -513,9 +544,17 @@ export default function App() {
   const compactDesktop = viewportWidth >= 1024 && viewportWidth < 1520;
 
   useEffect(() => {
-    setActiveTab("dashboard");
+    setActiveTab(readPersistedTab() || "dashboard");
     setIsSidebarOpen(false);
   }, [user?.id]);
+
+  useEffect(() => {
+    if (!user) return;
+
+    try {
+      window.localStorage.setItem(ACTIVE_TAB_STORAGE_KEY, activeTab);
+    } catch {}
+  }, [activeTab, user?.id]);
 
   useEffect(() => {
     const handleResize = () => {
@@ -884,6 +923,7 @@ export default function App() {
                 uploadingVideo={uploadingVideo}
                 videoUploadProgress={videoUploadProgress}
                 videoUploadSuccess={videoUploadSuccess}
+                videoUploadProvider={lastVideoUploadProvider}
                 videoInputRef={videoInputRef}
                 handleVideoUpload={handleVideoUpload}
                 handleVideoFileUpload={handleVideoFileUpload}
@@ -891,6 +931,7 @@ export default function App() {
                 uploadingThumbnail={uploadingThumbnail}
                 thumbnailUploadProgress={thumbnailUploadProgress}
                 thumbnailUploadSuccess={thumbnailUploadSuccess}
+                thumbnailUploadProvider={lastImageUploadProvider}
                 handleThumbnailUpload={handleThumbnailUpload}
                 handleThumbnailFileUpload={handleThumbnailFileUpload}
                 handleConvert={handleConvert}

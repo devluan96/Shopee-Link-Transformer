@@ -1,6 +1,10 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { createSignUploadHandler } from "../../api/routes/upload.js";
+import {
+  createMediaUploadCompleteHandler,
+  createMediaUploadPlanHandler,
+  createSignUploadHandler,
+} from "../../api/routes/upload.js";
 import { createMockRes } from "./testUtils.js";
 
 test("sign-upload blocks video upload for free plan", async () => {
@@ -124,4 +128,73 @@ test("sign-upload does not consume video quota for image uploads", async () => {
   assert.equal(res.statusCode, 200);
   assert.equal(usageRecorded, false);
   assert.equal((res.body as any).signature, "signed-image");
+});
+
+test("media upload plan returns configured fallback providers in order", async () => {
+  const handler = createMediaUploadPlanHandler({
+    getSupabase: () => ({}) as never,
+    getFeatureLimitsForProfile: () => ({
+      plan: "yearly" as const,
+      canUseAbTesting: true,
+      dailyVideoUploads: 20,
+      maxTeamWorkspaces: 5,
+      maxTeamMembersPerWorkspace: 20,
+    }),
+    getVideoUploadUsageToday: async () => 0,
+    buildMediaUploadPlan: () =>
+      [
+        { provider: "cloudinary", uploadUrl: "https://cloudinary.test" },
+        { provider: "imagekit", uploadUrl: "https://imagekit.test" },
+        { provider: "supabase", uploadUrl: "/api/v1/media/upload-supabase" },
+      ] as any,
+  });
+
+  const res = createMockRes();
+  await handler(
+    {
+      authUser: { id: "user-1" },
+      body: { resourceType: "video", fileSize: 1024 },
+    } as any,
+    res as any,
+  );
+
+  assert.equal(res.statusCode, 200);
+  assert.deepEqual(
+    (res.body as any).providers.map((provider: any) => provider.provider),
+    ["cloudinary", "imagekit", "supabase"],
+  );
+});
+
+test("media upload complete records usage only for video uploads", async () => {
+  const recorded: Array<{ key: string; metadata: Record<string, unknown> }> = [];
+  const handler = createMediaUploadCompleteHandler({
+    getSupabase: () => ({}) as never,
+    recordFeatureUsage: async (_supabase, _userId, key, metadata) => {
+      recorded.push({ key, metadata: (metadata || {}) as Record<string, unknown> });
+    },
+  });
+
+  const videoRes = createMockRes();
+  await handler(
+    {
+      authUser: { id: "user-1" },
+      body: { resourceType: "video", provider: "imagekit" },
+    } as any,
+    videoRes as any,
+  );
+
+  const imageRes = createMockRes();
+  await handler(
+    {
+      authUser: { id: "user-1" },
+      body: { resourceType: "image", provider: "supabase" },
+    } as any,
+    imageRes as any,
+  );
+
+  assert.equal(videoRes.statusCode, 200);
+  assert.equal(imageRes.statusCode, 200);
+  assert.equal(recorded.length, 1);
+  assert.equal(recorded[0]?.key, "video_upload");
+  assert.equal(recorded[0]?.metadata.provider, "imagekit");
 });

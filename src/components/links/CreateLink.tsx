@@ -111,6 +111,7 @@ interface CreateLinkProps {
   uploadingVideo: boolean;
   videoUploadProgress: number;
   videoUploadSuccess: boolean;
+  videoUploadProvider?: "cloudinary" | "imagekit" | "supabase" | null;
   videoInputRef: RefObject<HTMLInputElement | null>;
   handleVideoUpload: (e: ChangeEvent<HTMLInputElement>) => void;
   handleVideoFileUpload: (file: File) => Promise<void>;
@@ -118,6 +119,7 @@ interface CreateLinkProps {
   uploadingThumbnail: boolean;
   thumbnailUploadProgress: number;
   thumbnailUploadSuccess: boolean;
+  thumbnailUploadProvider?: "cloudinary" | "imagekit" | "supabase" | null;
   handleThumbnailUpload: (e: ChangeEvent<HTMLInputElement>) => Promise<void>;
   handleThumbnailFileUpload: (file: File) => Promise<void>;
   handleConvert: (e: FormEvent) => void;
@@ -192,6 +194,7 @@ export const CreateLink = ({
   uploadingVideo,
   videoUploadProgress,
   videoUploadSuccess,
+  videoUploadProvider,
   videoInputRef,
   handleVideoUpload,
   handleVideoFileUpload,
@@ -199,6 +202,7 @@ export const CreateLink = ({
   uploadingThumbnail,
   thumbnailUploadProgress,
   thumbnailUploadSuccess,
+  thumbnailUploadProvider,
   handleThumbnailUpload,
   handleThumbnailFileUpload,
   handleConvert,
@@ -241,20 +245,33 @@ export const CreateLink = ({
   const convertedResultUrl = result?.converted_url
     ? result.converted_url
     : result?.short_code
-      ? buildPrettyLinkUrl(
-          "https://hotsnew.click",
-          {
-            slug: result.slug,
-            shortCode: result.short_code,
-            title: customTitle,
-            fallbackToLegacy: false,
-          },
-        )
+      ? buildPrettyLinkUrl("https://hotsnew.click", {
+          slug: result.slug,
+          shortCode: result.short_code,
+          title: customTitle,
+          fallbackToLegacy: false,
+        })
       : buildPrettyLinkUrl("https://hotsnew.click", {
           title: customTitle || "link",
           fallbackToLegacy: false,
         });
   const uploadProgressOffset = 87.96 - (87.96 * videoUploadProgress) / 100;
+  const getProviderLabel = (
+    provider?: "cloudinary" | "imagekit" | "supabase" | null,
+  ) => {
+    switch (provider) {
+      case "cloudinary":
+        return "Cloudinary";
+      case "imagekit":
+        return "ImageKit";
+      case "supabase":
+        return "Supabase";
+      default:
+        return content.page.cloudStorage;
+    }
+  };
+  const videoProviderLabel = getProviderLabel(videoUploadProvider);
+  const thumbnailProviderLabel = getProviderLabel(thumbnailUploadProvider);
   const canUseAbTesting = userLimits?.canUseAbTesting ?? true;
   const videoUploadsRemainingToday =
     userLimits?.videoUploadsRemainingToday ?? null;
@@ -427,7 +444,7 @@ export const CreateLink = ({
     }
   };
 
-    const validateForm = () => {
+  const validateForm = () => {
     const nextErrors: Partial<Record<FormField, string>> = {};
 
     if (!url.trim()) {
@@ -603,7 +620,7 @@ export const CreateLink = ({
 
   return (
     <div key="create">
-            <header className="mb-8 md:mb-12">
+      <header className="mb-8 md:mb-12">
         <h2 className="mb-2 text-3xl font-black tracking-tight text-gray-900 dark:text-slate-100 md:text-4xl">
           {page.title}
         </h2>
@@ -677,7 +694,7 @@ export const CreateLink = ({
           >
             <div className="pointer-events-none absolute right-0 top-0 -mr-16 -mt-16 h-32 w-32 rounded-full bg-orange-600/5 blur-3xl" />
 
-                        <div className="flex flex-col gap-4 sm:gap-5 lg:flex-row lg:items-start lg:justify-between">
+            <div className="flex flex-col gap-4 sm:gap-5 lg:flex-row lg:items-start lg:justify-between">
               <div className="min-w-0">
                 <p className="mb-2 px-1 text-[11px] font-black uppercase tracking-widest text-gray-400">
                   {page.sectionEyebrow}
@@ -709,7 +726,8 @@ export const CreateLink = ({
 
             <div>
               <label className="mb-3 flex items-center gap-2 px-1 text-[11px] font-black uppercase tracking-widest text-gray-400">
-                <Globe size={14} className="text-orange-500" /> {page.originalLabel}
+                <Globe size={14} className="text-orange-500" />{" "}
+                {page.originalLabel}
               </label>
               <div className="group relative">
                 <input
@@ -740,7 +758,8 @@ export const CreateLink = ({
               <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
                 <div>
                   <label className="mb-3 flex items-center gap-2 px-1 text-[11px] font-black uppercase tracking-widest text-gray-400">
-                    <Type size={14} className="text-orange-500" /> {page.titleLabel}
+                    <Type size={14} className="text-orange-500" />{" "}
+                    {page.titleLabel}
                   </label>
                   <input
                     data-field="customTitle"
@@ -760,7 +779,8 @@ export const CreateLink = ({
                 </div>
                 <div>
                   <label className="mb-3 flex items-center gap-2 px-1 text-[11px] font-black uppercase tracking-widest text-gray-400">
-                    <Type size={14} className="text-orange-500" /> {page.descriptionLabel}
+                    <Type size={14} className="text-orange-500" />{" "}
+                    {page.descriptionLabel}
                   </label>
                   <input
                     data-field="customDescription"
@@ -781,7 +801,8 @@ export const CreateLink = ({
               </div>
               <div>
                 <label className="mb-3 flex items-center gap-2 px-1 text-[11px] font-black uppercase tracking-widest text-gray-400">
-                  <Type size={14} className="text-orange-500" /> {page.shortCodeLabel}
+                  <Type size={14} className="text-orange-500" />{" "}
+                  {page.shortCodeLabel}
                 </label>
                 <input
                   data-field="customShortCode"
@@ -805,7 +826,10 @@ export const CreateLink = ({
                     {buildPrettyLinkUrl(
                       `https://${customDomain || "hotsnew.click"}`,
                       {
-                        title: customTitle || normalizedShortCodePreview || page.previewFallback,
+                        title:
+                          customTitle ||
+                          normalizedShortCodePreview ||
+                          page.previewFallback,
                         fallbackToLegacy: false,
                       },
                     )}
@@ -840,7 +864,7 @@ export const CreateLink = ({
                 />
               </button>
 
-                            {showAdvancedSettings && (
+              {showAdvancedSettings && (
                 <div className="space-y-6">
                   <div className="grid grid-cols-1 gap-6 rounded-[1.75rem] border border-sky-100 bg-sky-50/60 p-4 sm:p-5">
                     <div>
@@ -979,7 +1003,8 @@ export const CreateLink = ({
 
                   <div>
                     <label className="mb-3 flex items-center gap-2 px-1 text-[11px] font-black uppercase tracking-widest text-gray-400">
-                      <Type size={14} className="text-orange-500" /> {page.usageLabel}
+                      <Type size={14} className="text-orange-500" />{" "}
+                      {page.usageLabel}
                     </label>
                     <select
                       data-field="usageContext"
@@ -1005,7 +1030,8 @@ export const CreateLink = ({
                   <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
                     <div>
                       <label className="mb-3 flex items-center gap-2 px-1 text-[11px] font-black uppercase tracking-widest text-gray-400">
-                        <Type size={14} className="text-orange-500" /> {page.folderLabel}
+                        <Type size={14} className="text-orange-500" />{" "}
+                        {page.folderLabel}
                       </label>
                       <input
                         data-field="folderName"
@@ -1029,7 +1055,8 @@ export const CreateLink = ({
 
                     <div>
                       <label className="mb-3 flex items-center gap-2 px-1 text-[11px] font-black uppercase tracking-widest text-gray-400">
-                        <Type size={14} className="text-orange-500" /> {page.tagsLabel}
+                        <Type size={14} className="text-orange-500" />{" "}
+                        {page.tagsLabel}
                       </label>
                       <input
                         data-field="tagsText"
@@ -1054,7 +1081,8 @@ export const CreateLink = ({
 
                   <div>
                     <label className="mb-3 flex items-center gap-2 px-1 text-[11px] font-black uppercase tracking-widest text-gray-400">
-                      <Type size={14} className="text-orange-500" /> {page.expiryLabel}
+                      <Type size={14} className="text-orange-500" />{" "}
+                      {page.expiryLabel}
                     </label>
                     <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
                       <button
@@ -1112,7 +1140,8 @@ export const CreateLink = ({
                     <div className="grid grid-cols-1 gap-6">
                       <div>
                         <label className="mb-3 flex items-center gap-2 px-1 text-[11px] font-black uppercase tracking-widest text-gray-500">
-                          <Type size={14} className="text-orange-500" /> {page.secondaryTargetLabel}
+                          <Type size={14} className="text-orange-500" />{" "}
+                          {page.secondaryTargetLabel}
                         </label>
                         <select
                           value={secondaryTargetType}
@@ -1128,13 +1157,18 @@ export const CreateLink = ({
                               : "cursor-not-allowed bg-gray-100 text-gray-400 dark:bg-slate-800 dark:text-slate-500"
                           }`}
                         >
-                          <option value="shopee">{page.secondaryTargetShopee}</option>
-                          <option value="tiktok">{page.secondaryTargetTikTok}</option>
+                          <option value="shopee">
+                            {page.secondaryTargetShopee}
+                          </option>
+                          <option value="tiktok">
+                            {page.secondaryTargetTikTok}
+                          </option>
                         </select>
                       </div>
                       <div>
                         <label className="mb-3 flex items-center gap-2 px-1 text-[11px] font-black uppercase tracking-widest text-gray-500">
-                          <Globe size={14} className="text-orange-500" /> {page.secondaryUrlLabel}
+                          <Globe size={14} className="text-orange-500" />{" "}
+                          {page.secondaryUrlLabel}
                         </label>
                         <input
                           data-field="secondaryUrl"
@@ -1362,8 +1396,12 @@ export const CreateLink = ({
                             ? page.videoUploading
                             : page.videoPreparing
                           : videoUrl
-                            ? page.videoReplace
-                            : page.videoUpload}
+                            ? t("createLink.page.videoReplaceWithProvider", {
+                                provider: videoProviderLabel,
+                              })
+                            : t("createLink.page.videoUploadWithProvider", {
+                                provider: videoProviderLabel,
+                              })}
                       </span>
                     </div>
                     {videoUrl && (
@@ -1396,7 +1434,10 @@ export const CreateLink = ({
 
                   {videoUploadSuccess && (
                     <div className="flex items-center gap-2 rounded-xl border border-green-100 bg-green-50 px-4 py-2 text-[10px] font-black uppercase tracking-widest text-green-600">
-                      <ShieldCheck size={14} /> {page.videoUploadSuccess}
+                      <ShieldCheck size={14} />
+                      {t("createLink.page.videoUploadSuccessWithProvider", {
+                        provider: videoProviderLabel,
+                      })}
                     </div>
                   )}
 
@@ -1450,7 +1491,7 @@ export const CreateLink = ({
                     onClick={() => thumbnailInputRef.current?.click()}
                     onDragOver={(event) => event.preventDefault()}
                     onDrop={handleThumbnailDrop}
-                    className="group flex min-h-[72px] w-full items-center justify-between gap-4 rounded-2xl border-2 border-dashed border-sky-100 bg-sky-50/40 px-5 py-4 text-left transition-all hover:border-sky-300 hover:bg-sky-50/70 dark:border-sky-900/50 dark:bg-sky-950/20 dark:hover:border-sky-700 dark:hover:bg-sky-950/30 sm:px-6"
+                    className="group flex min-h-18 w-full items-center justify-between gap-4 rounded-2xl border-2 border-dashed border-sky-100 bg-sky-50/40 px-5 py-4 text-left transition-all hover:border-sky-300 hover:bg-sky-50/70 dark:border-sky-900/50 dark:bg-sky-950/20 dark:hover:border-sky-700 dark:hover:bg-sky-950/30 sm:px-6"
                   >
                     <div className="flex items-center gap-3 font-bold text-sky-500 group-hover:text-sky-700 dark:text-sky-300 dark:group-hover:text-sky-200">
                       <div className="relative flex h-10 w-10 items-center justify-center rounded-xl bg-white shadow-sm dark:bg-slate-800">
@@ -1497,7 +1538,9 @@ export const CreateLink = ({
                       <span className="text-[11px] uppercase tracking-wider sm:text-xs">
                         {uploadingThumbnail
                           ? page.thumbnailUploading
-                          : page.thumbnailSelect}
+                          : t("createLink.page.thumbnailSelectWithProvider", {
+                              provider: thumbnailProviderLabel,
+                            })}
                       </span>
                     </div>
                     {customImageUrl && (
@@ -1514,7 +1557,10 @@ export const CreateLink = ({
                   </p>
                   {thumbnailUploadSuccess && (
                     <div className="flex items-center gap-2 rounded-xl border border-green-100 bg-green-50 px-4 py-2 text-[10px] font-black uppercase tracking-widest text-green-600 dark:border-green-900/50 dark:bg-green-950/30 dark:text-green-300">
-                      <ShieldCheck size={14} /> {page.thumbnailUploadSuccess}
+                      <ShieldCheck size={14} />
+                      {t("createLink.page.thumbnailUploadSuccessWithProvider", {
+                        provider: thumbnailProviderLabel,
+                      })}
                     </div>
                   )}
                   <input
