@@ -56,7 +56,9 @@ const readPersistedTab = (userId?: string) => {
   if (typeof window === "undefined") return null;
 
   try {
-    const storedTab = window.localStorage.getItem(getActiveTabStorageKey(userId));
+    const storedTab = window.localStorage.getItem(
+      getActiveTabStorageKey(userId),
+    );
     return storedTab && PERSISTED_TABS.includes(storedTab as Tab)
       ? (storedTab as Tab)
       : null;
@@ -253,6 +255,7 @@ export default function App() {
     searchTerm,
     setSearchTerm,
     setLinksDirty,
+    upsertLink,
     handleDeleteLink,
     handleUpdateLink,
     handleShareLink,
@@ -299,7 +302,8 @@ export default function App() {
     canAccessCreate:
       !!user &&
       (currentWorkspaceId
-        ? currentWorkspace?.role === "owner" || currentWorkspace?.role === "editor"
+        ? currentWorkspace?.role === "owner" ||
+          currentWorkspace?.role === "editor"
         : true),
     uploadAssetToCloudinary,
   });
@@ -448,7 +452,8 @@ export default function App() {
     canAccessCreate:
       !!user &&
       (currentWorkspaceId
-        ? currentWorkspace?.role === "owner" || currentWorkspace?.role === "editor"
+        ? currentWorkspace?.role === "owner" ||
+          currentWorkspace?.role === "editor"
         : true),
     onSuccess: () => {
       setLinksDirty(true);

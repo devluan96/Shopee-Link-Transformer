@@ -40,6 +40,11 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
+  if (url.pathname.startsWith("/api/")) {
+    event.respondWith(fetch(request));
+    return;
+  }
+
   if (DOWNLOAD_PATH_PATTERN.test(url.pathname)) {
     event.respondWith(fetch(request));
     return;

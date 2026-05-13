@@ -27,6 +27,7 @@ export interface LinksState {
 export interface LinksActions {
   setSearchTerm: (v: string) => void;
   setLinksDirty: (v: boolean) => void;
+  upsertLink: (link: ConvertedLink) => void;
   fetchLinks: () => Promise<void>;
   handleDeleteLink: (id: string) => Promise<void>;
   handleUpdateLink: (id: string, data: LinkUpdatePayload) => Promise<void>;
@@ -48,6 +49,18 @@ export function useLinks({
   const [listLoading, setListLoading] = useState(false);
   const [linksDirty, setLinksDirty] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
+
+  const upsertLink = useCallback((link: ConvertedLink) => {
+    setLinks((current) => {
+      const nextId = link.id || "";
+      const nextShortCode = link.short_code;
+      const filtered = current.filter(
+        (item) =>
+          (nextId && item.id !== nextId) || (!nextId && item.short_code !== nextShortCode),
+      );
+      return [link, ...filtered];
+    });
+  }, []);
 
   const fetchLinks = useCallback(async () => {
     if (!user) return;
@@ -221,6 +234,7 @@ export function useLinks({
     searchTerm,
     setSearchTerm,
     setLinksDirty,
+    upsertLink,
     fetchLinks,
     handleDeleteLink,
     handleUpdateLink,

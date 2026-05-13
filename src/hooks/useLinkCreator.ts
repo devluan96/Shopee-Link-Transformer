@@ -18,7 +18,7 @@ interface UseLinkCreatorProps {
     init?: RequestInit,
   ) => Promise<Response>;
   canAccessCreate: boolean;
-  onSuccess: () => void;
+  onSuccess: (link: any) => void | Promise<void>;
 }
 
 export interface LinkCreatorState {
@@ -223,7 +223,7 @@ export function useLinkCreator({
               ),
           }),
         );
-        onSuccess();
+        await onSuccess(nextResult);
       } catch (err: any) {
         setError(err.message);
       } finally {
