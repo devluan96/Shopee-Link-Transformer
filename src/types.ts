@@ -46,6 +46,7 @@ export type LinkUpdatePayload = Omit<
 > & {
   folder_name?: string | null;
   expires_at?: string | null;
+  secondaryTargetType?: "shopee" | "tiktok";
 };
 
 export type WorkspaceRole = "owner" | "editor" | "viewer";

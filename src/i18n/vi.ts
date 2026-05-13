@@ -1202,7 +1202,10 @@ export const vi = {
       videoUploading: "Đang tải video lên...",
       videoPreparing: "Đang chuẩn bị video...",
       videoReplace: "Thay đổi video",
-      videoUpload: "Tải video lên Cloudinary",
+      videoUpload: "Tải video lên cloud storage",
+      cloudStorage: "Cloud storage",
+      videoReplaceWithProvider: "Thay video qua {provider}",
+      videoUploadWithProvider: "Tải video lên {provider}",
       videoDropHelp: "Kéo thả video vào đây, hoặc bấm để chọn file.",
       videoQuotaUnlimited:
         "Gói hiện tại được upload video không giới hạn mỗi ngày.",
@@ -1211,12 +1214,17 @@ export const vi = {
       videoQuotaUnsupported: "Gói hiện tại chưa hỗ trợ upload video.",
       videoQuotaExhausted: "Bạn đã dùng hết quota upload video hôm nay.",
       videoUploadSuccess: "Tải dữ liệu lên đám mây thành công!",
+      videoUploadSuccessWithProvider:
+        "Tải video lên {provider} thành công!",
       thumbnailLabel: "Ảnh đại diện",
       thumbnailUploading: "Đang tải ảnh đại diện...",
       thumbnailSelect: "Chọn ảnh đại diện từ máy",
+      thumbnailSelectWithProvider: "Chọn ảnh đại diện qua {provider}",
       thumbnailDropHelp:
         "Có thể kéo thả ảnh vào đây, hoặc bấm để chọn ảnh từ thư mục trên máy.",
       thumbnailUploadSuccess: "Tải ảnh đại diện thành công",
+      thumbnailUploadSuccessWithProvider:
+        "Tải ảnh đại diện lên {provider} thành công",
       thumbnailUrlPlaceholder: "Đường dẫn ảnh bìa...",
       thumbnailPreviewAlt: "Xem trước ảnh đại diện",
     },

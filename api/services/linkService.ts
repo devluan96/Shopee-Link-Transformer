@@ -445,11 +445,13 @@ export const updateLink = async (
   userId: string,
   data: Partial<{
     short_code: string;
+    original_url: string;
     custom_title: string;
     custom_description: string;
     custom_image_url: string;
     video_url: string;
     secondary_url: string;
+    secondaryTargetType: "shopee" | "tiktok";
     redirect_delay_ms: number;
     usage_context: string;
     expires_at: string;
@@ -474,7 +476,52 @@ export const updateLink = async (
 ) => {
   await assertWorkspaceWriteAccessForLink(supabase, userId, linkId);
 
-  const normalizedData = { ...data };
+  const { data: existingLink, error: existingLinkError } = await supabase
+    .from("links")
+    .select(
+      "id, original_url, secondary_url, video_url, utm_source, utm_medium, utm_campaign, utm_content, utm_term, shopee_affiliate_params, tiktok_affiliate_params",
+    )
+    .eq("id", linkId)
+    .maybeSingle();
+
+  if (existingLinkError) throw existingLinkError;
+  if (!existingLink) {
+    throw new Error("KhÃ´ng tÃ¬m tháº¥y liÃªn káº¿t cáº§n cáº­p nháº­t.");
+  }
+
+  const normalizedData = { ...data } as Partial<{
+    short_code: string;
+    original_url: string | null;
+    custom_title: string;
+    custom_description: string;
+    custom_image_url: string;
+    video_url: string | null;
+    secondary_url: string | null;
+    redirect_delay_ms: number;
+    usage_context: string;
+    expires_at: string;
+    folder_name: string | null;
+    tags: string[];
+    custom_domain: string | null;
+    utm_source: string;
+    utm_medium: string;
+    utm_campaign: string;
+    utm_content: string;
+    utm_term: string;
+    shopee_affiliate_params: string;
+    tiktok_affiliate_params: string;
+    ab_test_enabled: boolean;
+    ab_variant_b_title: string;
+    ab_variant_b_description: string;
+    ab_variant_b_image_url: string;
+    ab_variant_b_video_url: string;
+    ab_variant_b_original_url: string;
+    ab_variant_b_secondary_url: string;
+    secondaryTargetType: "shopee" | "tiktok";
+  }>;
+  const requestedSecondaryTargetType = normalizedData.secondaryTargetType;
+  delete normalizedData.secondaryTargetType;
+
   if ("folder_name" in normalizedData) {
     normalizedData.folder_name = normalizeFolderName(
       normalizedData.folder_name,
@@ -508,6 +555,115 @@ export const updateLink = async (
     }
 
     normalizedData.short_code = normalizedShortCode;
+  }
+
+  if ("video_url" in normalizedData) {
+    normalizedData.video_url = normalizedData.video_url?.trim() || null;
+  }
+
+  const shouldNormalizeChoiceFlow =
+    requestedSecondaryTargetType !== undefined ||
+    "original_url" in normalizedData ||
+    "secondary_url" in normalizedData ||
+    "video_url" in normalizedData;
+
+  if (shouldNormalizeChoiceFlow) {
+    const applyMarketingParams = createMarketingUrlApplier({
+      utmSource:
+        ("utm_source" in normalizedData
+          ? normalizedData.utm_source
+          : existingLink.utm_source) || undefined,
+      utmMedium:
+        ("utm_medium" in normalizedData
+          ? normalizedData.utm_medium
+          : existingLink.utm_medium) || undefined,
+      utmCampaign:
+        ("utm_campaign" in normalizedData
+          ? normalizedData.utm_campaign
+          : existingLink.utm_campaign) || undefined,
+      utmContent:
+        ("utm_content" in normalizedData
+          ? normalizedData.utm_content
+          : existingLink.utm_content) || undefined,
+      utmTerm:
+        ("utm_term" in normalizedData
+          ? normalizedData.utm_term
+          : existingLink.utm_term) || undefined,
+      shopeeAffiliateParams:
+        ("shopee_affiliate_params" in normalizedData
+          ? normalizedData.shopee_affiliate_params
+          : existingLink.shopee_affiliate_params) || undefined,
+      tiktokAffiliateParams:
+        ("tiktok_affiliate_params" in normalizedData
+          ? normalizedData.tiktok_affiliate_params
+          : existingLink.tiktok_affiliate_params) || undefined,
+    });
+    const requestedPrimaryUrl =
+      ("original_url" in normalizedData
+        ? normalizedData.original_url
+        : existingLink.original_url) || "";
+    const normalizedPrimaryUrl = normalizeProtectedPrimaryUrl(
+      requestedPrimaryUrl,
+      "Link gá»‘c",
+    );
+    if (!normalizedPrimaryUrl) {
+      throw new Error("Link gá»‘c khÃ´ng há»£p lá»‡.");
+    }
+
+    const primaryUrl = applyMarketingParams(normalizedPrimaryUrl);
+    normalizedData.original_url = primaryUrl;
+
+    const requestedSecondaryUrl =
+      ("secondary_url" in normalizedData
+        ? normalizedData.secondary_url
+        : existingLink.secondary_url) || "";
+    const trimmedSecondaryUrl =
+      typeof requestedSecondaryUrl === "string"
+        ? requestedSecondaryUrl.trim()
+        : "";
+
+    if (!trimmedSecondaryUrl) {
+      normalizedData.secondary_url = null;
+    } else {
+      const effectiveVideoUrl =
+        ("video_url" in normalizedData
+          ? normalizedData.video_url
+          : existingLink.video_url) || "";
+      if (!effectiveVideoUrl.trim()) {
+        throw new Error(
+          "Link bÆ°á»›c 2 chá»‰ Ä‘Æ°á»£c sá»­ dá»¥ng khi landing page cÃ³ video.",
+        );
+      }
+
+      const effectiveSecondaryTargetType =
+        requestedSecondaryTargetType ||
+        inferSecondaryTargetType(trimmedSecondaryUrl) ||
+        inferSecondaryTargetType(existingLink.secondary_url) ||
+        "shopee";
+      const normalizedSecondaryUrl = normalizeProtectedShopeeUrl(
+        trimmedSecondaryUrl,
+        effectiveSecondaryTargetType === "tiktok"
+          ? "Link TikTok bÆ°á»›c 2"
+          : "Link Shopee phá»¥",
+      );
+      if (!normalizedSecondaryUrl) {
+        throw new Error("Link bÆ°á»›c 2 khÃ´ng há»£p lá»‡.");
+      }
+
+      const secondaryUrl = applyMarketingParams(normalizedSecondaryUrl);
+      if (
+        effectiveSecondaryTargetType === "tiktok" &&
+        !TIKTOK_HOST_REGEX.test(new URL(secondaryUrl).hostname)
+      ) {
+        throw new Error("Link bÆ°á»›c 2 pháº£i lÃ  link TikTok há»£p lá»‡.");
+      }
+
+      if (effectiveSecondaryTargetType === "shopee") {
+        ensureSameShopeeHostname(primaryUrl, secondaryUrl);
+      }
+
+      normalizedData.secondary_url = secondaryUrl;
+    }
   }
 
   const { data: link, error } = await supabase

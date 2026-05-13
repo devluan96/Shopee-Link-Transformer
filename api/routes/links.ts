@@ -330,11 +330,13 @@ router.patch(
 
       const allowedUpdates = [
         "short_code",
+        "original_url",
         "custom_title",
         "custom_description",
         "custom_image_url",
         "video_url",
         "secondary_url",
+        "secondaryTargetType",
         "custom_domain",
         "utm_source",
         "utm_medium",

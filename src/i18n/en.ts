@@ -1232,7 +1232,10 @@ export const en = {
       videoUploading: "Uploading video...",
       videoPreparing: "Preparing video...",
       videoReplace: "Replace video",
-      videoUpload: "Upload video to Cloudinary",
+      videoUpload: "Upload video to cloud storage",
+      cloudStorage: "Cloud storage",
+      videoReplaceWithProvider: "Replace video via {provider}",
+      videoUploadWithProvider: "Upload video to {provider}",
       videoDropHelp: "Drag and drop a video here, or click to browse.",
       videoQuotaUnlimited: "Your current plan supports unlimited daily video uploads.",
       videoQuotaRemaining:
@@ -1240,12 +1243,17 @@ export const en = {
       videoQuotaUnsupported: "Your current plan does not support video uploads.",
       videoQuotaExhausted: "You have used all video upload quota for today.",
       videoUploadSuccess: "Video uploaded to cloud storage successfully!",
+      videoUploadSuccessWithProvider:
+        "Video uploaded to {provider} successfully!",
       thumbnailLabel: "Thumbnail",
       thumbnailUploading: "Uploading thumbnail image...",
       thumbnailSelect: "Choose thumbnail from device",
+      thumbnailSelectWithProvider: "Choose thumbnail via {provider}",
       thumbnailDropHelp:
         "You can drag an image here, or click to choose one from your device.",
       thumbnailUploadSuccess: "Thumbnail uploaded successfully",
+      thumbnailUploadSuccessWithProvider:
+        "Thumbnail uploaded to {provider} successfully",
       thumbnailUrlPlaceholder: "Cover image URL...",
       thumbnailPreviewAlt: "Thumbnail preview",
     },
