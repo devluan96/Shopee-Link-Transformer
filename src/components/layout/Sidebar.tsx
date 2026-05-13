@@ -185,9 +185,6 @@ export const Sidebar = ({
             label={t("sidebar.createLinks")}
             active={activeTab === "create"}
             onClick={() => handleTabClick("create")}
-            isLocked={
-              !isActuallyAdmin && userProfile?.subscription_plan === "free"
-            }
             compact={compactDesktop}
           />
           <SidebarItem

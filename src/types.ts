@@ -100,7 +100,8 @@ export type AppNotificationType =
   | "link_click_threshold"
   | "link_expiring_soon"
   | "quota_warning"
-  | "subscription_expiring";
+  | "subscription_expiring"
+  | "payment_confirmed";
 
 export interface AppNotification {
   id: string;
@@ -163,8 +164,29 @@ export interface UserProfile {
   subscription_expiry?: string;
 }
 
+export type ManualPaymentPlan = "monthly" | "yearly";
+export type ManualPaymentStatus = "pending" | "confirmed" | "rejected";
+
+export interface ManualPaymentRequest {
+  id: string;
+  user_id: string;
+  user_email?: string | null;
+  user_full_name?: string | null;
+  account_code: string;
+  plan: ManualPaymentPlan;
+  amount: number;
+  transfer_content: string;
+  status: ManualPaymentStatus;
+  user_confirmed_at: string;
+  admin_confirmed_at?: string | null;
+  admin_confirmed_by?: string | null;
+  created_at: string;
+  updated_at?: string | null;
+}
+
 export type Tab =
   | "dashboard"
+  | "guide"
   | "install"
   | "pricing"
   | "create"

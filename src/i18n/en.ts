@@ -1126,6 +1126,8 @@ export const en = {
       description:
         "The system will automatically fetch data and optimize the preview for Facebook.",
       closeError: "Close notice",
+      guideButton: "Open guide",
+      guideDialogClose: "Close guide",
       sectionEyebrow: "Link setup",
       formTitle: "Shorten link",
       quotaExhausted: "No quota left today",

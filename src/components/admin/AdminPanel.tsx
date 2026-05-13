@@ -1,25 +1,33 @@
 import React from "react";
 import {
-  Users as UsersIcon,
-  Check,
-  UserCheck,
-  Trash2,
-  User,
-  Search,
-  Filter,
-  BarChart3,
-  Link2,
-  ExternalLink,
-  X,
-  Eye,
-  Shield,
   Ban,
-  Unlock,
+  BarChart3,
+  Check,
+  CheckCircle2,
+  CreditCard,
+  ExternalLink,
+  Eye,
+  Filter,
   Globe,
+  Link2,
+  Search,
+  Shield,
+  Trash2,
+  Unlock,
+  User,
+  UserCheck,
+  Users as UsersIcon,
+  X,
+  XCircle,
 } from "lucide-react";
 import { buildPrettyLinkPath } from "@/src/lib/linkPaths";
 import { cn } from "@/src/lib/utils";
-import { AccessLogEntry, BlockedIpEntry, UserProfile } from "@/src/types";
+import {
+  AccessLogEntry,
+  BlockedIpEntry,
+  ManualPaymentRequest,
+  UserProfile,
+} from "@/src/types";
 import { useLocale } from "@/src/hooks/useLocale";
 
 interface UserLink {
@@ -35,6 +43,8 @@ interface UserLink {
 interface AdminPanelProps {
   allUsers: UserProfile[];
   adminLoading: boolean;
+  paymentRequests: ManualPaymentRequest[];
+  paymentRequestsLoading: boolean;
   adminAccessLogs: AccessLogEntry[];
   blockedIps: BlockedIpEntry[];
   adminSecurityLoading: boolean;
@@ -54,6 +64,8 @@ interface AdminPanelProps {
     plan: "free" | "monthly" | "yearly",
   ) => void;
   handleDeleteUser: (userId: string) => void;
+  onConfirmPaymentRequest: (paymentRequestId: string) => Promise<void>;
+  onRejectPaymentRequest: (paymentRequestId: string) => Promise<void>;
   fetchWithAuth?: (
     input: RequestInfo | URL,
     init?: RequestInit,
@@ -63,6 +75,8 @@ interface AdminPanelProps {
 export const AdminPanel = ({
   allUsers,
   adminLoading,
+  paymentRequests,
+  paymentRequestsLoading,
   adminAccessLogs,
   blockedIps,
   adminSecurityLoading,
@@ -75,11 +89,70 @@ export const AdminPanel = ({
   handleApproveUser,
   handleUpdateSubscription,
   handleDeleteUser,
+  onConfirmPaymentRequest,
+  onRejectPaymentRequest,
   fetchWithAuth,
 }: AdminPanelProps) => {
   const { locale, messages, t } = useLocale();
   const dateLocale = locale === "vi" ? "vi-VN" : "en-US";
   const content = messages.admin;
+
+  const viewCopy =
+    locale === "vi"
+      ? {
+          centerTitle: "Trung tâm quản trị",
+          centerDescription:
+            "Theo dõi người dùng, thanh toán, cấu hình hệ thống và các tác vụ vận hành.",
+          usersTab: "Quản lý user",
+          paymentsTab: "Quản lý thanh toán",
+          systemTab: "Quản trị hệ thống",
+          searchPlaceholder: "Tìm theo tên hoặc email...",
+          paymentPending: "Chờ xác nhận",
+          paymentConfirmed: "Đã xác nhận",
+          paymentRejected: "Từ chối",
+          pendingAmount: "Tiền chờ duyệt",
+          confirmedAmount: "Tiền đã duyệt",
+          paymentCode: "Mã thanh toán",
+          submittedAt: "Thời gian gửi",
+          transferContent: "Nội dung chuyển khoản",
+          paymentRequests: "yêu cầu",
+          noPayments: "Chưa có yêu cầu thanh toán nào.",
+          loadingPayments: "Đang tải thanh toán...",
+          confirmPayment: "Xác nhận đã thanh toán",
+          rejectPayment: "Từ chối",
+          reviewedAt: "Duyệt lúc",
+          email: "Email",
+          amount: "Số tiền",
+          paymentsDescription:
+            "Theo dõi yêu cầu thanh toán và xác nhận kích hoạt gói cho từng tài khoản.",
+        }
+      : {
+          centerTitle: "Admin center",
+          centerDescription:
+            "Manage users, payments, system settings, and operational controls.",
+          usersTab: "User management",
+          paymentsTab: "Payment management",
+          systemTab: "System management",
+          searchPlaceholder: "Search by name or email...",
+          paymentPending: "Pending",
+          paymentConfirmed: "Confirmed",
+          paymentRejected: "Rejected",
+          pendingAmount: "Pending amount",
+          confirmedAmount: "Confirmed amount",
+          paymentCode: "Payment code",
+          submittedAt: "Submitted at",
+          transferContent: "Transfer content",
+          paymentRequests: "requests",
+          noPayments: "No payment requests yet.",
+          loadingPayments: "Loading payments...",
+          confirmPayment: "Confirm payment",
+          rejectPayment: "Reject",
+          reviewedAt: "Reviewed at",
+          email: "Email",
+          amount: "Amount",
+          paymentsDescription:
+            "Review transfer confirmations and activate plans per account.",
+        };
 
   const [deleteId, setDeleteId] = React.useState<string | null>(null);
   const [searchTerm, setSearchTerm] = React.useState("");
@@ -100,39 +173,9 @@ export const AdminPanel = ({
   const [domainDraft, setDomainDraft] = React.useState("");
   const [domainList, setDomainList] = React.useState<string[]>(outputDomains);
   const [savingDomains, setSavingDomains] = React.useState(false);
-  const [adminView, setAdminView] = React.useState<"users" | "system">(
-    "users",
-  );
-
-  const adminViewCopy =
-    locale === "vi"
-      ? {
-          centerTitle: "Trung tâm quản trị",
-          centerDescription:
-            "Theo dõi người dùng, cấu hình hệ thống và các tác vụ vận hành.",
-          usersTab: "Quản lý user",
-          systemTab: "Quản trị hệ thống",
-          usersTitle: "Quản lý user",
-          usersDescription:
-            "Quản lý, phê duyệt và theo dõi hoạt động thành viên.",
-          systemTitle: "Quản trị hệ thống",
-          systemDescription:
-            "Cấu hình domain đầu ra, nhật ký truy cập và chặn IP.",
-          searchPlaceholder: "Tìm theo tên hoặc email...",
-        }
-      : {
-          centerTitle: "Admin center",
-          centerDescription:
-            "Manage users, system settings, and operational controls.",
-          usersTab: "User management",
-          systemTab: "System management",
-          usersTitle: "User management",
-          usersDescription: "Manage, approve, and monitor member activity.",
-          systemTitle: "System management",
-          systemDescription:
-            "Configure output domains, access logs, and IP blocking.",
-          searchPlaceholder: "Search by name or email...",
-        };
+  const [adminView, setAdminView] = React.useState<
+    "users" | "payments" | "system"
+  >("users");
 
   React.useEffect(() => {
     setDomainList(outputDomains);
@@ -152,14 +195,17 @@ export const AdminPanel = ({
   const filteredUsers = React.useMemo(
     () =>
       allUsers.filter((user) => {
+        const normalizedSearch = searchTerm.trim().toLowerCase();
         const matchesSearch =
-          user.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          user.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          !normalizedSearch ||
+          user.full_name?.toLowerCase().includes(normalizedSearch) ||
+          user.email?.toLowerCase().includes(normalizedSearch) ||
           false;
         const matchesPlan =
           planFilter === "all" || user.subscription_plan === planFilter;
         const matchesStatus =
           statusFilter === "all" || user.status === statusFilter;
+
         return matchesSearch && matchesPlan && matchesStatus;
       }),
     [allUsers, searchTerm, planFilter, statusFilter],
@@ -172,12 +218,35 @@ export const AdminPanel = ({
     ).length;
     const pendingUsers = allUsers.filter((u) => u.status !== "approved").length;
     const revenue = allUsers.reduce((sum, u) => {
-      if (u.subscription_plan === "monthly") return sum + 299000;
-      if (u.subscription_plan === "yearly") return sum + 2490000;
+      if (u.subscription_plan === "monthly") return sum + 149000;
+      if (u.subscription_plan === "yearly") return sum + 1609200;
       return sum;
     }, 0);
+
     return { totalUsers, premiumUsers, pendingUsers, revenue };
   }, [allUsers]);
+
+  const paymentStats = React.useMemo(() => {
+    const pendingCount = paymentRequests.filter(
+      (item) => item.status === "pending",
+    ).length;
+    const confirmedCount = paymentRequests.filter(
+      (item) => item.status === "confirmed",
+    ).length;
+    const pendingAmount = paymentRequests
+      .filter((item) => item.status === "pending")
+      .reduce((sum, item) => sum + item.amount, 0);
+    const confirmedAmount = paymentRequests
+      .filter((item) => item.status === "confirmed")
+      .reduce((sum, item) => sum + item.amount, 0);
+
+    return {
+      pendingCount,
+      confirmedCount,
+      pendingAmount,
+      confirmedAmount,
+    };
+  }, [paymentRequests]);
 
   const confirmDelete = () => {
     if (!deleteId) return;
@@ -232,6 +301,21 @@ export const AdminPanel = ({
     return content.plans.free;
   };
 
+  const getPaymentStatusLabel = (status: ManualPaymentRequest["status"]) => {
+    if (status === "confirmed") return viewCopy.paymentConfirmed;
+    if (status === "rejected") return viewCopy.paymentRejected;
+    return viewCopy.paymentPending;
+  };
+
+  const getPaymentStatusClass = (status: ManualPaymentRequest["status"]) => {
+    if (status === "confirmed") return "bg-green-100 text-green-700";
+    if (status === "rejected") return "bg-red-100 text-red-700";
+    return "bg-amber-100 text-amber-700";
+  };
+
+  const formatMoney = (amount: number) =>
+    `${amount.toLocaleString(dateLocale)}đ`;
+
   const planOptions = [
     { value: "all", label: content.filters.allPlans },
     { value: "free", label: content.plans.free },
@@ -244,6 +328,24 @@ export const AdminPanel = ({
     { value: "approved", label: content.statuses.approved },
     { value: "pending", label: content.statuses.pending },
   ] as const;
+
+  const renderStatCard = (
+    icon: React.ReactNode,
+    label: string,
+    value: string | number,
+  ) => (
+    <div className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-800">
+      <div className="mb-2 flex items-center gap-3">
+        {icon}
+        <span className="text-sm font-medium text-gray-500 dark:text-slate-400">
+          {label}
+        </span>
+      </div>
+      <div className="text-2xl font-black text-gray-900 dark:text-slate-100">
+        {value}
+      </div>
+    </div>
+  );
 
   return (
     <div key="admin">
@@ -284,69 +386,78 @@ export const AdminPanel = ({
           adminView !== "users" && "hidden",
         )}
       >
-        <div className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-800">
-          <div className="mb-2 flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-100">
-              <UsersIcon size={20} className="text-blue-600" />
-            </div>
-            <span className="text-sm font-medium text-gray-500 dark:text-slate-400">
-              {content.stats.totalUsers}
-            </span>
-          </div>
-          <div className="text-2xl font-black text-gray-900 dark:text-slate-100">
-            {stats.totalUsers}
-          </div>
-        </div>
+        {renderStatCard(
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-100">
+            <UsersIcon size={20} className="text-blue-600" />
+          </div>,
+          content.stats.totalUsers,
+          stats.totalUsers,
+        )}
+        {renderStatCard(
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-green-100">
+            <Check size={20} className="text-green-600" />
+          </div>,
+          content.stats.premiumUsers,
+          stats.premiumUsers,
+        )}
+        {renderStatCard(
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-orange-100">
+            <UserCheck size={20} className="text-orange-600" />
+          </div>,
+          content.stats.pendingUsers,
+          stats.pendingUsers,
+        )}
+        {renderStatCard(
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-purple-100">
+            <BarChart3 size={20} className="text-purple-600" />
+          </div>,
+          content.stats.revenue,
+          formatMoney(stats.revenue),
+        )}
+      </div>
 
-        <div className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-800">
-          <div className="mb-2 flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-green-100">
-              <Check size={20} className="text-green-600" />
-            </div>
-            <span className="text-sm font-medium text-gray-500 dark:text-slate-400">
-              {content.stats.premiumUsers}
-            </span>
-          </div>
-          <div className="text-2xl font-black text-gray-900 dark:text-slate-100">
-            {stats.premiumUsers}
-          </div>
-        </div>
-
-        <div className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-800">
-          <div className="mb-2 flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-orange-100">
-              <UserCheck size={20} className="text-orange-600" />
-            </div>
-            <span className="text-sm font-medium text-gray-500 dark:text-slate-400">
-              {content.stats.pendingUsers}
-            </span>
-          </div>
-          <div className="text-2xl font-black text-gray-900 dark:text-slate-100">
-            {stats.pendingUsers}
-          </div>
-        </div>
-
-        <div className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-800">
-          <div className="mb-2 flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-purple-100">
-              <BarChart3 size={20} className="text-purple-600" />
-            </div>
-            <span className="text-sm font-medium text-gray-500 dark:text-slate-400">
-              {content.stats.revenue}
-            </span>
-          </div>
-          <div className="text-2xl font-black text-gray-900 dark:text-slate-100">
-            {stats.revenue.toLocaleString()}đ
-          </div>
-        </div>
+      <div
+        className={cn(
+          "mb-8 grid grid-cols-1 gap-6 md:grid-cols-4",
+          adminView !== "payments" && "hidden",
+        )}
+      >
+        {renderStatCard(
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-100">
+            <CreditCard size={20} className="text-amber-600" />
+          </div>,
+          viewCopy.paymentPending,
+          paymentStats.pendingCount,
+        )}
+        {renderStatCard(
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-green-100">
+            <CheckCircle2 size={20} className="text-green-600" />
+          </div>,
+          viewCopy.paymentConfirmed,
+          paymentStats.confirmedCount,
+        )}
+        {renderStatCard(
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-orange-100">
+            <BarChart3 size={20} className="text-orange-600" />
+          </div>,
+          viewCopy.pendingAmount,
+          formatMoney(paymentStats.pendingAmount),
+        )}
+        {renderStatCard(
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-100">
+            <BarChart3 size={20} className="text-emerald-600" />
+          </div>,
+          viewCopy.confirmedAmount,
+          formatMoney(paymentStats.confirmedAmount),
+        )}
       </div>
 
       <header className="mb-8">
         <h2 className="mb-2 text-3xl font-black text-gray-900 dark:text-slate-100">
-          {adminViewCopy.centerTitle}
+          {viewCopy.centerTitle}
         </h2>
         <p className="font-medium text-gray-500 dark:text-slate-400">
-          {adminViewCopy.centerDescription}
+          {viewCopy.centerDescription}
         </p>
       </header>
 
@@ -362,7 +473,20 @@ export const AdminPanel = ({
           )}
         >
           <UsersIcon size={18} />
-          {adminViewCopy.usersTab}
+          {viewCopy.usersTab}
+        </button>
+        <button
+          type="button"
+          onClick={() => setAdminView("payments")}
+          className={cn(
+            "inline-flex items-center gap-2 rounded-2xl px-5 py-3 text-sm font-black transition-all",
+            adminView === "payments"
+              ? "bg-emerald-600 text-white shadow-lg shadow-emerald-200"
+              : "bg-white text-gray-600 shadow-sm ring-1 ring-gray-100 hover:bg-gray-50 dark:bg-slate-800 dark:text-slate-200 dark:ring-slate-700 dark:hover:bg-slate-700",
+          )}
+        >
+          <CreditCard size={18} />
+          {viewCopy.paymentsTab}
         </button>
         <button
           type="button"
@@ -375,7 +499,7 @@ export const AdminPanel = ({
           )}
         >
           <Shield size={18} />
-          {adminViewCopy.systemTab}
+          {viewCopy.systemTab}
         </button>
       </div>
 
@@ -584,6 +708,140 @@ export const AdminPanel = ({
 
       <div
         className={cn(
+          "overflow-hidden rounded-[3rem] border border-gray-100 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-800",
+          adminView !== "payments" && "hidden",
+        )}
+      >
+        <div className="flex flex-col gap-3 border-b border-gray-100 bg-gray-50/50 p-6 dark:border-slate-700 dark:bg-slate-900/70 sm:flex-row sm:items-center sm:justify-between sm:p-8">
+          <div>
+            <h3 className="flex items-center gap-2 text-sm font-black uppercase tracking-widest">
+              <CreditCard size={18} /> {viewCopy.paymentsTab}
+            </h3>
+            <p className="mt-2 text-sm font-medium text-gray-500 dark:text-slate-400">
+              {viewCopy.paymentsDescription}
+            </p>
+          </div>
+          <span className="w-fit rounded-full bg-gray-900 px-3 py-1 text-[10px] font-bold text-white">
+            {paymentRequests.length} {viewCopy.paymentRequests}
+          </span>
+        </div>
+
+        <div className="divide-y divide-gray-100 dark:divide-slate-700">
+          {paymentRequestsLoading ? (
+            <div className="p-20 text-center font-bold text-gray-300">
+              {viewCopy.loadingPayments}
+            </div>
+          ) : paymentRequests.length === 0 ? (
+            <div className="p-20 text-center font-medium italic text-gray-400">
+              {viewCopy.noPayments}
+            </div>
+          ) : (
+            paymentRequests.map((request) => (
+              <div
+                key={request.id}
+                className="flex flex-col gap-5 p-5 transition-all hover:bg-gray-50 dark:hover:bg-slate-900/40"
+              >
+                <div className="flex flex-wrap items-center gap-2">
+                  <h4 className="text-lg font-black text-gray-900 dark:text-slate-100">
+                    {request.user_full_name ||
+                      request.user_email ||
+                      request.user_id}
+                  </h4>
+                  <span
+                    className={cn(
+                      "rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-widest",
+                      getPaymentStatusClass(request.status),
+                    )}
+                  >
+                    {getPaymentStatusLabel(request.status)}
+                  </span>
+                  <span className="rounded-full bg-sky-100 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-sky-700">
+                    {getPlanLabel(request.plan)}
+                  </span>
+                </div>
+
+                <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+                  <div className="rounded-2xl bg-gray-50 px-4 py-3 dark:bg-slate-900">
+                    <p className="text-[11px] font-black uppercase tracking-widest text-gray-400">
+                      {viewCopy.email}
+                    </p>
+                    <p className="mt-1 break-all font-bold text-gray-900 dark:text-slate-100">
+                      {request.user_email || "-"}
+                    </p>
+                  </div>
+                  <div className="rounded-2xl bg-gray-50 px-4 py-3 dark:bg-slate-900">
+                    <p className="text-[11px] font-black uppercase tracking-widest text-gray-400">
+                      {viewCopy.paymentCode}
+                    </p>
+                    <p className="mt-1 font-bold text-gray-900 dark:text-slate-100">
+                      {request.account_code}
+                    </p>
+                  </div>
+                  <div className="rounded-2xl bg-gray-50 px-4 py-3 dark:bg-slate-900">
+                    <p className="text-[11px] font-black uppercase tracking-widest text-gray-400">
+                      {viewCopy.amount}
+                    </p>
+                    <p className="mt-1 font-bold text-gray-900 dark:text-slate-100">
+                      {formatMoney(request.amount)}
+                    </p>
+                  </div>
+                  <div className="rounded-2xl bg-gray-50 px-4 py-3 dark:bg-slate-900">
+                    <p className="text-[11px] font-black uppercase tracking-widest text-gray-400">
+                      {viewCopy.submittedAt}
+                    </p>
+                    <p className="mt-1 font-bold text-gray-900 dark:text-slate-100">
+                      {new Date(
+                        request.user_confirmed_at || request.created_at,
+                      ).toLocaleString(dateLocale)}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="rounded-2xl bg-gray-50 px-4 py-3 dark:bg-slate-900">
+                  <p className="text-[11px] font-black uppercase tracking-widest text-gray-400">
+                    {viewCopy.transferContent}
+                  </p>
+                  <p className="mt-1 break-all font-bold text-gray-900 dark:text-slate-100">
+                    {request.transfer_content}
+                  </p>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-3">
+                  {request.status === "pending" ? (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => onConfirmPaymentRequest(request.id)}
+                        className="inline-flex items-center justify-center gap-2 rounded-2xl bg-green-600 px-5 py-3 text-xs font-black uppercase tracking-widest text-white transition-all hover:bg-green-700"
+                      >
+                        <CheckCircle2 size={16} />
+                        {viewCopy.confirmPayment}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => onRejectPaymentRequest(request.id)}
+                        className="inline-flex items-center justify-center gap-2 rounded-2xl bg-red-600 px-5 py-3 text-xs font-black uppercase tracking-widest text-white transition-all hover:bg-red-700"
+                      >
+                        <XCircle size={16} />
+                        {viewCopy.rejectPayment}
+                      </button>
+                    </>
+                  ) : (
+                    <div className="rounded-2xl bg-gray-50 px-4 py-3 text-sm font-bold text-gray-500 dark:bg-slate-900 dark:text-slate-300">
+                      {request.admin_confirmed_at
+                        ? `${viewCopy.reviewedAt} ${new Date(request.admin_confirmed_at).toLocaleString(dateLocale)}`
+                        : getPaymentStatusLabel(request.status)}
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      </div>
+
+      <div
+        className={cn(
           "mb-6 rounded-2xl border border-gray-100 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-800",
           adminView !== "users" && "hidden",
         )}
@@ -596,7 +854,7 @@ export const AdminPanel = ({
             />
             <input
               type="text"
-              placeholder={adminViewCopy.searchPlaceholder}
+              placeholder={viewCopy.searchPlaceholder}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full rounded-xl border border-gray-200 py-3 pl-11 pr-4 text-sm focus:border-gray-900 focus:outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:focus:border-orange-500"

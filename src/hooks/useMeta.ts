@@ -1,12 +1,133 @@
 import { useEffect, useCallback } from "react";
 import { User } from "@supabase/supabase-js";
 import { Tab } from "@/src/types";
+import { useLocale, type Locale } from "./useLocale";
 
 const SITE_URL = "https://hotsnew.click";
-const DEFAULT_APP_TITLE =
-  "HotsNew Click - Tạo landing page trung gian cho link Shopee, TikTok với tiêu đề, mô tả, ảnh, video và thống kê click.";
-const DEFAULT_APP_DESCRIPTION =
-  "HotsNew Click giúp tạo landing page trung gian cho link Shopee, TikTok với tiêu đề, mô tả, ảnh, video và thống kê click.";
+
+type MetaCopy = {
+  defaultTitle: string;
+  defaultDescription: string;
+  tabs: Record<Tab, { title: string; description: string }>;
+};
+
+const META_COPY: Record<Locale, MetaCopy> = {
+  vi: {
+    defaultTitle:
+      "HotsNew Click - Tạo landing page trung gian cho link Shopee, TikTok với tiêu đề, mô tả, ảnh, video và thống kê click.",
+    defaultDescription:
+      "HotsNew Click giúp tạo landing page trung gian cho link Shopee, TikTok với tiêu đề, mô tả, ảnh, video và thống kê click.",
+    tabs: {
+      dashboard: {
+        title: "Bảng điều khiển - HotsNew Click",
+        description:
+          "Theo dõi nhanh hiệu suất link, lượt click và tăng trưởng chiến dịch trên HotsNew Click.",
+      },
+      guide: {
+        title: "Hướng dẫn tạo link - HotsNew Click",
+        description:
+          "Xem luồng tạo link, landing page, link gốc và bước 2 trong HotsNew Click trước khi chạy thật.",
+      },
+      install: {
+        title: "Cài app - HotsNew Click",
+        description:
+          "Hướng dẫn cài ứng dụng HotsNew để mở không gian làm việc nhanh hơn như một app riêng.",
+      },
+      pricing: {
+        title: "Bảng giá - HotsNew Click",
+        description:
+          "Xem bảng giá và nâng cấp gói dịch vụ để tạo landing page Shopee chuyên nghiệp hơn.",
+      },
+      create: {
+        title: "Tạo link Shopee - HotsNew Click",
+        description:
+          "Tạo landing page rút gọn cho link Shopee với tiêu đề, mô tả, ảnh và video tùy chỉnh.",
+      },
+      list: {
+        title: "Danh sách link - HotsNew Click",
+        description:
+          "Quản lý toàn bộ link Shopee đã tạo, chỉnh sửa nội dung và theo dõi hiệu quả.",
+      },
+      analytics: {
+        title: "Phân tích dữ liệu - HotsNew Click",
+        description:
+          "Phân tích lượt click, tăng trưởng và nguồn lưu lượng cho các link Shopee của bạn.",
+      },
+      team: {
+        title: "Nhóm làm việc - HotsNew Click",
+        description:
+          "Quản lý không gian làm việc, thành viên nhóm, quyền biên tập hoặc chỉ xem và tạo link theo chiến dịch.",
+      },
+      admin: {
+        title: "Quản lý user - HotsNew Click",
+        description: "Trang quản lý người dùng và gói dịch vụ trên HotsNew Click.",
+      },
+      profile: {
+        title: "Hồ sơ cá nhân - HotsNew Click",
+        description:
+          "Cập nhật thông tin hồ sơ và trạng thái tài khoản HotsNew Click.",
+      },
+    },
+  },
+  en: {
+    defaultTitle:
+      "HotsNew Click - Create intermediate landing pages for Shopee and TikTok links with titles, descriptions, images, videos, and click analytics.",
+    defaultDescription:
+      "HotsNew Click helps you create intermediate landing pages for Shopee and TikTok links with titles, descriptions, images, videos, and click analytics.",
+    tabs: {
+      dashboard: {
+        title: "Dashboard - HotsNew Click",
+        description:
+          "Track link performance, clicks, and campaign growth quickly inside HotsNew Click.",
+      },
+      guide: {
+        title: "Link Guide - HotsNew Click",
+        description:
+          "Review the link flow, landing page behavior, primary link, and step 2 flow in HotsNew Click before going live.",
+      },
+      install: {
+        title: "Install App - HotsNew Click",
+        description:
+          "Install HotsNew as a standalone app so the workspace is faster to open and easier to reach.",
+      },
+      pricing: {
+        title: "Pricing - HotsNew Click",
+        description:
+          "Review pricing and upgrade your plan to create more professional Shopee landing pages.",
+      },
+      create: {
+        title: "Create Shopee Link - HotsNew Click",
+        description:
+          "Create a shortened landing page for Shopee links with custom titles, descriptions, images, and videos.",
+      },
+      list: {
+        title: "Link List - HotsNew Click",
+        description:
+          "Manage all created Shopee links, edit their content, and track performance.",
+      },
+      analytics: {
+        title: "Analytics - HotsNew Click",
+        description:
+          "Analyze clicks, growth, and traffic sources for your Shopee links.",
+      },
+      team: {
+        title: "Workspace Team - HotsNew Click",
+        description:
+          "Manage workspaces, team members, editor or viewer permissions, and campaign link creation.",
+      },
+      admin: {
+        title: "Admin Center - HotsNew Click",
+        description:
+          "Manage users and subscription plans inside HotsNew Click.",
+      },
+      profile: {
+        title: "Profile Settings - HotsNew Click",
+        description:
+          "Update your profile information and account status in HotsNew Click.",
+      },
+    },
+  },
+};
 
 const upsertMetaTag = (
   selector: string,
@@ -41,37 +162,9 @@ interface UseMetaProps {
   activeTab: Tab;
 }
 
-const titleMap: Record<Tab, string> = {
-  dashboard: "Bảng Điều Khiển - HotsNew Click",
-  install: "Cài app - HotsNew Click",
-  pricing: "Bảng Giá - HotsNew Click",
-  create: "Tạo link Shopee - HotsNew Click",
-  list: "Danh sách link - HotsNew Click",
-  analytics: "Phân tích dữ liệu - HotsNew Click",
-  team: "Nhóm làm việc - HotsNew Click",
-  admin: "Quản lý user - HotsNew Click",
-  profile: "Hồ sơ cá nhân - HotsNew Click",
-};
-
-const descriptionMap: Record<Tab, string> = {
-  dashboard:
-    "Theo dõi nhanh hiệu suất link, lượt click và tăng trưởng chiến dịch trên HotsNew Click.",
-  install:
-    "Hướng dẫn cài ứng dụng HotsNew để mở không gian làm việc nhanh hơn như một app riêng.",
-  pricing:
-    "Xem bảng giá và nâng cấp gói dịch vụ để tạo landing page Shopee chuyên nghiệp hơn.",
-  create:
-    "Tạo landing page rút gọn cho link Shopee với tiêu đề, mô tả, ảnh và video tùy chỉnh.",
-  list: "Quản lý toàn bộ link Shopee đã tạo, chỉnh sửa nội dung và theo dõi hiệu quả.",
-  analytics:
-    "Phân tích lượt click, tăng trưởng và nguồn lưu lượng cho các link Shopee của bạn.",
-  team: "Quản lý không gian làm việc, thành viên nhóm, quyền biên tập hoặc chỉ xem và tạo link theo chiến dịch.",
-  admin: "Trang quản lý người dùng và gói dịch vụ trên HotsNew Click.",
-  profile: "Cập nhật thông tin hồ sơ và trạng thái tài khoản HotsNew Click.",
-};
-
 const validTabs: Tab[] = [
   "dashboard",
+  "guide",
   "install",
   "pricing",
   "create",
@@ -83,16 +176,20 @@ const validTabs: Tab[] = [
 ];
 
 export function useMeta({ user, authLoading, activeTab }: UseMetaProps) {
+  const { locale } = useLocale();
+
   const updateMetaTags = useCallback(() => {
     if (authLoading) return;
 
     const isAuthenticatedArea = Boolean(user);
+    const metaCopy = META_COPY[locale];
+    const activeMeta = metaCopy.tabs[activeTab];
     const nextTitle = isAuthenticatedArea
-      ? titleMap[activeTab]
-      : DEFAULT_APP_TITLE;
+      ? activeMeta.title
+      : metaCopy.defaultTitle;
     const nextDescription = isAuthenticatedArea
-      ? descriptionMap[activeTab]
-      : DEFAULT_APP_DESCRIPTION;
+      ? activeMeta.description
+      : metaCopy.defaultDescription;
     const canonicalHref = isAuthenticatedArea
       ? `${SITE_URL}/?tab=${activeTab}`
       : `${SITE_URL}/`;
@@ -140,7 +237,7 @@ export function useMeta({ user, authLoading, activeTab }: UseMetaProps) {
     upsertMetaTag('meta[name="robots"]', "name", "robots", robotsContent);
     upsertMetaTag('meta[name="googlebot"]', "name", "googlebot", robotsContent);
     upsertCanonicalLink(canonicalHref);
-  }, [authLoading, user, activeTab]);
+  }, [activeTab, authLoading, locale, user]);
 
   useEffect(() => {
     updateMetaTags();
