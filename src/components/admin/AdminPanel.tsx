@@ -107,6 +107,7 @@ export const AdminPanel = ({
           paymentsTab: "Quản lý thanh toán",
           systemTab: "Quản trị hệ thống",
           searchPlaceholder: "Tìm theo tên hoặc email...",
+          paymentSearchPlaceholder: "Tìm theo mã thanh toán...",
           paymentPending: "Chờ xác nhận",
           paymentConfirmed: "Đã xác nhận",
           paymentRejected: "Từ chối",
@@ -134,6 +135,7 @@ export const AdminPanel = ({
           paymentsTab: "Payment management",
           systemTab: "System management",
           searchPlaceholder: "Search by name or email...",
+          paymentSearchPlaceholder: "Search by payment code...",
           paymentPending: "Pending",
           paymentConfirmed: "Confirmed",
           paymentRejected: "Rejected",
@@ -156,6 +158,7 @@ export const AdminPanel = ({
 
   const [deleteId, setDeleteId] = React.useState<string | null>(null);
   const [searchTerm, setSearchTerm] = React.useState("");
+  const [paymentSearchTerm, setPaymentSearchTerm] = React.useState("");
   const [planFilter, setPlanFilter] = React.useState<
     "all" | "free" | "monthly" | "yearly"
   >("all");
@@ -247,6 +250,15 @@ export const AdminPanel = ({
       confirmedAmount,
     };
   }, [paymentRequests]);
+
+  const filteredPaymentRequests = React.useMemo(() => {
+    const normalizedSearch = paymentSearchTerm.trim().toLowerCase();
+    if (!normalizedSearch) return paymentRequests;
+
+    return paymentRequests.filter((request) =>
+      request.account_code.toLowerCase().includes(normalizedSearch),
+    );
+  }, [paymentRequests, paymentSearchTerm]);
 
   const confirmDelete = () => {
     if (!deleteId) return;
@@ -721,9 +733,24 @@ export const AdminPanel = ({
               {viewCopy.paymentsDescription}
             </p>
           </div>
-          <span className="w-fit rounded-full bg-gray-900 px-3 py-1 text-[10px] font-bold text-white">
-            {paymentRequests.length} {viewCopy.paymentRequests}
-          </span>
+          <div className="flex w-full flex-col gap-3 sm:w-auto sm:min-w-[320px]">
+            <div className="relative">
+              <Search
+                size={18}
+                className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"
+              />
+              <input
+                type="text"
+                placeholder={viewCopy.paymentSearchPlaceholder}
+                value={paymentSearchTerm}
+                onChange={(e) => setPaymentSearchTerm(e.target.value)}
+                className="w-full rounded-xl border border-gray-200 py-3 pl-11 pr-4 text-sm focus:border-gray-900 focus:outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:focus:border-orange-500"
+              />
+            </div>
+            <span className="w-fit rounded-full bg-gray-900 px-3 py-1 text-[10px] font-bold text-white sm:self-end">
+              {filteredPaymentRequests.length} {viewCopy.paymentRequests}
+            </span>
+          </div>
         </div>
 
         <div className="divide-y divide-gray-100 dark:divide-slate-700">
@@ -731,12 +758,12 @@ export const AdminPanel = ({
             <div className="p-20 text-center font-bold text-gray-300">
               {viewCopy.loadingPayments}
             </div>
-          ) : paymentRequests.length === 0 ? (
+          ) : filteredPaymentRequests.length === 0 ? (
             <div className="p-20 text-center font-medium italic text-gray-400">
               {viewCopy.noPayments}
             </div>
           ) : (
-            paymentRequests.map((request) => (
+            filteredPaymentRequests.map((request) => (
               <div
                 key={request.id}
                 className="flex flex-col gap-5 p-5 transition-all hover:bg-gray-50 dark:hover:bg-slate-900/40"

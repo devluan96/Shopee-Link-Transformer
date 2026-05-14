@@ -8,7 +8,7 @@ import { SUBSCRIPTION_PRICING } from "../config/constants.js";
 import * as userService from "./userService.js";
 import * as notificationService from "./notificationService.js";
 
-const ACTIVE_PAYMENT_STATUSES: ManualPaymentStatus[] = ["pending", "confirmed"];
+const BLOCKING_PAYMENT_STATUSES: ManualPaymentStatus[] = ["pending"];
 
 export const buildAccountPaymentCode = (userId: string) =>
   `HN${userId.replace(/-/g, "").slice(0, 8).toUpperCase()}`;
@@ -89,7 +89,7 @@ export const createManualPaymentRequest = async (
     .select("*")
     .eq("user_id", payload.userId)
     .eq("plan", payload.plan)
-    .in("status", ACTIVE_PAYMENT_STATUSES)
+    .in("status", BLOCKING_PAYMENT_STATUSES)
     .order("created_at", { ascending: false })
     .limit(1)
     .maybeSingle();

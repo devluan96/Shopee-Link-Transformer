@@ -334,6 +334,10 @@ export const Pricing = ({
   const selectedRequest = selectedPlan
     ? latestRequestByPlan.get(selectedPlan)
     : undefined;
+  const shouldShowConfirmedSelectedRequestHint =
+    selectedPlan !== null &&
+    selectedRequest?.status === "confirmed" &&
+    currentPlan === selectedPlan;
   const qrTextPayload = selectedPlan
     ? [
         `${paymentCopy.bankName}: ${bankLabel || "N/A"}`,
@@ -731,7 +735,7 @@ export const Pricing = ({
                       {paymentCopy.pendingHint}
                     </p>
                   )}
-                  {selectedRequest?.status === "confirmed" && (
+                  {shouldShowConfirmedSelectedRequestHint && (
                     <p className="mt-3 rounded-2xl bg-white px-4 py-3 text-sm font-black text-green-700 dark:bg-slate-900 dark:text-green-200">
                       {paymentCopy.confirmedHint}
                     </p>

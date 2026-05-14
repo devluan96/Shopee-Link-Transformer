@@ -190,7 +190,7 @@ export function useAdmin({ user, profile, fetchWithAuth, activeTab }: UseAdminPr
   }, [user, isAdminRole, fetchWithAuth, fetchPaymentRequests]);
 
   const fetchOutputDomains = useCallback(async () => {
-    if (!user || !isAdminRole) return;
+    if (!user) return;
     setOutputDomainsLoading(true);
     try {
       const response = await fetchWithAuth("/api/v1/settings/output-domains");
@@ -205,7 +205,7 @@ export function useAdmin({ user, profile, fetchWithAuth, activeTab }: UseAdminPr
     } finally {
       setOutputDomainsLoading(false);
     }
-  }, [user, isAdminRole, fetchWithAuth]);
+  }, [user, fetchWithAuth]);
 
   const updateOutputDomains = useCallback(
     async (domains: string[]) => {
@@ -229,8 +229,15 @@ export function useAdmin({ user, profile, fetchWithAuth, activeTab }: UseAdminPr
     setAdminLoading(false);
     setPaymentRequests([]);
     setPaymentRequestsLoading(false);
+    setOutputDomains(["hotsnew.click"]);
+    setOutputDomainsLoading(false);
     setAdminDirty(!!user);
   }, [user?.id]);
+
+  useEffect(() => {
+    if (!user) return;
+    void fetchOutputDomains();
+  }, [user?.id, fetchOutputDomains]);
 
   // Auto-fetch admin data
   useEffect(() => {
@@ -240,16 +247,6 @@ export function useAdmin({ user, profile, fetchWithAuth, activeTab }: UseAdminPr
       fetchPaymentRequests();
     }
   }, [user, isAdminRole, activeTab, adminDirty, allUsers.length, fetchAllUsers, fetchOutputDomains, fetchPaymentRequests]);
-
-  useEffect(() => {
-    if (!user || !isAdminRole || activeTab !== "admin") return;
-
-    const interval = window.setInterval(() => {
-      void fetchPaymentRequests();
-    }, 15000);
-
-    return () => window.clearInterval(interval);
-  }, [user, isAdminRole, activeTab, fetchPaymentRequests]);
 
   return {
     allUsers,

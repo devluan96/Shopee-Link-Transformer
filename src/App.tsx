@@ -557,7 +557,9 @@ export default function App() {
     profile?.subscription_plan && profile.subscription_plan !== "free"
   );
   const canUseCustomDomains =
-    isAdminRole || profile?.subscription_plan === "yearly";
+    isAdminRole ||
+    profile?.subscription_plan === "yearly" ||
+    profile?.subscription_plan === "monthly";
   const availableOutputDomains = outputDomains.length
     ? outputDomains
     : ["hotsnew.click"];
