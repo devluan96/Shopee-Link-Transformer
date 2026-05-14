@@ -379,13 +379,9 @@ const handlePublicShortLinkRequest = async (
     }
 
     const hasVideoLanding = Boolean(effectiveLink.video_url?.trim());
-    const shouldRenderPreviewPage =
-      hasVideoLanding ||
-      isPreviewBot;
-
-    if (shouldIgnoreTrackingRequest(req)) {
-      return res.redirect(effectiveLink.original_url);
-    }
+    const isPreviewRequest =
+      isPreviewBot || shouldIgnoreTrackingRequest(req);
+    const shouldRenderPreviewPage = hasVideoLanding || isPreviewRequest;
 
     if (shouldRenderPreviewPage) {
       const publicBaseUrl =
@@ -405,6 +401,10 @@ const handlePublicShortLinkRequest = async (
             experimental: false,
           }),
         );
+    }
+
+    if (shouldIgnoreTrackingRequest(req)) {
+      return res.redirect(effectiveLink.original_url);
     }
 
     let clickInserted = false;

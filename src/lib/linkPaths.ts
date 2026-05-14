@@ -1,5 +1,6 @@
 const FALLBACK_LINK_SLUG = "link";
 const LEGACY_SHORT_PATH_PREFIX = "/s";
+const MAX_LINK_SLUG_LENGTH = 150;
 
 export const normalizeLinkSlug = (value?: string | null) => {
   const normalized = (value || "")
@@ -9,7 +10,9 @@ export const normalizeLinkSlug = (value?: string | null) => {
     .replace(/[^\p{L}\p{N}\s-]+/gu, "-")
     .replace(/\s+/g, "-")
     .replace(/-+/g, "-")
-    .replace(/^-|-$/g, "");
+    .replace(/^-|-$/g, "")
+    .slice(0, MAX_LINK_SLUG_LENGTH)
+    .replace(/-+$/g, "");
 
   return normalized || FALLBACK_LINK_SLUG;
 };
