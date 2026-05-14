@@ -5,12 +5,27 @@ import { isCandidatePublicSlugPath } from "../utils/linkPaths.js";
 import * as securityService from "../services/securityService.js";
 import { AuthenticatedRequest } from "../types/index.js";
 
+const SOCIAL_PREVIEW_BOT_REGEX =
+  /facebookexternalhit|Facebot|Twitterbot|LinkedInBot|Slackbot|Discordbot|TelegramBot|WhatsApp|SkypeUriPreview|Pinterest|Zalo|Googlebot|bingbot|embedly/i;
+
+const isPublicPreviewPath = (req: Request) =>
+  req.path.startsWith("/s/") ||
+  req.path.startsWith("/s-choice/") ||
+  isCandidatePublicSlugPath(req.path);
+
+const isSocialPreviewRequest = (req: Request) => {
+  if (req.method !== "GET" && req.method !== "HEAD") {
+    return false;
+  }
+
+  const userAgent = String(req.headers["user-agent"] || "");
+  return SOCIAL_PREVIEW_BOT_REGEX.test(userAgent);
+};
+
 const shouldAuditRequest = (req: Request) => {
   return (
     req.path.startsWith("/api/") ||
-    req.path.startsWith("/s/") ||
-    req.path.startsWith("/s-choice/") ||
-    isCandidatePublicSlugPath(req.path)
+    isPublicPreviewPath(req)
   );
 };
 
@@ -21,6 +36,9 @@ export const blockBlockedIps = async (
 ) => {
   try {
     if (!shouldAuditRequest(req)) return next();
+    if (isPublicPreviewPath(req) && isSocialPreviewRequest(req)) {
+      return next();
+    }
 
     const ipAddress = getClientIp(req);
     if (!ipAddress) return next();
