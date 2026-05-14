@@ -20,6 +20,7 @@ import { cn, normalizeVietnameseSlug } from "@/src/lib/utils";
 import { LINK_USAGE_OPTIONS } from "@/src/lib/linkUsage";
 import { ConvertedLink, Tab, UserLimits } from "@/src/types";
 import { QRCodeCanvas } from "qrcode.react";
+import { toast } from "sonner";
 import { useLocale } from "@/src/hooks/useLocale";
 import { WorkflowGuide } from "@/src/components/WorkflowGuide";
 
@@ -238,6 +239,19 @@ export const CreateLink = ({
   const [isDraggingVideo, setIsDraggingVideo] = React.useState(false);
   const [showQrModal, setShowQrModal] = React.useState(false);
   const [showAdvancedSettings, setShowAdvancedSettings] = React.useState(false);
+
+  const currentPlanLabel =
+    linkQuota?.plan === "admin"
+      ? page.adminPlan
+      : linkQuota?.plan === "yearly"
+        ? page.yearlyPlan
+        : linkQuota?.plan === "monthly"
+          ? page.monthlyPlan
+          : page.freePlan;
+
+  const handleLockedDomainClick = React.useCallback(() => {
+    toast.info(page.customDomainLocked);
+  }, [page.customDomainLocked]);
   const [selectedExpirePresetDays, setSelectedExpirePresetDays] =
     React.useState<number | null>(null);
   const [campaignTrackingEnabled, setCampaignTrackingEnabled] = React.useState(
@@ -857,16 +871,79 @@ export const CreateLink = ({
                     )}
                   </span>
                 </p>
-                <p className="mt-1 px-1 text-[11px] font-medium text-gray-400">
-                  {t("createLink.page.shortCodeMax", {
-                    max: MAX_SHORT_CODE_LENGTH,
-                  })}
+            <p className="mt-1 px-1 text-[11px] font-medium text-gray-400">
+              {t("createLink.page.shortCodeMax", {
+                max: MAX_SHORT_CODE_LENGTH,
+              })}
+            </p>
+          </div>
+
+          <div className="rounded-[1.75rem] border border-sky-100 bg-sky-50/60 p-4 sm:p-5">
+            <div className="mb-4 flex items-start gap-3">
+              <div className="rounded-2xl bg-white p-3 text-sky-600 shadow-sm dark:bg-slate-800 dark:text-sky-300">
+                <Globe size={18} />
+              </div>
+              <div>
+                <p className="text-[11px] font-black uppercase tracking-widest text-sky-700">
+                  {page.outputDomainTitle}
+                </p>
+                <p className="mt-1 text-xs font-medium leading-relaxed text-sky-900/70">
+                  {page.outputDomainDescription}
                 </p>
               </div>
+            </div>
 
-              <button
-                type="button"
-                onClick={() => setShowAdvancedSettings((prev) => !prev)}
+            {canUseCustomDomains ? (
+              <select
+                value={customDomain}
+                onChange={(e) => setCustomDomain(e.target.value)}
+                className="w-full rounded-2xl bg-white px-6 py-4 font-medium text-gray-900 dark:bg-slate-700 dark:text-slate-100"
+              >
+                <option value="">{page.defaultDomain}</option>
+                {availableOutputDomains
+                  .filter((domain) => domain !== "hotsnew.click")
+                  .map((domain) => (
+                    <option key={domain} value={domain}>
+                      {domain}
+                    </option>
+                  ))}
+              </select>
+            ) : (
+              <div className="space-y-3">
+                <button
+                  type="button"
+                  onClick={handleLockedDomainClick}
+                  className="flex w-full items-center justify-between gap-4 rounded-2xl border border-sky-200 bg-white px-5 py-4 text-left transition hover:border-sky-300 hover:bg-sky-50/70 dark:border-slate-600 dark:bg-slate-700 dark:hover:bg-slate-650"
+                >
+                  <div>
+                    <p className="text-base font-black text-gray-900 dark:text-slate-100">
+                      {page.defaultDomain}
+                    </p>
+                    <p className="mt-1 text-xs font-medium text-sky-900/70 dark:text-slate-300">
+                      {page.customDomainLocked}
+                    </p>
+                  </div>
+                  <span className="shrink-0 rounded-full bg-sky-100 px-3 py-1 text-[11px] font-black uppercase tracking-wider text-sky-700 dark:bg-sky-500/20 dark:text-sky-200">
+                    {currentPlanLabel}
+                  </span>
+                </button>
+
+                {linkQuota?.plan === "free" && (
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab("pricing")}
+                    className="inline-flex items-center justify-center rounded-2xl bg-sky-600 px-5 py-3 text-xs font-black uppercase tracking-widest text-white transition-all hover:bg-sky-700"
+                  >
+                    {page.domainUpgradeCta}
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setShowAdvancedSettings((prev) => !prev)}
                 className="flex w-full items-center justify-between rounded-3xl border border-gray-100 bg-gray-50/80 px-5 py-4 text-left transition-all hover:bg-gray-100 dark:border-slate-700 dark:bg-slate-900/60 dark:hover:bg-slate-900"
               >
                 <div>
@@ -896,32 +973,8 @@ export const CreateLink = ({
                       <p className="text-xs font-medium leading-relaxed text-sky-900/70">
                         {page.marketingDescription}
                       </p>
-                      {!canUseCustomDomains && (
-                        <p className="mt-2 text-[11px] font-bold uppercase tracking-wider text-sky-700">
-                          {page.customDomainLocked}
-                        </p>
-                      )}
                     </div>
-                    <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-                      <select
-                        value={customDomain}
-                        onChange={(e) => setCustomDomain(e.target.value)}
-                        disabled={!canUseCustomDomains}
-                        className={cn(
-                          "w-full rounded-2xl bg-white px-6 py-4 font-medium text-gray-900 dark:bg-slate-700 dark:text-slate-100",
-                          !canUseCustomDomains &&
-                            "cursor-not-allowed opacity-60",
-                        )}
-                      >
-                        <option value="">{page.defaultDomain}</option>
-                        {availableOutputDomains
-                          .filter((domain) => domain !== "hotsnew.click")
-                          .map((domain) => (
-                            <option key={domain} value={domain}>
-                              {domain}
-                            </option>
-                          ))}
-                      </select>
+                    <div className="grid grid-cols-1 gap-6">
                       <button
                         type="button"
                         onClick={() =>
@@ -992,37 +1045,6 @@ export const CreateLink = ({
                     )}
                   </div>
 
-                  <div className="grid grid-cols-1 gap-6 rounded-[1.75rem] border border-violet-100 bg-violet-50/60 p-4 sm:p-5">
-                    <div>
-                      <p className="mb-1 text-[11px] font-black uppercase tracking-widest text-violet-700">
-                        {page.affiliateTitle}
-                      </p>
-                      <p className="text-xs font-medium leading-relaxed text-violet-900/70">
-                        {page.affiliateDescription}
-                      </p>
-                    </div>
-                    <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-                      <input
-                        type="text"
-                        value={shopeeAffiliateParams}
-                        onChange={(e) =>
-                          setShopeeAffiliateParams(e.target.value)
-                        }
-                        placeholder={page.shopeeAffiliatePlaceholder}
-                        className="w-full rounded-2xl bg-white px-6 py-4 font-medium text-gray-900 dark:bg-slate-700 dark:text-slate-100"
-                      />
-                      <input
-                        type="text"
-                        value={tiktokAffiliateParams}
-                        onChange={(e) =>
-                          setTiktokAffiliateParams(e.target.value)
-                        }
-                        placeholder={page.tiktokAffiliatePlaceholder}
-                        className="w-full rounded-2xl bg-white px-6 py-4 font-medium text-gray-900 dark:bg-slate-700 dark:text-slate-100"
-                      />
-                    </div>
-                  </div>
-
                   <div>
                     <label className="mb-3 flex items-center gap-2 px-1 text-[11px] font-black uppercase tracking-widest text-gray-400">
                       <Type size={14} className="text-orange-500" />{" "}
@@ -1047,58 +1069,6 @@ export const CreateLink = ({
                       ))}
                     </select>
                     {renderFieldError("usageContext")}
-                  </div>
-
-                  <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-                    <div>
-                      <label className="mb-3 flex items-center gap-2 px-1 text-[11px] font-black uppercase tracking-widest text-gray-400">
-                        <Type size={14} className="text-orange-500" />{" "}
-                        {page.folderLabel}
-                      </label>
-                      <input
-                        data-field="folderName"
-                        type="text"
-                        value={folderName}
-                        onChange={(e) => {
-                          setFolderName(e.target.value);
-                          clearFieldError("folderName");
-                        }}
-                        placeholder={page.folderPlaceholder}
-                        className={inputClass(
-                          "folderName",
-                          "w-full rounded-2xl bg-gray-50 px-6 py-4 font-medium text-gray-900 dark:bg-slate-700 dark:text-slate-100 focus:bg-white dark:focus:bg-slate-700",
-                        )}
-                      />
-                      {renderFieldError("folderName")}
-                      <p className="mt-2 px-1 text-[11px] font-medium text-gray-400">
-                        {page.folderHelp}
-                      </p>
-                    </div>
-
-                    <div>
-                      <label className="mb-3 flex items-center gap-2 px-1 text-[11px] font-black uppercase tracking-widest text-gray-400">
-                        <Type size={14} className="text-orange-500" />{" "}
-                        {page.tagsLabel}
-                      </label>
-                      <input
-                        data-field="tagsText"
-                        type="text"
-                        value={tagsText}
-                        onChange={(e) => {
-                          setTagsText(e.target.value);
-                          clearFieldError("tagsText");
-                        }}
-                        placeholder={page.tagsPlaceholder}
-                        className={inputClass(
-                          "tagsText",
-                          "w-full rounded-2xl bg-gray-50 px-6 py-4 font-medium text-gray-900 dark:bg-slate-700 dark:text-slate-100 focus:bg-white dark:focus:bg-slate-700",
-                        )}
-                      />
-                      {renderFieldError("tagsText")}
-                      <p className="mt-2 px-1 text-[11px] font-medium text-gray-400">
-                        {page.tagsHelp}
-                      </p>
-                    </div>
                   </div>
 
                   <div>

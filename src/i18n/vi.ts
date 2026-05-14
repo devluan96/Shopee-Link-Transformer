@@ -1116,12 +1116,16 @@ export const vi = {
       shortCodeMax: "Tối đa {max} ký tự.",
       advancedTitle: "Cài đặt nâng cao",
       advancedDescription:
-        "Domain đầu ra, UTM, affiliate, thử nghiệm A/B, thời hạn và luồng bước 2.",
+        "UTM, thử nghiệm A/B, thời hạn và luồng bước 2.",
       marketingTitle: "Tiếp thị và tăng trưởng",
       marketingDescription:
-        "Gắn UTM tự động, xuất liên kết theo domain riêng và chuẩn bị sẵn dữ liệu tăng trưởng ngay từ lúc tạo.",
+        "Gắn UTM tự động và chuẩn bị sẵn dữ liệu tăng trưởng ngay từ lúc tạo.",
+      outputDomainTitle: "Domain đầu ra",
+      outputDomainDescription:
+        "Chọn domain xuất link ở ngoài để thao tác nhanh hơn. Tính năng này mở từ gói tháng trở lên.",
       customDomainLocked:
-        "Chọn domain đầu ra chỉ mở cho gói năm hoặc quản trị viên.",
+        "Chọn domain đầu ra chỉ mở từ gói tháng trở lên.",
+      domainUpgradeCta: "Xem gói nâng cấp",
       defaultDomain: "Domain mặc định: hotsnew.click",
       contactUpgrade: "Liên hệ Zalo mở gói",
       adminPlan: "Quản trị viên",

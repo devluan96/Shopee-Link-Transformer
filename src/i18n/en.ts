@@ -1147,12 +1147,16 @@ export const en = {
       shortCodeMax: "Maximum {max} characters.",
       advancedTitle: "Advanced settings",
       advancedDescription:
-        "Output domain, UTM, affiliate, A/B test, expiration, and step-2 flow.",
+        "UTM, A/B test, expiration, and step-2 flow.",
       marketingTitle: "Marketing & Growth",
       marketingDescription:
-        "Attach UTM automatically, output links on custom domains, and prepare growth data from the start.",
+        "Attach UTM automatically and prepare growth data from the start.",
+      outputDomainTitle: "Output domain",
+      outputDomainDescription:
+        "Choose the public link domain outside the advanced section for faster access. This feature is available from the monthly plan and above.",
       customDomainLocked:
-        "Choosing an output domain is only available for yearly plans or administrators.",
+        "Choosing an output domain is available from the monthly plan and above.",
+      domainUpgradeCta: "View upgrade plans",
       defaultDomain: "Default domain: hotsnew.click",
       contactUpgrade: "Contact Zalo to upgrade",
       adminPlan: "Administrator",
