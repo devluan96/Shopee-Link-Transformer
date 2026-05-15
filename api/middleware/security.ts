@@ -6,7 +6,7 @@ import * as securityService from "../services/securityService.js";
 import { AuthenticatedRequest } from "../types/index.js";
 
 const SOCIAL_PREVIEW_BOT_REGEX =
-  /facebookexternalhit|Facebot|Twitterbot|LinkedInBot|Slackbot|Discordbot|TelegramBot|WhatsApp|SkypeUriPreview|Pinterest|Zalo|Googlebot|bingbot|embedly/i;
+  /facebookexternalhit|Facebot|meta-externalagent|meta-externalfetcher|Twitterbot|LinkedInBot|Slackbot|Discordbot|TelegramBot|WhatsApp|SkypeUriPreview|Pinterest|Zalo|Googlebot|bingbot|embedly/i;
 
 const isPublicPreviewPath = (req: Request) =>
   req.path.startsWith("/s/") ||
@@ -22,6 +22,10 @@ const isSocialPreviewRequest = (req: Request) => {
   return SOCIAL_PREVIEW_BOT_REGEX.test(userAgent);
 };
 
+const shouldBypassBlockedIpCheck = (req: Request) =>
+  isPublicPreviewPath(req) &&
+  (req.method === "GET" || req.method === "HEAD");
+
 const shouldAuditRequest = (req: Request) => {
   return (
     req.path.startsWith("/api/") ||
@@ -36,7 +40,7 @@ export const blockBlockedIps = async (
 ) => {
   try {
     if (!shouldAuditRequest(req)) return next();
-    if (isPublicPreviewPath(req) && isSocialPreviewRequest(req)) {
+    if (shouldBypassBlockedIpCheck(req) || isSocialPreviewRequest(req)) {
       return next();
     }
 
