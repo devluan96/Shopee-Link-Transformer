@@ -130,6 +130,10 @@ export const getClientIp = (req: Request) => {
 };
 
 export const getPublicBaseUrl = (req?: Request) => {
+  if (req) {
+    return `${req.protocol}://${req.get("host")}`;
+  }
+
   const configured =
     process.env.APP_BASE_URL ||
     process.env.PUBLIC_BASE_URL ||
@@ -140,8 +144,7 @@ export const getPublicBaseUrl = (req?: Request) => {
     return configured.startsWith("http") ? configured : `https://${configured}`;
   }
 
-  if (!req) return null;
-  return `${req.protocol}://${req.get("host")}`;
+  return null;
 };
 
 export const hmacSha256 = (input: string, key: string) =>
