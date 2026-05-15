@@ -163,6 +163,26 @@ app.get("/api/health", (req, res) => {
   });
 });
 
+app.get("/robots.txt", (req, res) => {
+  const publicBaseUrl =
+    getPublicBaseUrl(req) || `${req.protocol}://${req.get("host")}`;
+  const robotsContent = [
+    "User-agent: facebookexternalhit",
+    "Allow: /",
+    "",
+    "User-agent: Facebot",
+    "Allow: /",
+    "",
+    "User-agent: *",
+    "Allow: /",
+    "",
+    `Sitemap: ${publicBaseUrl.replace(/\/+$/, "")}/sitemap.xml`,
+  ].join("\n");
+
+  res.setHeader("Content-Type", "text/plain; charset=utf-8");
+  return res.status(200).send(robotsContent);
+});
+
 // D. API ROUTES (modular)
 app.use(apiRoutes);
 
