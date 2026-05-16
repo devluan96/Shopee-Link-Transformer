@@ -3,14 +3,14 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>HotsNew Click - Tạo Landing Page Rút Gọn Link Shopee</title>
+    <title>HotsNew Click | Tạo landing page rút gọn link Shopee và TikTok</title>
     <meta
       name="description"
-      content="HotsNew Click giúp tạo landing page trung gian cho link Shopee với tiêu đề, mô tả, ảnh, video và thống kê click tối ưu cho chia sẻ mạng xã hội."
+      content="HotsNew Click giúp tạo landing page trung gian cho link Shopee và TikTok với tiêu đề, mô tả, ảnh, video, slug đẹp và thống kê click."
     />
     <meta
       name="keywords"
-      content="Shopee, rút gọn link Shopee, landing page Shopee, affiliate Shopee, short link, tracking click, HotsNew Click"
+      content="landing page Shopee, rút gọn link Shopee, landing page TikTok, tracking click affiliate, slug đẹp, HotsNew Click"
     />
     <meta name="author" content="HotsNew Click" />
     <meta name="robots" content="index, follow" />
@@ -32,48 +32,98 @@
     <meta property="og:site_name" content="HotsNew Click" />
     <meta
       property="og:title"
-      content="HotsNew Click - Tạo Landing Page Rút Gọn Link Shopee"
+      content="HotsNew Click | Tạo landing page rút gọn link Shopee và TikTok"
     />
     <meta
       property="og:description"
-      content="Tạo landing page trung gian cho link Shopee với ảnh, video, tiêu đề tùy chỉnh và theo dõi click dễ dàng."
+      content="Tạo landing page trung gian cho link Shopee và TikTok với image, video, title tùy chỉnh và theo dõi click để tối ưu chia sẻ."
     />
     <meta property="og:url" content="https://hotsnew.click/" />
     <meta property="og:image" content="https://hotsnew.click/og-image.png" />
+    <meta
+      property="og:image:secure_url"
+      content="https://hotsnew.click/og-image.png"
+    />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
-    <meta property="og:image:alt" content="HotsNew Click" />
+    <meta
+      property="og:image:alt"
+      content="HotsNew Click landing page preview"
+    />
     <meta name="twitter:card" content="summary_large_image" />
     <meta
       name="twitter:title"
-      content="HotsNew Click - Tạo Landing Page Rút Gọn Link Shopee"
+      content="HotsNew Click | Tạo landing page rút gọn link Shopee và TikTok"
     />
     <meta
       name="twitter:description"
-      content="Tạo landing page trung gian cho link Shopee với ảnh, video, tiêu đề tùy chỉnh và theo dõi click dễ dàng."
+      content="Tạo landing page trung gian cho link Shopee và TikTok với image, video, title tùy chỉnh và theo dõi click."
     />
     <meta name="twitter:image" content="https://hotsnew.click/og-image.png" />
+    <meta
+      name="twitter:image:alt"
+      content="HotsNew Click landing page preview"
+    />
 
     <script type="application/ld+json">
       {
         "@context": "https://schema.org",
-        "@type": "WebApplication",
+        "@type": "SoftwareApplication",
         "name": "HotsNew Click",
         "url": "https://hotsnew.click/",
         "applicationCategory": "BusinessApplication",
         "operatingSystem": "Web",
-        "description": "Nền tảng tạo landing page rút gọn link Shopee với theo dõi click, hình ảnh, video và tối ưu chia sẻ mạng xã hội.",
+        "description": "Nền tảng tạo landing page rút gọn link Shopee và TikTok với theo dõi click, hình ảnh, video và tối ưu chia sẻ mạng xã hội.",
         "inLanguage": "vi-VN",
+        "offers": {
+          "@type": "Offer",
+          "price": "0",
+          "priceCurrency": "VND"
+        },
         "publisher": {
           "@type": "Organization",
           "name": "HotsNew Click"
         }
       }
     </script>
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "FAQPage",
+        "mainEntity": [
+          {
+            "@type": "Question",
+            "name": "HotsNew Click dùng để làm gì?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "App dùng để tạo landing page trung gian cho link Shopee và TikTok, chủ động nội dung preview và theo dõi click để tối ưu phân phối."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "App có hỗ trợ slug đẹp theo domain riêng không?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Có. Hệ thống tạo link theo domain hoặc slug và cho phép bạn quản lý mã rút gọn để link dễ nhớ hơn và dễ mang đi đăng bài."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Có theo dõi được click và nguồn traffic không?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Có. App hỗ trợ thống kê click, UTM, tag và các thông tin cần thiết để xem link nào đang hoạt động tốt."
+            }
+          }
+        ]
+      }
+    </script>
     <script>
       (() => {
         const storedTheme = localStorage.getItem("theme-preference");
-        const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+        const prefersDark = window.matchMedia(
+          "(prefers-color-scheme: dark)",
+        ).matches;
         const resolvedTheme =
           storedTheme === "dark" || (storedTheme !== "light" && prefersDark)
             ? "dark"
@@ -89,8 +139,39 @@
     </script>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <main data-seo-shell>
+        <header>
+          <h1>HotsNew Click</h1>
+          <p>
+            Tạo landing page rút gọn link Shopee và TikTok với slug đẹp,
+            preview đẹp và click tracking trong cùng một workspace.
+          </p>
+        </header>
+        <section>
+          <h2>Giá trị cốt lõi</h2>
+          <ul>
+            <li>Chủ động title, description, image và video cho card chia sẻ.</li>
+            <li>Xuất link theo domain slug để copy, đọc và nhớ gọn hơn.</li>
+            <li>Theo dõi click, UTM và nguồn traffic để tối ưu campaign.</li>
+          </ul>
+        </section>
+        <section>
+          <h2>Quy trình</h2>
+          <ol>
+            <li>Dán link gốc Shopee hoặc TikTok vào app.</li>
+            <li>Tùy chỉnh nội dung preview, slug và tracking cần dùng.</li>
+            <li>Phát hành link và theo dõi hiệu quả click.</li>
+          </ol>
+        </section>
+        <section>
+          <h2>Câu hỏi thường gặp</h2>
+          <p>App dùng để tạo landing page trung gian cho link affiliate.</p>
+          <p>Hệ thống hỗ trợ domain slug gọn và thống kê click.</p>
+          <p>Landing page có thể dùng cho cả Shopee lẫn TikTok.</p>
+        </section>
+      </main>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
-

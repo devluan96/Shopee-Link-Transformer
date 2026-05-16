@@ -113,7 +113,8 @@ export const AuthScreen = ({
       <div className="absolute -bottom-48 -right-32 h-80 w-80 rounded-full bg-slate-900/8 blur-3xl" />
       <div className="absolute inset-y-0 left-[46%] hidden w-px bg-white/40 lg:block" />
 
-      <div className="relative z-10 grid h-full lg:grid-cols-[1.02fr_0.98fr]">
+      <div className="relative z-10 h-full">
+        <div className="grid h-full lg:grid-cols-[1.02fr_0.98fr]">
         <section className="hidden px-6 py-6 lg:flex xl:px-8 xl:py-7">
           <div className="relative flex h-full w-full flex-col overflow-hidden rounded-[2.4rem] border border-white/60 bg-[#1d160f] px-8 py-7 text-white shadow-[0_30px_100px_rgba(24,16,8,0.28)]">
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(255,181,71,0.22),transparent_24%),radial-gradient(circle_at_78%_22%,rgba(255,255,255,0.08),transparent_20%),linear-gradient(180deg,rgba(255,255,255,0.04),rgba(255,255,255,0)_28%)]" />
@@ -220,7 +221,7 @@ export const AuthScreen = ({
           </div>
         </section>
 
-        <section className="flex h-full items-center justify-center px-4 py-4 sm:px-6 lg:px-8 xl:px-10">
+        <section className="flex h-full items-center justify-center overflow-hidden px-4 py-4 sm:px-6 lg:px-8 xl:px-10">
           <div className="w-full max-w-132">
             <motion.div
               initial={{ opacity: 0, y: 16 }}
@@ -248,7 +249,6 @@ export const AuthScreen = ({
                 {auth.topbar.security}
               </div>
             </motion.div>
-
             {passwordRecoveryMode ? (
               <AuthFormPanel
                 isRegistering={false}
@@ -362,6 +362,7 @@ export const AuthScreen = ({
             </p>
           </div>
         </section>
+        </div>
       </div>
     </div>
   );

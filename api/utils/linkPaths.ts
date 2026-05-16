@@ -3,6 +3,7 @@ const LEGACY_SHORT_PATH_PREFIX = "/s";
 const MAX_LINK_SLUG_LENGTH = 150;
 
 const RESERVED_PUBLIC_SLUGS = new Set([
+  "discover",
   "api",
   "s",
   "s-choice",

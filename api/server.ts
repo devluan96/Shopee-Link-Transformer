@@ -40,6 +40,21 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
+const PUBLIC_MARKETING_PATHS = [
+  "/",
+  "/discover/pricing",
+  "/discover/install",
+  "/discover/faq",
+  "/discover/landing-page-shopee",
+  "/discover/landing-page-tiktok",
+  "/discover/rut-gon-link-shopee",
+  "/discover/rut-gon-link-tiktok",
+  "/discover/tracking-click-affiliate",
+  "/discover/link-tiktok-affiliate",
+  "/discover/cach-rut-gon-link-shopee",
+  "/discover/cach-rut-gon-link-tiktok",
+  "/discover/cach-theo-doi-click-affiliate",
+] as const;
 
 const isSocialPreviewBot = (userAgent: string) => {
   if (!userAgent) return false;
@@ -779,11 +794,13 @@ app.get("/sitemap.xml", async (req, res) => {
     if (error) throw error;
 
     const urls = [
-      `  <url>
-    <loc>${escapeHtml(`${publicBaseUrl}/`)}</loc>
-    <changefreq>daily</changefreq>
-    <priority>1.0</priority>
-  </url>`,
+      ...PUBLIC_MARKETING_PATHS.map((routePath, index) => `  <url>
+    <loc>${escapeHtml(
+      `${publicBaseUrl.replace(/\/+$/, "")}${routePath === "/" ? "/" : routePath}`,
+    )}</loc>
+    <changefreq>${routePath === "/" ? "daily" : "weekly"}</changefreq>
+    <priority>${index === 0 ? "1.0" : "0.9"}</priority>
+  </url>`),
       ...(links || [])
         .filter((link: any) => link?.short_code)
         .map((link: any) => {

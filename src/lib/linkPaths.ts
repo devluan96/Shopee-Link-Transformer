@@ -1,6 +1,22 @@
 const FALLBACK_LINK_SLUG = "link";
 const LEGACY_SHORT_PATH_PREFIX = "/s";
 const MAX_LINK_SLUG_LENGTH = 150;
+const RESERVED_PUBLIC_SLUGS = new Set([
+  "discover",
+  "api",
+  "s",
+  "s-choice",
+  "sitemap.xml",
+  "robots.txt",
+  "manifest.webmanifest",
+  "downloads",
+  "assets",
+  "favicon.ico",
+  "og-image.png",
+  "og-default.svg",
+  "logo-app-192.png",
+  "logo-app-512.png",
+]);
 
 export const normalizeLinkSlug = (value?: string | null) => {
   const normalized = (value || "")
@@ -28,7 +44,10 @@ export const buildPrettyLinkPath = (options: {
 
   const fallbackToLegacy = options.fallbackToLegacy ?? true;
   if (!fallbackToLegacy && options.title?.trim()) {
-    return `/${normalizeLinkSlug(options.title)}`;
+    const normalizedTitle = normalizeLinkSlug(options.title);
+    if (!RESERVED_PUBLIC_SLUGS.has(normalizedTitle)) {
+      return `/${normalizedTitle}`;
+    }
   }
 
   if (options.shortCode?.trim()) {
@@ -36,7 +55,10 @@ export const buildPrettyLinkPath = (options: {
   }
 
   if (options.title?.trim()) {
-    return `/${normalizeLinkSlug(options.title)}`;
+    const normalizedTitle = normalizeLinkSlug(options.title);
+    if (!RESERVED_PUBLIC_SLUGS.has(normalizedTitle)) {
+      return `/${normalizedTitle}`;
+    }
   }
 
   return `${LEGACY_SHORT_PATH_PREFIX}/########`;
