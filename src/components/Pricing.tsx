@@ -394,8 +394,10 @@ export const Pricing = ({
         <h2 className="mb-2 text-3xl font-black text-gray-900 dark:text-slate-100">
           {copy.header.title}
         </h2>
-        <p className="font-medium italic text-gray-500 dark:text-slate-400">
-          {copy.header.description}
+        <p className="font-medium text-gray-500 dark:text-slate-400">
+          {locale === "vi"
+            ? "Chọn gói phù hợp với nhu cầu tạo link, preview và theo dõi lượt bấm."
+            : "Choose the plan that fits your needs for link creation, previews, and click tracking."}
         </p>
       </header>
 
@@ -438,30 +440,6 @@ export const Pricing = ({
           )}
         </div>
       </div>
-
-      <section className="mb-10 rounded-[2.5rem] border border-sky-100 bg-sky-50/70 p-6 shadow-sm dark:border-sky-500/20 dark:bg-sky-500/10">
-        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-          <div>
-            <h3 className="text-xl font-black text-slate-900 dark:text-slate-100">
-              {paymentCopy.paymentCenterTitle}
-            </h3>
-            <p className="mt-1 max-w-3xl text-sm font-medium text-slate-600 dark:text-slate-300">
-              {paymentCopy.paymentCenterDescription}
-            </p>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <div className="rounded-2xl bg-white px-4 py-3 text-xs font-black uppercase tracking-widest text-sky-700 shadow-sm dark:bg-slate-900 dark:text-sky-200">
-              {paymentCopy.accountCode}: {accountCode}
-            </div>
-            {paymentRequestsLoading && (
-              <div className="inline-flex items-center gap-2 rounded-2xl bg-white px-4 py-3 text-xs font-black uppercase tracking-widest text-slate-500 shadow-sm dark:bg-slate-900 dark:text-slate-300">
-                <Loader2 size={14} className="animate-spin" />
-                Loading
-              </div>
-            )}
-          </div>
-        </div>
-      </section>
 
       <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
         {plans.map((plan) => {

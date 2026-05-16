@@ -153,10 +153,10 @@ export const vi = {
     hero: {
       badge: "Trải nghiệm xác thực cao cấp",
       eyebrow: "Nền tảng HotsNew Click",
-      title: "Quản lý liên kết Shopee",
+      title: "Quản lý liên kết Shopee và TikTok",
       accent: "nhanh, gọn và chuyên nghiệp.",
       description:
-        "Tạo link rút gọn, dựng trang xem trước thu hút và theo dõi hiệu quả chiến dịch trong một không gian làm việc đồng bộ, dễ dùng.",
+        "Tạo link rút gọn cho Shopee và TikTok, dựng trang xem trước thu hút và theo dõi hiệu quả chiến dịch trong một không gian làm việc đồng bộ, dễ dùng.",
       features: [
         {
           title: "Trang xem trước đẹp mắt",

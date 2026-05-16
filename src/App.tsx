@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState, Suspense, lazy } from "react";
 import { Menu, Zap } from "lucide-react";
 import { useLocale } from "./hooks/useLocale";
+import { resolvePublicPage } from "./lib/publicPages";
 import { LanguageToggle } from "./components/common/LanguageToggle";
 import { ThemeToggle } from "./components/common/ThemeToggle";
 import { NotificationBell } from "./components/common/NotificationBell";
@@ -34,6 +35,8 @@ import { PendingApproval } from "./components/PendingApproval";
 import { Footer } from "./components/layout/Footer";
 import { Overview } from "./components/dashboard/Overview";
 import { InstallCenter } from "./components/InstallCenter";
+import { PublicPageScreen } from "./components/public/PublicPageScreen";
+import { SeoCaptureScreen } from "./components/public/SeoCaptureScreen";
 
 const CHUNK_RELOAD_KEY = "hotsnew.chunk-reload";
 const PERSISTED_TABS: Tab[] = [
@@ -69,6 +72,9 @@ const readPersistedTab = (userId?: string) => {
 
 const readPersistedTabForUser = (userId?: string) =>
   readPersistedTab(userId) || readPersistedTab();
+
+const normalizePathname = (pathname: string) =>
+  pathname.replace(/\/+$/, "") || "/";
 
 const clearPersistedTab = (userId?: string) => {
   if (typeof window === "undefined") return;
@@ -147,7 +153,19 @@ const TabLoading = () => (
 );
 
 export default function App() {
-  const { t } = useLocale();
+  const { locale, t } = useLocale();
+  const [currentPathname, setCurrentPathname] = useState(() =>
+    typeof window !== "undefined"
+      ? normalizePathname(window.location.pathname)
+      : "/",
+  );
+  const publicPage = resolvePublicPage(locale, currentPathname);
+  const isPublicSeoRoute =
+    currentPathname.startsWith("/discover/") && publicPage.path !== "/";
+  const captureScreen =
+    import.meta.env.DEV && currentPathname.startsWith("/__capture/")
+      ? currentPathname.replace("/__capture/", "")
+      : null;
   // UI State
   const [activeTab, setActiveTab] = useState<Tab>(
     () => readPersistedTab() || "dashboard",
@@ -643,6 +661,40 @@ export default function App() {
   }, []);
 
   useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const syncPathname = () => {
+      setCurrentPathname(normalizePathname(window.location.pathname));
+    };
+
+    const originalPushState = window.history.pushState.bind(window.history);
+    const originalReplaceState = window.history.replaceState.bind(window.history);
+
+    window.history.pushState = ((...args) => {
+      const result = originalPushState(...args);
+      syncPathname();
+      return result;
+    }) as History["pushState"];
+
+    window.history.replaceState = ((...args) => {
+      const result = originalReplaceState(...args);
+      syncPathname();
+      return result;
+    }) as History["replaceState"];
+
+    window.addEventListener("popstate", syncPathname);
+    window.addEventListener("pageshow", syncPathname);
+    syncPathname();
+
+    return () => {
+      window.history.pushState = originalPushState;
+      window.history.replaceState = originalReplaceState;
+      window.removeEventListener("popstate", syncPathname);
+      window.removeEventListener("pageshow", syncPathname);
+    };
+  }, []);
+
+  useEffect(() => {
     if (activeTab !== "create") {
       setGuideDialogOpen(false);
     }
@@ -718,8 +770,24 @@ export default function App() {
     );
   }
 
+  if (
+    captureScreen &&
+    (captureScreen === "create" ||
+      captureScreen === "create-tiktok" ||
+      captureScreen === "pricing" ||
+      captureScreen === "install" ||
+      captureScreen === "analytics" ||
+      captureScreen === "library")
+  ) {
+    return <SeoCaptureScreen screen={captureScreen} />;
+  }
+
   // Auth screen
   if (!user || passwordRecoveryMode) {
+    if (!user && !passwordRecoveryMode && isPublicSeoRoute) {
+      return <PublicPageScreen key={publicPage.path} page={publicPage} />;
+    }
+
     return (
       <AuthScreen
         isRegistering={isRegistering}

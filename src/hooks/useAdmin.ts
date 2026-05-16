@@ -6,7 +6,10 @@ import { toast } from "sonner";
 interface UseAdminProps {
   user: User | null;
   profile: UserProfile | null;
-  fetchWithAuth: (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
+  fetchWithAuth: (
+    input: RequestInfo | URL,
+    init?: RequestInit,
+  ) => Promise<Response>;
   activeTab: string;
 }
 
@@ -24,7 +27,10 @@ export interface AdminActions {
   fetchAllUsers: () => Promise<void>;
   fetchPaymentRequests: () => Promise<void>;
   handleApproveUser: (targetUid: string, status?: boolean) => Promise<void>;
-  handleUpdateSubscription: (targetUid: string, plan: "free" | "monthly" | "yearly") => Promise<void>;
+  handleUpdateSubscription: (
+    targetUid: string,
+    plan: "free" | "monthly" | "yearly",
+  ) => Promise<void>;
   handleDeleteUser: (targetUid: string) => Promise<void>;
   handleConfirmPaymentRequest: (paymentRequestId: string) => Promise<void>;
   handleRejectPaymentRequest: (paymentRequestId: string) => Promise<void>;
@@ -33,16 +39,26 @@ export interface AdminActions {
   setAdminDirty: (v: boolean) => void;
 }
 
-export function useAdmin({ user, profile, fetchWithAuth, activeTab }: UseAdminProps): AdminState & AdminActions {
+export function useAdmin({
+  user,
+  profile,
+  fetchWithAuth,
+  activeTab,
+}: UseAdminProps): AdminState & AdminActions {
   const [allUsers, setAllUsers] = useState<UserProfile[]>([]);
   const [adminLoading, setAdminLoading] = useState(false);
   const [adminDirty, setAdminDirty] = useState(true);
-  const [paymentRequests, setPaymentRequests] = useState<ManualPaymentRequest[]>([]);
+  const [paymentRequests, setPaymentRequests] = useState<
+    ManualPaymentRequest[]
+  >([]);
   const [paymentRequestsLoading, setPaymentRequestsLoading] = useState(false);
-  const [outputDomains, setOutputDomains] = useState<string[]>(["hotsnew.click"]);
+  const [outputDomains, setOutputDomains] = useState<string[]>([
+    "hotsnew.click",
+  ]);
   const [outputDomainsLoading, setOutputDomainsLoading] = useState(false);
 
-  const isAdminRole = profile?.role === "admin" || user?.email === "devluan1996@gmail.com";
+  const isAdminRole =
+    profile?.role === "admin" || user?.email === "devluan1996@gmail.com";
 
   const fetchAllUsers = useCallback(async () => {
     if (!user || !isAdminRole) return;
@@ -74,120 +90,142 @@ export function useAdmin({ user, profile, fetchWithAuth, activeTab }: UseAdminPr
     }
   }, [user, isAdminRole, fetchWithAuth]);
 
-  const handleApproveUser = useCallback(async (targetUid: string, status: boolean = true) => {
-    if (!user || !isAdminRole) return;
-    try {
-      const response = await fetchWithAuth(
-        `/api/v1/admin/users/${targetUid}/approve`,
-        {
-          method: "POST",
-          body: JSON.stringify({ isApproved: status }),
-        },
-      );
-      if (response.ok) {
-        fetchAllUsers();
-        toast.success(status ? "Đã duyệt người dùng!" : "Đã hủy duyệt người dùng!");
-      } else {
-        toast.error("Lỗi khi cập nhật trạng thái duyệt");
+  const handleApproveUser = useCallback(
+    async (targetUid: string, status: boolean = true) => {
+      if (!user || !isAdminRole) return;
+      try {
+        const response = await fetchWithAuth(
+          `/api/v1/admin/users/${targetUid}/approve`,
+          {
+            method: "POST",
+            body: JSON.stringify({ isApproved: status }),
+          },
+        );
+        if (response.ok) {
+          fetchAllUsers();
+          toast.success(
+            status ? "Đã duyệt người dùng!" : "Đã hủy duyệt người dùng!",
+          );
+        } else {
+          toast.error("Lỗi khi cập nhật trạng thái duyệt");
+        }
+      } catch (e) {
+        console.error(e);
+        toast.error("Lỗi hệ thống");
       }
-    } catch (e) {
-      console.error(e);
-      toast.error("Lỗi hệ thống");
-    }
-  }, [user, isAdminRole, fetchWithAuth, fetchAllUsers]);
+    },
+    [user, isAdminRole, fetchWithAuth, fetchAllUsers],
+  );
 
-  const handleUpdateSubscription = useCallback(async (targetUid: string, plan: "free" | "monthly" | "yearly") => {
-    if (!user || !isAdminRole) return;
-    try {
-      let expiry = null;
-      if (plan === "monthly") {
-        const d = new Date();
-        d.setDate(d.getDate() + 30);
-        expiry = d.toISOString();
-      } else if (plan === "yearly") {
-        const d = new Date();
-        d.setFullYear(d.getFullYear() + 1);
-        expiry = d.toISOString();
-      }
+  const handleUpdateSubscription = useCallback(
+    async (targetUid: string, plan: "free" | "monthly" | "yearly") => {
+      if (!user || !isAdminRole) return;
+      try {
+        let expiry = null;
+        if (plan === "monthly") {
+          const d = new Date();
+          d.setDate(d.getDate() + 30);
+          expiry = d.toISOString();
+        } else if (plan === "yearly") {
+          const d = new Date();
+          d.setFullYear(d.getFullYear() + 1);
+          expiry = d.toISOString();
+        }
 
-      const response = await fetchWithAuth(
-        `/api/v1/admin/users/${targetUid}/subscription`,
-        {
-          method: "POST",
-          body: JSON.stringify({ plan, expiry }),
-        },
-      );
-      if (response.ok) {
-        fetchAllUsers();
-        toast.success(`Đã cập nhật gói ${plan.toUpperCase()} thành công!`);
-      } else {
-        toast.error("Không thể cập nhật gói cước");
+        const response = await fetchWithAuth(
+          `/api/v1/admin/users/${targetUid}/subscription`,
+          {
+            method: "POST",
+            body: JSON.stringify({ plan, expiry }),
+          },
+        );
+        if (response.ok) {
+          fetchAllUsers();
+          toast.success(`Đã cập nhật gói ${plan.toUpperCase()} thành công!`);
+        } else {
+          toast.error("Không thể cập nhật gói cước");
+        }
+      } catch (e) {
+        console.error(e);
+        toast.error("Lỗi hệ thống khi cập nhật gói");
       }
-    } catch (e) {
-      console.error(e);
-      toast.error("Lỗi hệ thống khi cập nhật gói");
-    }
-  }, [user, isAdminRole, fetchWithAuth, fetchAllUsers]);
+    },
+    [user, isAdminRole, fetchWithAuth, fetchAllUsers],
+  );
 
-  const handleDeleteUser = useCallback(async (targetUid: string) => {
-    if (!user || !isAdminRole) return;
-    try {
-      const response = await fetchWithAuth(`/api/v1/admin/users/${targetUid}`, {
-        method: "DELETE",
-      });
-      if (response.ok) {
-        fetchAllUsers();
-        toast.success("Đã xóa người dùng và dữ liệu liên quan thành công!");
-      } else {
-        toast.error("Lỗi khi xóa người dùng");
+  const handleDeleteUser = useCallback(
+    async (targetUid: string) => {
+      if (!user || !isAdminRole) return;
+      try {
+        const response = await fetchWithAuth(
+          `/api/v1/admin/users/${targetUid}`,
+          {
+            method: "DELETE",
+          },
+        );
+        if (response.ok) {
+          fetchAllUsers();
+          toast.success("Đã xóa người dùng và dữ liệu liên quan thành công!");
+        } else {
+          toast.error("Lỗi khi xóa người dùng");
+        }
+      } catch (e) {
+        console.error(e);
+        toast.error("Lỗi kết nối máy chủ khi xóa");
       }
-    } catch (e) {
-      console.error(e);
-      toast.error("Lỗi kết nối máy chủ khi xóa");
-    }
-  }, [user, isAdminRole, fetchWithAuth, fetchAllUsers]);
+    },
+    [user, isAdminRole, fetchWithAuth, fetchAllUsers],
+  );
 
-  const handleConfirmPaymentRequest = useCallback(async (paymentRequestId: string) => {
-    if (!user || !isAdminRole) return;
-    try {
-      const response = await fetchWithAuth(
-        `/api/v1/admin/payment-requests/${paymentRequestId}/confirm`,
-        {
-          method: "POST",
-        },
-      );
-      const data = await response.json();
-      if (!response.ok) {
-        throw new Error(data.error || "Khong the xac nhan thanh toan");
+  const handleConfirmPaymentRequest = useCallback(
+    async (paymentRequestId: string) => {
+      if (!user || !isAdminRole) return;
+      try {
+        const response = await fetchWithAuth(
+          `/api/v1/admin/payment-requests/${paymentRequestId}/confirm`,
+          {
+            method: "POST",
+          },
+        );
+        const data = await response.json();
+        if (!response.ok) {
+          throw new Error(data.error || "Không thể xác nhận thanh toán");
+        }
+        await Promise.all([fetchPaymentRequests(), fetchAllUsers()]);
+        toast.success(
+          "Đã xác nhận thanh toán và kích hoạt gói cho người dùng!",
+        );
+      } catch (e) {
+        console.error(e);
+        toast.error(e instanceof Error ? e.message : "Lỗi hệ thống");
       }
-      await Promise.all([fetchPaymentRequests(), fetchAllUsers()]);
-      toast.success("Da xac nhan thanh toan va kich hoat goi");
-    } catch (e) {
-      console.error(e);
-      toast.error(e instanceof Error ? e.message : "Loi he thong");
-    }
-  }, [user, isAdminRole, fetchWithAuth, fetchPaymentRequests, fetchAllUsers]);
+    },
+    [user, isAdminRole, fetchWithAuth, fetchPaymentRequests, fetchAllUsers],
+  );
 
-  const handleRejectPaymentRequest = useCallback(async (paymentRequestId: string) => {
-    if (!user || !isAdminRole) return;
-    try {
-      const response = await fetchWithAuth(
-        `/api/v1/admin/payment-requests/${paymentRequestId}/reject`,
-        {
-          method: "POST",
-        },
-      );
-      const data = await response.json();
-      if (!response.ok) {
-        throw new Error(data.error || "Khong the tu choi thanh toan");
+  const handleRejectPaymentRequest = useCallback(
+    async (paymentRequestId: string) => {
+      if (!user || !isAdminRole) return;
+      try {
+        const response = await fetchWithAuth(
+          `/api/v1/admin/payment-requests/${paymentRequestId}/reject`,
+          {
+            method: "POST",
+          },
+        );
+        const data = await response.json();
+        if (!response.ok) {
+          throw new Error(data.error || "Không thể từ chối thanh toán");
+        }
+        await fetchPaymentRequests();
+        toast.success("Đã cập nhật yêu cầu thanh toán là từ chối!");
+      } catch (e) {
+        console.error(e);
+        toast.error(e instanceof Error ? e.message : "Lỗi hệ thống");
       }
-      await fetchPaymentRequests();
-      toast.success("Da cap nhat yeu cau thanh toan");
-    } catch (e) {
-      console.error(e);
-      toast.error(e instanceof Error ? e.message : "Loi he thong");
-    }
-  }, [user, isAdminRole, fetchWithAuth, fetchPaymentRequests]);
+    },
+    [user, isAdminRole, fetchWithAuth, fetchPaymentRequests],
+  );
 
   const fetchOutputDomains = useCallback(async () => {
     if (!user) return;
@@ -210,16 +248,19 @@ export function useAdmin({ user, profile, fetchWithAuth, activeTab }: UseAdminPr
   const updateOutputDomains = useCallback(
     async (domains: string[]) => {
       if (!user || !isAdminRole) return;
-      const response = await fetchWithAuth("/api/v1/admin/settings/output-domains", {
-        method: "PUT",
-        body: JSON.stringify({ domains }),
-      });
+      const response = await fetchWithAuth(
+        "/api/v1/admin/settings/output-domains",
+        {
+          method: "PUT",
+          body: JSON.stringify({ domains }),
+        },
+      );
       const data = await response.json();
       if (!response.ok) {
-        throw new Error(data.error || "Khong the cap nhat domains");
+        throw new Error(data.error || "Không thể cập nhật domains");
       }
       setOutputDomains(data.domains || ["hotsnew.click"]);
-      toast.success("Da cap nhat danh sach domain dau ra");
+      toast.success("Đã cập nhật danh sách domain đầu ra");
     },
     [user, isAdminRole, fetchWithAuth],
   );
@@ -241,12 +282,26 @@ export function useAdmin({ user, profile, fetchWithAuth, activeTab }: UseAdminPr
 
   // Auto-fetch admin data
   useEffect(() => {
-    if (user && isAdminRole && activeTab === "admin" && (adminDirty || allUsers.length === 0)) {
+    if (
+      user &&
+      isAdminRole &&
+      activeTab === "admin" &&
+      (adminDirty || allUsers.length === 0)
+    ) {
       fetchAllUsers();
       fetchOutputDomains();
       fetchPaymentRequests();
     }
-  }, [user, isAdminRole, activeTab, adminDirty, allUsers.length, fetchAllUsers, fetchOutputDomains, fetchPaymentRequests]);
+  }, [
+    user,
+    isAdminRole,
+    activeTab,
+    adminDirty,
+    allUsers.length,
+    fetchAllUsers,
+    fetchOutputDomains,
+    fetchPaymentRequests,
+  ]);
 
   return {
     allUsers,

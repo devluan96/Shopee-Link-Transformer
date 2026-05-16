@@ -1,22 +1,24 @@
-import { useEffect, useCallback } from "react";
+import { useCallback, useEffect } from "react";
 import { User } from "@supabase/supabase-js";
 import { Tab } from "@/src/types";
 import { useLocale, type Locale } from "./useLocale";
+import { PUBLIC_SEO_CONTENT } from "@/src/lib/publicSeo";
+import {
+  buildPublicPageStructuredData,
+  resolvePublicPage,
+} from "@/src/lib/publicPages";
 
-const SITE_URL = "https://hotsnew.click";
+const DEFAULT_SITE_URL = "https://hotsnew.click";
+const JSON_LD_ID = "hotsnew-public-schema";
+const DEFAULT_OG_IMAGE_WIDTH = "1200";
+const DEFAULT_OG_IMAGE_HEIGHT = "630";
 
 type MetaCopy = {
-  defaultTitle: string;
-  defaultDescription: string;
   tabs: Record<Tab, { title: string; description: string }>;
 };
 
 const META_COPY: Record<Locale, MetaCopy> = {
   vi: {
-    defaultTitle:
-      "HotsNew Click - Tạo landing page trung gian cho link Shopee, TikTok với tiêu đề, mô tả, ảnh, video và thống kê click.",
-    defaultDescription:
-      "HotsNew Click giúp tạo landing page trung gian cho link Shopee, TikTok với tiêu đề, mô tả, ảnh, video và thống kê click.",
     tabs: {
       dashboard: {
         title: "Bảng điều khiển - HotsNew Click",
@@ -36,31 +38,32 @@ const META_COPY: Record<Locale, MetaCopy> = {
       pricing: {
         title: "Bảng giá - HotsNew Click",
         description:
-          "Xem bảng giá và nâng cấp gói dịch vụ để tạo landing page Shopee chuyên nghiệp hơn.",
+          "Xem bảng giá và nâng cấp gói dịch vụ để tạo landing page Shopee và TikTok chuyên nghiệp hơn.",
       },
       create: {
-        title: "Tạo link Shopee - HotsNew Click",
+        title: "Tạo link Shopee và TikTok - HotsNew Click",
         description:
-          "Tạo landing page rút gọn cho link Shopee với tiêu đề, mô tả, ảnh và video tùy chỉnh.",
+          "Tạo landing page rút gọn cho link Shopee và TikTok với tiêu đề, mô tả, ảnh và video tùy chỉnh.",
       },
       list: {
         title: "Danh sách link - HotsNew Click",
         description:
-          "Quản lý toàn bộ link Shopee đã tạo, chỉnh sửa nội dung và theo dõi hiệu quả.",
+          "Quản lý toàn bộ link Shopee và TikTok đã tạo, chỉnh sửa nội dung và theo dõi hiệu quả.",
       },
       analytics: {
         title: "Phân tích dữ liệu - HotsNew Click",
         description:
-          "Phân tích lượt click, tăng trưởng và nguồn lưu lượng cho các link Shopee của bạn.",
+          "Phân tích lượt click, tăng trưởng và nguồn lưu lượng cho các link Shopee và TikTok của bạn.",
       },
       team: {
         title: "Nhóm làm việc - HotsNew Click",
         description:
-          "Quản lý không gian làm việc, thành viên nhóm, quyền biên tập hoặc chỉ xem và tạo link theo chiến dịch.",
+          "Quản lý không gian làm việc, thành viên nhóm và quyền chỉnh sửa hoặc chỉ xem cho từng chiến dịch.",
       },
       admin: {
         title: "Quản lý user - HotsNew Click",
-        description: "Trang quản lý người dùng và gói dịch vụ trên HotsNew Click.",
+        description:
+          "Trang quản lý người dùng và gói dịch vụ trên HotsNew Click.",
       },
       profile: {
         title: "Hồ sơ cá nhân - HotsNew Click",
@@ -70,10 +73,6 @@ const META_COPY: Record<Locale, MetaCopy> = {
     },
   },
   en: {
-    defaultTitle:
-      "HotsNew Click - Create intermediate landing pages for Shopee and TikTok links with titles, descriptions, images, videos, and click analytics.",
-    defaultDescription:
-      "HotsNew Click helps you create intermediate landing pages for Shopee and TikTok links with titles, descriptions, images, videos, and click analytics.",
     tabs: {
       dashboard: {
         title: "Dashboard - HotsNew Click",
@@ -83,7 +82,7 @@ const META_COPY: Record<Locale, MetaCopy> = {
       guide: {
         title: "Link Guide - HotsNew Click",
         description:
-          "Review the link flow, landing page behavior, primary link, and step 2 flow in HotsNew Click before going live.",
+          "Review the link flow, landing page behavior, primary link, and step-2 flow in HotsNew Click before going live.",
       },
       install: {
         title: "Install App - HotsNew Click",
@@ -93,22 +92,22 @@ const META_COPY: Record<Locale, MetaCopy> = {
       pricing: {
         title: "Pricing - HotsNew Click",
         description:
-          "Review pricing and upgrade your plan to create more professional Shopee landing pages.",
+          "Review pricing and upgrade your plan to create more professional Shopee and TikTok landing pages.",
       },
       create: {
-        title: "Create Shopee Link - HotsNew Click",
+        title: "Create Shopee and TikTok Links - HotsNew Click",
         description:
-          "Create a shortened landing page for Shopee links with custom titles, descriptions, images, and videos.",
+          "Create shortened landing pages for Shopee and TikTok links with custom titles, descriptions, images, and videos.",
       },
       list: {
         title: "Link List - HotsNew Click",
         description:
-          "Manage all created Shopee links, edit their content, and track performance.",
+          "Manage all created Shopee and TikTok links, edit their content, and track performance.",
       },
       analytics: {
         title: "Analytics - HotsNew Click",
         description:
-          "Analyze clicks, growth, and traffic sources for your Shopee links.",
+          "Analyze clicks, growth, and traffic sources for your Shopee and TikTok links.",
       },
       team: {
         title: "Workspace Team - HotsNew Click",
@@ -117,8 +116,7 @@ const META_COPY: Record<Locale, MetaCopy> = {
       },
       admin: {
         title: "Admin Center - HotsNew Click",
-        description:
-          "Manage users and subscription plans inside HotsNew Click.",
+        description: "Manage users and subscription plans inside HotsNew Click.",
       },
       profile: {
         title: "Profile Settings - HotsNew Click",
@@ -128,6 +126,19 @@ const META_COPY: Record<Locale, MetaCopy> = {
     },
   },
 };
+
+const validTabs: Tab[] = [
+  "dashboard",
+  "guide",
+  "install",
+  "pricing",
+  "create",
+  "list",
+  "analytics",
+  "team",
+  "admin",
+  "profile",
+];
 
 const upsertMetaTag = (
   selector: string,
@@ -144,16 +155,56 @@ const upsertMetaTag = (
   tag.setAttribute("content", content);
 };
 
-const upsertCanonicalLink = (href: string) => {
-  let link = document.head.querySelector<HTMLLinkElement>(
-    'link[rel="canonical"]',
-  );
+const upsertLinkTag = (
+  selector: string,
+  rel: string,
+  href: string,
+  extraAttributes?: Record<string, string>,
+) => {
+  let link = document.head.querySelector<HTMLLinkElement>(selector);
   if (!link) {
     link = document.createElement("link");
-    link.setAttribute("rel", "canonical");
+    link.setAttribute("rel", rel);
     document.head.appendChild(link);
   }
   link.setAttribute("href", href);
+  Object.entries(extraAttributes ?? {}).forEach(([key, value]) => {
+    link.setAttribute(key, value);
+  });
+};
+
+const removeHeadNodes = (selector: string) => {
+  document.head.querySelectorAll(selector).forEach((node) => node.remove());
+};
+
+const upsertJsonLd = (id: string, data: unknown) => {
+  let script = document.head.querySelector<HTMLScriptElement>(`#${id}`);
+  if (!script) {
+    script = document.createElement("script");
+    script.type = "application/ld+json";
+    script.id = id;
+    document.head.appendChild(script);
+  }
+  script.textContent = JSON.stringify(data);
+};
+
+const removeJsonLd = (id: string) => {
+  document.head.querySelector(`#${id}`)?.remove();
+};
+
+const syncAlternateLinks = (canonicalHref: string) => {
+  [
+    { hreflang: "vi-VN", href: canonicalHref },
+    { hreflang: "en-US", href: canonicalHref },
+    { hreflang: "x-default", href: canonicalHref },
+  ].forEach(({ hreflang, href }) => {
+    upsertLinkTag(
+      `link[rel="alternate"][hreflang="${hreflang}"]`,
+      "alternate",
+      href,
+      { hreflang, "data-seo-alternate": "true" },
+    );
+  });
 };
 
 interface UseMetaProps {
@@ -162,19 +213,6 @@ interface UseMetaProps {
   activeTab: Tab;
 }
 
-const validTabs: Tab[] = [
-  "dashboard",
-  "guide",
-  "install",
-  "pricing",
-  "create",
-  "list",
-  "analytics",
-  "team",
-  "admin",
-  "profile",
-];
-
 export function useMeta({ user, authLoading, activeTab }: UseMetaProps) {
   const { locale } = useLocale();
 
@@ -182,22 +220,32 @@ export function useMeta({ user, authLoading, activeTab }: UseMetaProps) {
     if (authLoading) return;
 
     const isAuthenticatedArea = Boolean(user);
-    const metaCopy = META_COPY[locale];
-    const activeMeta = metaCopy.tabs[activeTab];
-    const nextTitle = isAuthenticatedArea
-      ? activeMeta.title
-      : metaCopy.defaultTitle;
+    const publicSeo = PUBLIC_SEO_CONTENT[locale];
+    const currentPathname =
+      typeof window !== "undefined" ? window.location.pathname : "/";
+    const publicPage = resolvePublicPage(locale, currentPathname);
+    const activeMeta = META_COPY[locale].tabs[activeTab];
+    const origin =
+      typeof window !== "undefined" && window.location.origin
+        ? window.location.origin
+        : DEFAULT_SITE_URL;
+    const publicCanonicalHref = new URL(publicPage.path, origin).toString();
+    const authCanonicalUrl = new URL("/", origin);
+    authCanonicalUrl.searchParams.set("tab", activeTab);
+    const canonicalHref = isAuthenticatedArea
+      ? authCanonicalUrl.toString()
+      : publicCanonicalHref;
+    const nextTitle = isAuthenticatedArea ? activeMeta.title : publicPage.title;
     const nextDescription = isAuthenticatedArea
       ? activeMeta.description
-      : metaCopy.defaultDescription;
-    const canonicalHref = isAuthenticatedArea
-      ? `${SITE_URL}/?tab=${activeTab}`
-      : `${SITE_URL}/`;
+      : publicPage.description;
+    const ogImageUrl = new URL(publicSeo.ogImagePath, origin).toString();
     const robotsContent = isAuthenticatedArea
       ? "noindex, nofollow"
-      : "index, follow";
+      : "index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1";
 
     document.title = nextTitle;
+
     upsertMetaTag(
       'meta[name="description"]',
       "name",
@@ -205,22 +253,71 @@ export function useMeta({ user, authLoading, activeTab }: UseMetaProps) {
       nextDescription,
     );
     upsertMetaTag(
-      'meta[property="og:title"]',
-      "property",
-      "og:title",
-      nextTitle,
+      'meta[name="keywords"]',
+      "name",
+      "keywords",
+      publicPage.keywords.join(", "),
     );
+    upsertMetaTag('meta[name="robots"]', "name", "robots", robotsContent);
+    upsertMetaTag('meta[name="googlebot"]', "name", "googlebot", robotsContent);
+
+    upsertMetaTag('meta[property="og:title"]', "property", "og:title", nextTitle);
     upsertMetaTag(
       'meta[property="og:description"]',
       "property",
       "og:description",
       nextDescription,
     );
+    upsertMetaTag('meta[property="og:type"]', "property", "og:type", "website");
     upsertMetaTag(
-      'meta[property="og:url"]',
+      'meta[property="og:site_name"]',
       "property",
-      "og:url",
-      canonicalHref,
+      "og:site_name",
+      publicSeo.siteName,
+    );
+    upsertMetaTag(
+      'meta[property="og:locale"]',
+      "property",
+      "og:locale",
+      locale === "vi" ? "vi_VN" : "en_US",
+    );
+    upsertMetaTag('meta[property="og:url"]', "property", "og:url", canonicalHref);
+    upsertMetaTag(
+      'meta[property="og:image"]',
+      "property",
+      "og:image",
+      ogImageUrl,
+    );
+    upsertMetaTag(
+      'meta[property="og:image:secure_url"]',
+      "property",
+      "og:image:secure_url",
+      ogImageUrl,
+    );
+    upsertMetaTag(
+      'meta[property="og:image:width"]',
+      "property",
+      "og:image:width",
+      DEFAULT_OG_IMAGE_WIDTH,
+    );
+    upsertMetaTag(
+      'meta[property="og:image:height"]',
+      "property",
+      "og:image:height",
+      DEFAULT_OG_IMAGE_HEIGHT,
+    );
+    upsertMetaTag(
+      'meta[property="og:image:alt"]',
+      "property",
+      "og:image:alt",
+      publicSeo.ogImageAlt,
+    );
+
+    upsertMetaTag(
+      'meta[name="twitter:card"]',
+      "name",
+      "twitter:card",
+      "summary_large_image",
     );
     upsertMetaTag(
       'meta[name="twitter:title"]',
@@ -234,9 +331,31 @@ export function useMeta({ user, authLoading, activeTab }: UseMetaProps) {
       "twitter:description",
       nextDescription,
     );
-    upsertMetaTag('meta[name="robots"]', "name", "robots", robotsContent);
-    upsertMetaTag('meta[name="googlebot"]', "name", "googlebot", robotsContent);
-    upsertCanonicalLink(canonicalHref);
+    upsertMetaTag(
+      'meta[name="twitter:image"]',
+      "name",
+      "twitter:image",
+      ogImageUrl,
+    );
+    upsertMetaTag(
+      'meta[name="twitter:image:alt"]',
+      "name",
+      "twitter:image:alt",
+      publicSeo.ogImageAlt,
+    );
+
+    upsertLinkTag('link[rel="canonical"]', "canonical", canonicalHref);
+
+    if (isAuthenticatedArea) {
+      removeHeadNodes('link[data-seo-alternate="true"]');
+      removeJsonLd(JSON_LD_ID);
+    } else {
+      syncAlternateLinks(publicCanonicalHref);
+      upsertJsonLd(
+        JSON_LD_ID,
+        buildPublicPageStructuredData(origin, locale, publicPage),
+      );
+    }
   }, [activeTab, authLoading, locale, user]);
 
   useEffect(() => {

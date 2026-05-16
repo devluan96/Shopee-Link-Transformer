@@ -153,10 +153,10 @@ export const en = {
     hero: {
       badge: "Premium authentication experience",
       eyebrow: "HotsNew Click platform",
-      title: "Manage Shopee links",
+      title: "Manage Shopee and TikTok links",
       accent: "fast, polished, and professional.",
       description:
-        "Create short links, build strong preview pages, and track campaign performance in one clean workspace.",
+        "Create short links for Shopee and TikTok, build strong preview pages, and track campaign performance in one clean workspace.",
       features: [
         {
           title: "Polished preview pages",
