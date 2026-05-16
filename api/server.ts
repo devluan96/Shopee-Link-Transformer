@@ -781,17 +781,26 @@ app.post("/api/v1/links/:linkId/client-debug", async (req, res) => {
 // G. SITEMAP
 app.get("/sitemap.xml", async (req, res) => {
   try {
-    const supabase = getSupabase();
     const publicBaseUrl =
       getPublicBaseUrl(req) || `${req.protocol}://${req.get("host")}`;
+    let links: any[] = [];
 
-    const { data: links, error } = await supabase
-      .from("links")
-      .select("short_code, slug, custom_title, created_at, updated_at")
-      .order("created_at", { ascending: false })
-      .limit(5000);
+    try {
+      const supabase = getSupabase();
+      const { data, error } = await supabase
+        .from("links")
+        .select("short_code, slug, custom_title, created_at, updated_at")
+        .order("created_at", { ascending: false })
+        .limit(5000);
 
-    if (error) throw error;
+      if (error) {
+        console.error("Sitemap link query warning:", error);
+      } else {
+        links = data || [];
+      }
+    } catch (dbError) {
+      console.error("Sitemap link source unavailable, serving static sitemap:", dbError);
+    }
 
     const urls = [
       ...PUBLIC_MARKETING_PATHS.map((routePath, index) => `  <url>
@@ -801,7 +810,7 @@ app.get("/sitemap.xml", async (req, res) => {
     <changefreq>${routePath === "/" ? "daily" : "weekly"}</changefreq>
     <priority>${index === 0 ? "1.0" : "0.9"}</priority>
   </url>`),
-      ...(links || [])
+      ...links
         .filter((link: any) => link?.short_code)
         .map((link: any) => {
           const lastModified = link.updated_at || link.created_at;
