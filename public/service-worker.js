@@ -1,4 +1,4 @@
-const CACHE_NAME = "hotsnew-click-v3";
+const CACHE_NAME = "hotsnew-click-v4";
 const APP_SHELL = [
   "/",
   "/manifest.webmanifest",
@@ -8,6 +8,10 @@ const APP_SHELL = [
 
 const DOWNLOAD_PATH_PATTERN =
   /^\/downloads\/.+\.(exe|zip|msi|dmg|pkg|AppImage|deb|rpm|yml|blockmap)$/i;
+const DIRECT_NETWORK_PATH_PATTERN =
+  /^\/(?:api\/|sitemap\.xml$|robots\.txt$|manifest\.webmanifest$|favicon\.ico$|assets\/)/i;
+const DIRECT_NETWORK_FILE_PATTERN =
+  /\.(?:xml|txt|json|ico|png|jpg|jpeg|svg|webp|gif|map)$/i;
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
@@ -40,7 +44,10 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  if (url.pathname.startsWith("/api/")) {
+  if (
+    DIRECT_NETWORK_PATH_PATTERN.test(url.pathname) ||
+    DIRECT_NETWORK_FILE_PATTERN.test(url.pathname)
+  ) {
     event.respondWith(fetch(request));
     return;
   }
@@ -50,7 +57,11 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  if (request.mode === "navigate") {
+  const acceptHeader = request.headers.get("accept") || "";
+  const isHtmlNavigation =
+    request.mode === "navigate" && acceptHeader.includes("text/html");
+
+  if (isHtmlNavigation) {
     event.respondWith(
       fetch(request).catch(() => caches.match("/")),
     );
