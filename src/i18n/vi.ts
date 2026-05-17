@@ -119,6 +119,7 @@ export const vi = {
     currentWorkspace: "Không gian hiện tại",
     mainMenu: "Menu chính",
     dashboard: "Bảng điều khiển",
+    aiAssistant: "Trợ lý AI",
     createLinks: "Tạo liên kết",
     linkList: "Danh sách liên kết",
     analytics: "Phân tích dữ liệu",
@@ -147,6 +148,54 @@ export const vi = {
         "Tính năng chuyển đổi link Shopee và TikTok dành cho tài khoản trả phí. Vui lòng liên hệ quản trị viên để nâng cấp gói.",
       actionViewer: "Mở khu vực nhóm",
       actionUpgrade: "Quay lại bảng điều khiển",
+    },
+  },
+  assistant: {
+    badge: "Trợ lý AI",
+    title: "Chat với trợ lý chiến dịch",
+    widgetTitle: "Cần hỏi AI nhanh?",
+    description:
+      "Hỏi nhanh về title, UTM, campaign và cách dùng HotsNew.",
+    welcomeMessage:
+      "Mình có thể hỗ trợ viết nội dung landing, setup UTM, rà flow campaign và hướng dẫn dùng HotsNew hiệu quả hơn.",
+    statusLabel: "Trạng thái trợ lý",
+    statusReady: "Online",
+    statusThinking: "Đang trả lời",
+    typing: "Trợ lý đang soạn phản hồi...",
+    inputPlaceholder:
+      "Mô tả điều bạn muốn tạo, tối ưu hoặc kiểm tra...",
+    send: "Gửi",
+    retry: "Thử lại",
+    open: "Mở chat",
+    close: "Đóng chat",
+    quickPromptsLabel: "Gợi ý nhanh",
+    capabilitiesLabel: "Trợ được gì",
+    capabilitiesTitle: "Hỗ trợ thực dụng cho vận hành HotsNew",
+    roles: {
+      assistant: "Trợ lý",
+      user: "Bạn",
+    },
+    starters: {
+      linkIdeas:
+        "Gợi ý 5 title landing page thu hút cho một campaign Shopee.",
+      campaignReview:
+        "Rà giúp flow campaign và cho biết các điểm cần kiểm tra trước khi publish link mới.",
+      utmPlan:
+        "Giúp mình thiết kế quy ước đặt tên UTM gọn cho traffic Facebook, TikTok và Zalo.",
+      workspaceGuide:
+        "Giải thích khi nào nên tách workspace theo team hoặc theo campaign.",
+    },
+    capabilities: {
+      linkIdeas:
+        "Gợi ý title, description và CTA cho flow landing Shopee hoặc TikTok.",
+      analytics:
+        "Giải thích dấu hiệu click và đề xuất metric nên xem tiếp theo.",
+      workflows:
+        "Đề xuất cách tổ chức workspace, thư viện link và quy ước campaign gọn hơn.",
+    },
+    errors: {
+      emptyReply: "Dịch vụ AI trả về nội dung rỗng. Vui lòng thử lại.",
+      generic: "Chưa lấy được phản hồi AI lúc này.",
     },
   },
   auth: {

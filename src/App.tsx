@@ -37,6 +37,7 @@ import { Overview } from "./components/dashboard/Overview";
 import { InstallCenter } from "./components/InstallCenter";
 import { PublicPageScreen } from "./components/public/PublicPageScreen";
 import { SeoCaptureScreen } from "./components/public/SeoCaptureScreen";
+import { AiChatPanel } from "./components/assistant/AiChatPanel";
 
 const CHUNK_RELOAD_KEY = "hotsnew.chunk-reload";
 const PERSISTED_TABS: Tab[] = [
@@ -1205,6 +1206,13 @@ export default function App() {
           )}
         </Suspense>
       </main>
+
+      {user && (
+        <AiChatPanel
+          fetchWithAuth={fetchWithAuth}
+          userName={profile?.full_name || user?.email}
+        />
+      )}
 
       <Footer />
     </div>

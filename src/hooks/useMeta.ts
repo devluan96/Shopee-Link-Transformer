@@ -14,7 +14,7 @@ const DEFAULT_OG_IMAGE_WIDTH = "1200";
 const DEFAULT_OG_IMAGE_HEIGHT = "630";
 
 type MetaCopy = {
-  tabs: Record<Tab, { title: string; description: string }>;
+  tabs: Record<string, { title: string; description: string }>;
 };
 
 const META_COPY: Record<Locale, MetaCopy> = {
@@ -224,7 +224,8 @@ export function useMeta({ user, authLoading, activeTab }: UseMetaProps) {
     const currentPathname =
       typeof window !== "undefined" ? window.location.pathname : "/";
     const publicPage = resolvePublicPage(locale, currentPathname);
-    const activeMeta = META_COPY[locale].tabs[activeTab];
+    const activeMeta =
+      META_COPY[locale].tabs[activeTab] ?? META_COPY[locale].tabs.dashboard;
     const origin =
       typeof window !== "undefined" && window.location.origin
         ? window.location.origin

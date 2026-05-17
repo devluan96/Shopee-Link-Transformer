@@ -118,6 +118,7 @@ export const en = {
     currentWorkspace: "Current workspace",
     mainMenu: "Main menu",
     dashboard: "Dashboard",
+    aiAssistant: "AI assistant",
     createLinks: "Create links",
     linkList: "Link list",
     analytics: "Analytics",
@@ -147,6 +148,54 @@ export const en = {
         "Shopee and TikTok link conversion is available for paid accounts. Please contact the administrator to upgrade your plan.",
       actionViewer: "Open team area",
       actionUpgrade: "Back to dashboard",
+    },
+  },
+  assistant: {
+    badge: "AI assistant",
+    title: "Chat with your campaign copilot",
+    widgetTitle: "Need a quick AI hand?",
+    description:
+      "Ask for title ideas, UTM structure, workflow suggestions, or help using HotsNew features without leaving the dashboard.",
+    welcomeMessage:
+      "I can help you write landing copy, plan UTM tags, review campaign setups, and explain how to use HotsNew more effectively.",
+    statusLabel: "Assistant state",
+    statusReady: "Online",
+    statusThinking: "Replying",
+    typing: "The assistant is drafting a response...",
+    inputPlaceholder:
+      "Describe what you want to build, optimize, or troubleshoot...",
+    send: "Send",
+    retry: "Retry",
+    open: "Open chat",
+    close: "Close chat",
+    quickPromptsLabel: "Quick prompts",
+    capabilitiesLabel: "What it can help with",
+    capabilitiesTitle: "Practical support for HotsNew operations",
+    roles: {
+      assistant: "Assistant",
+      user: "You",
+    },
+    starters: {
+      linkIdeas:
+        "Suggest 5 strong landing page title ideas for a Shopee product campaign.",
+      campaignReview:
+        "Review my campaign flow and suggest what to check before publishing a new link.",
+      utmPlan:
+        "Help me design a clean UTM naming convention for Facebook, TikTok, and Zalo traffic.",
+      workspaceGuide:
+        "Explain when I should use separate workspaces for teams or campaigns.",
+    },
+    capabilities: {
+      linkIdeas:
+        "Generate title, description, and CTA ideas for Shopee or TikTok landing flows.",
+      analytics:
+        "Interpret click patterns and suggest which metrics to review next.",
+      workflows:
+        "Recommend cleaner team workflows for workspaces, link libraries, and campaign naming.",
+    },
+    errors: {
+      emptyReply: "The AI service returned an empty reply. Please try again.",
+      generic: "Unable to get an AI response right now.",
     },
   },
   auth: {
