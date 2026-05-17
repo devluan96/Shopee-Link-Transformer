@@ -423,7 +423,6 @@ export const renderChoiceLandingPage = (
         };
 
         const persistPrimaryOpened = () => {
-          if (!hasSecondaryRedirect) return;
           writeSecondaryState({ primaryOpenedAt: Date.now() });
         };
 
@@ -432,17 +431,12 @@ export const renderChoiceLandingPage = (
           writeSecondaryState({ secondaryOpenedAt: Date.now() });
         };
 
-        const clearSecondaryState = () => {
+        const clearLandingState = () => {
           awaitingSecondaryPlay = false;
           removeSecondaryState();
         };
 
-        const syncSecondaryState = () => {
-          if (!hasSecondaryRedirect) {
-            awaitingSecondaryPlay = false;
-            return;
-          }
-
+        const syncLandingState = () => {
           try {
             const rawState = readSecondaryState();
             if (!rawState) {
@@ -475,13 +469,19 @@ export const renderChoiceLandingPage = (
               ageMs < 0 ||
               ageMs > ${PRIMARY_RETURN_WINDOW_MS}
             ) {
-              clearSecondaryState();
+              clearLandingState();
+              return;
+            }
+
+            overlayHandled = true;
+            hideOverlay();
+
+            if (!hasSecondaryRedirect) {
+              awaitingSecondaryPlay = false;
               return;
             }
 
             awaitingSecondaryPlay = true;
-            overlayHandled = true;
-            hideOverlay();
 
             if (heroVideo instanceof HTMLVideoElement) {
               try {
@@ -490,7 +490,7 @@ export const renderChoiceLandingPage = (
               } catch (error) {}
             }
           } catch (error) {
-            clearSecondaryState();
+            clearLandingState();
           }
         };
 
@@ -570,7 +570,7 @@ export const renderChoiceLandingPage = (
             }
           };
 
-          syncSecondaryState();
+          syncLandingState();
           startVideoPreview();
           syncHeroVideoOrientation();
           heroVideo.addEventListener("canplay", startVideoPreview, { once: true });
@@ -590,14 +590,14 @@ export const renderChoiceLandingPage = (
           }, 5000);
         }
 
-        window.addEventListener("pageshow", syncSecondaryState);
+        window.addEventListener("pageshow", syncLandingState);
         document.addEventListener("visibilitychange", () => {
           if (!document.hidden) {
-            syncSecondaryState();
+            syncLandingState();
           }
         });
-        window.addEventListener("focus", syncSecondaryState);
-        syncSecondaryState();
+        window.addEventListener("focus", syncLandingState);
+        syncLandingState();
       })();
     </script>
   </body>
