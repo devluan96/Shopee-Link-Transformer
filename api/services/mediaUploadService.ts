@@ -65,6 +65,11 @@ const DEFAULT_PROVIDER_ORDER: MediaUploadProvider[] = [
 
 const DEFAULT_SUPABASE_MAX_UPLOAD_BYTES = 100 * 1024 * 1024;
 
+const isTruthyEnvFlag = (value?: string) => /^(1|true|yes|on)$/i.test(value || "");
+
+export const isCloudinaryUploadDisabled = () =>
+  isTruthyEnvFlag(process.env.DISABLE_CLOUDINARY_UPLOAD);
+
 const normalizeProviderOrder = (): MediaUploadProvider[] => {
   const rawOrder = process.env.MEDIA_UPLOAD_PROVIDER_ORDER;
   if (!rawOrder?.trim()) {
@@ -118,6 +123,10 @@ const sanitizeFileName = (value?: string | null) => {
 const getCloudinaryPlan = (
   resourceType: MediaUploadResourceType,
 ): CloudinaryUploadPlan | null => {
+  if (isCloudinaryUploadDisabled()) {
+    return null;
+  }
+
   const cloudName = process.env.CLOUDINARY_CLOUD_NAME?.trim();
   const apiKey = process.env.CLOUDINARY_API_KEY?.trim();
   const apiSecret = process.env.CLOUDINARY_API_SECRET?.trim();

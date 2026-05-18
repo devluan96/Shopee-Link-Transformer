@@ -10,6 +10,7 @@ import * as featureLimitService from "../services/featureLimitService.js";
 import {
   buildMediaUploadPlan,
   getSupabaseMediaMaxUploadBytes,
+  isCloudinaryUploadDisabled,
   uploadToSupabaseStorage,
 } from "../services/mediaUploadService.js";
 
@@ -59,6 +60,12 @@ export const createSignUploadHandler = (
       const userId = req.authUser?.id;
       if (!userId) {
         return res.status(400).json({ error: "Unauthorized" });
+      }
+
+      if (isCloudinaryUploadDisabled()) {
+        return res.status(503).json({
+          error: "Cloudinary upload is disabled by system configuration.",
+        });
       }
 
       const resourceType =

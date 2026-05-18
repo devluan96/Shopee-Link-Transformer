@@ -130,6 +130,40 @@ test("sign-upload does not consume video quota for image uploads", async () => {
   assert.equal((res.body as any).signature, "signed-image");
 });
 
+test("sign-upload returns 503 when Cloudinary uploads are manually disabled", async () => {
+  const previousFlag = process.env.DISABLE_CLOUDINARY_UPLOAD;
+  process.env.DISABLE_CLOUDINARY_UPLOAD = "true";
+
+  try {
+    let usageRecorded = false;
+    const handler = createSignUploadHandler({
+      getSupabase: () => ({}) as never,
+      recordFeatureUsage: async () => {
+        usageRecorded = true;
+      },
+    });
+
+    const res = createMockRes();
+    await handler(
+      {
+        authUser: { id: "user-1" },
+        body: { resourceType: "image" },
+      } as any,
+      res as any,
+    );
+
+    assert.equal(res.statusCode, 503);
+    assert.equal(usageRecorded, false);
+    assert.match((res.body as any).error, /disabled/i);
+  } finally {
+    if (previousFlag === undefined) {
+      delete process.env.DISABLE_CLOUDINARY_UPLOAD;
+    } else {
+      process.env.DISABLE_CLOUDINARY_UPLOAD = previousFlag;
+    }
+  }
+});
+
 test("media upload plan returns configured fallback providers in order", async () => {
   const handler = createMediaUploadPlanHandler({
     getSupabase: () => ({}) as never,

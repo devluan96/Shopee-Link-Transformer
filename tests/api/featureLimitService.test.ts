@@ -7,8 +7,8 @@ import {
 } from "../../api/services/featureLimitService.js";
 
 test("monthly and yearly plans expose different feature quotas", () => {
-  assert.equal(PLAN_FEATURE_LIMITS.monthly.dailyVideoUploads, 3);
-  assert.equal(PLAN_FEATURE_LIMITS.yearly.dailyVideoUploads, 20);
+  assert.equal(PLAN_FEATURE_LIMITS.monthly.dailyVideoUploads, 10);
+  assert.equal(PLAN_FEATURE_LIMITS.yearly.dailyVideoUploads, 30);
   assert.equal(PLAN_FEATURE_LIMITS.monthly.maxTeamWorkspaces, 1);
   assert.equal(PLAN_FEATURE_LIMITS.yearly.maxTeamWorkspaces, 5);
   assert.equal(PLAN_FEATURE_LIMITS.monthly.maxTeamMembersPerWorkspace, 3);
