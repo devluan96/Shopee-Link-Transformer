@@ -39,9 +39,11 @@ export const renderChoiceLandingPage = (
   clickTrackingUrl: string,
   options?: {
     experimental?: boolean;
+    preferImageCard?: boolean;
   },
 ) => {
   const isExperimental = options?.experimental ?? true;
+  const preferImageCard = options?.preferImageCard ?? false;
   const title = capitalizeFirstCharacter(
     link.custom_title?.trim() || "HotsNew Click",
   );
@@ -82,8 +84,9 @@ export const renderChoiceLandingPage = (
     ? `<div class="video-container"><video class="hero-media hero-video" src="${escapeHtml(videoUrl)}" controls muted autoplay loop playsinline webkit-playsinline x5-playsinline preload="auto" poster="${escapeHtml(imageUrl || socialImageUrl)}"></video></div>`
     : `<img class="hero-media hero-image" src="${escapeHtml(socialImageUrl)}" alt="${escapeHtml(title)}" />`;
 
-  const ogType = hasVideo ? "video.other" : "website";
-  const metaVideo = hasVideo
+  const shouldExposeVideoMeta = hasVideo && !preferImageCard;
+  const ogType = shouldExposeVideoMeta ? "video.other" : "website";
+  const metaVideo = shouldExposeVideoMeta
     ? `<meta property="og:video" content="${escapeHtml(videoUrl)}" /><meta property="og:video:type" content="video/mp4" /><meta property="og:video:secure_url" content="${escapeHtml(videoUrl)}" />`
     : "";
   const metaImage = `<meta property="og:image" content="${escapeHtml(socialImageUrl)}" /><meta property="og:image:secure_url" content="${escapeHtml(socialImageUrl)}" /><meta property="og:image:alt" content="${escapeHtml(title)}" /><meta name="twitter:image" content="${escapeHtml(socialImageUrl)}" />`;

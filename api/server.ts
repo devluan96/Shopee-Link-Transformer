@@ -33,7 +33,7 @@ import {
   isCandidatePublicSlugPath,
   normalizeLinkSlug,
 } from "./utils/linkPaths.js";
-import { isSocialPreviewBot } from "./utils/socialPreview.js";
+import { isMetaPreviewBot, isSocialPreviewBot } from "./utils/socialPreview.js";
 import {
   insertClickWithTracking,
   insertOutboundEvent,
@@ -297,6 +297,9 @@ app.get("/s-choice/:shortCode", async (req, res) => {
       .send(
         renderChoiceLandingPage(effectiveLink, canonicalUrl, clickTrackingUrl, {
           experimental: true,
+          preferImageCard: isMetaPreviewBot(
+            typeof userAgent === "string" ? userAgent : "",
+          ),
         }),
       );
   } catch (e: any) {
@@ -438,6 +441,9 @@ const handlePublicShortLinkRequest = async (
         .send(
           renderChoiceLandingPage(effectiveLink, canonicalUrl, clickTrackingUrl, {
             experimental: false,
+            preferImageCard: isMetaPreviewBot(
+              typeof userAgent === "string" ? userAgent : "",
+            ),
           }),
         );
     }
