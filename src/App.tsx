@@ -310,6 +310,7 @@ export default function App() {
   // Video Upload Hook
   const {
     videoUrl,
+    videoPreviewUrl,
     uploadingVideo,
     videoUploadProgress,
     videoUploadSuccess,
@@ -1067,6 +1068,7 @@ export default function App() {
                 expiresAt={expiresAt}
                 setExpiresAt={setExpiresAt}
                 videoUrl={videoUrl}
+                videoPreviewUrl={videoPreviewUrl}
                 setVideoUrl={handleSetVideoUrl}
                 abTestEnabled={abTestEnabled}
                 setAbTestEnabled={setAbTestEnabled}

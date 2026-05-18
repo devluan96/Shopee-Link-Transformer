@@ -13,6 +13,7 @@ interface UseVideoUploadProps {
 
 export interface VideoUploadState {
   videoUrl: string;
+  videoPreviewUrl: string;
   uploadingVideo: boolean;
   videoUploadProgress: number;
   videoUploadSuccess: boolean;
@@ -36,6 +37,7 @@ export function useVideoUpload({
   uploadAssetToCloudinary,
 }: UseVideoUploadProps): VideoUploadState & VideoUploadActions {
   const [videoUrl, setVideoUrl] = useState("");
+  const [videoPreviewUrl, setVideoPreviewUrl] = useState("");
   const [uploadingVideo, setUploadingVideo] = useState(false);
   const [videoUploadProgress, setVideoUploadProgress] = useState(0);
   const [videoUploadSuccess, setVideoUploadSuccess] = useState(false);
@@ -119,6 +121,13 @@ export function useVideoUpload({
       setUploadingVideo(true);
       setVideoUploadProgress(0);
       setVideoUploadSuccess(false);
+      const localPreviewUrl = URL.createObjectURL(file);
+      setVideoPreviewUrl((currentValue) => {
+        if (currentValue.startsWith("blob:")) {
+          URL.revokeObjectURL(currentValue);
+        }
+        return localPreviewUrl;
+      });
 
       try {
         let pendingThumbUrl: string | null = null;
@@ -173,22 +182,37 @@ export function useVideoUpload({
     [handleVideoFileUpload],
   );
 
+  const handleSetVideoUrl = useCallback((value: string) => {
+    setVideoUrl(value);
+    if (value.trim()) {
+      return;
+    }
+
+    setVideoPreviewUrl((currentValue) => {
+      if (currentValue.startsWith("blob:")) {
+        URL.revokeObjectURL(currentValue);
+      }
+      return "";
+    });
+  }, []);
+
   const clearVideo = useCallback(() => {
-    setVideoUrl("");
+    handleSetVideoUrl("");
     setVideoUploadProgress(0);
     setVideoUploadSuccess(false);
     if (videoInputRef.current) {
       videoInputRef.current.value = "";
     }
-  }, []);
+  }, [handleSetVideoUrl]);
 
   return {
     videoUrl,
+    videoPreviewUrl,
     uploadingVideo,
     videoUploadProgress,
     videoUploadSuccess,
     videoInputRef,
-    setVideoUrl,
+    setVideoUrl: handleSetVideoUrl,
     handleVideoUpload,
     handleVideoFileUpload,
     captureVideoThumbnail,

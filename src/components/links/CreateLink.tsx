@@ -110,6 +110,7 @@ interface CreateLinkProps {
   expiresAt: string;
   setExpiresAt: (v: string) => void;
   videoUrl: string;
+  videoPreviewUrl?: string;
   setVideoUrl: (v: string) => void;
   uploadingVideo: boolean;
   videoUploadProgress: number;
@@ -197,6 +198,7 @@ export const CreateLink = ({
   expiresAt,
   setExpiresAt,
   videoUrl,
+  videoPreviewUrl,
   setVideoUrl,
   uploadingVideo,
   videoUploadProgress,
@@ -1433,7 +1435,7 @@ export const CreateLink = ({
                     </div>
                   )}
 
-                  {videoUrl && (
+                  {(videoPreviewUrl || videoUrl) && (
                     <div
                       className={cn(
                         "relative mt-auto overflow-hidden rounded-3xl bg-black shadow-2xl ring-4 ring-white",
@@ -1445,7 +1447,7 @@ export const CreateLink = ({
                       )}
                     >
                       <video
-                        src={videoUrl}
+                        src={videoPreviewUrl || videoUrl}
                         controls
                         playsInline
                         preload="metadata"
