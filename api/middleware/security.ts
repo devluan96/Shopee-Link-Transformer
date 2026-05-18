@@ -2,11 +2,9 @@ import { NextFunction, Request, Response } from "express";
 import { getSupabase } from "../config/supabase.js";
 import { getClientIp } from "../utils/helpers.js";
 import { isCandidatePublicSlugPath } from "../utils/linkPaths.js";
+import { isSocialPreviewBot } from "../utils/socialPreview.js";
 import * as securityService from "../services/securityService.js";
 import { AuthenticatedRequest } from "../types/index.js";
-
-const SOCIAL_PREVIEW_BOT_REGEX =
-  /facebookexternalhit|Facebot|meta-externalagent|meta-externalfetcher|Twitterbot|LinkedInBot|Slackbot|Discordbot|TelegramBot|WhatsApp|SkypeUriPreview|Pinterest|Zalo|Googlebot|bingbot|embedly/i;
 
 const isPublicPreviewPath = (req: Request) =>
   req.path.startsWith("/s/") ||
@@ -19,7 +17,7 @@ const isSocialPreviewRequest = (req: Request) => {
   }
 
   const userAgent = String(req.headers["user-agent"] || "");
-  return SOCIAL_PREVIEW_BOT_REGEX.test(userAgent);
+  return isSocialPreviewBot(userAgent);
 };
 
 const shouldBypassBlockedIpCheck = (req: Request) =>

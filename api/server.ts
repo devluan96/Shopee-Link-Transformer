@@ -25,10 +25,15 @@ import {
   getClientIp,
 } from "./utils/helpers.js";
 import {
+  renderPublicLinkNotFoundPage,
+  shouldReturnPublicLinkNotFound,
+} from "./utils/publicFallback.js";
+import {
   buildPrettyLinkUrl,
   isCandidatePublicSlugPath,
   normalizeLinkSlug,
 } from "./utils/linkPaths.js";
+import { isSocialPreviewBot } from "./utils/socialPreview.js";
 import {
   insertClickWithTracking,
   insertOutboundEvent,
@@ -55,13 +60,6 @@ const PUBLIC_MARKETING_PATHS = [
   "/discover/cach-rut-gon-link-tiktok",
   "/discover/cach-theo-doi-click-affiliate",
 ] as const;
-
-const isSocialPreviewBot = (userAgent: string) => {
-  if (!userAgent) return false;
-  return /facebookexternalhit|Facebot|Twitterbot|LinkedInBot|Slackbot|Discordbot|TelegramBot|WhatsApp|SkypeUriPreview|Pinterest|Zalo|Googlebot|bingbot|embedly/i.test(
-    userAgent,
-  );
-};
 
 const parseCookieHeader = (cookieHeader?: string) => {
   const cookieMap = new Map<string, string>();
@@ -856,6 +854,14 @@ app.get("*", (req, res) => {
   ) {
     return res.status(404).json({ error: "Not found" });
   }
+
+  if (shouldReturnPublicLinkNotFound(req.path)) {
+    return res
+      .status(404)
+      .type("html")
+      .send(renderPublicLinkNotFoundPage(req.path));
+  }
+
   res.sendFile(path.join(__dirname, "../dist/index.html"));
 });
 
