@@ -82,44 +82,12 @@ const formatProviderError = (provider: MediaUploadPlan["provider"], message: str
   `${provider}: ${message}`;
 
 const buildImageKitOptimizedVideoUrl = (
-  plan: ImageKitUploadPlan,
+  _plan: ImageKitUploadPlan,
   rawUrl: string,
 ) => {
   const trimmedUrl = rawUrl.trim();
   if (!trimmedUrl) return "";
-
-  try {
-    const endpointUrl = new URL(plan.urlEndpoint);
-    const uploadedUrl = new URL(trimmedUrl);
-    const normalizedEndpoint =
-      endpointUrl.origin + endpointUrl.pathname.replace(/\/+$/, "");
-
-    if (!trimmedUrl.startsWith(normalizedEndpoint)) {
-      return trimmedUrl;
-    }
-
-    const transformedPathPrefix =
-      endpointUrl.pathname.replace(/\/+$/, "") + "/tr:";
-    if (uploadedUrl.pathname.startsWith(transformedPathPrefix)) {
-      return trimmedUrl;
-    }
-
-    let assetPath = uploadedUrl.pathname.slice(
-      endpointUrl.pathname.replace(/\/+$/, "").length,
-    );
-    if (!assetPath.startsWith("/")) {
-      assetPath = `/${assetPath}`;
-    }
-
-    const hasVideoExtension = /\.(mp4|mov|webm|m4v)$/i.test(assetPath);
-    const hintedPath = hasVideoExtension
-      ? assetPath
-      : `${assetPath.replace(/\/+$/, "")}/ik-video.mp4`;
-
-    return `${normalizedEndpoint}/tr:q-auto${hintedPath}${uploadedUrl.search}`;
-  } catch {
-    return trimmedUrl;
-  }
+  return trimmedUrl;
 };
 
 export function useCloudinary({ fetchWithAuth }: UseCloudinaryProps) {
