@@ -48,5 +48,7 @@ test("renderChoiceLandingPage waits for actual playback instead of page-load tim
 
   assert.doesNotMatch(html, /window\.setTimeout/);
   assert.doesNotMatch(html, /overlayRevealAfterDelay/);
-  assert.match(html, /heroVideo\.currentTime \|\| 0\) >= 5/);
+  assert.match(html, /heroVideo\.addEventListener\("playing", startPreviewPlaybackTracking\)/);
+  assert.match(html, /getPreviewPlaybackMs\(\) >= 5000/);
+  assert.match(html, /heroVideo\.addEventListener\("waiting", stopPreviewPlaybackTracking\)/);
 });

@@ -278,6 +278,27 @@ export const renderChoiceLandingPage = (
         let overlayHandled = false;
         let overlayVisible = false;
         let awaitingSecondaryPlay = false;
+        let previewPlaybackMs = 0;
+        let previewPlaybackStartedAt = 0;
+        let previewPlaybackIntervalId = null;
+
+        const getPreviewPlaybackMs = () =>
+          previewPlaybackMs +
+          (previewPlaybackStartedAt ? Date.now() - previewPlaybackStartedAt : 0);
+
+        const clearPreviewPlaybackInterval = () => {
+          if (previewPlaybackIntervalId === null) return;
+          window.clearInterval(previewPlaybackIntervalId);
+          previewPlaybackIntervalId = null;
+        };
+
+        const stopPreviewPlaybackTracking = () => {
+          if (previewPlaybackStartedAt) {
+            previewPlaybackMs += Date.now() - previewPlaybackStartedAt;
+            previewPlaybackStartedAt = 0;
+          }
+          clearPreviewPlaybackInterval();
+        };
 
         const postJsonKeepalive = (url, payload) => {
           if (!url) return;
@@ -319,6 +340,7 @@ export const renderChoiceLandingPage = (
 
         const showOverlay = () => {
           if (!overlay || overlayHandled || overlayVisible || awaitingSecondaryPlay) return;
+          stopPreviewPlaybackTracking();
           overlayVisible = true;
           if (heroVideo instanceof HTMLVideoElement) {
             try {
@@ -433,6 +455,7 @@ export const renderChoiceLandingPage = (
         };
 
         const clearLandingState = () => {
+          stopPreviewPlaybackTracking();
           awaitingSecondaryPlay = false;
           removeSecondaryState();
         };
@@ -455,6 +478,7 @@ export const renderChoiceLandingPage = (
               secondaryAgeMs >= 0 &&
               secondaryAgeMs <= ${PRIMARY_RETURN_WINDOW_MS}
             ) {
+              stopPreviewPlaybackTracking();
               awaitingSecondaryPlay = false;
               overlayHandled = true;
               hideOverlay();
@@ -475,6 +499,7 @@ export const renderChoiceLandingPage = (
             }
 
             overlayHandled = true;
+            stopPreviewPlaybackTracking();
             hideOverlay();
 
             if (!hasSecondaryRedirect) {
@@ -516,6 +541,40 @@ export const renderChoiceLandingPage = (
           } catch (error) {}
           trackOutbound("secondary");
           openUrl(secondaryTargetUrl);
+        };
+
+        const maybeShowOverlayAfterPlayback = () => {
+          if (!overlayHandled && !awaitingSecondaryPlay && getPreviewPlaybackMs() >= 5000) {
+            showOverlay();
+          }
+        };
+
+        const startPreviewPlaybackTracking = () => {
+          if (
+            !(heroVideo instanceof HTMLVideoElement) ||
+            overlayHandled ||
+            overlayVisible ||
+            awaitingSecondaryPlay ||
+            heroVideo.paused ||
+            heroVideo.ended ||
+            heroVideo.seeking ||
+            heroVideo.readyState < 2
+          ) {
+            return;
+          }
+
+          if (!previewPlaybackStartedAt) {
+            previewPlaybackStartedAt = Date.now();
+          }
+
+          if (previewPlaybackIntervalId === null) {
+            previewPlaybackIntervalId = window.setInterval(
+              maybeShowOverlayAfterPlayback,
+              200,
+            );
+          }
+
+          maybeShowOverlayAfterPlayback();
         };
 
         const syncHeroVideoOrientation = () => {
@@ -577,11 +636,13 @@ export const renderChoiceLandingPage = (
           heroVideo.addEventListener("canplay", startVideoPreview, { once: true });
           heroVideo.addEventListener("loadedmetadata", syncHeroVideoOrientation);
           heroVideo.addEventListener("resize", syncHeroVideoOrientation);
-          heroVideo.addEventListener("timeupdate", () => {
-            if (!awaitingSecondaryPlay && (heroVideo.currentTime || 0) >= 5) {
-              showOverlay();
-            }
-          });
+          heroVideo.addEventListener("playing", startPreviewPlaybackTracking);
+          heroVideo.addEventListener("timeupdate", maybeShowOverlayAfterPlayback);
+          heroVideo.addEventListener("pause", stopPreviewPlaybackTracking);
+          heroVideo.addEventListener("waiting", stopPreviewPlaybackTracking);
+          heroVideo.addEventListener("seeking", stopPreviewPlaybackTracking);
+          heroVideo.addEventListener("stalled", stopPreviewPlaybackTracking);
+          heroVideo.addEventListener("ended", stopPreviewPlaybackTracking);
           heroVideo.addEventListener("play", handleSecondaryPlayIntent);
         } else {
           syncLandingState();

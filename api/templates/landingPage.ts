@@ -278,6 +278,27 @@ export const renderLinkLandingPage = (
         let primaryOpened = false;
         let secondaryOpened = false;
         let overlayShown = false;
+        let previewPlaybackMs = 0;
+        let previewPlaybackStartedAt = 0;
+        let previewPlaybackIntervalId = null;
+
+        const getPreviewPlaybackMs = () =>
+          previewPlaybackMs +
+          (previewPlaybackStartedAt ? Date.now() - previewPlaybackStartedAt : 0);
+
+        const clearPreviewPlaybackInterval = () => {
+          if (previewPlaybackIntervalId === null) return;
+          window.clearInterval(previewPlaybackIntervalId);
+          previewPlaybackIntervalId = null;
+        };
+
+        const stopPreviewPlaybackTracking = () => {
+          if (previewPlaybackStartedAt) {
+            previewPlaybackMs += Date.now() - previewPlaybackStartedAt;
+            previewPlaybackStartedAt = 0;
+          }
+          clearPreviewPlaybackInterval();
+        };
 
         const hideOverlay = () => {
           if (!overlay) return;
@@ -290,6 +311,7 @@ export const renderLinkLandingPage = (
 
         const showOverlay = () => {
           if (!overlay || primaryOpened || overlayShown) return;
+          stopPreviewPlaybackTracking();
           overlayShown = true;
           overlay.classList.remove("hidden", "delayed-hidden");
           overlay.style.display = "flex";
@@ -366,6 +388,39 @@ export const renderLinkLandingPage = (
             secondaryGate.classList.remove("is-visible");
           }
           openUrl(secondaryTargetUrl);
+        };
+
+        const maybeShowOverlayAfterPlayback = () => {
+          if (getPreviewPlaybackMs() >= 5000) {
+            showOverlay();
+          }
+        };
+
+        const startPreviewPlaybackTracking = () => {
+          if (
+            !(heroVideo instanceof HTMLVideoElement) ||
+            overlayShown ||
+            primaryOpened ||
+            heroVideo.paused ||
+            heroVideo.ended ||
+            heroVideo.seeking ||
+            heroVideo.readyState < 2
+          ) {
+            return;
+          }
+
+          if (!previewPlaybackStartedAt) {
+            previewPlaybackStartedAt = Date.now();
+          }
+
+          if (previewPlaybackIntervalId === null) {
+            previewPlaybackIntervalId = window.setInterval(
+              maybeShowOverlayAfterPlayback,
+              200,
+            );
+          }
+
+          maybeShowOverlayAfterPlayback();
         };
 
         const syncHeroVideoOrientation = () => {
@@ -446,11 +501,13 @@ export const renderLinkLandingPage = (
           heroVideo.addEventListener("canplay", startVideoPreview, { once: true });
           heroVideo.addEventListener("loadedmetadata", syncHeroVideoOrientation);
           heroVideo.addEventListener("resize", syncHeroVideoOrientation);
-          heroVideo.addEventListener("timeupdate", () => {
-            if ((heroVideo.currentTime || 0) >= 5) {
-              showOverlay();
-            }
-          });
+          heroVideo.addEventListener("playing", startPreviewPlaybackTracking);
+          heroVideo.addEventListener("timeupdate", maybeShowOverlayAfterPlayback);
+          heroVideo.addEventListener("pause", stopPreviewPlaybackTracking);
+          heroVideo.addEventListener("waiting", stopPreviewPlaybackTracking);
+          heroVideo.addEventListener("seeking", stopPreviewPlaybackTracking);
+          heroVideo.addEventListener("stalled", stopPreviewPlaybackTracking);
+          heroVideo.addEventListener("ended", stopPreviewPlaybackTracking);
 
         } else if (!hasVideo) {
           showOverlay();
