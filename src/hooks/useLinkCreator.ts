@@ -6,6 +6,7 @@ import { buildPrettyLinkUrl } from "@/src/lib/linkPaths";
 import { useLocale } from "@/src/hooks/useLocale";
 import { normalizeVietnameseSlug } from "@/src/lib/utils";
 import { toast } from "sonner";
+import { DEFAULT_SITE_URL } from "@/src/lib/appConfig";
 
 const MAX_SHORT_CODE_LENGTH = 50;
 
@@ -212,15 +213,12 @@ export function useLinkCreator({
           t("createLink.feedback.success", {
             url:
               nextResult.converted_url ||
-              buildPrettyLinkUrl(
-                "https://hotsnew.click",
-                {
-                  slug: nextResult.slug,
-                  shortCode: nextResult.short_code,
-                  title: customTitle,
-                  fallbackToLegacy: false,
-                },
-              ),
+              buildPrettyLinkUrl(DEFAULT_SITE_URL, {
+                slug: nextResult.slug,
+                shortCode: nextResult.short_code,
+                title: customTitle,
+                fallbackToLegacy: false,
+              }),
           }),
         );
         await onSuccess(nextResult);

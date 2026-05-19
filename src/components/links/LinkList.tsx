@@ -32,6 +32,7 @@ import { useLocale } from "@/src/hooks/useLocale";
 import { buildPrettyLinkUrl } from "@/src/lib/linkPaths";
 import { toast } from "sonner";
 import { normalizeVietnameseSlug } from "@/src/lib/utils";
+import { DEFAULT_OUTPUT_DOMAIN, DEFAULT_SITE_URL } from "@/src/lib/appConfig";
 
 const TIKTOK_HOST_REGEX =
   /(^|\.)tiktok\.com$|(^|\.)vt\.tiktok\.com$|(^|\.)vm\.tiktok\.com$/i;
@@ -184,7 +185,7 @@ export const LinkList = ({
   };
 
   const buildChoiceModeLink = (shortCode: string) =>
-    `https://hotsnew.click/s-choice/${shortCode}`;
+    `${DEFAULT_SITE_URL}/s-choice/${shortCode}`;
 
   const getSecondaryTargetLabel = (value?: string) => {
     if (!value) return null;
@@ -805,7 +806,7 @@ export const LinkList = ({
                       onClick={() =>
                         copyToClipboard(
                           buildPrettyLinkUrl(
-                            `https://${link.custom_domain || "hotsnew.click"}`,
+                            `https://${link.custom_domain || DEFAULT_OUTPUT_DOMAIN}`,
                             {
                               slug: link.slug,
                               shortCode: link.short_code,
@@ -1192,7 +1193,7 @@ export const LinkList = ({
               <div className="mb-8 rounded-[2.5rem] border border-gray-100 bg-white p-6 shadow-xl ring-4 ring-gray-50 dark:border-slate-600 dark:bg-slate-700 dark:ring-slate-700">
                 <QRCodeCanvas
                   value={buildPrettyLinkUrl(
-                    `https://${qrLink.custom_domain || "hotsnew.click"}`,
+                    `https://${qrLink.custom_domain || DEFAULT_OUTPUT_DOMAIN}`,
                     {
                       slug: qrLink.slug,
                       shortCode: qrLink.short_code,

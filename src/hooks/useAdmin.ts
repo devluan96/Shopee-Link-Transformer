@@ -2,6 +2,7 @@ import { useState, useCallback, useEffect } from "react";
 import { User } from "@supabase/supabase-js";
 import { ManualPaymentRequest, UserProfile } from "@/src/types";
 import { toast } from "sonner";
+import { DEFAULT_OUTPUT_DOMAINS } from "@/src/lib/appConfig";
 
 interface UseAdminProps {
   user: User | null;
@@ -53,7 +54,7 @@ export function useAdmin({
   >([]);
   const [paymentRequestsLoading, setPaymentRequestsLoading] = useState(false);
   const [outputDomains, setOutputDomains] = useState<string[]>([
-    "hotsnew.click",
+    ...DEFAULT_OUTPUT_DOMAINS,
   ]);
   const [outputDomainsLoading, setOutputDomainsLoading] = useState(false);
 
@@ -236,7 +237,7 @@ export function useAdmin({
       setOutputDomains(
         Array.isArray(data?.domains) && data.domains.length
           ? data.domains
-          : ["hotsnew.click"],
+          : DEFAULT_OUTPUT_DOMAINS,
       );
     } catch (e) {
       console.error(e);
@@ -259,7 +260,7 @@ export function useAdmin({
       if (!response.ok) {
         throw new Error(data.error || "Không thể cập nhật domains");
       }
-      setOutputDomains(data.domains || ["hotsnew.click"]);
+      setOutputDomains(data.domains || DEFAULT_OUTPUT_DOMAINS);
       toast.success("Đã cập nhật danh sách domain đầu ra");
     },
     [user, isAdminRole, fetchWithAuth],
@@ -270,7 +271,7 @@ export function useAdmin({
     setAdminLoading(false);
     setPaymentRequests([]);
     setPaymentRequestsLoading(false);
-    setOutputDomains(["hotsnew.click"]);
+    setOutputDomains([...DEFAULT_OUTPUT_DOMAINS]);
     setOutputDomainsLoading(false);
     setAdminDirty(!!user);
   }, [user?.id]);

@@ -64,11 +64,37 @@ const DEFAULT_PROVIDER_ORDER: MediaUploadProvider[] = [
 ];
 
 const DEFAULT_SUPABASE_MAX_UPLOAD_BYTES = 100 * 1024 * 1024;
+const CLOUDINARY_ACCOUNT_SUFFIXES = ["", "_2", "_3", "_4", "_5"] as const;
 
 const isTruthyEnvFlag = (value?: string) => /^(1|true|yes|on)$/i.test(value || "");
 
 export const isCloudinaryUploadDisabled = () =>
   isTruthyEnvFlag(process.env.DISABLE_CLOUDINARY_UPLOAD);
+
+const getConfiguredCloudinaryAccounts = () =>
+  CLOUDINARY_ACCOUNT_SUFFIXES.map((suffix) => {
+    const cloudName = process.env[`CLOUDINARY_CLOUD_NAME${suffix}`]?.trim();
+    const apiKey = process.env[`CLOUDINARY_API_KEY${suffix}`]?.trim();
+    const apiSecret = process.env[`CLOUDINARY_API_SECRET${suffix}`]?.trim();
+
+    if (!cloudName || !apiKey || !apiSecret) {
+      return null;
+    }
+
+    return {
+      cloudName,
+      apiKey,
+      apiSecret,
+    };
+  }).filter(
+    (
+      account,
+    ): account is {
+      cloudName: string;
+      apiKey: string;
+      apiSecret: string;
+    } => !!account,
+  );
 
 const normalizeProviderOrder = (): MediaUploadProvider[] => {
   const rawOrder = process.env.MEDIA_UPLOAD_PROVIDER_ORDER;
@@ -120,38 +146,30 @@ const sanitizeFileName = (value?: string | null) => {
   return normalized || "upload.bin";
 };
 
-const getCloudinaryPlan = (
+const getCloudinaryPlans = (
   resourceType: MediaUploadResourceType,
-): CloudinaryUploadPlan | null => {
+): CloudinaryUploadPlan[] => {
   if (isCloudinaryUploadDisabled()) {
-    return null;
-  }
-
-  const cloudName = process.env.CLOUDINARY_CLOUD_NAME?.trim();
-  const apiKey = process.env.CLOUDINARY_API_KEY?.trim();
-  const apiSecret = process.env.CLOUDINARY_API_SECRET?.trim();
-
-  if (!cloudName || !apiKey || !apiSecret) {
-    return null;
+    return [];
   }
 
   const timestamp = Math.round(Date.now() / 1000);
   const folder = CLOUDINARY_UPLOAD_FOLDER;
-  const signature = cloudinary.utils.api_sign_request(
-    { folder, timestamp },
-    apiSecret,
+  return getConfiguredCloudinaryAccounts().map(
+    ({ cloudName, apiKey, apiSecret }) => ({
+      provider: "cloudinary" as const,
+      resourceType,
+      uploadUrl: `https://api.cloudinary.com/v1_1/${cloudName}/${resourceType}/upload`,
+      cloudName,
+      apiKey,
+      folder,
+      timestamp,
+      signature: cloudinary.utils.api_sign_request(
+        { folder, timestamp },
+        apiSecret,
+      ),
+    }),
   );
-
-  return {
-    provider: "cloudinary",
-    resourceType,
-    uploadUrl: `https://api.cloudinary.com/v1_1/${cloudName}/${resourceType}/upload`,
-    cloudName,
-    apiKey,
-    folder,
-    timestamp,
-    signature,
-  };
 };
 
 const getImageKitPlan = (
@@ -233,15 +251,16 @@ export const buildMediaUploadPlan = (
   resourceType: MediaUploadResourceType,
   fileMeta?: MediaUploadFileMeta,
 ): MediaUploadPlan[] => {
-  const plansByProvider: Record<MediaUploadProvider, MediaUploadPlan | null> = {
-    cloudinary: getCloudinaryPlan(resourceType),
-    imagekit: getImageKitPlan(resourceType),
-    supabase: getSupabasePlan(resourceType, fileMeta),
+  const imageKitPlan = getImageKitPlan(resourceType);
+  const supabasePlan = getSupabasePlan(resourceType, fileMeta);
+  const plansByProvider: Record<MediaUploadProvider, MediaUploadPlan[]> = {
+    cloudinary: getCloudinaryPlans(resourceType),
+    imagekit: imageKitPlan ? [imageKitPlan] : [],
+    supabase: supabasePlan ? [supabasePlan] : [],
   };
 
   return normalizeProviderOrder()
-    .map((provider) => plansByProvider[provider])
-    .filter((plan): plan is MediaUploadPlan => !!plan);
+    .flatMap((provider) => plansByProvider[provider]);
 };
 
 export const uploadToSupabaseStorage = async (

@@ -20,16 +20,12 @@ import {
   isReservedPublicSlug,
   normalizeLinkSlug,
 } from "../utils/linkPaths.js";
-
-const DEFAULT_SHORT_DOMAIN = "hotsnew.click";
-const fallbackOutputDomains = (
-  process.env.LINK_OUTPUT_DOMAINS ||
-  process.env.VITE_LINK_OUTPUT_DOMAINS ||
-  DEFAULT_SHORT_DOMAIN
-)
-  .split(",")
-  .map((value) => value.trim().toLowerCase())
-  .filter(Boolean);
+import {
+  DEFAULT_OUTPUT_DOMAIN,
+  DEFAULT_OUTPUT_DOMAINS,
+} from "../config/outputDomains.js";
+const DEFAULT_SHORT_DOMAIN = DEFAULT_OUTPUT_DOMAIN;
+const fallbackOutputDomains = DEFAULT_OUTPUT_DOMAINS;
 
 const normalizeFolderName = (value?: string | null) => {
   const trimmed = value?.trim();

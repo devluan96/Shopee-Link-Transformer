@@ -38,6 +38,7 @@ import { InstallCenter } from "./components/InstallCenter";
 import { PublicPageScreen } from "./components/public/PublicPageScreen";
 import { SeoCaptureScreen } from "./components/public/SeoCaptureScreen";
 import { AiChatPanel } from "./components/assistant/AiChatPanel";
+import { DEFAULT_OUTPUT_DOMAINS } from "./lib/appConfig";
 
 const CHUNK_RELOAD_KEY = "hotsnew.chunk-reload";
 const PERSISTED_TABS: Tab[] = [
@@ -582,7 +583,7 @@ export default function App() {
     profile?.subscription_plan === "monthly";
   const availableOutputDomains = outputDomains.length
     ? outputDomains
-    : ["hotsnew.click"];
+    : DEFAULT_OUTPUT_DOMAINS;
   const canEditCurrentWorkspace =
     currentWorkspace?.role === "owner" || currentWorkspace?.role === "editor";
   const canAccessCreate =
