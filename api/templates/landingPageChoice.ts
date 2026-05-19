@@ -1,5 +1,7 @@
 ﻿import { PublicLinkRecord } from "../types/index.js";
 
+import { buildPublicVideoUrl } from "../utils/mediaUrl.js";
+
 const SHOPEE_HOST_REGEX = /(^|\.)shopee\.[a-z.]+$/i;
 const TIKTOK_HOST_REGEX =
   /(^|\.)tiktok\.com$|(^|\.)vt\.tiktok\.com$|(^|\.)vm\.tiktok\.com$/i;
@@ -52,7 +54,7 @@ export const renderChoiceLandingPage = (
       "Nội dung đang sẵn sàng. Bấm vào màn hình để tiếp tục.",
   );
   const imageUrl = link.custom_image_url?.trim() || "";
-  const videoUrl = link.video_url?.trim() || "";
+  const videoUrl = buildPublicVideoUrl(link.video_url);
   const originalUrl = link.original_url.trim();
   const secondaryUrl = link.secondary_url?.trim() || "";
   const hasVideo = Boolean(videoUrl);
@@ -201,14 +203,7 @@ export const renderChoiceLandingPage = (
         transition: opacity 220ms ease, visibility 220ms ease;
       }
       .overlay.hidden { opacity: 0; visibility: hidden; pointer-events: none; display: none !important; }
-      .overlay.delayed-hidden { opacity: 0; visibility: hidden; pointer-events: none; animation: overlayRevealAfterDelay 0.01s step-end 5s forwards; }
-      @keyframes overlayRevealAfterDelay {
-        to {
-          opacity: 1;
-          visibility: visible;
-          pointer-events: auto;
-        }
-      }
+      .overlay.delayed-hidden { opacity: 0; visibility: hidden; pointer-events: none; display: none !important; }
       .overlay-hint {
         display: flex;
         flex-direction: column;
@@ -281,6 +276,7 @@ export const renderChoiceLandingPage = (
 
         let previewTracked = false;
         let overlayHandled = false;
+        let overlayVisible = false;
         let awaitingSecondaryPlay = false;
 
         const postJsonKeepalive = (url, payload) => {
@@ -313,6 +309,7 @@ export const renderChoiceLandingPage = (
 
         const hideOverlay = () => {
           if (!overlay) return;
+          overlayVisible = false;
           overlay.classList.add("hidden");
           overlay.style.display = "none";
           overlay.style.opacity = "0";
@@ -321,7 +318,8 @@ export const renderChoiceLandingPage = (
         };
 
         const showOverlay = () => {
-          if (!overlay || overlayHandled || awaitingSecondaryPlay) return;
+          if (!overlay || overlayHandled || overlayVisible || awaitingSecondaryPlay) return;
+          overlayVisible = true;
           if (heroVideo instanceof HTMLVideoElement) {
             try {
               heroVideo.pause();
@@ -585,12 +583,11 @@ export const renderChoiceLandingPage = (
             }
           });
           heroVideo.addEventListener("play", handleSecondaryPlayIntent);
-
-          window.setTimeout(() => {
-            if (!awaitingSecondaryPlay) {
-              showOverlay();
-            }
-          }, 5000);
+        } else {
+          syncLandingState();
+          if (!overlayHandled && !awaitingSecondaryPlay) {
+            showOverlay();
+          }
         }
 
         window.addEventListener("pageshow", syncLandingState);

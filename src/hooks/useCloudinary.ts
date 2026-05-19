@@ -81,6 +81,47 @@ interface UseCloudinaryProps {
 const formatProviderError = (provider: MediaUploadPlan["provider"], message: string) =>
   `${provider}: ${message}`;
 
+const buildImageKitOptimizedVideoUrl = (
+  plan: ImageKitUploadPlan,
+  rawUrl: string,
+) => {
+  const trimmedUrl = rawUrl.trim();
+  if (!trimmedUrl) return "";
+
+  try {
+    const endpointUrl = new URL(plan.urlEndpoint);
+    const uploadedUrl = new URL(trimmedUrl);
+    const normalizedEndpoint =
+      endpointUrl.origin + endpointUrl.pathname.replace(/\/+$/, "");
+
+    if (!trimmedUrl.startsWith(normalizedEndpoint)) {
+      return trimmedUrl;
+    }
+
+    const transformedPathPrefix =
+      endpointUrl.pathname.replace(/\/+$/, "") + "/tr:";
+    if (uploadedUrl.pathname.startsWith(transformedPathPrefix)) {
+      return trimmedUrl;
+    }
+
+    let assetPath = uploadedUrl.pathname.slice(
+      endpointUrl.pathname.replace(/\/+$/, "").length,
+    );
+    if (!assetPath.startsWith("/")) {
+      assetPath = `/${assetPath}`;
+    }
+
+    const hasVideoExtension = /\.(mp4|mov|webm|m4v)$/i.test(assetPath);
+    const hintedPath = hasVideoExtension
+      ? assetPath
+      : `${assetPath.replace(/\/+$/, "")}/ik-video.mp4`;
+
+    return `${normalizedEndpoint}/tr:q-auto${hintedPath}${uploadedUrl.search}`;
+  } catch {
+    return trimmedUrl;
+  }
+};
+
 export function useCloudinary({ fetchWithAuth }: UseCloudinaryProps) {
   const [lastVideoUploadProvider, setLastVideoUploadProvider] =
     useState<MediaUploadProvider | null>(null);
@@ -247,9 +288,14 @@ export function useCloudinary({ fetchWithAuth }: UseCloudinaryProps) {
           const data = JSON.parse(
             xhr.responseText || "null",
           ) as ImageKitUploadResponse;
-          if (xhr.status >= 200 && xhr.status < 300 && data?.url) {
+          const uploadedUrl =
+            plan.resourceType === "video"
+              ? buildImageKitOptimizedVideoUrl(plan, data?.url || "")
+              : data?.url || "";
+
+          if (xhr.status >= 200 && xhr.status < 300 && uploadedUrl) {
             if (onProgress) onProgress(100);
-            resolve(data.url);
+            resolve(uploadedUrl);
             return;
           }
 
