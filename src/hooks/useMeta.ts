@@ -7,8 +7,7 @@ import {
   buildPublicPageStructuredData,
   resolvePublicPage,
 } from "@/src/lib/publicPages";
-
-const DEFAULT_SITE_URL = "https://hotsnew.click";
+import { DEFAULT_SITE_URL } from "@/src/lib/appConfig";
 const JSON_LD_ID = "hotsnew-public-schema";
 const DEFAULT_OG_IMAGE_WIDTH = "1200";
 const DEFAULT_OG_IMAGE_HEIGHT = "630";

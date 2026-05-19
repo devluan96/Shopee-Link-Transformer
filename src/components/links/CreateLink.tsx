@@ -23,6 +23,7 @@ import { QRCodeCanvas } from "qrcode.react";
 import { toast } from "sonner";
 import { useLocale } from "@/src/hooks/useLocale";
 import { WorkflowGuide } from "@/src/components/WorkflowGuide";
+import { DEFAULT_OUTPUT_DOMAIN, DEFAULT_SITE_URL } from "@/src/lib/appConfig";
 
 const MAX_SHORT_CODE_LENGTH = 50;
 const DAY_IN_MS = 1000 * 60 * 60 * 24;
@@ -229,6 +230,10 @@ export const CreateLink = ({
   const { messages, t } = useLocale();
   const content = messages.createLink;
   const page = content.page;
+  const defaultDomainLabel = page.defaultDomain.replace(
+    "hotsnew.click",
+    DEFAULT_OUTPUT_DOMAIN,
+  );
   const zaloContactUrl = "https://zalo.me/0969361607";
   const [fieldErrors, setFieldErrors] = React.useState<
     Partial<Record<FormField, string>>
@@ -269,15 +274,15 @@ export const CreateLink = ({
     ? normalizeVietnameseSlug(customShortCode)
     : "";
   const convertedResultUrl = result?.converted_url
-    ? result.converted_url
-    : result?.short_code
-      ? buildPrettyLinkUrl("https://hotsnew.click", {
+      ? result.converted_url
+      : result?.short_code
+      ? buildPrettyLinkUrl(DEFAULT_SITE_URL, {
           slug: result.slug,
           shortCode: result.short_code,
           title: customTitle,
           fallbackToLegacy: false,
         })
-      : buildPrettyLinkUrl("https://hotsnew.click", {
+      : buildPrettyLinkUrl(DEFAULT_SITE_URL, {
           title: customTitle || "link",
           fallbackToLegacy: false,
         });
@@ -862,7 +867,7 @@ export const CreateLink = ({
                   {page.previewPrefix}{" "}
                   <span className="font-black text-orange-600">
                     {buildPrettyLinkUrl(
-                      `https://${customDomain || "hotsnew.click"}`,
+                      `https://${customDomain || DEFAULT_OUTPUT_DOMAIN}`,
                       {
                         title:
                           customTitle ||
@@ -901,9 +906,9 @@ export const CreateLink = ({
                 onChange={(e) => setCustomDomain(e.target.value)}
                 className="w-full rounded-2xl bg-white px-6 py-4 font-medium text-gray-900 dark:bg-slate-700 dark:text-slate-100"
               >
-                <option value="">{page.defaultDomain}</option>
+                <option value="">{defaultDomainLabel}</option>
                 {availableOutputDomains
-                  .filter((domain) => domain !== "hotsnew.click")
+                  .filter((domain) => domain !== DEFAULT_OUTPUT_DOMAIN)
                   .map((domain) => (
                     <option key={domain} value={domain}>
                       {domain}
@@ -919,7 +924,7 @@ export const CreateLink = ({
                 >
                   <div>
                     <p className="text-base font-black text-gray-900 dark:text-slate-100">
-                      {page.defaultDomain}
+                      {defaultDomainLabel}
                     </p>
                     <p className="mt-1 text-xs font-medium text-sky-900/70 dark:text-slate-300">
                       {page.customDomainLocked}
@@ -1638,7 +1643,7 @@ export const CreateLink = ({
             <div className="bg-[#F2F3F5] p-5 dark:bg-slate-900 sm:p-6">
               <p className="mb-2 flex items-center gap-2 text-[10px] font-bold uppercase text-gray-400">
                 <Globe size={10} />{" "}
-                {(customDomain || "hotsnew.click").toUpperCase()}
+                {(customDomain || DEFAULT_OUTPUT_DOMAIN).toUpperCase()}
               </p>
               <h4 className="mb-2 line-clamp-2 text-lg font-black leading-tight text-gray-900 dark:text-slate-100">
                 {customTitle || content.result.previewTitleFallback}
@@ -1680,7 +1685,7 @@ export const CreateLink = ({
             <div className="relative z-10 mb-6 truncate rounded-2xl border border-gray-100 bg-gray-50/50 p-4 font-mono text-[11px] font-black text-gray-400 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-400 sm:mb-10 sm:p-6 sm:text-xs">
               {result
                 ? convertedResultUrl
-                : buildPrettyLinkUrl("https://hotsnew.click", {
+                : buildPrettyLinkUrl(DEFAULT_SITE_URL, {
                     title: customTitle || "link",
                     fallbackToLegacy: false,
                   })}

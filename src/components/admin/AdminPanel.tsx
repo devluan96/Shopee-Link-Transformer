@@ -29,6 +29,7 @@ import {
   UserProfile,
 } from "@/src/types";
 import { useLocale } from "@/src/hooks/useLocale";
+import { DEFAULT_OUTPUT_DOMAIN } from "@/src/lib/appConfig";
 
 interface UserLink {
   id: string;
@@ -541,7 +542,7 @@ export const AdminPanel = ({
                 className="inline-flex items-center gap-2 rounded-full bg-sky-50 px-4 py-2 text-xs font-black uppercase tracking-wider text-sky-700"
               >
                 <span>{domain}</span>
-                {domain !== "hotsnew.click" && (
+                {domain !== DEFAULT_OUTPUT_DOMAIN && (
                   <button
                     type="button"
                     onClick={() =>
@@ -563,7 +564,7 @@ export const AdminPanel = ({
               type="text"
               value={domainDraft}
               onChange={(e) => setDomainDraft(e.target.value)}
-              placeholder="go.hotsnew.click"
+              placeholder={`go.${DEFAULT_OUTPUT_DOMAIN}`}
               className="flex-1 rounded-2xl border border-gray-100 bg-gray-50 px-5 py-4 font-medium text-gray-900 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
             />
             <button
