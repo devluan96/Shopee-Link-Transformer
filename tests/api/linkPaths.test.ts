@@ -7,21 +7,23 @@ import {
   normalizeLinkSlug,
 } from "../../api/utils/linkPaths.js";
 
-test("normalizes a unicode slug while keeping Vietnamese accents", () => {
+test("normalizes a Vietnamese slug without accents", () => {
   assert.equal(
-    normalizeLinkSlug("Trích xuất camera góc quay khác vụ nam thanh niên ngáo đá"),
-    "trích-xuất-camera-góc-quay-khác-vụ-nam-thanh-niên-ngáo-đá",
+    normalizeLinkSlug(
+      "Tr\u00edch xu\u1ea5t camera g\u00f3c quay kh\u00e1c v\u1ee5 nam thanh ni\u00ean ng\u00e1o \u0111\u00e1",
+    ),
+    "trich-xuat-camera-goc-quay-khac-vu-nam-thanh-nien-ngao-da",
   );
 });
 
 test("builds a pretty path from stored slug", () => {
   assert.equal(
     buildPrettyLinkPath({
-      slug: "trích-xuất-camera-góc-quay-khác-vụ-nam-thanh-niên-ngáo-đá",
+      slug: "trich-xuat-camera-goc-quay-khac-vu-nam-thanh-nien-ngao-da",
       shortCode: "AbC123_-",
-      title: "Tôi yêu Miền Trung",
+      title: "Toi yeu Mien Trung",
     }),
-    "/trích-xuất-camera-góc-quay-khác-vụ-nam-thanh-niên-ngáo-đá",
+    "/trich-xuat-camera-goc-quay-khac-vu-nam-thanh-nien-ngao-da",
   );
 });
 
@@ -32,18 +34,18 @@ test("falls back to legacy short path when slug is missing", () => {
   );
 });
 
-test("builds a preview slug path when requested", () => {
+test("builds a preview slug path from title when requested", () => {
   assert.equal(
     buildPrettyLinkPath({
-      title: "Tôi yêu Miền Trung",
+      title: "T\u00f4i y\u00eau Mi\u1ec1n Trung",
       fallbackToLegacy: false,
     }),
-    "/tôi-yêu-miền-trung",
+    "/toi-yeu-mien-trung",
   );
 });
 
 test("detects candidate public slug paths", () => {
-  assert.equal(isCandidatePublicSlugPath("/tôi-yêu-miền-trung"), true);
+  assert.equal(isCandidatePublicSlugPath("/toi-yeu-mien-trung"), true);
   assert.equal(isCandidatePublicSlugPath("/s/abc123"), false);
   assert.equal(isCandidatePublicSlugPath("/robots.txt"), false);
 });
@@ -51,10 +53,10 @@ test("detects candidate public slug paths", () => {
 test("builds a full pretty URL", () => {
   assert.equal(
     buildPrettyLinkUrl("https://hotsnew.click/", {
-      slug: "trích-xuất-camera-góc-quay-khác-vụ-nam-thanh-niên-ngáo-đá",
+      slug: "trich-xuat-camera-goc-quay-khac-vu-nam-thanh-nien-ngao-da",
       shortCode: "abc123",
-      title: "Tin nóng hôm nay",
+      title: "Tin nong hom nay",
     }),
-    "https://hotsnew.click/trích-xuất-camera-góc-quay-khác-vụ-nam-thanh-niên-ngáo-đá",
+    "https://hotsnew.click/trich-xuat-camera-goc-quay-khac-vu-nam-thanh-nien-ngao-da",
   );
 });

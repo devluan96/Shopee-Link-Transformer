@@ -47,3 +47,38 @@ test("buildMediaUploadPlan skips cloudinary when DISABLE_CLOUDINARY_UPLOAD is en
     },
   );
 });
+
+test("buildMediaUploadPlan returns fallback cloudinary accounts before other providers", () => {
+  withEnv(
+    {
+      CLOUDINARY_CLOUD_NAME: "demo-cloud-1",
+      CLOUDINARY_API_KEY: "demo-key-1",
+      CLOUDINARY_API_SECRET: "demo-secret-1",
+      CLOUDINARY_CLOUD_NAME_2: "demo-cloud-2",
+      CLOUDINARY_API_KEY_2: "demo-key-2",
+      CLOUDINARY_API_SECRET_2: "demo-secret-2",
+      IMAGEKIT_PUBLIC_KEY: "demo-public",
+      IMAGEKIT_PRIVATE_KEY: "demo-private",
+      IMAGEKIT_URL_ENDPOINT: "https://ik.example.com",
+      SUPABASE_UPLOAD_BUCKET: "media",
+      MEDIA_UPLOAD_PROVIDER_ORDER: "cloudinary,imagekit,supabase",
+      DISABLE_CLOUDINARY_UPLOAD: "false",
+    },
+    () => {
+      const providers = buildMediaUploadPlan("video", { fileSize: 1024 });
+      assert.deepEqual(
+        providers.map((provider) =>
+          provider.provider === "cloudinary"
+            ? `cloudinary:${provider.cloudName}`
+            : provider.provider,
+        ),
+        [
+          "cloudinary:demo-cloud-1",
+          "cloudinary:demo-cloud-2",
+          "imagekit",
+          "supabase",
+        ],
+      );
+    },
+  );
+});
