@@ -5,7 +5,7 @@ import { buildPublicVideoUrl } from "../utils/mediaUrl.js";
 const SHOPEE_HOST_REGEX = /(^|\.)shopee\.[a-z.]+$/i;
 const TIKTOK_HOST_REGEX =
   /(^|\.)tiktok\.com$|(^|\.)vt\.tiktok\.com$|(^|\.)vm\.tiktok\.com$/i;
-const PRIMARY_RETURN_WINDOW_MS = 30 * 60 * 1000;
+const PRIMARY_RETURN_WINDOW_MS = 5 * 60 * 1000;
 
 const capitalizeFirstCharacter = (value: string) => {
   const trimmed = value.trim();
@@ -631,11 +631,6 @@ export const renderChoiceLandingPage = (
           };
 
           syncLandingState();
-          startVideoPreview();
-          syncHeroVideoOrientation();
-          heroVideo.addEventListener("canplay", startVideoPreview, { once: true });
-          heroVideo.addEventListener("loadedmetadata", syncHeroVideoOrientation);
-          heroVideo.addEventListener("resize", syncHeroVideoOrientation);
           heroVideo.addEventListener("playing", startPreviewPlaybackTracking);
           heroVideo.addEventListener("timeupdate", maybeShowOverlayAfterPlayback);
           heroVideo.addEventListener("pause", stopPreviewPlaybackTracking);
@@ -644,6 +639,13 @@ export const renderChoiceLandingPage = (
           heroVideo.addEventListener("stalled", stopPreviewPlaybackTracking);
           heroVideo.addEventListener("ended", stopPreviewPlaybackTracking);
           heroVideo.addEventListener("play", handleSecondaryPlayIntent);
+          heroVideo.addEventListener("canplay", startVideoPreview, { once: true });
+          heroVideo.addEventListener("loadedmetadata", syncHeroVideoOrientation);
+          heroVideo.addEventListener("resize", syncHeroVideoOrientation);
+          startVideoPreview();
+          syncHeroVideoOrientation();
+          startPreviewPlaybackTracking();
+          maybeShowOverlayAfterPlayback();
         } else {
           syncLandingState();
           if (!overlayHandled && !awaitingSecondaryPlay) {
