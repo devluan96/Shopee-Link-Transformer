@@ -52,3 +52,29 @@ test("renderChoiceLandingPage waits for actual playback instead of page-load tim
   assert.match(html, /getPreviewPlaybackMs\(\) >= 5000/);
   assert.match(html, /heroVideo\.addEventListener\("waiting", stopPreviewPlaybackTracking\)/);
 });
+
+test("renderChoiceLandingPage attaches playback listeners before starting preview", () => {
+  const html = renderChoiceLandingPage(
+    sampleLink,
+    "https://test.hotsnew.click/test11",
+    "https://test.hotsnew.click/api/v1/public-links/test11/track",
+  );
+
+  const playingListenerIndex = html.indexOf(
+    'heroVideo.addEventListener("playing", startPreviewPlaybackTracking);',
+  );
+  const startPreviewIndex = html.indexOf("startVideoPreview();");
+  const syncPlaybackIndex = html.indexOf("startPreviewPlaybackTracking();");
+
+  assert.notEqual(playingListenerIndex, -1);
+  assert.notEqual(startPreviewIndex, -1);
+  assert.notEqual(syncPlaybackIndex, -1);
+  assert.ok(
+    playingListenerIndex < startPreviewIndex,
+    "playing listener must be attached before play is attempted",
+  );
+  assert.ok(
+    startPreviewIndex < syncPlaybackIndex,
+    "playback tracking should be re-synced after preview start",
+  );
+});
