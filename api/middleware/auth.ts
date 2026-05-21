@@ -54,9 +54,7 @@ export const checkAdmin = (
   res: Response,
   next: NextFunction,
 ) => {
-  const isAdmin =
-    req.authProfile?.role === "admin" ||
-    req.authUser?.email === "devluan1996@gmail.com";
+  const isAdmin = req.authProfile?.role === "admin";
   if (!isAdmin) {
     console.error(`[Admin] Access denied for ${req.authUser?.email || "unknown"}, role: ${req.authProfile?.role || "none"}`);
     return res.status(403).json({ error: "Forbidden - Admin only" });

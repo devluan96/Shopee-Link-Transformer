@@ -56,7 +56,7 @@ export function useSecurity({
   const accessLogsRefreshTimeoutRef = useRef<number | null>(null);
 
   const isAdminRole =
-    profile?.role === "admin" || user?.email === "devluan1996@gmail.com";
+    profile?.role === "admin";
 
   const fetchSecurityOverview = useCallback(async () => {
     if (!user) return;

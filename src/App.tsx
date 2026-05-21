@@ -583,7 +583,7 @@ export default function App() {
 
   // Derived state
   const isAdminRole =
-    profile?.role === "admin" || user?.email === "devluan1996@gmail.com";
+    profile?.role === "admin";
   const hasSub = !!(
     profile?.subscription_plan && profile.subscription_plan !== "free"
   );

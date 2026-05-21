@@ -59,7 +59,7 @@ export function useAdmin({
   const [outputDomainsLoading, setOutputDomainsLoading] = useState(false);
 
   const isAdminRole =
-    profile?.role === "admin" || user?.email === "devluan1996@gmail.com";
+    profile?.role === "admin";
 
   const fetchAllUsers = useCallback(async () => {
     if (!user || !isAdminRole) return;
