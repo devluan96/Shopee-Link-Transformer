@@ -178,7 +178,6 @@ test("media upload plan returns configured fallback providers in order", async (
     buildMediaUploadPlan: () =>
       [
         { provider: "cloudinary", uploadUrl: "https://cloudinary.test" },
-        { provider: "imagekit", uploadUrl: "https://imagekit.test" },
         { provider: "supabase", uploadUrl: "/api/v1/media/upload-supabase" },
       ] as any,
   });
@@ -195,7 +194,7 @@ test("media upload plan returns configured fallback providers in order", async (
   assert.equal(res.statusCode, 200);
   assert.deepEqual(
     (res.body as any).providers.map((provider: any) => provider.provider),
-    ["cloudinary", "imagekit", "supabase"],
+    ["cloudinary", "supabase"],
   );
 });
 
@@ -212,7 +211,7 @@ test("media upload complete records usage only for video uploads", async () => {
   await handler(
     {
       authUser: { id: "user-1" },
-      body: { resourceType: "video", provider: "imagekit" },
+      body: { resourceType: "video", provider: "cloudinary" },
     } as any,
     videoRes as any,
   );
@@ -230,5 +229,5 @@ test("media upload complete records usage only for video uploads", async () => {
   assert.equal(imageRes.statusCode, 200);
   assert.equal(recorded.length, 1);
   assert.equal(recorded[0]?.key, "video_upload");
-  assert.equal(recorded[0]?.metadata.provider, "imagekit");
+  assert.equal(recorded[0]?.metadata.provider, "cloudinary");
 });

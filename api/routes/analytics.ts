@@ -7,6 +7,8 @@ import * as advancedAnalytics from "../services/advancedAnalytics.js";
 import * as notificationService from "../services/notificationService.js";
 
 const router = Router();
+const ANALYTICS_SOURCES = new Set(["all", "shopee", "tiktok"]);
+const ANALYTICS_PERIODS = new Set(["today", "7d", "30d"]);
 
 // GET /api/v1/user/stats - Get user stats
 router.get("/user/stats", authenticate, async (req: AuthenticatedRequest, res) => {
@@ -35,6 +37,14 @@ router.get("/user/analytics", authenticate, async (req: AuthenticatedRequest, re
     const supabase = getSupabase();
     const userId = req.authUser?.id;
     const workspaceId = req.query.workspaceId as string | undefined;
+    const source =
+      typeof req.query.source === "string" && ANALYTICS_SOURCES.has(req.query.source)
+        ? (req.query.source as analyticsService.AnalyticsFilterSource)
+        : undefined;
+    const period =
+      typeof req.query.period === "string" && ANALYTICS_PERIODS.has(req.query.period)
+        ? (req.query.period as analyticsService.AnalyticsFilterPeriod)
+        : undefined;
     if (!userId) {
       return res.status(400).json({ error: "Missing userId" });
     }
@@ -43,6 +53,7 @@ router.get("/user/analytics", authenticate, async (req: AuthenticatedRequest, re
       supabase,
       userId,
       workspaceId,
+      { source, period },
     );
     return res.json(analytics);
   } catch (e: any) {
@@ -61,11 +72,20 @@ router.get("/user/analytics/geographic", authenticate, async (req: Authenticated
 
     const linkId = req.query.link_id as string | undefined;
     const workspaceId = req.query.workspaceId as string | undefined;
+    const source =
+      typeof req.query.source === "string" && ANALYTICS_SOURCES.has(req.query.source)
+        ? (req.query.source as analyticsService.AnalyticsFilterSource)
+        : undefined;
+    const period =
+      typeof req.query.period === "string" && ANALYTICS_PERIODS.has(req.query.period)
+        ? (req.query.period as analyticsService.AnalyticsFilterPeriod)
+        : undefined;
     const geoStats = await advancedAnalytics.getGeographicStats(
       supabase,
       userId,
       linkId,
       workspaceId,
+      { source, period },
     );
     return res.json(geoStats);
   } catch (e: any) {
@@ -84,11 +104,20 @@ router.get("/user/analytics/devices", authenticate, async (req: AuthenticatedReq
 
     const linkId = req.query.link_id as string | undefined;
     const workspaceId = req.query.workspaceId as string | undefined;
+    const source =
+      typeof req.query.source === "string" && ANALYTICS_SOURCES.has(req.query.source)
+        ? (req.query.source as analyticsService.AnalyticsFilterSource)
+        : undefined;
+    const period =
+      typeof req.query.period === "string" && ANALYTICS_PERIODS.has(req.query.period)
+        ? (req.query.period as analyticsService.AnalyticsFilterPeriod)
+        : undefined;
     const deviceStats = await advancedAnalytics.getDeviceStats(
       supabase,
       userId,
       linkId,
       workspaceId,
+      { source, period },
     );
     return res.json(deviceStats);
   } catch (e: any) {
@@ -108,12 +137,21 @@ router.get("/user/analytics/time", authenticate, async (req: AuthenticatedReques
     const linkId = req.query.link_id as string | undefined;
     const workspaceId = req.query.workspaceId as string | undefined;
     const days = parseInt(req.query.days as string) || 30;
+    const source =
+      typeof req.query.source === "string" && ANALYTICS_SOURCES.has(req.query.source)
+        ? (req.query.source as analyticsService.AnalyticsFilterSource)
+        : undefined;
+    const period =
+      typeof req.query.period === "string" && ANALYTICS_PERIODS.has(req.query.period)
+        ? (req.query.period as analyticsService.AnalyticsFilterPeriod)
+        : undefined;
     const timeStats = await advancedAnalytics.getTimeStats(
       supabase,
       userId,
       days,
       linkId,
       workspaceId,
+      { source, period },
     );
     return res.json(timeStats);
   } catch (e: any) {
@@ -135,6 +173,14 @@ router.get("/user/analytics/export", authenticate, async (req: AuthenticatedRequ
     const workspaceId = req.query.workspaceId as string | undefined;
     const startDate = req.query.start_date as string | undefined;
     const endDate = req.query.end_date as string | undefined;
+    const source =
+      typeof req.query.source === "string" && ANALYTICS_SOURCES.has(req.query.source)
+        ? (req.query.source as analyticsService.AnalyticsFilterSource)
+        : undefined;
+    const period =
+      typeof req.query.period === "string" && ANALYTICS_PERIODS.has(req.query.period)
+        ? (req.query.period as analyticsService.AnalyticsFilterPeriod)
+        : undefined;
 
     const csv = await advancedAnalytics.exportAnalyticsToCSV(
       supabase,
@@ -143,7 +189,8 @@ router.get("/user/analytics/export", authenticate, async (req: AuthenticatedRequ
       linkId,
       workspaceId,
       startDate,
-      endDate
+      endDate,
+      { source, period },
     );
 
     res.setHeader("Content-Type", "text/csv");

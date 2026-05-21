@@ -1,6 +1,18 @@
 import { SupabaseClient } from "../config/supabase.js";
-import { fetchClicksForLinkIds, filterRealClicks } from "../utils/clickTracking.js";
+import {
+  fetchOutboundEventsForLinkIds,
+  fetchClicksForLinkIds,
+  filterRealClicks,
+  filterRealOutboundEvents,
+  isShopeeDestinationUrl,
+  isTikTokDestinationUrl,
+} from "../utils/clickTracking.js";
 import { getAccessibleWorkspaceIds } from "./workspaceService.js";
+import type {
+  AnalyticsFilterPeriod,
+  AnalyticsFilterSource,
+} from "./analyticsService.js";
+import { LinkOutboundEvent } from "../types/index.js";
 
 export interface GeographicStats {
   countries: Array<{ name: string; code?: string; clicks: number }>;
@@ -29,6 +41,238 @@ interface LinkExportMeta {
   url: string;
 }
 
+type AnalyticsEventRecord = {
+  link_id: string;
+  created_at?: string | null;
+  source?: string | null;
+  source_detail?: string | null;
+  referer?: string | null;
+  destination_url?: string | null;
+  stage?: "primary" | "secondary" | null;
+  user_agent?: string | null;
+  ip_address?: string | null;
+  country?: string | null;
+  country_code?: string | null;
+  city?: string | null;
+  device_type?: string | null;
+  device_brand?: string | null;
+  browser?: string | null;
+  os?: string | null;
+};
+
+type AnalyticsFilter = {
+  source?: AnalyticsFilterSource;
+  period?: AnalyticsFilterPeriod;
+};
+
+type ScopedLink = {
+  id: string;
+  short_code: string;
+  slug?: string | null;
+  custom_title?: string | null;
+  original_url?: string | null;
+  secondary_url?: string | null;
+  ab_variant_b_original_url?: string | null;
+  ab_variant_b_secondary_url?: string | null;
+  workspace_id?: string | null;
+};
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+const EVENT_MATCH_WINDOW_MS = 15 * 60 * 1000;
+
+const toVietnamDateKey = (value: Date | string) => {
+  const date = typeof value === "string" ? new Date(value) : value;
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Ho_Chi_Minh",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(date);
+
+  const year = parts.find((part) => part.type === "year")?.value ?? "1970";
+  const month = parts.find((part) => part.type === "month")?.value ?? "01";
+  const day = parts.find((part) => part.type === "day")?.value ?? "01";
+
+  return `${year}-${month}-${day}`;
+};
+
+const getPeriodDayCount = (period: AnalyticsFilterPeriod = "30d") => {
+  if (period === "today") return 1;
+  if (period === "7d") return 7;
+  return 30;
+};
+
+const buildDateKeyWindow = (
+  referenceDate: Date,
+  dayCount: number,
+  offsetDays = 0,
+) => {
+  const keys = new Set<string>();
+  for (let index = 0; index < dayCount; index += 1) {
+    keys.add(
+      toVietnamDateKey(
+        new Date(referenceDate.getTime() - (offsetDays + index) * DAY_MS),
+      ),
+    );
+  }
+  return keys;
+};
+
+export const matchesLinkAnalyticsSource = (
+  link: Partial<ScopedLink>,
+  source: AnalyticsFilterSource = "all",
+) => {
+  if (source === "all") return true;
+
+  const urls = [
+    link.original_url,
+    link.secondary_url,
+    link.ab_variant_b_original_url,
+    link.ab_variant_b_secondary_url,
+  ];
+
+  return urls.some((value) =>
+    source === "shopee"
+      ? isShopeeDestinationUrl(value)
+      : isTikTokDestinationUrl(value),
+  );
+};
+
+export const filterClicksByAnalyticsPeriod = <
+  T extends { created_at?: string | null },
+>(
+  clicks: T[],
+  period: AnalyticsFilterPeriod = "30d",
+  referenceDate = new Date(),
+) => {
+  const currentWindowKeys = buildDateKeyWindow(
+    referenceDate,
+    getPeriodDayCount(period),
+  );
+
+  return clicks.filter((click) => {
+    if (!click?.created_at) return false;
+    return currentWindowKeys.has(toVietnamDateKey(click.created_at));
+  });
+};
+
+export const buildAnalyticsEvents = (
+  outboundEvents: LinkOutboundEvent[],
+  clicks: any[],
+): AnalyticsEventRecord[] => {
+  const clicksByLinkId = new Map<string, any[]>();
+
+  clicks.forEach((click) => {
+    const linkId = typeof click?.link_id === "string" ? click.link_id : "";
+    if (!linkId) return;
+    if (!clicksByLinkId.has(linkId)) {
+      clicksByLinkId.set(linkId, []);
+    }
+    clicksByLinkId.get(linkId)!.push(click);
+  });
+
+  clicksByLinkId.forEach((items) => {
+    items.sort((a, b) => {
+      const aTime = a?.created_at ? new Date(a.created_at).getTime() : 0;
+      const bTime = b?.created_at ? new Date(b.created_at).getTime() : 0;
+      return aTime - bTime;
+    });
+  });
+
+  const matchClick = (event: LinkOutboundEvent) => {
+    const linkId = event.link_id;
+    const candidates = clicksByLinkId.get(linkId) || [];
+    const eventTime = event.created_at ? new Date(event.created_at).getTime() : NaN;
+    const eventIp = event.ip_address || null;
+    const eventUa = event.user_agent || null;
+
+    const scoreCandidate = (click: any) => {
+      const clickTime = click?.created_at ? new Date(click.created_at).getTime() : NaN;
+      if (Number.isNaN(eventTime) || Number.isNaN(clickTime)) return Number.POSITIVE_INFINITY;
+      return Math.abs(clickTime - eventTime);
+    };
+
+    const strictMatch = candidates
+      .filter((click) => {
+        const clickTime = click?.created_at ? new Date(click.created_at).getTime() : NaN;
+        const clickIp = click?.ip_address || click?.ip || null;
+        const clickUa = click?.user_agent || null;
+        if (Number.isNaN(eventTime) || Number.isNaN(clickTime)) return false;
+        if (Math.abs(clickTime - eventTime) > EVENT_MATCH_WINDOW_MS) return false;
+        if (eventIp && clickIp && eventIp !== clickIp) return false;
+        if (eventUa && clickUa && eventUa !== clickUa) return false;
+        return true;
+      })
+      .sort((a, b) => scoreCandidate(a) - scoreCandidate(b))[0];
+
+    if (strictMatch) return strictMatch;
+
+    return candidates
+      .filter((click) => {
+        const clickTime = click?.created_at ? new Date(click.created_at).getTime() : NaN;
+        if (Number.isNaN(eventTime) || Number.isNaN(clickTime)) return false;
+        return Math.abs(clickTime - eventTime) <= EVENT_MATCH_WINDOW_MS;
+      })
+      .sort((a, b) => scoreCandidate(a) - scoreCandidate(b))[0];
+  };
+
+  return outboundEvents.map((event) => {
+    const matchedClick = matchClick(event);
+    return {
+      ...event,
+      country: matchedClick?.country || null,
+      country_code: matchedClick?.country_code || null,
+      city: matchedClick?.city || null,
+      device_type: matchedClick?.device_type || null,
+      device_brand: matchedClick?.device_brand || null,
+      browser: matchedClick?.browser || null,
+      os: matchedClick?.os || null,
+    };
+  });
+};
+
+const getFilteredAnalyticsEvents = async (
+  supabase: SupabaseClient,
+  userId: string,
+  linkId?: string,
+  workspaceId?: string,
+  filter: AnalyticsFilter = {},
+) => {
+  const links = (await getScopedLinks(
+    supabase,
+    userId,
+    linkId,
+    workspaceId,
+  )) as ScopedLink[];
+  const source = filter.source || "all";
+  const scopedLinks = links.filter((link) =>
+    matchesLinkAnalyticsSource(link, source),
+  );
+  const linkIds = scopedLinks.map((l) => l.id);
+
+  if (linkIds.length === 0) {
+    return { links: scopedLinks, events: [] as AnalyticsEventRecord[] };
+  }
+
+  const rawOutboundEvents = await fetchOutboundEventsForLinkIds(supabase, linkIds);
+  const filteredOutboundEvents = filterRealOutboundEvents(rawOutboundEvents).filter(
+    (event) => {
+      if (source === "shopee") return isShopeeDestinationUrl(event.destination_url);
+      if (source === "tiktok") return isTikTokDestinationUrl(event.destination_url);
+      return true;
+    },
+  );
+  const rawClicks = await fetchClicksForLinkIds(supabase, linkIds);
+  const realClicks = filterRealClicks(rawClicks);
+  const period = filter.period || "30d";
+  const currentEvents = filterClicksByAnalyticsPeriod(filteredOutboundEvents, period);
+
+  return {
+    links: scopedLinks,
+    events: buildAnalyticsEvents(currentEvents, realClicks),
+  };
+};
+
 const getScopedLinks = async (
   supabase: SupabaseClient,
   userId: string,
@@ -47,7 +291,9 @@ const getScopedLinks = async (
 
   let query = supabase
     .from("links")
-    .select("id, short_code, slug, custom_title, original_url, workspace_id")
+    .select(
+      "id, short_code, slug, custom_title, original_url, secondary_url, ab_variant_b_original_url, ab_variant_b_secondary_url, workspace_id",
+    )
     .in("workspace_id", workspaceIds);
 
   if (linkId) {
@@ -65,22 +311,25 @@ export const getGeographicStats = async (
   userId: string,
   linkId?: string,
   workspaceId?: string,
+  filter: AnalyticsFilter = {},
 ): Promise<GeographicStats> => {
-  const links = await getScopedLinks(supabase, userId, linkId, workspaceId);
-  const linkIds = links.map((l: any) => l.id);
+  const { events } = await getFilteredAnalyticsEvents(
+    supabase,
+    userId,
+    linkId,
+    workspaceId,
+    filter,
+  );
 
-  if (linkIds.length === 0) {
+  if (events.length === 0) {
     return { countries: [], cities: [], totalCountries: 0, totalCities: 0 };
   }
-
-  const rawClicks = await fetchClicksForLinkIds(supabase, linkIds);
-  const clicks = filterRealClicks(rawClicks);
 
   // Aggregate country data
   const countryMap = new Map<string, { name: string; code?: string; clicks: number }>();
   const cityMap = new Map<string, { name: string; country?: string; clicks: number }>();
 
-  clicks.forEach((click: any) => {
+  events.forEach((click) => {
     if (click.country) {
       const key = click.country.toLowerCase();
       const existing = countryMap.get(key);
@@ -131,21 +380,24 @@ export const getDeviceStats = async (
   userId: string,
   linkId?: string,
   workspaceId?: string,
+  filter: AnalyticsFilter = {},
 ): Promise<DeviceStats> => {
-  const links = await getScopedLinks(supabase, userId, linkId, workspaceId);
-  const linkIds = links.map((l: any) => l.id);
+  const { events } = await getFilteredAnalyticsEvents(
+    supabase,
+    userId,
+    linkId,
+    workspaceId,
+    filter,
+  );
 
-  if (linkIds.length === 0) {
+  if (events.length === 0) {
     return {
       deviceTypes: [],
       browsers: [],
       operatingSystems: [],
     };
   }
-
-  const rawClicks = await fetchClicksForLinkIds(supabase, linkIds);
-  const clicks = filterRealClicks(rawClicks);
-  const totalClicks = clicks.length;
+  const totalClicks = events.length;
 
   if (totalClicks === 0) {
     return {
@@ -161,7 +413,7 @@ export const getDeviceStats = async (
   const osMap = new Map<string, number>();
   const brandMap = new Map<string, number>();
 
-  clicks.forEach((click: any) => {
+  events.forEach((click) => {
     // Device type
     const deviceType = click.device_type || "unknown";
     deviceTypeMap.set(deviceType, (deviceTypeMap.get(deviceType) || 0) + 1);
@@ -227,11 +479,18 @@ export const getTimeStats = async (
   days: number = 30,
   linkId?: string,
   workspaceId?: string,
+  filter: AnalyticsFilter = {},
 ): Promise<TimeStats> => {
-  const links = await getScopedLinks(supabase, userId, linkId, workspaceId);
-  const linkIds = links.map((l: any) => l.id);
+  const period = filter.period || (days <= 1 ? "today" : days <= 7 ? "7d" : "30d");
+  const { events } = await getFilteredAnalyticsEvents(
+    supabase,
+    userId,
+    linkId,
+    workspaceId,
+    { ...filter, period },
+  );
 
-  if (linkIds.length === 0) {
+  if (events.length === 0) {
     return {
       hourlyDistribution: [],
       dailyDistribution: [],
@@ -240,22 +499,13 @@ export const getTimeStats = async (
     };
   }
 
-  const cutoffDate = new Date();
-  cutoffDate.setDate(cutoffDate.getDate() - days);
-
-  const rawClicks = await fetchClicksForLinkIds(supabase, linkIds);
-  const clicks = filterRealClicks(rawClicks).filter((click: any) => {
-    if (!click.created_at) return false;
-    return new Date(click.created_at) >= cutoffDate;
-  });
-
   // Hourly distribution (0-23)
   const hourlyMap = new Map<number, number>();
   // Daily distribution (Mon-Sun)
   const dailyMap = new Map<string, number>();
   const daysOfWeek = ["Chủ nhật", "Thứ 2", "Thứ 3", "Thứ 4", "Thứ 5", "Thứ 6", "Thứ 7"];
 
-  clicks.forEach((click: any) => {
+  events.forEach((click) => {
     if (!click.created_at) return;
     const date = new Date(click.created_at);
     
@@ -313,12 +563,18 @@ export const exportAnalyticsToCSV = async (
   linkId?: string,
   workspaceId?: string,
   startDate?: string,
-  endDate?: string
+  endDate?: string,
+  filter: AnalyticsFilter = {},
 ): Promise<string> => {
-  const linksData = await getScopedLinks(supabase, userId, linkId, workspaceId);
-  const linkIds = linksData.map((l: any) => l.id);
+  const { links: linksData, events } = await getFilteredAnalyticsEvents(
+    supabase,
+    userId,
+    linkId,
+    workspaceId,
+    filter,
+  );
 
-  if (linkIds.length === 0) {
+  if (linksData.length === 0) {
     return "No data available";
   }
 
@@ -329,13 +585,10 @@ export const exportAnalyticsToCSV = async (
     ])
   );
 
-  const rawClicks = await fetchClicksForLinkIds(supabase, linkIds);
-  const clicks = filterRealClicks(rawClicks);
-
   // Filter by date if specified
-  let filteredClicks = clicks;
+  let filteredClicks = events;
   if (startDate || endDate) {
-    filteredClicks = clicks.filter((click: any) => {
+    filteredClicks = events.filter((click) => {
       if (!click.created_at) return false;
       const date = new Date(click.created_at);
       if (startDate && date < new Date(startDate)) return false;
@@ -348,11 +601,11 @@ export const exportAnalyticsToCSV = async (
     // Summary export
     const headers = ["Short Code", "Title", "URL", "Total Clicks", "Countries", "Top Device"];
     const rows = linksData.map((link) => {
-      const linkClicks = filteredClicks.filter((c: any) => c.link_id === link.id);
+      const linkClicks = filteredClicks.filter((c) => c.link_id === link.id);
       const countries = new Set(linkClicks.map((c: any) => c.country).filter(Boolean)).size;
       
       const deviceMap = new Map<string, number>();
-      linkClicks.forEach((c: any) => {
+      linkClicks.forEach((c) => {
         const device = c.device_type || "unknown";
         deviceMap.set(device, (deviceMap.get(device) || 0) + 1);
       });
@@ -385,7 +638,7 @@ export const exportAnalyticsToCSV = async (
       "Referer",
     ];
 
-    const rows = filteredClicks.map((click: any) => {
+    const rows = filteredClicks.map((click) => {
       const meta = linkMetaMap.get(click.link_id);
       const date = click.created_at ? new Date(click.created_at) : null;
       
