@@ -159,6 +159,59 @@ const TabLoading = () => (
   </div>
 );
 
+const AppLoadingScreen = ({
+  title,
+  subtitle,
+}: {
+  title: string;
+  subtitle: string;
+}) => (
+  <div className="relative min-h-screen overflow-hidden bg-slate-950 text-white">
+    <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,_rgba(249,115,22,0.18),_transparent_34%),radial-gradient(circle_at_bottom_right,_rgba(15,23,42,0.85),_transparent_38%),linear-gradient(135deg,_#020617_0%,_#0f172a_55%,_#111827_100%)]" />
+    <div className="absolute -left-24 top-16 h-72 w-72 rounded-full bg-orange-500/10 blur-3xl animate-pulse" />
+    <div className="absolute -right-20 bottom-10 h-80 w-80 rounded-full bg-cyan-500/10 blur-3xl animate-pulse [animation-delay:1200ms]" />
+
+    <div className="relative z-10 flex min-h-screen items-center justify-center p-6">
+      <div className="w-full max-w-md rounded-[2rem] border border-white/10 bg-white/5 p-8 shadow-2xl backdrop-blur-xl sm:p-10">
+        <div className="flex flex-col items-center text-center">
+          <div className="relative mb-6">
+            <div className="absolute inset-0 rounded-full bg-orange-500/20 blur-xl" />
+            <div className="relative flex h-20 w-20 items-center justify-center rounded-[1.75rem] border border-white/10 bg-slate-900/80 shadow-lg">
+              <img
+                src="/logo-app-192.png"
+                alt="HotsNew"
+                className="h-12 w-12 rounded-2xl object-cover"
+              />
+            </div>
+            <div className="absolute inset-0 rounded-[1.75rem] border border-orange-500/20 animate-ping" />
+          </div>
+
+          <div className="mb-2 text-[11px] font-black uppercase tracking-[0.35em] text-orange-300">
+            HotsNew
+          </div>
+          <h1 className="text-2xl font-black tracking-tight text-white">
+            {title}
+          </h1>
+          <p className="mt-3 max-w-sm text-sm leading-6 text-slate-300">
+            {subtitle}
+          </p>
+
+          <div className="mt-8 w-full">
+            <div className="h-2 overflow-hidden rounded-full bg-white/10">
+              <div className="h-full w-1/2 rounded-full bg-gradient-to-r from-orange-400 via-amber-300 to-orange-500 animate-[loading-bar_1.4s_ease-in-out_infinite]" />
+            </div>
+            <div className="mt-4 flex items-center justify-center gap-2 text-[11px] font-black uppercase tracking-[0.3em] text-slate-400">
+              <span className="h-2 w-2 rounded-full bg-orange-400 animate-bounce [animation-delay:0ms]" />
+              <span className="h-2 w-2 rounded-full bg-orange-400 animate-bounce [animation-delay:150ms]" />
+              <span className="h-2 w-2 rounded-full bg-orange-400 animate-bounce [animation-delay:300ms]" />
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+);
+
 export default function App() {
   const { locale, t } = useLocale();
   const [currentPathname, setCurrentPathname] = useState(() =>
@@ -193,6 +246,7 @@ export default function App() {
     handleLogout: handleLogoutBase,
     user,
     authLoading,
+    authInitialized,
     authError,
     authNotice,
     isRegistering,
@@ -623,7 +677,7 @@ export default function App() {
     await handleLogoutBase();
   }, [handleLogoutBase, user?.id]);
 
-  useEffect(() => {
+  React.useLayoutEffect(() => {
     if (!user?.id) {
       setTabRestoreReady(false);
       setIsSidebarOpen(false);
@@ -652,7 +706,7 @@ export default function App() {
   }, [activeTab, tabRestoreReady, user?.id]);
 
   useEffect(() => {
-    if (!user || !tabRestoreReady) return;
+    if (!user || !tabRestoreReady || bootstrappingAccess) return;
 
     const nextAllowedTabs: Tab[] = [
       "dashboard",
@@ -673,7 +727,7 @@ export default function App() {
     if (!nextAllowedTabs.includes(activeTab)) {
       setActiveTab(canAccessCreate ? "dashboard" : "pricing");
     }
-  }, [activeTab, canAccessCreate, tabRestoreReady, user]);
+  }, [activeTab, bootstrappingAccess, canAccessCreate, tabRestoreReady, user]);
 
   useEffect(() => {
     const handleResize = () => {
@@ -793,15 +847,17 @@ export default function App() {
   }, [user, canAccessCreate, setUrl, tabRestoreReady]);
 
   // Loading screen
-  if (bootstrappingAccess) {
-    return (
-      <div className="min-h-screen bg-slate-900 flex flex-col items-center justify-center gap-4">
-        <div className="w-16 h-16 border-4 border-orange-500/20 border-t-orange-500 rounded-full animate-spin" />
-        <div className="text-gray-400 font-bold uppercase tracking-widest text-[10px] animate-pulse">
-          {t("app.loading")}
-        </div>
-      </div>
-    );
+  if (!authInitialized || bootstrappingAccess) {
+    const loadingTitle =
+      locale === "vi"
+        ? "Đang khởi động trung tâm quản trị"
+        : "Loading your workspace";
+    const loadingSubtitle =
+      locale === "vi"
+        ? "Đang đồng bộ phiên đăng nhập, khôi phục tab gần nhất và nạp dữ liệu cần thiết."
+        : "Restoring your session, reopening the last tab, and syncing the data you need.";
+
+    return <AppLoadingScreen title={loadingTitle} subtitle={loadingSubtitle} />;
   }
 
   if (
@@ -817,7 +873,7 @@ export default function App() {
   }
 
   // Auth screen
-  if (!user || passwordRecoveryMode) {
+  if (authInitialized && (!user || passwordRecoveryMode)) {
     if (!user && !passwordRecoveryMode && isPublicSeoRoute) {
       return <PublicPageScreen key={publicPage.path} page={publicPage} />;
     }
