@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import { buildPrettyLinkPath } from "@/src/lib/linkPaths";
 import { cn } from "@/src/lib/utils";
+import { toast } from "sonner";
 import {
   AccessLogEntry,
   BlockedIpEntry,
@@ -39,6 +40,17 @@ interface UserLink {
   original_url: string;
   clicks?: number;
   created_at: string;
+}
+
+type AdminRole = "user" | "admin";
+type ConfirmTone = "danger" | "warning";
+
+interface ConfirmAction {
+  title: string;
+  description: string;
+  confirmLabel: string;
+  tone?: ConfirmTone;
+  onConfirm: () => Promise<void> | void;
 }
 
 interface AdminPanelProps {
@@ -59,12 +71,16 @@ interface AdminPanelProps {
   onUnblockIp: (blockedIpId: string) => Promise<void>;
   onUpdateOutputDomains: (domains: string[]) => Promise<void>;
   onlineUserIds: string[];
-  handleApproveUser: (userId: string) => void;
+  onRefreshUsers: () => Promise<void>;
+  onRefreshPayments: () => Promise<void>;
+  onRefreshSecurity: () => Promise<void>;
+  onUpdateUserRole: (userId: string, role: AdminRole) => Promise<void>;
+  handleApproveUser: (userId: string) => Promise<void>;
   handleUpdateSubscription: (
     userId: string,
     plan: "free" | "monthly" | "yearly",
-  ) => void;
-  handleDeleteUser: (userId: string) => void;
+  ) => Promise<void>;
+  handleDeleteUser: (userId: string) => Promise<void>;
   onConfirmPaymentRequest: (paymentRequestId: string) => Promise<void>;
   onRejectPaymentRequest: (paymentRequestId: string) => Promise<void>;
   fetchWithAuth?: (
@@ -87,6 +103,10 @@ export const AdminPanel = ({
   onUnblockIp,
   onUpdateOutputDomains,
   onlineUserIds,
+  onRefreshUsers,
+  onRefreshPayments,
+  onRefreshSecurity,
+  onUpdateUserRole,
   handleApproveUser,
   handleUpdateSubscription,
   handleDeleteUser,
@@ -157,15 +177,26 @@ export const AdminPanel = ({
             "Review transfer confirmations and activate plans per account.",
         };
 
-  const [deleteId, setDeleteId] = React.useState<string | null>(null);
+  const [confirmAction, setConfirmAction] =
+    React.useState<ConfirmAction | null>(null);
+  const [confirmActionBusy, setConfirmActionBusy] = React.useState(false);
   const [searchTerm, setSearchTerm] = React.useState("");
   const [paymentSearchTerm, setPaymentSearchTerm] = React.useState("");
+  const [accessSearchTerm, setAccessSearchTerm] = React.useState("");
+  const [blockedSearchTerm, setBlockedSearchTerm] = React.useState("");
   const [planFilter, setPlanFilter] = React.useState<
     "all" | "free" | "monthly" | "yearly"
   >("all");
   const [statusFilter, setStatusFilter] = React.useState<
     "all" | "approved" | "pending"
   >("all");
+  const [accessFilter, setAccessFilter] = React.useState<
+    "all" | "http" | "admin" | "blocked"
+  >("all");
+  const [userPage, setUserPage] = React.useState(1);
+  const [paymentPage, setPaymentPage] = React.useState(1);
+  const [accessPage, setAccessPage] = React.useState(1);
+  const [blockedPage, setBlockedPage] = React.useState(1);
   const [selectedUser, setSelectedUser] = React.useState<UserProfile | null>(
     null,
   );
@@ -177,6 +208,11 @@ export const AdminPanel = ({
   const [domainDraft, setDomainDraft] = React.useState("");
   const [domainList, setDomainList] = React.useState<string[]>(outputDomains);
   const [savingDomains, setSavingDomains] = React.useState(false);
+  const [selectedUserRoleDraft, setSelectedUserRoleDraft] =
+    React.useState<AdminRole>("user");
+  const [selectedUserPlanDraft, setSelectedUserPlanDraft] = React.useState<
+    "free" | "monthly" | "yearly"
+  >("free");
   const [adminView, setAdminView] = React.useState<
     "users" | "payments" | "system"
   >("users");
@@ -186,15 +222,52 @@ export const AdminPanel = ({
   }, [outputDomains]);
 
   React.useEffect(() => {
+    if (!selectedUser) return;
+    setSelectedUserRoleDraft(
+      selectedUser.role === "admin" ? "admin" : "user",
+    );
+    setSelectedUserPlanDraft(selectedUser.subscription_plan || "free");
+    setUserPage(1);
+  }, [selectedUser?.id]);
+
+  React.useEffect(() => {
     if (!selectedUser || !fetchWithAuth) return;
 
     setUserLinksLoading(true);
+    setUserLinks([]);
     fetchWithAuth(`/api/v1/admin/users/${selectedUser.id}/links`)
-      .then((res) => res.json())
-      .then((data) => setUserLinks(data || []))
-      .catch(() => setUserLinks([]))
+      .then(async (res) => {
+        const data = await res.json().catch(() => null);
+        if (!res.ok) {
+          throw new Error(data?.error || "Failed to load user links");
+        }
+        setUserLinks(Array.isArray(data) ? data : []);
+      })
+      .catch((error) => {
+        console.error(error);
+        setUserLinks([]);
+        toast.error(
+          error instanceof Error ? error.message : "Failed to load user links",
+        );
+      })
       .finally(() => setUserLinksLoading(false));
   }, [selectedUser, fetchWithAuth]);
+
+  React.useEffect(() => {
+    setUserPage(1);
+  }, [searchTerm, planFilter, statusFilter, allUsers.length]);
+
+  React.useEffect(() => {
+    setPaymentPage(1);
+  }, [paymentSearchTerm, paymentRequests.length]);
+
+  React.useEffect(() => {
+    setAccessPage(1);
+  }, [accessSearchTerm, accessFilter, adminAccessLogs.length]);
+
+  React.useEffect(() => {
+    setBlockedPage(1);
+  }, [blockedSearchTerm, blockedIps.length]);
 
   const filteredUsers = React.useMemo(
     () =>
@@ -261,27 +334,203 @@ export const AdminPanel = ({
     );
   }, [paymentRequests, paymentSearchTerm]);
 
-  const confirmDelete = () => {
-    if (!deleteId) return;
-    handleDeleteUser(deleteId);
-    setDeleteId(null);
+  const filteredAccessLogs = React.useMemo(() => {
+    const normalizedSearch = accessSearchTerm.trim().toLowerCase();
+
+    return adminAccessLogs.filter((log) => {
+      const isAdminAction = log.method === "ADMIN" || log.path.startsWith("admin:");
+      const matchesFilter =
+        accessFilter === "all" ||
+        (accessFilter === "http" && !isAdminAction) ||
+        (accessFilter === "admin" && isAdminAction) ||
+        (accessFilter === "blocked" && log.blocked);
+      const haystack = [
+        log.method,
+        log.path,
+        log.email,
+        log.user_id,
+        log.ip_address,
+        JSON.stringify(log.metadata || {}),
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+
+      return matchesFilter && (!normalizedSearch || haystack.includes(normalizedSearch));
+    });
+  }, [adminAccessLogs, accessFilter, accessSearchTerm]);
+
+  const filteredBlockedIps = React.useMemo(() => {
+    const normalizedSearch = blockedSearchTerm.trim().toLowerCase();
+    if (!normalizedSearch) return blockedIps;
+
+    return blockedIps.filter((item) =>
+      [item.ip_address, item.reason, item.blocked_by]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase()
+        .includes(normalizedSearch),
+    );
+  }, [blockedIps, blockedSearchTerm]);
+
+  const pageSize = 10;
+  const totalUserPages = Math.max(1, Math.ceil(filteredUsers.length / pageSize));
+  const totalPaymentPages = Math.max(
+    1,
+    Math.ceil(filteredPaymentRequests.length / pageSize),
+  );
+  const totalAccessPages = Math.max(
+    1,
+    Math.ceil(filteredAccessLogs.length / pageSize),
+  );
+  const totalBlockedPages = Math.max(
+    1,
+    Math.ceil(filteredBlockedIps.length / pageSize),
+  );
+
+  const pagedUsers = filteredUsers.slice(
+    (userPage - 1) * pageSize,
+    userPage * pageSize,
+  );
+  const pagedPayments = filteredPaymentRequests.slice(
+    (paymentPage - 1) * pageSize,
+    paymentPage * pageSize,
+  );
+  const pagedAccessLogs = filteredAccessLogs.slice(
+    (accessPage - 1) * pageSize,
+    accessPage * pageSize,
+  );
+  const pagedBlockedIps = filteredBlockedIps.slice(
+    (blockedPage - 1) * pageSize,
+    blockedPage * pageSize,
+  );
+
+  const isAdminLog = (log: AccessLogEntry) =>
+    log.method === "ADMIN" || log.path.startsWith("admin:");
+
+  const downloadCsv = (filename: string, headers: string[], rows: string[][]) => {
+    const escapeValue = (value: string) => `"${value.replace(/"/g, '""')}"`;
+    const csv = [headers, ...rows].map((row) => row.map(escapeValue).join(",")).join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = filename;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const runConfirmAction = async () => {
+    if (!confirmAction) return;
+    setConfirmActionBusy(true);
+    try {
+      await confirmAction.onConfirm();
+      setConfirmAction(null);
+    } catch (error) {
+      console.error(error);
+      toast.error(error instanceof Error ? error.message : "Action failed");
+    } finally {
+      setConfirmActionBusy(false);
+    }
+  };
+
+  const exportUsersCsv = () => {
+    downloadCsv(
+      "admin-users.csv",
+      ["id", "name", "email", "status", "plan", "role", "created_at"],
+      filteredUsers.map((user) => [
+        user.id,
+        user.full_name || "",
+        user.email || "",
+        user.status || "",
+        user.subscription_plan || "free",
+        user.role || "user",
+        user.created_at || "",
+      ]),
+    );
+  };
+
+  const exportPaymentsCsv = () => {
+    downloadCsv(
+      "admin-payment-requests.csv",
+      [
+        "id",
+        "user",
+        "email",
+        "account_code",
+        "plan",
+        "amount",
+        "status",
+        "submitted_at",
+      ],
+      filteredPaymentRequests.map((request) => [
+        request.id,
+        request.user_full_name || request.user_id,
+        request.user_email || "",
+        request.account_code,
+        request.plan,
+        String(request.amount),
+        request.status,
+        request.user_confirmed_at || request.created_at,
+      ]),
+    );
+  };
+
+  const exportAccessLogsCsv = () => {
+    downloadCsv(
+      "admin-access-logs.csv",
+      ["id", "method", "path", "email", "ip_address", "status_code", "created_at"],
+      filteredAccessLogs.map((log) => [
+        log.id,
+        log.method,
+        log.path,
+        log.email || log.user_id || "",
+        log.ip_address || "",
+        String(log.status_code),
+        log.created_at,
+      ]),
+    );
+  };
+
+  const exportBlockedIpsCsv = () => {
+    downloadCsv(
+      "admin-blocked-ips.csv",
+      ["id", "ip_address", "reason", "active", "blocked_by", "expires_at", "created_at"],
+      filteredBlockedIps.map((item) => [
+        item.id,
+        item.ip_address,
+        item.reason || "",
+        String(item.active),
+        item.blocked_by || "",
+        item.expires_at || "",
+        item.created_at,
+      ]),
+    );
   };
 
   const handleBlockIpSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!blockedIpAddress.trim()) return;
-
-    setBlockingIp(true);
-    try {
-      await onBlockIp({
-        ipAddress: blockedIpAddress.trim(),
-        reason: blockedIpReason.trim() || undefined,
-      });
-      setBlockedIpAddress("");
-      setBlockedIpReason("");
-    } finally {
-      setBlockingIp(false);
-    }
+    const payload = {
+      ipAddress: blockedIpAddress.trim(),
+      reason: blockedIpReason.trim() || undefined,
+    };
+    setConfirmAction({
+      title: "Block IP?",
+      description: `Block ${payload.ipAddress}${payload.reason ? ` (${payload.reason})` : ""}?`,
+      confirmLabel: "Block",
+      tone: "danger",
+      onConfirm: async () => {
+        setBlockingIp(true);
+        try {
+          await onBlockIp(payload);
+          setBlockedIpAddress("");
+          setBlockedIpReason("");
+        } finally {
+          setBlockingIp(false);
+        }
+      },
+    });
   };
 
   const handleAddDomain = () => {
@@ -297,12 +546,20 @@ export const AdminPanel = ({
   };
 
   const handleSaveDomains = async () => {
-    setSavingDomains(true);
-    try {
-      await onUpdateOutputDomains(domainList);
-    } finally {
-      setSavingDomains(false);
-    }
+    setConfirmAction({
+      title: "Save domains?",
+      description: `Update the output domain list to ${domainList.join(", ")}?`,
+      confirmLabel: "Save",
+      tone: "warning",
+      onConfirm: async () => {
+        setSavingDomains(true);
+        try {
+          await onUpdateOutputDomains(domainList);
+        } finally {
+          setSavingDomains(false);
+        }
+      },
+    });
   };
 
   const getStatusLabel = (status?: string) =>
@@ -362,31 +619,32 @@ export const AdminPanel = ({
 
   return (
     <div key="admin">
-      {deleteId && (
+      {confirmAction && (
         <div className="fixed inset-0 z-100 flex items-center justify-center p-4">
           <div
-            onClick={() => setDeleteId(null)}
+            onClick={() => !confirmActionBusy && setConfirmAction(null)}
             className="absolute inset-0 bg-black/60 backdrop-blur-sm"
           />
           <div className="relative w-full max-w-sm rounded-[2.5rem] border border-gray-100 bg-white p-8 shadow-2xl dark:border-slate-700 dark:bg-slate-800">
             <h3 className="mb-2 text-xl font-black text-gray-900 dark:text-slate-100">
-              {content.deleteModal.title}
+              {confirmAction.title}
             </h3>
             <p className="mb-8 text-sm font-medium leading-relaxed text-gray-500 dark:text-slate-400">
-              {content.deleteModal.description}
+              {confirmAction.description}
             </p>
             <div className="flex gap-4">
               <button
-                onClick={() => setDeleteId(null)}
+                onClick={() => setConfirmAction(null)}
                 className="flex-1 rounded-2xl bg-gray-100 py-4 text-xs font-black uppercase tracking-widest text-gray-500 transition-all hover:bg-gray-200 dark:bg-slate-700 dark:text-slate-300 dark:hover:bg-slate-600"
               >
-                {content.deleteModal.cancel}
+                Cancel
               </button>
               <button
-                onClick={confirmDelete}
+                onClick={runConfirmAction}
+                disabled={confirmActionBusy}
                 className="flex-1 rounded-2xl bg-red-600 py-4 text-xs font-black uppercase tracking-widest text-white transition-all hover:bg-red-700"
               >
-                {content.deleteModal.confirm}
+                {confirmActionBusy ? "Working..." : confirmAction.confirmLabel}
               </button>
             </div>
           </div>
@@ -597,24 +855,85 @@ export const AdminPanel = ({
               </p>
             </div>
           </div>
+          <div className="mb-4 flex flex-col gap-3">
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
+              <div className="relative flex-1">
+                <Search
+                  size={16}
+                  className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"
+                />
+                <input
+                  type="text"
+                  value={accessSearchTerm}
+                  onChange={(e) => setAccessSearchTerm(e.target.value)}
+                  placeholder="Search path, email, IP, or action..."
+                  className="w-full rounded-2xl border border-gray-200 py-3 pl-10 pr-4 text-sm focus:border-gray-900 focus:outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+                />
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {[
+                  ["all", "All"],
+                  ["http", "HTTP"],
+                  ["admin", "Admin"],
+                  ["blocked", "Blocked"],
+                ].map(([value, label]) => (
+                  <button
+                    key={value}
+                    type="button"
+                    onClick={() =>
+                      setAccessFilter(
+                        value as "all" | "http" | "admin" | "blocked",
+                      )
+                    }
+                    className={cn(
+                      "rounded-full px-3 py-2 text-[11px] font-black uppercase tracking-widest transition-all",
+                      accessFilter === value
+                        ? "bg-orange-600 text-white"
+                        : "bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-slate-700 dark:text-slate-200",
+                    )}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="flex flex-wrap gap-3">
+              <button
+                type="button"
+                onClick={onRefreshSecurity}
+                className="rounded-2xl bg-slate-900 px-4 py-3 text-xs font-black uppercase tracking-widest text-white"
+              >
+                Refresh
+              </button>
+              <button
+                type="button"
+                onClick={exportAccessLogsCsv}
+                className="rounded-2xl bg-gray-100 px-4 py-3 text-xs font-black uppercase tracking-widest text-gray-700 dark:bg-slate-700 dark:text-slate-100"
+              >
+                Export
+              </button>
+            </div>
+          </div>
           <div className="max-h-105 space-y-3 overflow-auto">
             {adminSecurityLoading ? (
               <div className="rounded-2xl bg-gray-50 px-4 py-10 text-center text-sm font-medium text-gray-400 dark:bg-slate-900 dark:text-slate-500">
                 {content.accessLogs.loading}
               </div>
-            ) : adminAccessLogs.length === 0 ? (
+            ) : pagedAccessLogs.length === 0 ? (
               <div className="rounded-2xl bg-gray-50 px-4 py-10 text-center text-sm font-medium text-gray-400 dark:bg-slate-900 dark:text-slate-500">
-                {content.accessLogs.empty}
+                {accessSearchTerm ? "No matching access logs." : content.accessLogs.empty}
               </div>
             ) : (
-              adminAccessLogs.slice(0, 25).map((log) => (
+              pagedAccessLogs.map((log) => (
                 <div
                   key={log.id}
                   className="rounded-2xl bg-gray-50 px-4 py-4 dark:bg-slate-900"
                 >
                   <div className="flex items-center justify-between gap-3">
                     <p className="font-black text-gray-900 dark:text-slate-100">
-                      {log.method} {log.path}
+                      {isAdminLog(log)
+                        ? log.path.replace(/^admin:/, "").replace(/_/g, " ")
+                        : `${log.method} ${log.path}`}
                     </p>
                     <span
                       className={cn(
@@ -635,6 +954,31 @@ export const AdminPanel = ({
                 </div>
               ))
             )}
+          </div>
+          <div className="mt-4 flex items-center justify-between gap-3 text-xs font-black uppercase tracking-widest text-gray-500">
+            <span>
+              Page {accessPage} of {totalAccessPages}
+            </span>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => setAccessPage((p) => Math.max(1, p - 1))}
+                disabled={accessPage <= 1}
+                className="rounded-xl bg-gray-100 px-3 py-2 disabled:opacity-40 dark:bg-slate-700"
+              >
+                Prev
+              </button>
+              <button
+                type="button"
+                onClick={() =>
+                  setAccessPage((p) => Math.min(totalAccessPages, p + 1))
+                }
+                disabled={accessPage >= totalAccessPages}
+                className="rounded-xl bg-gray-100 px-3 py-2 disabled:opacity-40 dark:bg-slate-700"
+              >
+                Next
+              </button>
+            </div>
           </div>
         </section>
 
@@ -678,13 +1022,36 @@ export const AdminPanel = ({
             </button>
           </form>
 
+          <div className="mt-5 flex items-center gap-3">
+            <div className="relative flex-1">
+              <Search
+                size={16}
+                className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"
+              />
+              <input
+                type="text"
+                value={blockedSearchTerm}
+                onChange={(e) => setBlockedSearchTerm(e.target.value)}
+                placeholder="Search blocked IPs..."
+                className="w-full rounded-2xl border border-gray-200 py-3 pl-10 pr-4 text-sm focus:border-gray-900 focus:outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+              />
+            </div>
+            <button
+              type="button"
+              onClick={onRefreshSecurity}
+              className="rounded-2xl bg-slate-900 px-4 py-3 text-xs font-black uppercase tracking-widest text-white"
+            >
+              Refresh
+            </button>
+          </div>
+
           <div className="mt-5 max-h-60 space-y-3 overflow-auto">
-            {blockedIps.length === 0 ? (
+            {pagedBlockedIps.length === 0 ? (
               <div className="rounded-2xl bg-gray-50 px-4 py-8 text-center text-sm font-medium text-gray-400 dark:bg-slate-900 dark:text-slate-500">
-                {content.ipBlock.empty}
+                {blockedSearchTerm ? "No matching blocked IPs." : content.ipBlock.empty}
               </div>
             ) : (
-              blockedIps.map((item) => (
+              pagedBlockedIps.map((item) => (
                 <div
                   key={item.id}
                   className="rounded-2xl bg-gray-50 px-4 py-4 dark:bg-slate-900"
@@ -704,7 +1071,15 @@ export const AdminPanel = ({
                     {item.active && (
                       <button
                         type="button"
-                        onClick={() => onUnblockIp(item.id)}
+                        onClick={() =>
+                          setConfirmAction({
+                            title: "Unblock IP?",
+                            description: `Allow ${item.ip_address} again?`,
+                            confirmLabel: "Unblock",
+                            tone: "warning",
+                            onConfirm: () => onUnblockIp(item.id),
+                          })
+                        }
                         className="inline-flex items-center gap-2 rounded-xl bg-white px-3 py-2 text-[11px] font-black uppercase tracking-widest text-gray-700 transition-all hover:bg-gray-100 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
                       >
                         <Unlock size={14} />
@@ -716,6 +1091,31 @@ export const AdminPanel = ({
               ))
             )}
           </div>
+          <div className="mt-4 flex items-center justify-between gap-3 text-xs font-black uppercase tracking-widest text-gray-500">
+            <span>
+              Page {blockedPage} of {totalBlockedPages}
+            </span>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => setBlockedPage((p) => Math.max(1, p - 1))}
+                disabled={blockedPage <= 1}
+                className="rounded-xl bg-gray-100 px-3 py-2 disabled:opacity-40 dark:bg-slate-700"
+              >
+                Prev
+              </button>
+              <button
+                type="button"
+                onClick={() =>
+                  setBlockedPage((p) => Math.min(totalBlockedPages, p + 1))
+                }
+                disabled={blockedPage >= totalBlockedPages}
+                className="rounded-xl bg-gray-100 px-3 py-2 disabled:opacity-40 dark:bg-slate-700"
+              >
+                Next
+              </button>
+            </div>
+          </div>
         </section>
       </div>
 
@@ -725,32 +1125,48 @@ export const AdminPanel = ({
           adminView !== "payments" && "hidden",
         )}
       >
-        <div className="flex flex-col gap-3 border-b border-gray-100 bg-gray-50/50 p-6 dark:border-slate-700 dark:bg-slate-900/70 sm:flex-row sm:items-center sm:justify-between sm:p-8">
-          <div>
-            <h3 className="flex items-center gap-2 text-sm font-black uppercase tracking-widest">
-              <CreditCard size={18} /> {viewCopy.paymentsTab}
-            </h3>
-            <p className="mt-2 text-sm font-medium text-gray-500 dark:text-slate-400">
-              {viewCopy.paymentsDescription}
-            </p>
-          </div>
-          <div className="flex w-full flex-col gap-3 sm:w-auto sm:min-w-[320px]">
-            <div className="relative">
-              <Search
-                size={18}
-                className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"
-              />
-              <input
-                type="text"
-                placeholder={viewCopy.paymentSearchPlaceholder}
-                value={paymentSearchTerm}
-                onChange={(e) => setPaymentSearchTerm(e.target.value)}
-                className="w-full rounded-xl border border-gray-200 py-3 pl-11 pr-4 text-sm focus:border-gray-900 focus:outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:focus:border-orange-500"
-              />
+        <div className="flex flex-col gap-4 border-b border-gray-100 bg-gray-50/50 p-6 dark:border-slate-700 dark:bg-slate-900/70 sm:p-8">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h3 className="flex items-center gap-2 text-sm font-black uppercase tracking-widest">
+                <CreditCard size={18} /> {viewCopy.paymentsTab}
+              </h3>
+              <p className="mt-2 text-sm font-medium text-gray-500 dark:text-slate-400">
+                {viewCopy.paymentsDescription}
+              </p>
             </div>
-            <span className="w-fit rounded-full bg-gray-900 px-3 py-1 text-[10px] font-bold text-white sm:self-end">
-              {filteredPaymentRequests.length} {viewCopy.paymentRequests}
-            </span>
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={onRefreshPayments}
+                className="rounded-2xl bg-slate-900 px-4 py-3 text-xs font-black uppercase tracking-widest text-white"
+              >
+                Refresh
+              </button>
+              <button
+                type="button"
+                onClick={exportPaymentsCsv}
+                className="rounded-2xl bg-gray-100 px-4 py-3 text-xs font-black uppercase tracking-widest text-gray-700 dark:bg-slate-700 dark:text-slate-100"
+              >
+                Export
+              </button>
+              <span className="w-fit rounded-full bg-gray-900 px-3 py-1 text-[10px] font-bold text-white">
+                {filteredPaymentRequests.length} {viewCopy.paymentRequests}
+              </span>
+            </div>
+          </div>
+          <div className="relative sm:max-w-[320px]">
+            <Search
+              size={18}
+              className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"
+            />
+            <input
+              type="text"
+              placeholder={viewCopy.paymentSearchPlaceholder}
+              value={paymentSearchTerm}
+              onChange={(e) => setPaymentSearchTerm(e.target.value)}
+              className="w-full rounded-xl border border-gray-200 py-3 pl-11 pr-4 text-sm focus:border-gray-900 focus:outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:focus:border-orange-500"
+            />
           </div>
         </div>
 
@@ -759,12 +1175,12 @@ export const AdminPanel = ({
             <div className="p-20 text-center font-bold text-gray-300">
               {viewCopy.loadingPayments}
             </div>
-          ) : filteredPaymentRequests.length === 0 ? (
+          ) : pagedPayments.length === 0 ? (
             <div className="p-20 text-center font-medium italic text-gray-400">
-              {viewCopy.noPayments}
+              {paymentSearchTerm ? "No matching payment requests." : viewCopy.noPayments}
             </div>
           ) : (
-            filteredPaymentRequests.map((request) => (
+            pagedPayments.map((request) => (
               <div
                 key={request.id}
                 className="flex flex-col gap-5 p-5 transition-all hover:bg-gray-50 dark:hover:bg-slate-900/40"
@@ -839,7 +1255,15 @@ export const AdminPanel = ({
                     <>
                       <button
                         type="button"
-                        onClick={() => onConfirmPaymentRequest(request.id)}
+                        onClick={() =>
+                          setConfirmAction({
+                            title: "Confirm payment?",
+                            description: `Confirm the payment request for ${request.user_email || request.user_full_name || request.user_id}?`,
+                            confirmLabel: "Confirm",
+                            tone: "warning",
+                            onConfirm: () => onConfirmPaymentRequest(request.id),
+                          })
+                        }
                         className="inline-flex items-center justify-center gap-2 rounded-2xl bg-green-600 px-5 py-3 text-xs font-black uppercase tracking-widest text-white transition-all hover:bg-green-700"
                       >
                         <CheckCircle2 size={16} />
@@ -847,7 +1271,15 @@ export const AdminPanel = ({
                       </button>
                       <button
                         type="button"
-                        onClick={() => onRejectPaymentRequest(request.id)}
+                        onClick={() =>
+                          setConfirmAction({
+                            title: "Reject payment?",
+                            description: `Reject the payment request for ${request.user_email || request.user_full_name || request.user_id}?`,
+                            confirmLabel: "Reject",
+                            tone: "danger",
+                            onConfirm: () => onRejectPaymentRequest(request.id),
+                          })
+                        }
                         className="inline-flex items-center justify-center gap-2 rounded-2xl bg-red-600 px-5 py-3 text-xs font-black uppercase tracking-widest text-white transition-all hover:bg-red-700"
                       >
                         <XCircle size={16} />
@@ -865,6 +1297,29 @@ export const AdminPanel = ({
               </div>
             ))
           )}
+        </div>
+        <div className="flex items-center justify-between gap-3 border-t border-gray-100 px-6 py-4 text-xs font-black uppercase tracking-widest text-gray-500 dark:border-slate-700 sm:px-8">
+          <span>
+            Page {paymentPage} of {totalPaymentPages}
+          </span>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => setPaymentPage((p) => Math.max(1, p - 1))}
+              disabled={paymentPage <= 1}
+              className="rounded-xl bg-gray-100 px-3 py-2 disabled:opacity-40 dark:bg-slate-700"
+            >
+              Prev
+            </button>
+            <button
+              type="button"
+              onClick={() => setPaymentPage((p) => Math.min(totalPaymentPages, p + 1))}
+              disabled={paymentPage >= totalPaymentPages}
+              className="rounded-xl bg-gray-100 px-3 py-2 disabled:opacity-40 dark:bg-slate-700"
+            >
+              Next
+            </button>
+          </div>
         </div>
       </div>
 
@@ -936,13 +1391,31 @@ export const AdminPanel = ({
           adminView !== "users" && "hidden",
         )}
       >
-        <div className="flex flex-col gap-3 border-b border-gray-100 bg-gray-50/50 p-6 dark:border-slate-700 dark:bg-slate-900/70 sm:flex-row sm:items-center sm:justify-between sm:p-8">
-          <h3 className="flex items-center gap-2 text-sm font-black uppercase tracking-widest">
-            <UsersIcon size={18} /> {content.table.title}
-          </h3>
-          <span className="w-fit rounded-full bg-gray-900 px-3 py-1 text-[10px] font-bold text-white">
-            {t("admin.table.count", { count: filteredUsers.length })}
-          </span>
+        <div className="flex flex-col gap-4 border-b border-gray-100 bg-gray-50/50 p-6 dark:border-slate-700 dark:bg-slate-900/70 sm:p-8">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <h3 className="flex items-center gap-2 text-sm font-black uppercase tracking-widest">
+              <UsersIcon size={18} /> {content.table.title}
+            </h3>
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={onRefreshUsers}
+                className="rounded-2xl bg-slate-900 px-4 py-3 text-xs font-black uppercase tracking-widest text-white"
+              >
+                Refresh
+              </button>
+              <button
+                type="button"
+                onClick={exportUsersCsv}
+                className="rounded-2xl bg-gray-100 px-4 py-3 text-xs font-black uppercase tracking-widest text-gray-700 dark:bg-slate-700 dark:text-slate-100"
+              >
+                Export
+              </button>
+              <span className="w-fit rounded-full bg-gray-900 px-3 py-1 text-[10px] font-bold text-white">
+                {t("admin.table.count", { count: filteredUsers.length })}
+              </span>
+            </div>
+          </div>
         </div>
 
         <div className="divide-y divide-gray-100 dark:divide-slate-700">
@@ -950,12 +1423,12 @@ export const AdminPanel = ({
             <div className="p-20 text-center font-bold text-gray-300">
               {content.table.loading}
             </div>
-          ) : filteredUsers.length === 0 ? (
+          ) : pagedUsers.length === 0 ? (
             <div className="p-20 text-center font-medium italic text-gray-400">
-              {content.table.empty}
+              {searchTerm ? "No matching users." : content.table.empty}
             </div>
           ) : (
-            filteredUsers.map((user) => (
+            pagedUsers.map((user) => (
               <div
                 key={user.id}
                 className="flex cursor-pointer flex-col gap-4 p-4 transition-all hover:bg-gray-50 dark:hover:bg-slate-900/70 sm:gap-6 sm:p-6 xl:flex-row xl:items-center xl:justify-between"
@@ -1050,12 +1523,20 @@ export const AdminPanel = ({
                   <select
                     className="min-w-0 flex-1 cursor-pointer rounded-lg border border-gray-200 bg-gray-50 px-2 py-2 text-[10px] font-bold focus:outline-none focus:ring-2 focus:ring-orange-500/20 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 sm:flex-none"
                     value={user.subscription_plan || "free"}
-                    onChange={(e) =>
-                      handleUpdateSubscription(
-                        user.id,
-                        e.target.value as "free" | "monthly" | "yearly",
-                      )
-                    }
+                    onChange={(e) => {
+                      const nextPlan = e.target.value as
+                        | "free"
+                        | "monthly"
+                        | "yearly";
+                      setConfirmAction({
+                        title: "Update subscription plan?",
+                        description: `Change ${user.email || user.full_name || user.id} to ${nextPlan.toUpperCase()}?`,
+                        confirmLabel: "Update plan",
+                        tone: "warning",
+                        onConfirm: () =>
+                          handleUpdateSubscription(user.id, nextPlan),
+                      });
+                    }}
                   >
                     <option value="free">{content.plans.free}</option>
                     <option value="monthly">{content.plans.monthly}</option>
@@ -1064,7 +1545,15 @@ export const AdminPanel = ({
 
                   {user.status !== "approved" && (
                     <button
-                      onClick={() => handleApproveUser(user.id)}
+                      onClick={() =>
+                        setConfirmAction({
+                          title: "Approve user?",
+                          description: `Approve ${user.email || user.full_name || user.id}?`,
+                          confirmLabel: "Approve",
+                          tone: "warning",
+                          onConfirm: () => handleApproveUser(user.id),
+                        })
+                      }
                       className="flex flex-1 items-center justify-center gap-2 rounded-2xl bg-orange-600 px-4 py-3 text-[11px] font-black uppercase tracking-widest text-white transition-all hover:bg-orange-700 active:scale-95 sm:flex-none sm:px-6"
                     >
                       <UserCheck size={16} /> {content.actions.approveNow}
@@ -1072,7 +1561,15 @@ export const AdminPanel = ({
                   )}
 
                   <button
-                    onClick={() => setDeleteId(user.id)}
+                    onClick={() =>
+                      setConfirmAction({
+                        title: "Delete user?",
+                        description: `This will permanently remove ${user.email || user.full_name || user.id}.`,
+                        confirmLabel: "Delete",
+                        tone: "danger",
+                        onConfirm: () => handleDeleteUser(user.id),
+                      })
+                    }
                     className="rounded-xl bg-gray-100 p-3 text-gray-400 transition-all hover:bg-red-50 hover:text-red-500 active:scale-90 dark:bg-slate-700 dark:text-slate-400 dark:hover:bg-red-500/10"
                   >
                     <Trash2 size={16} />
@@ -1081,6 +1578,29 @@ export const AdminPanel = ({
               </div>
             ))
           )}
+        </div>
+        <div className="flex items-center justify-between gap-3 border-t border-gray-100 px-6 py-4 text-xs font-black uppercase tracking-widest text-gray-500 dark:border-slate-700 sm:px-8">
+          <span>
+            Page {userPage} of {totalUserPages}
+          </span>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => setUserPage((p) => Math.max(1, p - 1))}
+              disabled={userPage <= 1}
+              className="rounded-xl bg-gray-100 px-3 py-2 disabled:opacity-40 dark:bg-slate-700"
+            >
+              Prev
+            </button>
+            <button
+              type="button"
+              onClick={() => setUserPage((p) => Math.min(totalUserPages, p + 1))}
+              disabled={userPage >= totalUserPages}
+              className="rounded-xl bg-gray-100 px-3 py-2 disabled:opacity-40 dark:bg-slate-700"
+            >
+              Next
+            </button>
+          </div>
         </div>
       </div>
 
@@ -1157,45 +1677,114 @@ export const AdminPanel = ({
               <div className="mb-6 flex flex-wrap gap-3">
                 {selectedUser.status !== "approved" && (
                   <button
-                    onClick={() => {
-                      handleApproveUser(selectedUser.id);
-                      setSelectedUser({ ...selectedUser, status: "approved" });
-                    }}
+                    onClick={() =>
+                      setConfirmAction({
+                        title: "Approve user?",
+                        description: `Approve ${selectedUser.email || selectedUser.full_name || selectedUser.id}?`,
+                        confirmLabel: "Approve",
+                        tone: "warning",
+                        onConfirm: async () => {
+                          await handleApproveUser(selectedUser.id);
+                          setSelectedUser(null);
+                        },
+                      })
+                    }
                     className="flex items-center gap-2 rounded-xl bg-green-600 px-4 py-3 text-sm font-bold text-white transition-all hover:bg-green-700"
                   >
                     <Check size={18} /> {content.actions.approveUser}
                   </button>
                 )}
 
-                <select
-                  value={selectedUser.subscription_plan || "free"}
-                  onChange={(e) => {
-                    const newPlan = e.target.value as
-                      | "free"
-                      | "monthly"
-                      | "yearly";
-                    handleUpdateSubscription(selectedUser.id, newPlan);
-                    setSelectedUser({
-                      ...selectedUser,
-                      subscription_plan: newPlan,
-                    });
-                  }}
-                  className="rounded-xl border border-gray-200 px-4 py-3 text-sm font-bold focus:border-gray-900 focus:outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
-                >
-                  <option value="free">{content.plans.free}</option>
-                  <option value="monthly">{content.plans.monthly}</option>
-                  <option value="yearly">{content.plans.yearly}</option>
-                </select>
+                <div className="flex items-center gap-2">
+                  <select
+                    value={selectedUserPlanDraft}
+                    onChange={(e) =>
+                      setSelectedUserPlanDraft(
+                        e.target.value as "free" | "monthly" | "yearly",
+                      )
+                    }
+                    className="rounded-xl border border-gray-200 px-4 py-3 text-sm font-bold focus:border-gray-900 focus:outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+                  >
+                    <option value="free">{content.plans.free}</option>
+                    <option value="monthly">{content.plans.monthly}</option>
+                    <option value="yearly">{content.plans.yearly}</option>
+                  </select>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setConfirmAction({
+                        title: "Update subscription plan?",
+                        description: `Change ${selectedUser.email || selectedUser.full_name || selectedUser.id} to ${selectedUserPlanDraft.toUpperCase()}?`,
+                        confirmLabel: "Update plan",
+                        tone: "warning",
+                        onConfirm: async () => {
+                          await handleUpdateSubscription(
+                            selectedUser.id,
+                            selectedUserPlanDraft,
+                          );
+                          setSelectedUser(null);
+                        },
+                      })
+                    }
+                    className="rounded-xl bg-sky-600 px-4 py-3 text-sm font-bold text-white transition-all hover:bg-sky-700"
+                  >
+                    Update plan
+                  </button>
+                </div>
 
-                <button
-                  onClick={() => {
-                    setDeleteId(selectedUser.id);
-                    setSelectedUser(null);
-                  }}
-                  className="flex items-center gap-2 rounded-xl bg-red-600 px-4 py-3 text-sm font-bold text-white transition-all hover:bg-red-700"
-                >
-                  <Trash2 size={18} /> {content.actions.deleteUser}
-                </button>
+                <div className="flex items-center gap-2">
+                  <select
+                    value={selectedUserRoleDraft}
+                    onChange={(e) =>
+                      setSelectedUserRoleDraft(
+                        e.target.value === "admin" ? "admin" : "user",
+                      )
+                    }
+                    className="rounded-xl border border-gray-200 px-4 py-3 text-sm font-bold focus:border-gray-900 focus:outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+                  >
+                    <option value="user">User</option>
+                    <option value="admin">Admin</option>
+                  </select>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setConfirmAction({
+                        title: "Update role?",
+                        description: `Change ${selectedUser.email || selectedUser.full_name || selectedUser.id} to ${selectedUserRoleDraft.toUpperCase()}?`,
+                        confirmLabel: "Update role",
+                        tone: "warning",
+                        onConfirm: async () => {
+                          await onUpdateUserRole(
+                            selectedUser.id,
+                            selectedUserRoleDraft,
+                          );
+                          setSelectedUser(null);
+                        },
+                      })
+                    }
+                    className="rounded-xl bg-indigo-600 px-4 py-3 text-sm font-bold text-white transition-all hover:bg-indigo-700"
+                  >
+                    Update role
+                  </button>
+                </div>
+
+                  <button
+                    onClick={() =>
+                      setConfirmAction({
+                        title: "Delete user?",
+                        description: `This will permanently remove ${selectedUser.email || selectedUser.full_name || selectedUser.id}.`,
+                        confirmLabel: "Delete",
+                        tone: "danger",
+                        onConfirm: async () => {
+                          await handleDeleteUser(selectedUser.id);
+                          setSelectedUser(null);
+                        },
+                      })
+                    }
+                    className="flex items-center gap-2 rounded-xl bg-red-600 px-4 py-3 text-sm font-bold text-white transition-all hover:bg-red-700"
+                  >
+                    <Trash2 size={18} /> {content.actions.deleteUser}
+                  </button>
               </div>
 
               <div className="border-t border-gray-100 pt-6 dark:border-slate-700">

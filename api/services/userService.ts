@@ -83,6 +83,22 @@ export const updateUserSubscription = async (
   if (error) throw error;
 };
 
+export const updateUserRole = async (
+  supabase: SupabaseClient,
+  targetUid: string,
+  role: "user" | "admin",
+) => {
+  const { data, error } = await supabase
+    .from("profiles")
+    .update({ role })
+    .eq("id", targetUid)
+    .select("*")
+    .single();
+
+  if (error) throw error;
+  return data;
+};
+
 export const deleteUser = async (supabase: SupabaseClient, targetUid: string) => {
   // Delete associated links first
   await supabase.from("links").delete().eq("user_id", targetUid);

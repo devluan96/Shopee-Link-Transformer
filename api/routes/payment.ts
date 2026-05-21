@@ -6,8 +6,23 @@ import { AuthenticatedRequest, PaidSubscriptionPlan } from "../types/index.js";
 import * as paymentService from "../services/paymentService.js";
 import * as manualPaymentService from "../services/manualPaymentService.js";
 import * as userService from "../services/userService.js";
+import * as securityService from "../services/securityService.js";
 
 const router = Router();
+
+const logAdminAction = async (
+  req: AuthenticatedRequest,
+  action: string,
+  payload?: Record<string, unknown>,
+) => {
+  const supabase = getSupabase();
+  await securityService.logAdminAction(supabase, {
+    actorUserId: req.authUser?.id || null,
+    actorEmail: req.authUser?.email || req.authProfile?.email || null,
+    action,
+    metadata: payload,
+  });
+};
 
 type ZaloPayStatusHandlerDeps = {
   queryZaloPayOrder: typeof paymentService.queryZaloPayOrder;
@@ -263,6 +278,12 @@ router.post(
         adminUserId,
       );
 
+      await logAdminAction(req, "confirm_payment_request", {
+        payment_request_id: paymentRequestId,
+        user_id: request.user_id,
+        plan: request.plan,
+      });
+
       return res.json(request);
     } catch (e: any) {
       return res.status(500).json({ error: e.message });
@@ -288,6 +309,12 @@ router.post(
         paymentRequestId,
         adminUserId,
       );
+
+      await logAdminAction(req, "reject_payment_request", {
+        payment_request_id: paymentRequestId,
+        user_id: request.user_id,
+        plan: request.plan,
+      });
 
       return res.json(request);
     } catch (e: any) {

@@ -203,6 +203,18 @@ router.post(
         expiresAt:
           typeof req.body?.expiresAt === "string" ? req.body.expiresAt : null,
       });
+      await securityService.logAdminAction(supabase, {
+        actorUserId,
+        actorEmail: req.authUser?.email || req.authProfile?.email || null,
+        action: "block_ip",
+        targetId: item.id,
+        targetType: "blocked_ip",
+        metadata: {
+          ip_address: item.ip_address,
+          reason: item.reason || null,
+          expires_at: item.expires_at || null,
+        },
+      });
       return res.json(item);
     } catch (e: any) {
       return res.status(400).json({ error: e.message });
@@ -214,7 +226,7 @@ router.delete(
   "/admin/security/blocked-ips/:blockedIpId",
   authenticate,
   checkAdmin,
-  async (req, res) => {
+  async (req: AuthenticatedRequest, res) => {
     try {
       const blockedIpId = req.params.blockedIpId;
       if (!blockedIpId) {
@@ -223,6 +235,13 @@ router.delete(
 
       const supabase = getSupabase();
       const result = await securityService.unblockIp(supabase, blockedIpId);
+      await securityService.logAdminAction(supabase, {
+        actorUserId: req.authUser?.id || null,
+        actorEmail: req.authUser?.email || req.authProfile?.email || null,
+        action: "unblock_ip",
+        targetId: blockedIpId,
+        targetType: "blocked_ip",
+      });
       return res.json(result);
     } catch (e: any) {
       return res.status(400).json({ error: e.message });

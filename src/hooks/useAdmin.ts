@@ -32,6 +32,10 @@ export interface AdminActions {
     targetUid: string,
     plan: "free" | "monthly" | "yearly",
   ) => Promise<void>;
+  handleUpdateUserRole: (
+    targetUid: string,
+    role: "user" | "admin",
+  ) => Promise<void>;
   handleDeleteUser: (targetUid: string) => Promise<void>;
   handleConfirmPaymentRequest: (paymentRequestId: string) => Promise<void>;
   handleRejectPaymentRequest: (paymentRequestId: string) => Promise<void>;
@@ -66,11 +70,16 @@ export function useAdmin({
     setAdminLoading(true);
     try {
       const response = await fetchWithAuth("/api/v1/admin/users");
-      const data = await response.json();
-      setAllUsers(data);
+      const data = await response.json().catch(() => null);
+      if (!response.ok) {
+        throw new Error(data?.error || "Failed to load users");
+      }
+      setAllUsers(Array.isArray(data) ? data : []);
       setAdminDirty(false);
     } catch (e) {
       console.error(e);
+      setAdminDirty(false);
+      toast.error(e instanceof Error ? e.message : "Failed to load users");
     } finally {
       setAdminLoading(false);
     }
@@ -81,11 +90,16 @@ export function useAdmin({
     setPaymentRequestsLoading(true);
     try {
       const response = await fetchWithAuth("/api/v1/admin/payment-requests");
-      const data = await response.json();
+      const data = await response.json().catch(() => null);
+      if (!response.ok) {
+        throw new Error(data?.error || "Failed to load payment requests");
+      }
       setPaymentRequests(Array.isArray(data) ? data : []);
     } catch (e) {
       console.error(e);
-      setPaymentRequests([]);
+      toast.error(
+        e instanceof Error ? e.message : "Failed to load payment requests",
+      );
     } finally {
       setPaymentRequestsLoading(false);
     }
@@ -149,6 +163,31 @@ export function useAdmin({
       } catch (e) {
         console.error(e);
         toast.error("Lỗi hệ thống khi cập nhật gói");
+      }
+    },
+    [user, isAdminRole, fetchWithAuth, fetchAllUsers],
+  );
+
+  const handleUpdateUserRole = useCallback(
+    async (targetUid: string, role: "user" | "admin") => {
+      if (!user || !isAdminRole) return;
+      try {
+        const response = await fetchWithAuth(
+          `/api/v1/admin/users/${targetUid}/role`,
+          {
+            method: "POST",
+            body: JSON.stringify({ role }),
+          },
+        );
+        const data = await response.json().catch(() => null);
+        if (!response.ok) {
+          throw new Error(data?.error || "Failed to update user role");
+        }
+        await fetchAllUsers();
+        toast.success(`Updated role to ${role.toUpperCase()}`);
+      } catch (e) {
+        console.error(e);
+        toast.error(e instanceof Error ? e.message : "Failed to update user role");
       }
     },
     [user, isAdminRole, fetchWithAuth, fetchAllUsers],
@@ -233,7 +272,10 @@ export function useAdmin({
     setOutputDomainsLoading(true);
     try {
       const response = await fetchWithAuth("/api/v1/settings/output-domains");
-      const data = await response.json();
+      const data = await response.json().catch(() => null);
+      if (!response.ok) {
+        throw new Error(data?.error || "Failed to load output domains");
+      }
       setOutputDomains(
         Array.isArray(data?.domains) && data.domains.length
           ? data.domains
@@ -241,6 +283,9 @@ export function useAdmin({
       );
     } catch (e) {
       console.error(e);
+      toast.error(
+        e instanceof Error ? e.message : "Failed to load output domains",
+      );
     } finally {
       setOutputDomainsLoading(false);
     }
@@ -256,12 +301,12 @@ export function useAdmin({
           body: JSON.stringify({ domains }),
         },
       );
-      const data = await response.json();
+      const data = await response.json().catch(() => null);
       if (!response.ok) {
-        throw new Error(data.error || "Không thể cập nhật domains");
+        throw new Error(data?.error || "Failed to update output domains");
       }
-      setOutputDomains(data.domains || DEFAULT_OUTPUT_DOMAINS);
-      toast.success("Đã cập nhật danh sách domain đầu ra");
+      setOutputDomains(data?.domains || DEFAULT_OUTPUT_DOMAINS);
+      toast.success("Updated output domains");
     },
     [user, isAdminRole, fetchWithAuth],
   );
@@ -287,7 +332,7 @@ export function useAdmin({
       user &&
       isAdminRole &&
       activeTab === "admin" &&
-      (adminDirty || allUsers.length === 0)
+      adminDirty
     ) {
       fetchAllUsers();
       fetchOutputDomains();
@@ -298,7 +343,6 @@ export function useAdmin({
     isAdminRole,
     activeTab,
     adminDirty,
-    allUsers.length,
     fetchAllUsers,
     fetchOutputDomains,
     fetchPaymentRequests,
@@ -316,6 +360,7 @@ export function useAdmin({
     fetchPaymentRequests,
     handleApproveUser,
     handleUpdateSubscription,
+    handleUpdateUserRole,
     handleDeleteUser,
     handleConfirmPaymentRequest,
     handleRejectPaymentRequest,

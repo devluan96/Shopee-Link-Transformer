@@ -505,12 +505,15 @@ export default function App() {
   const {
     allUsers,
     adminLoading,
+    fetchAllUsers,
     paymentRequests,
     paymentRequestsLoading,
+    fetchPaymentRequests,
     outputDomains,
     outputDomainsLoading,
     handleApproveUser,
     handleUpdateSubscription,
+    handleUpdateUserRole,
     handleDeleteUser,
     handleConfirmPaymentRequest,
     handleRejectPaymentRequest,
@@ -532,6 +535,7 @@ export default function App() {
     adminAccessLogs,
     blockedIps,
     adminSecurityLoading,
+    refreshAdminSecurity,
     blockIp,
     unblockIp,
   } = useSecurity({
@@ -1169,14 +1173,18 @@ export default function App() {
             ))}
 
           {activeTab === "admin" && isAdminRole && (
-            <AdminPanel
-              allUsers={allUsers.filter(
-                (u) => u.id !== user?.id && u.role !== "admin",
-              )}
-              adminLoading={adminLoading}
-              paymentRequests={paymentRequests}
-              paymentRequestsLoading={paymentRequestsLoading}
-              adminAccessLogs={adminAccessLogs}
+          <AdminPanel
+            allUsers={allUsers.filter(
+              (u) => u.id !== user?.id,
+            )}
+            adminLoading={adminLoading}
+            onRefreshUsers={fetchAllUsers}
+            onRefreshPayments={fetchPaymentRequests}
+            onRefreshSecurity={refreshAdminSecurity}
+            onUpdateUserRole={handleUpdateUserRole}
+            paymentRequests={paymentRequests}
+            paymentRequestsLoading={paymentRequestsLoading}
+            adminAccessLogs={adminAccessLogs}
               blockedIps={blockedIps}
               adminSecurityLoading={adminSecurityLoading}
               outputDomains={outputDomains}
