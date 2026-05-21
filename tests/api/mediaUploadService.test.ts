@@ -31,18 +31,15 @@ test("buildMediaUploadPlan skips cloudinary when DISABLE_CLOUDINARY_UPLOAD is en
       CLOUDINARY_CLOUD_NAME: "demo-cloud",
       CLOUDINARY_API_KEY: "demo-key",
       CLOUDINARY_API_SECRET: "demo-secret",
-      IMAGEKIT_PUBLIC_KEY: "demo-public",
-      IMAGEKIT_PRIVATE_KEY: "demo-private",
-      IMAGEKIT_URL_ENDPOINT: "https://ik.example.com",
       SUPABASE_UPLOAD_BUCKET: "media",
-      MEDIA_UPLOAD_PROVIDER_ORDER: "cloudinary,imagekit,supabase",
+      MEDIA_UPLOAD_PROVIDER_ORDER: "cloudinary,supabase",
       DISABLE_CLOUDINARY_UPLOAD: "true",
     },
     () => {
     const providers = buildMediaUploadPlan("video", { fileSize: 1024 });
     assert.deepEqual(
       providers.map((provider) => provider.provider),
-      ["imagekit", "supabase"],
+      ["supabase"],
     );
     },
   );
@@ -57,11 +54,8 @@ test("buildMediaUploadPlan returns fallback cloudinary accounts before other pro
       CLOUDINARY_CLOUD_NAME_2: "demo-cloud-2",
       CLOUDINARY_API_KEY_2: "demo-key-2",
       CLOUDINARY_API_SECRET_2: "demo-secret-2",
-      IMAGEKIT_PUBLIC_KEY: "demo-public",
-      IMAGEKIT_PRIVATE_KEY: "demo-private",
-      IMAGEKIT_URL_ENDPOINT: "https://ik.example.com",
       SUPABASE_UPLOAD_BUCKET: "media",
-      MEDIA_UPLOAD_PROVIDER_ORDER: "cloudinary,imagekit,supabase",
+      MEDIA_UPLOAD_PROVIDER_ORDER: "cloudinary,supabase",
       DISABLE_CLOUDINARY_UPLOAD: "false",
     },
     () => {
@@ -75,7 +69,6 @@ test("buildMediaUploadPlan returns fallback cloudinary accounts before other pro
         [
           "cloudinary:demo-cloud-1",
           "cloudinary:demo-cloud-2",
-          "imagekit",
           "supabase",
         ],
       );

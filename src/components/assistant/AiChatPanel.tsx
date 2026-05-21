@@ -217,7 +217,7 @@ export function AiChatPanel({ fetchWithAuth, userName }: AiChatPanelProps) {
         />
       )}
 
-      <div className="pointer-events-none fixed bottom-4 right-4 z-50 sm:bottom-6 sm:right-6">
+      <div className="pointer-events-none fixed bottom-3 right-3 z-50 sm:bottom-6 sm:right-6">
         <div className="pointer-events-auto flex flex-col items-end gap-3">
           {open && (
             <div className="flex h-[min(78vh,720px)] w-[min(calc(100vw-1rem),420px)] flex-col overflow-hidden rounded-4xl border border-orange-100 bg-white shadow-[0_28px_90px_rgba(15,23,42,0.22)] dark:border-slate-700 dark:bg-slate-800 sm:w-105">
@@ -396,15 +396,15 @@ export function AiChatPanel({ fetchWithAuth, userName }: AiChatPanelProps) {
             type="button"
             aria-label={open ? t("assistant.close") : t("assistant.open")}
             onClick={() => setOpen((prev) => !prev)}
-            className={`group flex items-center gap-3 rounded-full border border-orange-300 bg-[linear-gradient(135deg,#f97316,#ea580c)] px-4 py-3 text-white shadow-[0_18px_40px_rgba(234,88,12,0.35)] transition-all hover:-translate-y-0.5 hover:shadow-[0_22px_48px_rgba(234,88,12,0.45)] ${
-              open ? "pr-3" : ""
+            className={`group flex items-center justify-center gap-2 rounded-[1.35rem] border border-orange-300/80 bg-[linear-gradient(155deg,rgba(251,146,60,0.96),rgba(234,88,12,0.96))] p-2.5 text-white shadow-[0_12px_28px_rgba(234,88,12,0.28)] transition-all hover:-translate-y-0.5 hover:shadow-[0_16px_34px_rgba(234,88,12,0.34)] sm:gap-3 sm:rounded-full sm:px-4 sm:py-3 sm:shadow-[0_18px_40px_rgba(234,88,12,0.35)] sm:hover:shadow-[0_22px_48px_rgba(234,88,12,0.45)] ${
+              open ? "sm:pr-3" : ""
             }`}
           >
-            <div className="flex h-11 w-11 items-center justify-center rounded-full bg-white/18">
+            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-white/16 sm:h-11 sm:w-11 sm:bg-white/18">
               {open ? (
-                <PanelRightClose size={20} />
+                <PanelRightClose size={18} />
               ) : (
-                <MessageCircle size={20} />
+                <MessageCircle size={18} />
               )}
             </div>
             <div className="hidden text-left sm:block">

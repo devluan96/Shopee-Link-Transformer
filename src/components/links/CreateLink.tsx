@@ -116,7 +116,7 @@ interface CreateLinkProps {
   uploadingVideo: boolean;
   videoUploadProgress: number;
   videoUploadSuccess: boolean;
-  videoUploadProvider?: "cloudinary" | "imagekit" | "supabase" | null;
+  videoUploadProvider?: "cloudinary" | "supabase" | null;
   videoInputRef: RefObject<HTMLInputElement | null>;
   handleVideoUpload: (e: ChangeEvent<HTMLInputElement>) => void;
   handleVideoFileUpload: (file: File) => Promise<void>;
@@ -124,7 +124,7 @@ interface CreateLinkProps {
   uploadingThumbnail: boolean;
   thumbnailUploadProgress: number;
   thumbnailUploadSuccess: boolean;
-  thumbnailUploadProvider?: "cloudinary" | "imagekit" | "supabase" | null;
+  thumbnailUploadProvider?: "cloudinary" | "supabase" | null;
   handleThumbnailUpload: (e: ChangeEvent<HTMLInputElement>) => Promise<void>;
   handleThumbnailFileUpload: (file: File) => Promise<void>;
   handleConvert: (e: FormEvent) => void;
@@ -288,13 +288,11 @@ export const CreateLink = ({
         });
   const uploadProgressOffset = 87.96 - (87.96 * videoUploadProgress) / 100;
   const getProviderLabel = (
-    provider?: "cloudinary" | "imagekit" | "supabase" | null,
+    provider?: "cloudinary" | "supabase" | null,
   ) => {
     switch (provider) {
       case "cloudinary":
         return "Cloudinary";
-      case "imagekit":
-        return "ImageKit";
       case "supabase":
         return "Supabase";
       default:

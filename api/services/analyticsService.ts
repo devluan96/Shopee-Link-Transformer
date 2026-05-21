@@ -8,6 +8,307 @@ import {
 import { normalizeTrafficSource } from "../utils/normalizers.js";
 import { getAccessibleWorkspaceIds } from "./workspaceService.js";
 
+type DailyClicksPoint = { date: string; clicks: number };
+export type AnalyticsFilterSource = "all" | "shopee" | "tiktok";
+export type AnalyticsFilterPeriod = "today" | "7d" | "30d";
+
+type AnalyticsFilter = {
+  source?: AnalyticsFilterSource;
+  period?: AnalyticsFilterPeriod;
+};
+
+type OutboundEventLike = {
+  link_id?: string | null;
+  destination_url?: string | null;
+  source?: string | null;
+  source_detail?: string | null;
+  referer?: string | null;
+  created_at?: string | null;
+};
+
+type OutboundEventSummary = {
+  totalClicks: number;
+  totalShopeeClicks: number;
+  totalTiktokClicks: number;
+  todayClicks: number;
+  yesterdayClicks: number;
+  todayShopeeClicks: number;
+  todayTiktokClicks: number;
+  last30DaysClicks: number;
+  last30DaysShopeeClicks: number;
+  last30DaysTiktokClicks: number;
+  growthPercentage: number;
+  recentClicks: DailyClicksPoint[];
+  recentShopeeClicks: DailyClicksPoint[];
+  topLinksAllTime: Map<string, number>;
+  topLinksLast30Days: Map<string, number>;
+  trafficSourcesLast30Days: Map<string, number>;
+};
+
+type FocusedAnalyticsSummary = {
+  totalClicks: number;
+  totalShopeeClicks: number;
+  totalTiktokClicks: number;
+  growthPercentage: number;
+  history: DailyClicksPoint[];
+  topLinkCounts: Map<string, number>;
+  trafficSources: Map<string, number>;
+};
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+const toVietnamDateKey = (value: Date | string) => {
+  const date = typeof value === "string" ? new Date(value) : value;
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Ho_Chi_Minh",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(date);
+
+  const year = parts.find((part) => part.type === "year")?.value ?? "1970";
+  const month = parts.find((part) => part.type === "month")?.value ?? "01";
+  const day = parts.find((part) => part.type === "day")?.value ?? "01";
+
+  return `${year}-${month}-${day}`;
+};
+
+const toSortedDailyPoints = (historyMap: Record<string, number>) =>
+  Object.entries(historyMap)
+    .map(([date, total]) => ({ date, clicks: total }))
+    .sort((a, b) => a.date.localeCompare(b.date));
+
+const isSourceMatch = (
+  event: OutboundEventLike,
+  source: AnalyticsFilterSource,
+) => {
+  if (source === "all") return true;
+  if (source === "shopee") return isShopeeDestinationUrl(event.destination_url);
+  if (source === "tiktok") return isTikTokDestinationUrl(event.destination_url);
+  return true;
+};
+
+const getPeriodDayCount = (period: AnalyticsFilterPeriod) => {
+  if (period === "today") return 1;
+  if (period === "7d") return 7;
+  return 30;
+};
+
+const buildDateKeyWindow = (
+  referenceDate: Date,
+  dayCount: number,
+  offsetDays = 0,
+) => {
+  const keys = new Set<string>();
+  for (let index = 0; index < dayCount; index += 1) {
+    const nextDate = new Date(
+      referenceDate.getTime() - (offsetDays + index) * DAY_MS,
+    );
+    keys.add(toVietnamDateKey(nextDate));
+  }
+  return keys;
+};
+
+export const summarizeFocusedAnalytics = (
+  events: OutboundEventLike[],
+  filter: AnalyticsFilter = {},
+  referenceDate = new Date(),
+): FocusedAnalyticsSummary => {
+  const source = filter.source || "all";
+  const period = filter.period || "30d";
+  const dayCount = getPeriodDayCount(period);
+  const currentWindowKeys = buildDateKeyWindow(referenceDate, dayCount, 0);
+  const previousWindowKeys = buildDateKeyWindow(referenceDate, dayCount, dayCount);
+  const historyMap: Record<string, number> = {};
+  const topLinkCounts = new Map<string, number>();
+  const trafficSources = new Map<string, number>();
+
+  let totalClicks = 0;
+  let totalShopeeClicks = 0;
+  let totalTiktokClicks = 0;
+  let previousWindowClicks = 0;
+
+  events.forEach((event) => {
+    if (!isSourceMatch(event, source) || !event.created_at) {
+      return;
+    }
+
+    const createdAt = new Date(event.created_at);
+    if (Number.isNaN(createdAt.getTime())) {
+      return;
+    }
+
+    const dateKey = toVietnamDateKey(event.created_at);
+    if (previousWindowKeys.has(dateKey)) {
+      previousWindowClicks += 1;
+    }
+
+    if (!currentWindowKeys.has(dateKey)) {
+      return;
+    }
+
+    const isShopee = isShopeeDestinationUrl(event.destination_url);
+    const isTikTok = isTikTokDestinationUrl(event.destination_url);
+    const linkId = event.link_id || undefined;
+
+    totalClicks += 1;
+    if (isShopee) totalShopeeClicks += 1;
+    if (isTikTok) totalTiktokClicks += 1;
+
+    historyMap[dateKey] = (historyMap[dateKey] || 0) + 1;
+
+    if (linkId) {
+      topLinkCounts.set(linkId, (topLinkCounts.get(linkId) || 0) + 1);
+    }
+
+    const trafficSource =
+      normalizeTrafficSource(event.source_detail) ||
+      normalizeTrafficSource(event.source) ||
+      normalizeTrafficSource(event.referer) ||
+      "direct";
+    trafficSources.set(
+      trafficSource,
+      (trafficSources.get(trafficSource) || 0) + 1,
+    );
+  });
+
+  const growthPercentage =
+    previousWindowClicks === 0
+      ? totalClicks > 0
+        ? 100
+        : 0
+      : Math.round(
+          ((totalClicks - previousWindowClicks) / previousWindowClicks) * 100,
+        );
+
+  return {
+    totalClicks,
+    totalShopeeClicks,
+    totalTiktokClicks,
+    growthPercentage,
+    history: toSortedDailyPoints(historyMap),
+    topLinkCounts,
+    trafficSources,
+  };
+};
+
+export const summarizeOutboundEvents = (
+  events: OutboundEventLike[],
+  referenceDate = new Date(),
+): OutboundEventSummary => {
+  const today = new Date(referenceDate);
+  const yesterday = new Date(referenceDate.getTime() - 24 * 60 * 60 * 1000);
+  const todayKey = toVietnamDateKey(today);
+  const yesterdayKey = toVietnamDateKey(yesterday);
+  const thirtyDaysAgo = new Date(referenceDate);
+  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+  const sixtyDaysAgo = new Date(referenceDate);
+  sixtyDaysAgo.setDate(sixtyDaysAgo.getDate() - 60);
+
+  const recentClicksMap: Record<string, number> = {};
+  const recentShopeeClicksMap: Record<string, number> = {};
+  const topLinksAllTime = new Map<string, number>();
+  const topLinksLast30Days = new Map<string, number>();
+  const trafficSourcesLast30Days = new Map<string, number>();
+
+  let totalClicks = 0;
+  let totalShopeeClicks = 0;
+  let totalTiktokClicks = 0;
+  let todayClicks = 0;
+  let yesterdayClicks = 0;
+  let todayShopeeClicks = 0;
+  let todayTiktokClicks = 0;
+  let last30DaysClicks = 0;
+  let last30DaysShopeeClicks = 0;
+  let last30DaysTiktokClicks = 0;
+  let previousWindowClicks = 0;
+
+  events.forEach((event) => {
+    const isShopee = isShopeeDestinationUrl(event.destination_url);
+    const isTikTok = isTikTokDestinationUrl(event.destination_url);
+    const linkId = event.link_id || undefined;
+
+    totalClicks += 1;
+    if (isShopee) totalShopeeClicks += 1;
+    if (isTikTok) totalTiktokClicks += 1;
+
+    if (linkId) {
+      topLinksAllTime.set(linkId, (topLinksAllTime.get(linkId) || 0) + 1);
+    }
+
+    if (!event.created_at) return;
+    const createdAt = new Date(event.created_at);
+    if (Number.isNaN(createdAt.getTime()) || createdAt < sixtyDaysAgo) return;
+    const date = toVietnamDateKey(event.created_at);
+
+    if (date === todayKey) {
+      todayClicks += 1;
+      if (isShopee) todayShopeeClicks += 1;
+      if (isTikTok) todayTiktokClicks += 1;
+    } else if (date === yesterdayKey) {
+      yesterdayClicks += 1;
+    }
+
+    if (createdAt >= thirtyDaysAgo) {
+      recentClicksMap[date] = (recentClicksMap[date] || 0) + 1;
+      last30DaysClicks += 1;
+
+      if (isShopee) {
+        recentShopeeClicksMap[date] = (recentShopeeClicksMap[date] || 0) + 1;
+        last30DaysShopeeClicks += 1;
+      }
+
+      if (isTikTok) {
+        last30DaysTiktokClicks += 1;
+      }
+
+      if (linkId) {
+        topLinksLast30Days.set(linkId, (topLinksLast30Days.get(linkId) || 0) + 1);
+      }
+
+      const source =
+        normalizeTrafficSource(event.source_detail) ||
+        normalizeTrafficSource(event.source) ||
+        normalizeTrafficSource(event.referer) ||
+        "direct";
+      trafficSourcesLast30Days.set(
+        source,
+        (trafficSourcesLast30Days.get(source) || 0) + 1,
+      );
+      return;
+    }
+
+    previousWindowClicks += 1;
+  });
+
+  const growthPercentage =
+    previousWindowClicks === 0
+      ? 100
+      : Math.round(
+          ((last30DaysClicks - previousWindowClicks) / previousWindowClicks) *
+            100,
+        );
+
+  return {
+    totalClicks,
+    totalShopeeClicks,
+    totalTiktokClicks,
+    todayClicks,
+    yesterdayClicks,
+    todayShopeeClicks,
+    todayTiktokClicks,
+    last30DaysClicks,
+    last30DaysShopeeClicks,
+    last30DaysTiktokClicks,
+    growthPercentage,
+    recentClicks: toSortedDailyPoints(recentClicksMap),
+    recentShopeeClicks: toSortedDailyPoints(recentShopeeClicksMap),
+    topLinksAllTime,
+    topLinksLast30Days,
+    trafficSourcesLast30Days,
+  };
+};
+
 const getFilteredLinks = async (
   supabase: SupabaseClient,
   userId: string,
@@ -43,6 +344,10 @@ export const getUserStats = async (
     return {
       totalLinks: count,
       totalClicks: 0,
+      todayClicks: 0,
+      yesterdayClicks: 0,
+      todayShopeeClicks: 0,
+      todayTiktokClicks: 0,
       recentClicks: [],
       topLinks: [],
       growthPercentage: 0,
@@ -64,46 +369,9 @@ export const getUserStats = async (
   const clicks = filterRealOutboundEvents(
     await fetchOutboundEventsForLinkIds(supabase, linkIds),
   );
+  const summary = summarizeOutboundEvents(clicks);
 
-  const thirtyDaysAgo = new Date();
-  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-  const sixtyDaysAgo = new Date();
-  sixtyDaysAgo.setDate(sixtyDaysAgo.getDate() - 60);
-
-  const historyMap: Record<string, number> = {};
-  const linkClickMap = new Map<string, number>();
-  let previousWindowClicks = 0;
-  let currentWindowClicks = 0;
-
-  clicks.forEach((click: any) => {
-    if (!click?.link_id) return;
-
-    linkClickMap.set(click.link_id, (linkClickMap.get(click.link_id) || 0) + 1);
-
-    if (!click.created_at) return;
-    const createdAt = new Date(click.created_at);
-    if (Number.isNaN(createdAt.getTime()) || createdAt < sixtyDaysAgo) {
-      return;
-    }
-
-    if (createdAt >= thirtyDaysAgo) {
-      const date = click.created_at.split("T")[0];
-      historyMap[date] = (historyMap[date] || 0) + 1;
-      currentWindowClicks += 1;
-    } else {
-      previousWindowClicks += 1;
-    }
-  });
-
-  const totalClicks = Array.from(linkClickMap.values()).reduce(
-    (sum, value) => sum + value,
-    0,
-  );
-  const recentClicks = Object.entries(historyMap)
-    .map(([date, total]) => ({ date, clicks: total }))
-    .sort((a, b) => a.date.localeCompare(b.date));
-
-  const topLinks = Array.from(linkClickMap.entries())
+  const topLinks = Array.from(summary.topLinksAllTime.entries())
     .map(([id, total]) => ({
       short_code: linkMetaMap.get(id)?.short_code || "",
       slug: linkMetaMap.get(id)?.slug,
@@ -113,26 +381,19 @@ export const getUserStats = async (
     .sort((a, b) => b.clicks - a.clicks)
     .slice(0, 5);
 
-  const growthPercentage =
-    previousWindowClicks === 0
-      ? 100
-      : Math.round(
-          ((currentWindowClicks - previousWindowClicks) / previousWindowClicks) *
-            100,
-        );
-
   return {
     totalLinks: count,
-    totalClicks,
-    totalShopeeClicks: clicks.filter((click: any) =>
-      isShopeeDestinationUrl(click.destination_url),
-    ).length,
-    totalTiktokClicks: clicks.filter((click: any) =>
-      isTikTokDestinationUrl(click.destination_url),
-    ).length,
-    recentClicks,
+    totalClicks: summary.totalClicks,
+    totalShopeeClicks: summary.totalShopeeClicks,
+    totalTiktokClicks: summary.totalTiktokClicks,
+    todayClicks: summary.todayClicks,
+    yesterdayClicks: summary.yesterdayClicks,
+    todayShopeeClicks: summary.todayShopeeClicks,
+    todayTiktokClicks: summary.todayTiktokClicks,
+    recentClicks: summary.recentClicks,
+    recentShopeeClicks: summary.recentShopeeClicks,
     topLinks,
-    growthPercentage,
+    growthPercentage: summary.growthPercentage,
   };
 };
 
@@ -140,6 +401,7 @@ export const getUserAnalytics = async (
   supabase: SupabaseClient,
   userId: string,
   workspaceId?: string,
+  filter: AnalyticsFilter = {},
 ) => {
   const links = await getFilteredLinks(supabase, userId, workspaceId);
 
@@ -153,54 +415,12 @@ export const getUserAnalytics = async (
   }
 
   const linkIds = links.map((l: any) => l.id);
-  const rawClicks = filterRealOutboundEvents(
+  const clicks = filterRealOutboundEvents(
     await fetchOutboundEventsForLinkIds(supabase, linkIds),
   );
-  const clicks = rawClicks;
+  const summary = summarizeFocusedAnalytics(clicks, filter);
 
-  const thirtyDaysAgo = new Date();
-  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-  const sixtyDaysAgo = new Date();
-  sixtyDaysAgo.setDate(sixtyDaysAgo.getDate() - 60);
-
-  const historyMap: Record<string, number> = {};
-  const sourceMap = new Map<string, number>();
-  const linkClickMap = new Map<string, number>();
-  let previousWindowClicks = 0;
-  let currentWindowClicks = 0;
-
-  rawClicks.forEach((click: any) => {
-    const source =
-      normalizeTrafficSource(click.source_detail) ||
-      normalizeTrafficSource(click.source) ||
-      normalizeTrafficSource(click.referer) ||
-      "direct";
-    sourceMap.set(source, (sourceMap.get(source) || 0) + 1);
-  });
-
-  clicks.forEach((click: any) => {
-    if (click.link_id) {
-      linkClickMap.set(click.link_id, (linkClickMap.get(click.link_id) || 0) + 1);
-    }
-
-    if (!click.created_at) return;
-    const createdAt = new Date(click.created_at);
-    if (Number.isNaN(createdAt.getTime()) || createdAt < sixtyDaysAgo) return;
-
-    if (createdAt >= thirtyDaysAgo) {
-      const date = click.created_at.split("T")[0];
-      historyMap[date] = (historyMap[date] || 0) + 1;
-      currentWindowClicks += 1;
-    } else {
-      previousWindowClicks += 1;
-    }
-  });
-
-  const history = Object.entries(historyMap)
-    .map(([date, total]) => ({ date, clicks: total }))
-    .sort((a, b) => a.date.localeCompare(b.date));
-
-  const trafficSources = Array.from(sourceMap.entries())
+  const trafficSources = Array.from(summary.trafficSources.entries())
     .map(([name, value]) => ({ name, value }))
     .sort((a, b) => b.value - a.value);
 
@@ -215,7 +435,7 @@ export const getUserAnalytics = async (
     ]),
   );
 
-  const topLinks = Array.from(linkClickMap.entries())
+  const topLinks = Array.from(summary.topLinkCounts.entries())
     .map(([id, clicks]) => ({
       id,
       short_code: linkMetaMap.get(id)?.short_code || "",
@@ -226,24 +446,12 @@ export const getUserAnalytics = async (
     .sort((a, b) => b.clicks - a.clicks)
     .slice(0, 5);
 
-  const growthPercentage =
-    previousWindowClicks === 0
-      ? 100
-      : Math.round(
-          ((currentWindowClicks - previousWindowClicks) / previousWindowClicks) *
-            100,
-        );
-
   return {
-    history,
+    history: summary.history,
     topLinks,
     trafficSources,
-    growthPercentage,
-    totalShopeeClicks: clicks.filter((click: any) =>
-      isShopeeDestinationUrl(click.destination_url),
-    ).length,
-    totalTiktokClicks: clicks.filter((click: any) =>
-      isTikTokDestinationUrl(click.destination_url),
-    ).length,
+    growthPercentage: summary.growthPercentage,
+    totalShopeeClicks: summary.totalShopeeClicks,
+    totalTiktokClicks: summary.totalTiktokClicks,
   };
 };

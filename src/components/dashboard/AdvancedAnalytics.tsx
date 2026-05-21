@@ -20,6 +20,7 @@ import {
 } from "recharts";
 import { toast } from "sonner";
 import { useLocale } from "@/src/hooks/useLocale";
+import { AnalyticsFocusContext } from "@/src/types";
 
 interface GeographicData {
   countries: Array<{ name: string; code?: string; clicks: number }>;
@@ -47,6 +48,7 @@ interface AdvancedAnalyticsProps {
     init?: RequestInit,
   ) => Promise<Response>;
   currentWorkspaceId?: string;
+  focusContext?: AnalyticsFocusContext | null;
 }
 
 const COLORS = [
@@ -69,6 +71,7 @@ const mutedClassName = "text-gray-500 dark:text-slate-400";
 export const AdvancedAnalytics = ({
   fetchWithAuth,
   currentWorkspaceId,
+  focusContext = null,
 }: AdvancedAnalyticsProps) => {
   const { t } = useLocale();
   const [activeTab, setActiveTab] = useState<"geo" | "device" | "time">(
@@ -87,13 +90,22 @@ export const AdvancedAnalytics = ({
     t("analytics.advanced.common.tooltipLabel"),
   ];
 
-  const buildWorkspaceQuery = () =>
-    currentWorkspaceId
-      ? `workspaceId=${encodeURIComponent(currentWorkspaceId)}`
-      : "";
+  const buildAnalyticsQuery = () => {
+    const params = new URLSearchParams();
+    if (currentWorkspaceId) {
+      params.set("workspaceId", currentWorkspaceId);
+    }
+    if (focusContext?.source) {
+      params.set("source", focusContext.source);
+    }
+    if (focusContext?.period) {
+      params.set("period", focusContext.period);
+    }
+    return params.toString();
+  };
 
   const fetchGeoData = async () => {
-    const query = buildWorkspaceQuery();
+    const query = buildAnalyticsQuery();
     const res = await fetchWithAuth(
       `/api/v1/user/analytics/geographic${query ? `?${query}` : ""}`,
     );
@@ -101,7 +113,7 @@ export const AdvancedAnalytics = ({
   };
 
   const fetchDeviceData = async () => {
-    const query = buildWorkspaceQuery();
+    const query = buildAnalyticsQuery();
     const res = await fetchWithAuth(
       `/api/v1/user/analytics/devices${query ? `?${query}` : ""}`,
     );
@@ -109,16 +121,16 @@ export const AdvancedAnalytics = ({
   };
 
   const fetchTimeData = async () => {
-    const query = buildWorkspaceQuery();
+    const query = buildAnalyticsQuery();
     const res = await fetchWithAuth(
-      `/api/v1/user/analytics/time?days=30${query ? `&${query}` : ""}`,
+      `/api/v1/user/analytics/time${query ? `?${query}` : ""}`,
     );
     setTimeData(await res.json());
   };
 
   const exportCSV = async (format: "clicks" | "summary") => {
     try {
-      const query = buildWorkspaceQuery();
+      const query = buildAnalyticsQuery();
       const res = await fetchWithAuth(
         `/api/v1/user/analytics/export?format=${format}${query ? `&${query}` : ""}`,
       );
@@ -142,7 +154,7 @@ export const AdvancedAnalytics = ({
     setDeviceData(null);
     setTimeData(null);
     setLoading(false);
-  }, [currentWorkspaceId]);
+  }, [currentWorkspaceId, focusContext?.source, focusContext?.period]);
 
   useEffect(() => {
     const run = async () => {
@@ -165,7 +177,7 @@ export const AdvancedAnalytics = ({
     };
 
     run();
-  }, [activeTab, currentWorkspaceId]);
+  }, [activeTab, currentWorkspaceId, focusContext?.source, focusContext?.period]);
 
   const renderLoader = (colorClass: string) => (
     <div className="flex h-64 items-center justify-center">

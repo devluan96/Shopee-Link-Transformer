@@ -4,7 +4,7 @@ import { CLOUDINARY_UPLOAD_FOLDER } from "../config/constants.js";
 import type { SupabaseClient } from "../config/supabase.js";
 
 export type MediaUploadResourceType = "image" | "video" | "auto";
-export type MediaUploadProvider = "cloudinary" | "imagekit" | "supabase";
+export type MediaUploadProvider = "cloudinary" | "supabase";
 
 export interface CloudinaryUploadPlan {
   provider: "cloudinary";
@@ -15,19 +15,6 @@ export interface CloudinaryUploadPlan {
   folder: string;
   timestamp: number;
   signature: string;
-}
-
-export interface ImageKitUploadPlan {
-  provider: "imagekit";
-  resourceType: MediaUploadResourceType;
-  uploadUrl: string;
-  publicKey: string;
-  urlEndpoint: string;
-  folder: string;
-  token: string;
-  expire: number;
-  signature: string;
-  useUniqueFileName: boolean;
 }
 
 export interface SupabaseUploadPlan {
@@ -41,7 +28,6 @@ export interface SupabaseUploadPlan {
 
 export type MediaUploadPlan =
   | CloudinaryUploadPlan
-  | ImageKitUploadPlan
   | SupabaseUploadPlan;
 
 type MediaUploadFileMeta = {
@@ -59,7 +45,6 @@ type SupabaseUploadResult = {
 
 const DEFAULT_PROVIDER_ORDER: MediaUploadProvider[] = [
   "cloudinary",
-  "imagekit",
   "supabase",
 ];
 
@@ -108,9 +93,7 @@ const normalizeProviderOrder = (): MediaUploadProvider[] => {
     .map((value) => value.trim().toLowerCase())
     .filter(
       (value): value is MediaUploadProvider =>
-        value === "cloudinary" ||
-        value === "imagekit" ||
-        value === "supabase",
+        value === "cloudinary" || value === "supabase",
     )
     .filter((value) => {
       if (seen.has(value)) return false;
@@ -120,9 +103,6 @@ const normalizeProviderOrder = (): MediaUploadProvider[] => {
 
   return normalized.length ? normalized : DEFAULT_PROVIDER_ORDER;
 };
-
-const getImageKitUploadFolder = () =>
-  process.env.IMAGEKIT_UPLOAD_FOLDER?.trim() || "/hotsnew";
 
 const getSupabaseUploadFolder = (resourceType: MediaUploadResourceType) => {
   const configured = process.env.SUPABASE_UPLOAD_FOLDER?.trim();
@@ -172,38 +152,6 @@ const getCloudinaryPlans = (
   );
 };
 
-const getImageKitPlan = (
-  resourceType: MediaUploadResourceType,
-): ImageKitUploadPlan | null => {
-  const publicKey = process.env.IMAGEKIT_PUBLIC_KEY?.trim();
-  const privateKey = process.env.IMAGEKIT_PRIVATE_KEY?.trim();
-  const urlEndpoint = process.env.IMAGEKIT_URL_ENDPOINT?.trim();
-
-  if (!publicKey || !privateKey || !urlEndpoint) {
-    return null;
-  }
-
-  const token = crypto.randomUUID();
-  const expire = Math.floor(Date.now() / 1000) + 30 * 60;
-  const signature = crypto
-    .createHmac("sha1", privateKey)
-    .update(`${token}${expire}`)
-    .digest("hex");
-
-  return {
-    provider: "imagekit",
-    resourceType,
-    uploadUrl: "https://upload.imagekit.io/api/v1/files/upload",
-    publicKey,
-    urlEndpoint,
-    folder: getImageKitUploadFolder(),
-    token,
-    expire,
-    signature,
-    useUniqueFileName: true,
-  };
-};
-
 const getSupabaseBucket = (resourceType: MediaUploadResourceType) => {
   if (resourceType === "video") {
     return (
@@ -251,11 +199,9 @@ export const buildMediaUploadPlan = (
   resourceType: MediaUploadResourceType,
   fileMeta?: MediaUploadFileMeta,
 ): MediaUploadPlan[] => {
-  const imageKitPlan = getImageKitPlan(resourceType);
   const supabasePlan = getSupabasePlan(resourceType, fileMeta);
   const plansByProvider: Record<MediaUploadProvider, MediaUploadPlan[]> = {
     cloudinary: getCloudinaryPlans(resourceType),
-    imagekit: imageKitPlan ? [imageKitPlan] : [],
     supabase: supabasePlan ? [supabasePlan] : [],
   };
 

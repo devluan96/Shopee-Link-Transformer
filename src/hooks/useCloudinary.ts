@@ -2,7 +2,7 @@ import { useCallback } from "react";
 import { useState } from "react";
 
 type ResourceType = "image" | "video" | "auto";
-export type MediaUploadProvider = "cloudinary" | "imagekit" | "supabase";
+export type MediaUploadProvider = "cloudinary" | "supabase";
 
 interface CloudinaryUploadPlan {
   provider: "cloudinary";
@@ -13,19 +13,6 @@ interface CloudinaryUploadPlan {
   folder: string;
   timestamp: number;
   signature: string;
-}
-
-interface ImageKitUploadPlan {
-  provider: "imagekit";
-  resourceType: ResourceType;
-  uploadUrl: string;
-  publicKey: string;
-  urlEndpoint: string;
-  folder: string;
-  token: string;
-  expire: number;
-  signature: string;
-  useUniqueFileName: boolean;
 }
 
 interface SupabaseUploadPlan {
@@ -39,7 +26,6 @@ interface SupabaseUploadPlan {
 
 type MediaUploadPlan =
   | CloudinaryUploadPlan
-  | ImageKitUploadPlan
   | SupabaseUploadPlan;
 
 interface UploadPlanResponse {
@@ -51,14 +37,6 @@ interface CloudinaryUploadResponse {
   secure_url?: string;
   public_id?: string;
   version?: number | string;
-  error?: {
-    message?: string;
-  };
-  message?: string;
-}
-
-interface ImageKitUploadResponse {
-  url?: string;
   error?: {
     message?: string;
   };
@@ -81,13 +59,28 @@ interface UseCloudinaryProps {
 const formatProviderError = (provider: MediaUploadPlan["provider"], message: string) =>
   `${provider}: ${message}`;
 
-const buildImageKitOptimizedVideoUrl = (
-  _plan: ImageKitUploadPlan,
-  rawUrl: string,
+const appendUploadFile = (
+  formData: FormData,
+  file: Blob | File,
+  fileName?: string,
 ) => {
-  const trimmedUrl = rawUrl.trim();
-  if (!trimmedUrl) return "";
-  return trimmedUrl;
+  const normalizedFileName =
+    fileName?.trim() || (file instanceof File ? file.name : "");
+
+  if (normalizedFileName) {
+    formData.append("file", file, normalizedFileName);
+    return;
+  }
+
+  formData.append("file", file);
+};
+
+const parseUploadResponse = <T>(responseText: string): T | null => {
+  try {
+    return JSON.parse(responseText || "null") as T;
+  } catch {
+    return null;
+  }
 };
 
 export function useCloudinary({ fetchWithAuth }: UseCloudinaryProps) {
@@ -170,7 +163,7 @@ export function useCloudinary({ fetchWithAuth }: UseCloudinaryProps) {
       onProgress?: (progress: number) => void,
     ) => {
       const uploadFormData = new FormData();
-      uploadFormData.append("file", file, fileName);
+      appendUploadFile(uploadFormData, file, fileName);
       uploadFormData.append("api_key", plan.apiKey);
       uploadFormData.append("timestamp", String(plan.timestamp));
       uploadFormData.append("signature", plan.signature);
@@ -188,9 +181,9 @@ export function useCloudinary({ fetchWithAuth }: UseCloudinaryProps) {
         };
 
         xhr.onload = () => {
-          const data = JSON.parse(
-            xhr.responseText || "null",
-          ) as CloudinaryUploadResponse;
+          const data =
+            parseUploadResponse<CloudinaryUploadResponse>(xhr.responseText) ||
+            {};
           const uploadedUrl =
             plan.resourceType === "video"
               ? buildSafariSafeVideoUrl(plan, data)
@@ -218,71 +211,6 @@ export function useCloudinary({ fetchWithAuth }: UseCloudinaryProps) {
     [buildSafariSafeVideoUrl],
   );
 
-  const uploadViaImageKit = useCallback(
-    async (
-      plan: ImageKitUploadPlan,
-      file: Blob | File,
-      fileName?: string,
-      onProgress?: (progress: number) => void,
-    ) => {
-      const uploadFormData = new FormData();
-      uploadFormData.append("file", file, fileName);
-      uploadFormData.append(
-        "fileName",
-        fileName || (file instanceof File ? file.name : "upload.bin"),
-      );
-      uploadFormData.append("publicKey", plan.publicKey);
-      uploadFormData.append("signature", plan.signature);
-      uploadFormData.append("token", plan.token);
-      uploadFormData.append("expire", String(plan.expire));
-      uploadFormData.append("folder", plan.folder);
-      uploadFormData.append(
-        "useUniqueFileName",
-        plan.useUniqueFileName ? "true" : "false",
-      );
-
-      return await new Promise<string>((resolve, reject) => {
-        const xhr = new XMLHttpRequest();
-        xhr.open("POST", plan.uploadUrl);
-
-        xhr.upload.onprogress = (event) => {
-          if (!onProgress || !event.lengthComputable) return;
-          onProgress(
-            Math.min(100, Math.round((event.loaded / event.total) * 100)),
-          );
-        };
-
-        xhr.onload = () => {
-          const data = JSON.parse(
-            xhr.responseText || "null",
-          ) as ImageKitUploadResponse;
-          const uploadedUrl =
-            plan.resourceType === "video"
-              ? buildImageKitOptimizedVideoUrl(plan, data?.url || "")
-              : data?.url || "";
-
-          if (xhr.status >= 200 && xhr.status < 300 && uploadedUrl) {
-            if (onProgress) onProgress(100);
-            resolve(uploadedUrl);
-            return;
-          }
-
-          reject(
-            new Error(
-              data?.error?.message ||
-                data?.message ||
-                `ImageKit upload failed (${xhr.status})`,
-            ),
-          );
-        };
-
-        xhr.onerror = () => reject(new Error("ImageKit upload failed"));
-        xhr.send(uploadFormData);
-      });
-    },
-    [],
-  );
-
   const uploadViaSupabaseProxy = useCallback(
     async (
       plan: SupabaseUploadPlan,
@@ -291,7 +219,7 @@ export function useCloudinary({ fetchWithAuth }: UseCloudinaryProps) {
       onProgress?: (progress: number) => void,
     ) => {
       const uploadFormData = new FormData();
-      uploadFormData.append("file", file, fileName);
+      appendUploadFile(uploadFormData, file, fileName);
       uploadFormData.append("resourceType", plan.resourceType);
       uploadFormData.append(
         "fileName",
@@ -332,14 +260,6 @@ export function useCloudinary({ fetchWithAuth }: UseCloudinaryProps) {
           switch (provider.provider) {
             case "cloudinary":
               uploadedUrl = await uploadViaCloudinary(
-                provider,
-                file,
-                fileName,
-                onProgress,
-              );
-              break;
-            case "imagekit":
-              uploadedUrl = await uploadViaImageKit(
                 provider,
                 file,
                 fileName,
@@ -395,7 +315,6 @@ export function useCloudinary({ fetchWithAuth }: UseCloudinaryProps) {
       getMediaUploadPlan,
       markUploadComplete,
       uploadViaCloudinary,
-      uploadViaImageKit,
       uploadViaSupabaseProxy,
     ],
   );

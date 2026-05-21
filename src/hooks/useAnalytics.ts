@@ -1,6 +1,11 @@
 import { useState, useCallback, useEffect } from "react";
 import { User } from "@supabase/supabase-js";
-import { UserProfile, LinkStats, AnalyticsData } from "@/src/types";
+import {
+  AnalyticsData,
+  AnalyticsFocusContext,
+  LinkStats,
+  UserProfile,
+} from "@/src/types";
 import { toast } from "sonner";
 
 interface UseAnalyticsProps {
@@ -14,11 +19,14 @@ interface UseAnalyticsProps {
   ) => Promise<Response>;
   activeTab: string;
   linksLength: number;
+  focusContext?: AnalyticsFocusContext | null;
 }
 
 export interface AnalyticsState {
   stats: LinkStats;
   analyticsData: AnalyticsData;
+  statsUpdatedAt: string | null;
+  analyticsUpdatedAt: string | null;
   statsDirty: boolean;
   analyticsDirty: boolean;
 }
@@ -35,7 +43,12 @@ export interface AnalyticsActions {
 const emptyStats: LinkStats = {
   totalLinks: 0,
   totalClicks: 0,
+  todayClicks: 0,
+  yesterdayClicks: 0,
+  todayShopeeClicks: 0,
+  todayTiktokClicks: 0,
   recentClicks: [],
+  recentShopeeClicks: [],
   topLinks: [],
   growthPercentage: 0,
 };
@@ -54,46 +67,72 @@ export function useAnalytics({
   workspaceResolved = false,
   fetchWithAuth,
   activeTab,
+  focusContext = null,
 }: UseAnalyticsProps): AnalyticsState & AnalyticsActions {
   const [stats, setStats] = useState<LinkStats>(emptyStats);
   const [analyticsData, setAnalyticsData] =
     useState<AnalyticsData>(emptyAnalyticsData);
+  const [statsUpdatedAt, setStatsUpdatedAt] = useState<string | null>(null);
+  const [analyticsUpdatedAt, setAnalyticsUpdatedAt] = useState<string | null>(
+    null,
+  );
   const [statsDirty, setStatsDirty] = useState(true);
   const [analyticsDirty, setAnalyticsDirty] = useState(true);
 
-  const buildWorkspaceQuery = useCallback(() => {
-    if (!currentWorkspaceId) return "";
-    return `?workspaceId=${encodeURIComponent(currentWorkspaceId)}`;
+  const buildStatsQuery = useCallback(() => {
+    const params = new URLSearchParams();
+    if (currentWorkspaceId) {
+      params.set("workspaceId", currentWorkspaceId);
+    }
+    const query = params.toString();
+    return query ? `?${query}` : "";
   }, [currentWorkspaceId]);
+
+  const buildAnalyticsQuery = useCallback(() => {
+    const params = new URLSearchParams();
+    if (currentWorkspaceId) {
+      params.set("workspaceId", currentWorkspaceId);
+    }
+    if (focusContext?.source) {
+      params.set("source", focusContext.source);
+    }
+    if (focusContext?.period) {
+      params.set("period", focusContext.period);
+    }
+    const query = params.toString();
+    return query ? `?${query}` : "";
+  }, [currentWorkspaceId, focusContext?.period, focusContext?.source]);
 
   const fetchStats = useCallback(async () => {
     if (!user) return;
     try {
       const response = await fetchWithAuth(
-        `/api/v1/user/stats${buildWorkspaceQuery()}`,
+        `/api/v1/user/stats${buildStatsQuery()}`,
       );
       const data = await response.json();
       setStats(data);
+      setStatsUpdatedAt(new Date().toISOString());
       setStatsDirty(false);
     } catch (e) {
       console.error(e);
     }
-  }, [user, fetchWithAuth, buildWorkspaceQuery]);
+  }, [user, fetchWithAuth, buildStatsQuery]);
 
   const fetchAnalytics = useCallback(async () => {
     if (!user) return;
     try {
       const res = await fetchWithAuth(
-        `/api/v1/user/analytics${buildWorkspaceQuery()}`,
+        `/api/v1/user/analytics${buildAnalyticsQuery()}`,
       );
       const data = await res.json();
       setAnalyticsData(data);
+      setAnalyticsUpdatedAt(new Date().toISOString());
       setAnalyticsDirty(false);
     } catch (e: any) {
       console.error("Fetch analytics fail:", e?.message || e);
       toast.error("Không thể tải dữ liệu phân tích. Vui lòng thử lại sau.");
     }
-  }, [user, fetchWithAuth, buildWorkspaceQuery]);
+  }, [user, fetchWithAuth, buildAnalyticsQuery]);
 
   const refreshStats = useCallback(() => setStatsDirty(true), []);
   const refreshAnalytics = useCallback(() => setAnalyticsDirty(true), []);
@@ -101,9 +140,17 @@ export function useAnalytics({
   useEffect(() => {
     setStats(emptyStats);
     setAnalyticsData(emptyAnalyticsData);
+    setStatsUpdatedAt(null);
+    setAnalyticsUpdatedAt(null);
     setStatsDirty(!!user);
     setAnalyticsDirty(!!user);
   }, [user?.id, currentWorkspaceId]);
+
+  useEffect(() => {
+    setAnalyticsData(emptyAnalyticsData);
+    setAnalyticsUpdatedAt(null);
+    setAnalyticsDirty(!!user);
+  }, [focusContext?.source, focusContext?.period, user?.id]);
 
   useEffect(() => {
     const isAdminRole =
@@ -130,6 +177,8 @@ export function useAnalytics({
   return {
     stats,
     analyticsData,
+    statsUpdatedAt,
+    analyticsUpdatedAt,
     statsDirty,
     analyticsDirty,
     fetchStats,

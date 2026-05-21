@@ -7,7 +7,12 @@ import { ThemeToggle } from "./components/common/ThemeToggle";
 import { NotificationBell } from "./components/common/NotificationBell";
 import { AccountMenu } from "./components/common/AccountMenu";
 import { toast, Toaster } from "sonner";
-import { LinkQuota, Tab, UserLimits } from "./types";
+import {
+  AnalyticsFocusContext,
+  LinkQuota,
+  Tab,
+  UserLimits,
+} from "./types";
 
 // Hooks
 import {
@@ -180,6 +185,8 @@ export default function App() {
   const [viewportWidth, setViewportWidth] = useState(() =>
     typeof window === "undefined" ? 1600 : window.innerWidth,
   );
+  const [analyticsFocus, setAnalyticsFocus] =
+    useState<AnalyticsFocusContext | null>(null);
 
   // Auth Hook
   const {
@@ -294,6 +301,8 @@ export default function App() {
   const {
     stats,
     analyticsData,
+    statsUpdatedAt,
+    analyticsUpdatedAt,
     statsDirty,
     analyticsDirty,
     setStatsDirty,
@@ -306,6 +315,7 @@ export default function App() {
     fetchWithAuth,
     activeTab,
     linksLength: links.length,
+    focusContext: analyticsFocus,
   });
 
   // Video Upload Hook
@@ -593,6 +603,13 @@ export default function App() {
   const bootstrappingAccess =
     !!user && (authLoading || profileBootstrapLoading);
   const compactDesktop = viewportWidth >= 1024 && viewportWidth < 1520;
+  const openAnalyticsFocus = React.useCallback(
+    (focus: AnalyticsFocusContext) => {
+      setAnalyticsFocus(focus);
+      setActiveTab("analytics");
+    },
+    [],
+  );
 
   const handleLogout = React.useCallback(async () => {
     clearPersistedTab(user?.id);
@@ -662,6 +679,16 @@ export default function App() {
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
   }, []);
+
+  useEffect(() => {
+    if (activeTab !== "analytics" && analyticsFocus) {
+      setAnalyticsFocus(null);
+    }
+  }, [activeTab, analyticsFocus]);
+
+  useEffect(() => {
+    setAnalyticsFocus(null);
+  }, [user?.id, currentWorkspaceId]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -981,7 +1008,9 @@ export default function App() {
           {activeTab === "dashboard" && (
             <Overview
               stats={stats}
+              lastUpdatedAt={statsUpdatedAt}
               setActiveTab={setActiveTab}
+              onOpenAnalyticsFocus={openAnalyticsFocus}
               canAccessCreate={canAccessCreate}
               compactDesktop={compactDesktop}
             />
@@ -1190,6 +1219,9 @@ export default function App() {
               linksCount={stats.totalLinks}
               fetchWithAuth={fetchWithAuth}
               currentWorkspaceId={currentWorkspaceId}
+              focusContext={analyticsFocus}
+              lastUpdatedAt={analyticsUpdatedAt}
+              onClearFocus={() => setAnalyticsFocus(null)}
             />
           )}
 
