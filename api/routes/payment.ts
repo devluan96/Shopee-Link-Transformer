@@ -6,8 +6,95 @@ import { AuthenticatedRequest, PaidSubscriptionPlan } from "../types/index.js";
 import * as paymentService from "../services/paymentService.js";
 import * as manualPaymentService from "../services/manualPaymentService.js";
 import * as userService from "../services/userService.js";
+import * as securityService from "../services/securityService.js";
 
 const router = Router();
+
+const logAdminAction = async (
+  req: AuthenticatedRequest,
+  action: string,
+  payload?: Record<string, unknown>,
+) => {
+  const supabase = getSupabase();
+  await securityService.logAdminAction(supabase, {
+    actorUserId: req.authUser?.id || null,
+    actorEmail: req.authUser?.email || req.authProfile?.email || null,
+    action,
+    metadata: payload,
+  });
+};
+
+type ZaloPayStatusHandlerDeps = {
+  queryZaloPayOrder: typeof paymentService.queryZaloPayOrder;
+  getSupabase: typeof getSupabase;
+  updateUserSubscription: typeof userService.updateUserSubscription;
+  getPlanFromAppTransId: typeof paymentService.getZaloPayPlanFromAppTransId;
+  isAppTransOwnedByUser: typeof paymentService.isZaloPayAppTransOwnedByUser;
+};
+
+const defaultZaloPayStatusHandlerDeps: ZaloPayStatusHandlerDeps = {
+  queryZaloPayOrder: paymentService.queryZaloPayOrder,
+  getSupabase,
+  updateUserSubscription: userService.updateUserSubscription,
+  getPlanFromAppTransId: paymentService.getZaloPayPlanFromAppTransId,
+  isAppTransOwnedByUser: paymentService.isZaloPayAppTransOwnedByUser,
+};
+
+export const createZaloPayStatusHandler = (
+  deps: Partial<ZaloPayStatusHandlerDeps> = {},
+) => {
+  const resolvedDeps = { ...defaultZaloPayStatusHandlerDeps, ...deps };
+
+  return async (req: AuthenticatedRequest, res: any) => {
+    try {
+      const { appTransId } = req.params;
+      const userId = req.authUser?.id;
+
+      if (!appTransId || !userId) {
+        return res.status(400).json({ error: "Missing required parameters" });
+      }
+
+      if (!resolvedDeps.isAppTransOwnedByUser(appTransId, userId)) {
+        return res.status(403).json({
+          error: "Payment reference does not belong to the current account.",
+        });
+      }
+
+      const plan = resolvedDeps.getPlanFromAppTransId(appTransId);
+      if (!plan) {
+        return res.status(400).json({ error: "Invalid payment reference" });
+      }
+
+      const status = await resolvedDeps.queryZaloPayOrder(appTransId);
+
+      if (status.paid) {
+        const supabase = resolvedDeps.getSupabase();
+
+        let expiry = null;
+        if (plan === "monthly") {
+          const d = new Date();
+          d.setDate(d.getDate() + 30);
+          expiry = d.toISOString();
+        } else if (plan === "yearly") {
+          const d = new Date();
+          d.setFullYear(d.getFullYear() + 1);
+          expiry = d.toISOString();
+        }
+
+        await resolvedDeps.updateUserSubscription(supabase, userId, plan, expiry);
+      }
+
+      return res.json({
+        paid: status.paid,
+        processing: status.processing,
+        message: status.message,
+      });
+    } catch (e: any) {
+      console.error("âŒ ZaloPay status check error:", e);
+      return res.status(500).json({ error: e.message });
+    }
+  };
+};
 
 // POST /api/v1/billing/zalopay/create-order - Create ZaloPay order
 router.post(
@@ -38,7 +125,7 @@ router.post(
         zp_trans_token: result.zpTransToken,
       });
     } catch (e: any) {
-      console.error("❌ ZaloPay create order error:", e);
+      console.error("âŒ ZaloPay create order error:", e);
       return res.status(500).json({ error: e.message });
     }
   },
@@ -48,48 +135,7 @@ router.post(
 router.get(
   "/billing/zalopay/status/:appTransId",
   authenticate,
-  async (req: AuthenticatedRequest, res) => {
-    try {
-      const { appTransId } = req.params;
-      const userId = req.authUser?.id;
-
-      if (!appTransId || !userId) {
-        return res.status(400).json({ error: "Missing required parameters" });
-      }
-
-      const status = await paymentService.queryZaloPayOrder(appTransId);
-
-      // If paid, update user subscription
-      if (status.paid) {
-        const supabase = getSupabase();
-        const plan: PaidSubscriptionPlan = appTransId.includes("year")
-          ? "yearly"
-          : "monthly";
-
-        let expiry = null;
-        if (plan === "monthly") {
-          const d = new Date();
-          d.setDate(d.getDate() + 30);
-          expiry = d.toISOString();
-        } else if (plan === "yearly") {
-          const d = new Date();
-          d.setFullYear(d.getFullYear() + 1);
-          expiry = d.toISOString();
-        }
-
-        await userService.updateUserSubscription(supabase, userId, plan, expiry);
-      }
-
-      return res.json({
-        paid: status.paid,
-        processing: status.processing,
-        message: status.message,
-      });
-    } catch (e: any) {
-      console.error("❌ ZaloPay status check error:", e);
-      return res.status(500).json({ error: e.message });
-    }
-  },
+  createZaloPayStatusHandler(),
 );
 
 // POST /api/v1/billing/zalopay/callback - ZaloPay callback
@@ -109,13 +155,12 @@ router.post("/billing/zalopay/callback", async (req, res) => {
     const callbackData = JSON.parse(data);
     const { app_trans_id, zp_trans_id, amount } = callbackData;
 
-    console.log(`✅ ZaloPay callback received: ${app_trans_id}, amount: ${amount}`);
+    console.log(`âœ… ZaloPay callback received: ${app_trans_id}, amount: ${amount}`);
 
     // Update user subscription based on transaction
     const supabase = getSupabase();
-    const plan: PaidSubscriptionPlan = app_trans_id.includes("year")
-      ? "yearly"
-      : "monthly";
+    const plan =
+      paymentService.getZaloPayPlanFromAppTransId(app_trans_id) || "monthly";
 
     let expiry = null;
     if (plan === "monthly") {
@@ -136,7 +181,7 @@ router.post("/billing/zalopay/callback", async (req, res) => {
 
     return res.json({ return_code: 1, return_message: "Success" });
   } catch (e: any) {
-    console.error("❌ ZaloPay callback error:", e);
+    console.error("âŒ ZaloPay callback error:", e);
     return res.status(500).json({ return_code: -1, return_message: e.message });
   }
 });
@@ -233,6 +278,12 @@ router.post(
         adminUserId,
       );
 
+      await logAdminAction(req, "confirm_payment_request", {
+        payment_request_id: paymentRequestId,
+        user_id: request.user_id,
+        plan: request.plan,
+      });
+
       return res.json(request);
     } catch (e: any) {
       return res.status(500).json({ error: e.message });
@@ -258,6 +309,12 @@ router.post(
         paymentRequestId,
         adminUserId,
       );
+
+      await logAdminAction(req, "reject_payment_request", {
+        payment_request_id: paymentRequestId,
+        user_id: request.user_id,
+        plan: request.plan,
+      });
 
       return res.json(request);
     } catch (e: any) {

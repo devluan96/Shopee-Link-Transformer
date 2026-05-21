@@ -230,10 +230,7 @@ export const CreateLink = ({
   const { messages, t } = useLocale();
   const content = messages.createLink;
   const page = content.page;
-  const defaultDomainLabel = page.defaultDomain.replace(
-    "hotsnew.click",
-    DEFAULT_OUTPUT_DOMAIN,
-  );
+  const defaultDomainLabel = DEFAULT_OUTPUT_DOMAIN;
   const zaloContactUrl = "https://zalo.me/0969361607";
   const [fieldErrors, setFieldErrors] = React.useState<
     Partial<Record<FormField, string>>
@@ -245,20 +242,9 @@ export const CreateLink = ({
     React.useState<"landscape" | "portrait" | "square">("landscape");
   const [isDraggingVideo, setIsDraggingVideo] = React.useState(false);
   const [showQrModal, setShowQrModal] = React.useState(false);
+  const [showSecondaryFlow, setShowSecondaryFlow] = React.useState(false);
   const [showAdvancedSettings, setShowAdvancedSettings] = React.useState(false);
 
-  const currentPlanLabel =
-    linkQuota?.plan === "admin"
-      ? page.adminPlan
-      : linkQuota?.plan === "yearly"
-        ? page.yearlyPlan
-        : linkQuota?.plan === "monthly"
-          ? page.monthlyPlan
-          : page.freePlan;
-
-  const handleLockedDomainClick = React.useCallback(() => {
-    toast.info(page.customDomainLocked);
-  }, [page.customDomainLocked]);
   const [selectedExpirePresetDays, setSelectedExpirePresetDays] =
     React.useState<number | null>(null);
   const [campaignTrackingEnabled, setCampaignTrackingEnabled] = React.useState(
@@ -274,8 +260,8 @@ export const CreateLink = ({
     ? normalizeVietnameseSlug(customShortCode)
     : "";
   const convertedResultUrl = result?.converted_url
-      ? result.converted_url
-      : result?.short_code
+    ? result.converted_url
+    : result?.short_code
       ? buildPrettyLinkUrl(DEFAULT_SITE_URL, {
           slug: result.slug,
           shortCode: result.short_code,
@@ -287,9 +273,7 @@ export const CreateLink = ({
           fallbackToLegacy: false,
         });
   const uploadProgressOffset = 87.96 - (87.96 * videoUploadProgress) / 100;
-  const getProviderLabel = (
-    provider?: "cloudinary" | "supabase" | null,
-  ) => {
+  const getProviderLabel = (provider?: "cloudinary" | "supabase" | null) => {
     switch (provider) {
       case "cloudinary":
         return "Cloudinary";
@@ -306,6 +290,8 @@ export const CreateLink = ({
     userLimits?.videoUploadsRemainingToday ?? null;
   const videoUploadBlocked =
     userLimits?.dailyVideoUploads === 0 || videoUploadsRemainingToday === 0;
+  const submitDisabled =
+    loading || uploadingVideo || (linkQuota ? !linkQuota.canCreate : false);
   const canUseSecondaryFlow = Boolean(videoUrl.trim());
   const localizedUsageOptions = LINK_USAGE_OPTIONS.map((option) => {
     switch (option.value) {
@@ -552,12 +538,18 @@ export const CreateLink = ({
         [
           "folderName",
           "tagsText",
+          "customImageUrl",
+          "videoUrl",
           "secondaryUrl",
           "redirectDelayMs",
           "expiresAt",
         ].includes(firstErrorField)
       ) {
-        setShowAdvancedSettings(true);
+        if (firstErrorField === "secondaryUrl") {
+          setShowSecondaryFlow(true);
+        } else {
+          setShowAdvancedSettings(true);
+        }
       }
       const element = document.querySelector<HTMLElement>(
         `[data-field="${firstErrorField}"]`,
@@ -729,6 +721,7 @@ export const CreateLink = ({
           )}
 
           <form
+            id="create-link-form"
             onSubmit={handleSubmit}
             noValidate
             className="relative space-y-6 overflow-hidden rounded-4xl border border-gray-100 dark:border-slate-700 bg-white/95 dark:bg-slate-800/95 p-5 shadow-2xl backdrop-blur-xl sm:space-y-8 sm:rounded-[3rem] sm:p-8 lg:p-10"
@@ -746,11 +739,7 @@ export const CreateLink = ({
               </div>
               <button
                 type="submit"
-                disabled={
-                  loading ||
-                  uploadingVideo ||
-                  (linkQuota ? !linkQuota.canCreate : false)
-                }
+                disabled={submitDisabled}
                 className="flex w-full items-center justify-center gap-3 rounded-[1.25rem] bg-linear-to-r from-orange-600 to-amber-500 px-5 py-4 text-center text-[11px] font-black uppercase tracking-[0.16em] text-white shadow-xl shadow-orange-600/30 transition-all hover:-translate-y-0.5 hover:shadow-2xl hover:shadow-orange-600/40 active:scale-[0.98] disabled:grayscale disabled:opacity-50 sm:w-auto sm:shrink-0 sm:px-7 sm:text-xs"
               >
                 {loading ? (
@@ -876,79 +865,173 @@ export const CreateLink = ({
                     )}
                   </span>
                 </p>
-            <p className="mt-1 px-1 text-[11px] font-medium text-gray-400">
-              {t("createLink.page.shortCodeMax", {
-                max: MAX_SHORT_CODE_LENGTH,
-              })}
-            </p>
-          </div>
-
-          <div className="rounded-[1.75rem] border border-sky-100 bg-sky-50/60 p-4 sm:p-5">
-            <div className="mb-4 flex items-start gap-3">
-              <div className="rounded-2xl bg-white p-3 text-sky-600 shadow-sm dark:bg-slate-800 dark:text-sky-300">
-                <Globe size={18} />
-              </div>
-              <div>
-                <p className="text-[11px] font-black uppercase tracking-widest text-sky-700">
-                  {page.outputDomainTitle}
-                </p>
-                <p className="mt-1 text-xs font-medium leading-relaxed text-sky-900/70">
-                  {page.outputDomainDescription}
+                <p className="mt-1 px-1 text-[11px] font-medium text-gray-400">
+                  {t("createLink.page.shortCodeMax", {
+                    max: MAX_SHORT_CODE_LENGTH,
+                  })}
                 </p>
               </div>
-            </div>
 
-            {canUseCustomDomains ? (
-              <select
-                value={customDomain}
-                onChange={(e) => setCustomDomain(e.target.value)}
-                className="w-full rounded-2xl bg-white px-6 py-4 font-medium text-gray-900 dark:bg-slate-700 dark:text-slate-100"
+              <div className="rounded-[1.35rem] border border-sky-100 bg-sky-50/60 p-4 sm:p-5">
+                <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="shrink-0 rounded-2xl bg-white p-3 text-sky-600 shadow-sm dark:bg-slate-800 dark:text-sky-300">
+                      <Globe size={18} />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-[11px] font-black uppercase leading-none tracking-widest text-sky-700">
+                        {page.outputDomainTitle}
+                      </p>
+                      <p className="mt-1 text-[11px] font-medium leading-snug text-sky-900/65 dark:text-slate-300">
+                        {page.outputDomainDescription}
+                      </p>
+                    </div>
+                  </div>
+
+                  {canUseCustomDomains ? (
+                    <select
+                      value={customDomain}
+                      onChange={(e) => setCustomDomain(e.target.value)}
+                      className="w-full rounded-2xl bg-white px-5 py-4 font-medium text-gray-900 shadow-sm dark:bg-slate-700 dark:text-slate-100 lg:w-65"
+                    >
+                      <option value="">{defaultDomainLabel}</option>
+                      {availableOutputDomains
+                        .filter((domain) => domain !== DEFAULT_OUTPUT_DOMAIN)
+                        .map((domain) => (
+                          <option key={domain} value={domain}>
+                            {domain}
+                          </option>
+                        ))}
+                    </select>
+                  ) : (
+                    <div className="flex w-full flex-col gap-2 lg:w-65">
+                      <select
+                        value=""
+                        disabled
+                        aria-disabled="true"
+                        className="w-full cursor-not-allowed rounded-2xl border border-sky-200 bg-white px-5 py-4 font-medium text-gray-900 shadow-sm opacity-100 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100"
+                      >
+                        <option value="">{defaultDomainLabel}</option>
+                      </select>
+                      <p className="px-1 text-[11px] font-medium text-sky-900/70 dark:text-slate-300">
+                        {page.customDomainLocked}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setShowSecondaryFlow((prev) => !prev)}
+                className="flex w-full items-center justify-between rounded-3xl border border-amber-100 bg-amber-50/70 px-5 py-4 text-left transition-all hover:bg-amber-100/70 dark:border-amber-500/20 dark:bg-amber-500/10 dark:hover:bg-amber-500/15"
               >
-                <option value="">{defaultDomainLabel}</option>
-                {availableOutputDomains
-                  .filter((domain) => domain !== DEFAULT_OUTPUT_DOMAIN)
-                  .map((domain) => (
-                    <option key={domain} value={domain}>
-                      {domain}
-                    </option>
-                  ))}
-              </select>
-            ) : (
-              <div className="space-y-3">
-                <button
-                  type="button"
-                  onClick={handleLockedDomainClick}
-                  className="flex w-full items-center justify-between gap-4 rounded-2xl border border-sky-200 bg-white px-5 py-4 text-left transition hover:border-sky-300 hover:bg-sky-50/70 dark:border-slate-600 dark:bg-slate-700 dark:hover:bg-slate-650"
-                >
+                <div>
+                  <p className="text-[11px] font-black uppercase tracking-widest text-amber-700 dark:text-amber-300">
+                    {page.secondaryTitle}
+                  </p>
+                  <p className="mt-1 text-xs font-medium text-amber-900/70 dark:text-amber-100/70">
+                    {page.secondaryDescription}
+                  </p>
+                </div>
+                <ChevronDown
+                  size={18}
+                  className={cn(
+                    "shrink-0 text-amber-700/60 transition-transform dark:text-amber-200/70",
+                    showSecondaryFlow && "rotate-180",
+                  )}
+                />
+              </button>
+
+              {showSecondaryFlow && (
+                <div className="grid grid-cols-1 gap-6 rounded-[1.75rem] border border-amber-100 bg-amber-50/60 p-4 sm:p-5">
                   <div>
-                    <p className="text-base font-black text-gray-900 dark:text-slate-100">
-                      {defaultDomainLabel}
+                    <p className="mb-1 text-[11px] font-black uppercase tracking-widest text-amber-700">
+                      {page.secondaryTitle}
                     </p>
-                    <p className="mt-1 text-xs font-medium text-sky-900/70 dark:text-slate-300">
-                      {page.customDomainLocked}
+                    <p className="text-xs font-medium leading-relaxed text-amber-900/70">
+                      {page.secondaryDescription}
+                    </p>
+                    <p className="mt-2 text-xs font-bold leading-relaxed text-amber-800">
+                      {page.secondaryWarning}
                     </p>
                   </div>
-                  <span className="shrink-0 rounded-full bg-sky-100 px-3 py-1 text-[11px] font-black uppercase tracking-wider text-sky-700 dark:bg-sky-500/20 dark:text-sky-200">
-                    {currentPlanLabel}
-                  </span>
-                </button>
+                  <div className="grid grid-cols-1 gap-6">
+                    <div>
+                      <label className="mb-3 flex items-center gap-2 px-1 text-[11px] font-black uppercase tracking-widest text-gray-500">
+                        <Type size={14} className="text-orange-500" />{" "}
+                        {page.secondaryTargetLabel}
+                      </label>
+                      <select
+                        value={secondaryTargetType}
+                        disabled={!canUseSecondaryFlow}
+                        onChange={(e) =>
+                          setSecondaryTargetType(
+                            e.target.value === "tiktok" ? "tiktok" : "shopee",
+                          )
+                        }
+                        className={`w-full rounded-2xl px-6 py-4 font-medium outline-none transition-all focus:ring-4 focus:ring-orange-500/10 ${
+                          canUseSecondaryFlow
+                            ? "bg-white text-gray-900 dark:bg-slate-700 dark:text-slate-100"
+                            : "cursor-not-allowed bg-gray-100 text-gray-400 dark:bg-slate-800 dark:text-slate-500"
+                        }`}
+                      >
+                        <option value="shopee">
+                          {page.secondaryTargetShopee}
+                        </option>
+                        <option value="tiktok">
+                          {page.secondaryTargetTikTok}
+                        </option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="mb-3 flex items-center gap-2 px-1 text-[11px] font-black uppercase tracking-widest text-gray-500">
+                        <Globe size={14} className="text-orange-500" />{" "}
+                        {page.secondaryUrlLabel}
+                      </label>
+                      <input
+                        data-field="secondaryUrl"
+                        type="url"
+                        disabled={!canUseSecondaryFlow}
+                        value={secondaryUrl}
+                        onChange={(e) => {
+                          setSecondaryUrl(e.target.value);
+                          clearFieldError("secondaryUrl");
+                        }}
+                        placeholder={
+                          secondaryTargetType === "tiktok"
+                            ? page.secondaryUrlPlaceholderTikTok
+                            : page.secondaryUrlPlaceholderShopee
+                        }
+                        className={inputClass(
+                          "secondaryUrl",
+                          canUseSecondaryFlow
+                            ? "w-full rounded-2xl bg-white px-6 py-4 font-medium text-gray-900 dark:bg-slate-700 dark:text-slate-100"
+                            : "w-full cursor-not-allowed rounded-2xl bg-gray-100 px-6 py-4 font-medium text-gray-400 dark:bg-slate-800 dark:text-slate-500",
+                        )}
+                      />
+                      {renderFieldError("secondaryUrl")}
+                      {!canUseSecondaryFlow && (
+                        <p className="mt-2 px-1 text-[11px] font-medium text-gray-500">
+                          {page.secondaryUrlHelpDisabled}
+                        </p>
+                      )}
+                      {canUseSecondaryFlow && (
+                        <p className="mt-2 px-1 text-[11px] font-medium text-gray-500">
+                          {page.secondaryUrlHelpEmpty}{" "}
+                          {secondaryTargetType === "tiktok"
+                            ? page.secondaryUrlHelpTikTokOnly
+                            : page.secondaryUrlHelpShopeeOnly}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
 
-                {linkQuota?.plan === "free" && (
-                  <button
-                    type="button"
-                    onClick={() => setActiveTab("pricing")}
-                    className="inline-flex items-center justify-center rounded-2xl bg-sky-600 px-5 py-3 text-xs font-black uppercase tracking-widest text-white transition-all hover:bg-sky-700"
-                  >
-                    {page.domainUpgradeCta}
-                  </button>
-                )}
-              </div>
-            )}
-          </div>
-
-          <button
-            type="button"
-            onClick={() => setShowAdvancedSettings((prev) => !prev)}
+              <button
+                type="button"
+                onClick={() => setShowAdvancedSettings((prev) => !prev)}
                 className="flex w-full items-center justify-between rounded-3xl border border-gray-100 bg-gray-50/80 px-5 py-4 text-left transition-all hover:bg-gray-100 dark:border-slate-700 dark:bg-slate-900/60 dark:hover:bg-slate-900"
               >
                 <div>
@@ -1120,90 +1203,6 @@ export const CreateLink = ({
                     <p className="mt-2 px-1 text-[11px] font-medium text-gray-400">
                       {page.expiryHelp}
                     </p>
-                  </div>
-
-                  <div className="grid grid-cols-1 gap-6 rounded-[1.75rem] border border-amber-100 bg-amber-50/60 p-4 sm:p-5">
-                    <div>
-                      <p className="mb-1 text-[11px] font-black uppercase tracking-widest text-amber-700">
-                        {page.secondaryTitle}
-                      </p>
-                      <p className="text-xs font-medium leading-relaxed text-amber-900/70">
-                        {page.secondaryDescription}
-                      </p>
-                      <p className="mt-2 text-xs font-bold leading-relaxed text-amber-800">
-                        {page.secondaryWarning}
-                      </p>
-                    </div>
-                    <div className="grid grid-cols-1 gap-6">
-                      <div>
-                        <label className="mb-3 flex items-center gap-2 px-1 text-[11px] font-black uppercase tracking-widest text-gray-500">
-                          <Type size={14} className="text-orange-500" />{" "}
-                          {page.secondaryTargetLabel}
-                        </label>
-                        <select
-                          value={secondaryTargetType}
-                          disabled={!canUseSecondaryFlow}
-                          onChange={(e) =>
-                            setSecondaryTargetType(
-                              e.target.value === "tiktok" ? "tiktok" : "shopee",
-                            )
-                          }
-                          className={`w-full rounded-2xl px-6 py-4 font-medium outline-none transition-all focus:ring-4 focus:ring-orange-500/10 ${
-                            canUseSecondaryFlow
-                              ? "bg-white text-gray-900 dark:bg-slate-700 dark:text-slate-100"
-                              : "cursor-not-allowed bg-gray-100 text-gray-400 dark:bg-slate-800 dark:text-slate-500"
-                          }`}
-                        >
-                          <option value="shopee">
-                            {page.secondaryTargetShopee}
-                          </option>
-                          <option value="tiktok">
-                            {page.secondaryTargetTikTok}
-                          </option>
-                        </select>
-                      </div>
-                      <div>
-                        <label className="mb-3 flex items-center gap-2 px-1 text-[11px] font-black uppercase tracking-widest text-gray-500">
-                          <Globe size={14} className="text-orange-500" />{" "}
-                          {page.secondaryUrlLabel}
-                        </label>
-                        <input
-                          data-field="secondaryUrl"
-                          type="url"
-                          disabled={!canUseSecondaryFlow}
-                          value={secondaryUrl}
-                          onChange={(e) => {
-                            setSecondaryUrl(e.target.value);
-                            clearFieldError("secondaryUrl");
-                          }}
-                          placeholder={
-                            secondaryTargetType === "tiktok"
-                              ? page.secondaryUrlPlaceholderTikTok
-                              : page.secondaryUrlPlaceholderShopee
-                          }
-                          className={inputClass(
-                            "secondaryUrl",
-                            canUseSecondaryFlow
-                              ? "w-full rounded-2xl bg-white px-6 py-4 font-medium text-gray-900 dark:bg-slate-700 dark:text-slate-100"
-                              : "w-full cursor-not-allowed rounded-2xl bg-gray-100 px-6 py-4 font-medium text-gray-400 dark:bg-slate-800 dark:text-slate-500",
-                          )}
-                        />
-                        {renderFieldError("secondaryUrl")}
-                        {!canUseSecondaryFlow && (
-                          <p className="mt-2 px-1 text-[11px] font-medium text-gray-500">
-                            {page.secondaryUrlHelpDisabled}
-                          </p>
-                        )}
-                        {canUseSecondaryFlow && (
-                          <p className="mt-2 px-1 text-[11px] font-medium text-gray-500">
-                            {page.secondaryUrlHelpEmpty}{" "}
-                            {secondaryTargetType === "tiktok"
-                              ? page.secondaryUrlHelpTikTokOnly
-                              : page.secondaryUrlHelpShopeeOnly}
-                          </p>
-                        )}
-                      </div>
-                    </div>
                   </div>
 
                   <div className="grid grid-cols-1 gap-6 rounded-[1.75rem] border border-emerald-100 bg-emerald-50/60 p-4 sm:p-5">

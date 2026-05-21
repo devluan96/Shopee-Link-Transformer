@@ -233,6 +233,44 @@ export const logAccessEvent = async (
   }
 };
 
+export const logAdminAction = async (
+  supabase: SupabaseClient,
+  payload: {
+    actorUserId?: string | null;
+    actorEmail?: string | null;
+    action: string;
+    targetUserId?: string | null;
+    targetId?: string | null;
+    targetType?: string | null;
+    metadata?: Record<string, unknown>;
+  },
+) => {
+  const { error } = await supabase.from("access_logs").insert({
+    user_id: payload.actorUserId || null,
+    email: payload.actorEmail || null,
+    ip_address: null,
+    method: "ADMIN",
+    path: `admin:${payload.action}`,
+    status_code: 200,
+    user_agent: null,
+    referer: null,
+    blocked: false,
+    block_reason: null,
+    metadata: {
+      kind: "admin_action",
+      action: payload.action,
+      target_user_id: payload.targetUserId || null,
+      target_id: payload.targetId || null,
+      target_type: payload.targetType || null,
+      ...(payload.metadata || {}),
+    },
+  });
+
+  if (error) {
+    console.error("[Security] admin action log insert failed:", error.message);
+  }
+};
+
 export const isIpBlocked = async (
   supabase: SupabaseClient,
   ipAddress: string,

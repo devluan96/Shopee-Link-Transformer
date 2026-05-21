@@ -1,8 +1,10 @@
+import { isIP } from "node:net";
 import { SupabaseClient } from "../config/supabase.js";
 import {
   countDisplayableOutboundClicks,
   fetchOutboundEventsForLinkIds,
 } from "../utils/clickTracking.js";
+import { isPrivateOrLocalIp } from "../utils/helpers.js";
 
 export interface NotificationSettings {
   webhook_url?: string;
@@ -11,6 +13,46 @@ export interface NotificationSettings {
   notify_on_click: boolean;
   notify_threshold: number;
 }
+
+export const isSafeWebhookUrl = (value?: string | null) => {
+  if (!value?.trim()) {
+    return false;
+  }
+
+  try {
+    const url = new URL(value.trim());
+    if (url.protocol !== "https:") {
+      return false;
+    }
+
+    if (url.username || url.password) {
+      return false;
+    }
+
+    const hostname = url.hostname.toLowerCase();
+    if (
+      !hostname ||
+      hostname === "localhost" ||
+      hostname.endsWith(".localhost") ||
+      hostname.endsWith(".local") ||
+      hostname.endsWith(".internal") ||
+      hostname.endsWith(".lan")
+    ) {
+      return false;
+    }
+
+    if (isIP(hostname) || hostname === "::1") {
+      return !isPrivateOrLocalIp(hostname);
+    }
+
+    return true;
+  } catch {
+    return false;
+  }
+};
+
+const normalizeSettingString = (value: unknown) =>
+  typeof value === "string" && value.trim() ? value.trim() : null;
 
 export type AppNotificationType =
   | "workspace_invitation"
@@ -100,10 +142,32 @@ export const saveNotificationSettings = async (
   userId: string,
   settings: Partial<NotificationSettings>,
 ): Promise<void> => {
+  const currentSettings = await getNotificationSettings(supabase, userId);
+  const mergedSettings = { ...currentSettings, ...settings };
+  const webhookUrl = normalizeSettingString(mergedSettings.webhook_url);
+  if (webhookUrl && !isSafeWebhookUrl(webhookUrl)) {
+    throw new Error("Webhook URL must use HTTPS and a public host.");
+  }
+
+  const notifyOnClick =
+    typeof mergedSettings.notify_on_click === "boolean"
+      ? mergedSettings.notify_on_click
+      : currentSettings?.notify_on_click ?? true;
+  const notifyThresholdRaw = Number(mergedSettings.notify_threshold);
+  const notifyThreshold = Number.isFinite(notifyThresholdRaw)
+    ? Math.max(0, Math.floor(notifyThresholdRaw))
+    : currentSettings?.notify_threshold ?? 0;
+
   const { error } = await supabase.from("user_notification_settings").upsert(
     {
       user_id: userId,
-      ...settings,
+      webhook_url: webhookUrl,
+      telegram_bot_token: normalizeSettingString(
+        mergedSettings.telegram_bot_token,
+      ),
+      telegram_chat_id: normalizeSettingString(mergedSettings.telegram_chat_id),
+      notify_on_click: notifyOnClick,
+      notify_threshold: notifyThreshold,
       updated_at: new Date().toISOString(),
     },
     { onConflict: "user_id" },
@@ -260,6 +324,10 @@ export const sendWebhookNotification = async (
   },
 ): Promise<boolean> => {
   try {
+    if (!isSafeWebhookUrl(webhookUrl)) {
+      return false;
+    }
+
     const response = await fetch(webhookUrl, {
       method: "POST",
       headers: {

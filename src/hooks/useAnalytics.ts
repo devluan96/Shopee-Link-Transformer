@@ -153,8 +153,7 @@ export function useAnalytics({
   }, [focusContext?.source, focusContext?.period, user?.id]);
 
   useEffect(() => {
-    const isAdminRole =
-      profile?.role === "admin" || user?.email === "devluan1996@gmail.com";
+    const isAdminRole = profile?.role === "admin";
     const isApproved = profile?.status === "approved" || isAdminRole;
 
     if (

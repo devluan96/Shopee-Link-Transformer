@@ -24,6 +24,7 @@ import {
 export interface AuthState {
   user: User | null;
   authLoading: boolean;
+  authInitialized: boolean;
   authError: string | null;
   authNotice: string | null;
   isRegistering: boolean;
@@ -65,6 +66,7 @@ export function useAuth(): AuthState & AuthActions {
   const { t } = useLocale();
   const [user, setUser] = useState<User | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
+  const [authInitialized, setAuthInitialized] = useState(false);
   const [loginEmail, setLoginEmail] = useState(() => getRememberedEmail());
   const [loginPassword, setLoginPassword] = useState("");
   const [registerEmail, setRegisterEmail] = useState("");
@@ -429,6 +431,8 @@ export function useAuth(): AuthState & AuthActions {
 
   // Auth state change listener
   useEffect(() => {
+    let isMounted = true;
+
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
@@ -457,7 +461,6 @@ export function useAuth(): AuthState & AuthActions {
 
       if (event === "INITIAL_SESSION" && !session) {
         setUser(null);
-        setAuthLoading(false);
         return;
       }
 
@@ -472,20 +475,30 @@ export function useAuth(): AuthState & AuthActions {
     });
 
     // Initial session check
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      sessionRef.current = session ?? null;
-      if (session?.user) {
-        setUser(session.user);
-        if (session.user.email) {
-          setLoginEmail(session.user.email);
+    supabase.auth
+      .getSession()
+      .then(({ data: { session } }) => {
+        if (!isMounted) return;
+        sessionRef.current = session ?? null;
+        if (session?.user) {
+          setUser(session.user);
+          if (session.user.email) {
+            setLoginEmail(session.user.email);
+          }
+          if (isRecoveryLinkOpen()) {
+            setPasswordRecoveryMode(true);
+            setAuthNotice(t("auth.panel.feedback.validRecoveryLink"));
+          }
         }
-        if (isRecoveryLinkOpen()) {
-          setPasswordRecoveryMode(true);
-          setAuthNotice(t("auth.panel.feedback.validRecoveryLink"));
-        }
-      }
-      setAuthLoading(false);
-    });
+      })
+      .catch((error) => {
+        console.error("[Auth] Initial session check failed:", error);
+      })
+      .finally(() => {
+        if (!isMounted) return;
+        setAuthInitialized(true);
+        setAuthLoading(false);
+      });
 
     // Safety timeout
     const timer = setTimeout(() => {
@@ -496,6 +509,7 @@ export function useAuth(): AuthState & AuthActions {
     }, 5000);
 
     return () => {
+      isMounted = false;
       subscription.unsubscribe();
       clearTimeout(timer);
     };
@@ -524,6 +538,7 @@ export function useAuth(): AuthState & AuthActions {
   return {
     user,
     authLoading,
+    authInitialized,
     authError,
     authNotice,
     isRegistering,
