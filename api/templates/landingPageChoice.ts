@@ -2,9 +2,6 @@
 
 import { buildPublicVideoUrl } from "../utils/mediaUrl.js";
 
-const SHOPEE_HOST_REGEX = /(^|\.)shopee\.[a-z.]+$/i;
-const TIKTOK_HOST_REGEX =
-  /(^|\.)tiktok\.com$|(^|\.)vt\.tiktok\.com$|(^|\.)vm\.tiktok\.com$/i;
 const PRIMARY_RETURN_WINDOW_MS = 5 * 60 * 1000;
 
 const capitalizeFirstCharacter = (value: string) => {
@@ -55,7 +52,6 @@ export const renderChoiceLandingPage = (
   );
   const imageUrl = link.custom_image_url?.trim() || "";
   const videoUrl = buildPublicVideoUrl(link.video_url);
-  const originalUrl = link.original_url.trim();
   const secondaryUrl = link.secondary_url?.trim() || "";
   const hasVideo = Boolean(videoUrl);
   const hasSecondaryRedirect = hasVideo && Boolean(secondaryUrl);
@@ -64,10 +60,12 @@ export const renderChoiceLandingPage = (
   const fallbackFavicon = `${originBase}/logo-app-192.png`;
   const faviconUrl = imageUrl || fallbackFavicon;
   const socialImageUrl = imageUrl || defaultOgImage;
-  const clickOnlyTrackingUrl =
+  const redirectOpenBaseUrl =
     clickTrackingUrl.slice(-6) === "/track"
-      ? `${clickTrackingUrl.slice(0, -6)}/track-preview-click`
-      : `${clickTrackingUrl}/track-preview-click`;
+      ? `${clickTrackingUrl.slice(0, -6)}/open`
+      : `${clickTrackingUrl}/open`;
+  const primaryRedirectUrl = `${redirectOpenBaseUrl}?stage=primary`;
+  const secondaryRedirectUrl = `${redirectOpenBaseUrl}?stage=secondary`;
   const secondaryStateKey = `hn.choice-state.${link.short_code}`;
   const robotsContent = isExperimental
     ? "noindex, nofollow"
@@ -200,6 +198,8 @@ export const renderChoiceLandingPage = (
         backdrop-filter: blur(5px);
         z-index: 9999;
         cursor: pointer;
+        color: inherit;
+        text-decoration: none;
         transition: opacity 220ms ease, visibility 220ms ease;
       }
       .overlay.hidden { opacity: 0; visibility: hidden; pointer-events: none; display: none !important; }
@@ -255,26 +255,21 @@ export const renderChoiceLandingPage = (
       </section>
     </main>
 
-    <div id="overlay" class="overlay delayed-hidden" role="button" tabindex="0" aria-label="${overlayAriaLabel}">${overlayHintMarkup}</div>
+    <a id="overlay" class="overlay delayed-hidden" href="${escapeHtml(primaryRedirectUrl)}" aria-label="${overlayAriaLabel}">${overlayHintMarkup}</a>
 
     <script>
       (() => {
         const overlay = document.getElementById("overlay");
         const mediaPanel = document.querySelector(".media-panel");
         const heroVideo = document.querySelector(".hero-video");
-        const primaryTargetUrl = "${escapeJsString(originalUrl)}";
+        const primaryRedirectUrl = "${escapeJsString(primaryRedirectUrl)}";
+        const secondaryRedirectUrl = "${escapeJsString(secondaryRedirectUrl)}";
         const secondaryTargetUrl = "${escapeJsString(secondaryUrl)}";
         const hasSecondaryRedirect = ${hasSecondaryRedirect ? "true" : "false"};
-        const clickOnlyTrackingUrl = "${escapeJsString(clickOnlyTrackingUrl)}";
-        const outboundTrackingUrl =
-          "${escapeJsString(clickTrackingUrl)}".slice(-6) === "/track"
-            ? "${escapeJsString(clickTrackingUrl)}".slice(0, -6) + "/track-outbound"
-            : "${escapeJsString(clickTrackingUrl)}" + "/track-outbound";
         const secondaryStateKey = "${escapeJsString(secondaryStateKey)}";
         const secondaryStateCookieName =
           "${escapeJsString(`hn_choice_state_${link.short_code}`)}";
 
-        let previewTracked = false;
         let overlayHandled = false;
         let overlayVisible = false;
         let awaitingSecondaryPlay = false;
@@ -298,34 +293,6 @@ export const renderChoiceLandingPage = (
             previewPlaybackStartedAt = 0;
           }
           clearPreviewPlaybackInterval();
-        };
-
-        const postJsonKeepalive = (url, payload) => {
-          if (!url) return;
-          const body = JSON.stringify(payload);
-          try {
-            if (navigator.sendBeacon) {
-              navigator.sendBeacon(url, new Blob([body], { type: "application/json" }));
-              return;
-            }
-          } catch (error) {}
-
-          fetch(url, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body,
-            keepalive: true,
-          }).catch(() => {});
-        };
-
-        const trackPreviewClick = () => {
-          if (previewTracked) return;
-          previewTracked = true;
-          postJsonKeepalive(clickOnlyTrackingUrl, { ts: Date.now() });
-        };
-
-        const trackOutbound = (stage) => {
-          postJsonKeepalive(outboundTrackingUrl, { stage, ts: Date.now() });
         };
 
         const hideOverlay = () => {
@@ -352,31 +319,6 @@ export const renderChoiceLandingPage = (
           overlay.style.opacity = "1";
           overlay.style.visibility = "visible";
           overlay.style.pointerEvents = "auto";
-        };
-
-        const isAffiliateCommerceUrl = (url) => {
-          if (!url) return false;
-          try {
-            const hostname = new URL(url).hostname.toLowerCase();
-            return /(^|\\.)shopee\\.[a-z.]+$/i.test(hostname) || /(^|\\.)tiktok\\.com$|(^|\\.)vt\\.tiktok\\.com$|(^|\\.)vm\\.tiktok\\.com$/i.test(hostname);
-          } catch (error) {
-            return false;
-          }
-        };
-
-        const openUrl = (url) => {
-          if (!url) return;
-          if (isAffiliateCommerceUrl(url)) {
-            window.location.assign(url);
-            return;
-          }
-
-          try {
-            const popup = window.open(url, "_blank", "noopener,noreferrer");
-            if (popup) return;
-          } catch (error) {}
-
-          window.location.href = url;
         };
 
         const setSecondaryStateCookie = (value) => {
@@ -521,12 +463,10 @@ export const renderChoiceLandingPage = (
         };
 
         const handleOverlayContinue = () => {
+          if (overlayHandled) return;
           overlayHandled = true;
-          trackPreviewClick();
           persistPrimaryOpened();
           hideOverlay();
-          trackOutbound("primary");
-          openUrl(primaryTargetUrl);
         };
 
         const handleSecondaryPlayIntent = () => {
@@ -539,8 +479,7 @@ export const renderChoiceLandingPage = (
               heroVideo.pause();
             }
           } catch (error) {}
-          trackOutbound("secondary");
-          openUrl(secondaryTargetUrl);
+          window.location.href = secondaryRedirectUrl;
         };
 
         const maybeShowOverlayAfterPlayback = () => {
@@ -608,9 +547,12 @@ export const renderChoiceLandingPage = (
         if (overlay) {
           overlay.addEventListener("click", handleOverlayContinue);
           overlay.addEventListener("keydown", (event) => {
-            if (event.key === "Enter" || event.key === " ") {
+            if (event.key === " ") {
               event.preventDefault();
               handleOverlayContinue();
+              if (overlay instanceof HTMLAnchorElement) {
+                overlay.click();
+              }
             }
           });
         }
