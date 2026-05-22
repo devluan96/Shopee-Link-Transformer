@@ -210,6 +210,7 @@ export const createLink = async (
     abVariantBVideoUrl?: string;
     abVariantBOriginalUrl?: string;
     abVariantBSecondaryUrl?: string;
+    mobileDirectMode?: boolean;
   },
 ) => {
   const allowedOutputDomains = await getLinkOutputDomains(supabase).catch(
@@ -228,6 +229,28 @@ export const createLink = async (
     throw new Error("Link gốc không hợp lệ.");
   }
   const primaryUrl = applyMarketingParams(normalizedPrimaryUrl);
+  const mobileDirectMode = !!data.mobileDirectMode;
+  const primaryImageUrl = data.customImageUrl?.trim() || null;
+  const primaryVideoUrl = mobileDirectMode
+    ? null
+    : data.videoUrl?.trim() || null;
+  const requestedSecondaryUrl = data.secondaryUrl?.trim();
+  const variantBVideoUrl = mobileDirectMode
+    ? null
+    : data.abVariantBVideoUrl?.trim() || null;
+  const requestedVariantBSecondaryUrl = mobileDirectMode
+    ? null
+    : data.abVariantBSecondaryUrl?.trim() || null;
+
+  if (mobileDirectMode && !primaryImageUrl) {
+    throw new Error("Mobile TikTok direct mode yêu cầu ảnh đại diện.");
+  }
+
+  if (mobileDirectMode && requestedSecondaryUrl) {
+    throw new Error(
+      "Mobile TikTok direct mode không hỗ trợ liên kết bước 2.",
+    );
+  }
 
   let shortCode: string;
   if (data.customShortCode && data.customShortCode.trim()) {
@@ -255,14 +278,13 @@ export const createLink = async (
   );
 
   let secondaryUrl: string | null = null;
-  if (data.secondaryUrl && data.secondaryUrl.trim()) {
-    if (!data.videoUrl || !data.videoUrl.trim()) {
+  if (requestedSecondaryUrl) {
+    if (!primaryVideoUrl) {
       throw new Error(
         "Link bước 2 chỉ được sử dụng khi landing page có video.",
       );
     }
 
-    const requestedSecondaryUrl = data.secondaryUrl.trim();
     const allowTikTokAsSecondary = data.secondaryTargetType === "tiktok";
     const label = allowTikTokAsSecondary
       ? "Link TikTok bước 2"
@@ -303,8 +325,7 @@ export const createLink = async (
   }
 
   let abVariantBSecondaryUrl: string | null = null;
-  if (data.abVariantBSecondaryUrl?.trim()) {
-    const requestedVariantBSecondaryUrl = data.abVariantBSecondaryUrl.trim();
+  if (requestedVariantBSecondaryUrl) {
     const allowTikTokAsSecondary = data.secondaryTargetType === "tiktok";
     const label = allowTikTokAsSecondary
       ? "Link TikTok variant B"
@@ -352,8 +373,8 @@ export const createLink = async (
       tags,
       custom_title: data.customTitle?.trim() || null,
       custom_description: data.customDescription?.trim() || null,
-      custom_image_url: data.customImageUrl?.trim() || null,
-      video_url: data.videoUrl?.trim() || null,
+      custom_image_url: primaryImageUrl,
+      video_url: primaryVideoUrl,
       secondary_url: secondaryUrl,
       redirect_delay_ms: delayMs,
       usage_context: data.usageContext?.trim() || null,
@@ -369,7 +390,7 @@ export const createLink = async (
       ab_variant_b_title: data.abVariantBTitle?.trim() || null,
       ab_variant_b_description: data.abVariantBDescription?.trim() || null,
       ab_variant_b_image_url: data.abVariantBImageUrl?.trim() || null,
-      ab_variant_b_video_url: data.abVariantBVideoUrl?.trim() || null,
+      ab_variant_b_video_url: variantBVideoUrl,
       ab_variant_b_original_url: abVariantBOriginalUrl,
       ab_variant_b_secondary_url: abVariantBSecondaryUrl,
     })

@@ -48,6 +48,8 @@ type FormField =
 interface CreateLinkProps {
   url: string;
   setUrl: (v: string) => void;
+  mobileDirectMode: boolean;
+  setMobileDirectMode: (v: boolean) => void;
   customTitle: string;
   setCustomTitle: (v: string) => void;
   customDescription: string;
@@ -143,6 +145,8 @@ interface CreateLinkProps {
 export const CreateLink = ({
   url,
   setUrl,
+  mobileDirectMode,
+  setMobileDirectMode,
   customTitle,
   setCustomTitle,
   customDescription,
@@ -338,6 +342,42 @@ export const CreateLink = ({
   }, [clearFieldError, customImageUrl, videoUrl]);
 
   React.useEffect(() => {
+    if (!mobileDirectMode) return;
+
+    if (videoUrl.trim()) {
+      setVideoUrl("");
+    }
+    if (secondaryUrl.trim()) {
+      setSecondaryUrl("");
+    }
+    if (secondaryTargetType !== "shopee") {
+      setSecondaryTargetType("shopee");
+    }
+    if (abVariantBVideoUrl.trim()) {
+      setAbVariantBVideoUrl("");
+    }
+    if (abVariantBSecondaryUrl.trim()) {
+      setAbVariantBSecondaryUrl("");
+    }
+    clearFieldError("videoUrl");
+    clearFieldError("secondaryUrl");
+    setShowSecondaryFlow(false);
+  }, [
+    abVariantBSecondaryUrl,
+    abVariantBVideoUrl,
+    clearFieldError,
+    mobileDirectMode,
+    secondaryTargetType,
+    secondaryUrl,
+    setAbVariantBSecondaryUrl,
+    setAbVariantBVideoUrl,
+    setSecondaryTargetType,
+    setSecondaryUrl,
+    setVideoUrl,
+    videoUrl,
+  ]);
+
+  React.useEffect(() => {
     if (canUseSecondaryFlow) return;
 
     if (secondaryUrl.trim()) {
@@ -476,7 +516,11 @@ export const CreateLink = ({
       nextErrors.customDescription = content.validation.descriptionRequired;
     }
 
-    if (!customImageUrl.trim() && !videoUrl.trim()) {
+    if (mobileDirectMode) {
+      if (!customImageUrl.trim()) {
+        nextErrors.customImageUrl = content.validation.directModeImageRequired;
+      }
+    } else if (!customImageUrl.trim() && !videoUrl.trim()) {
       nextErrors.customImageUrl = content.validation.imageOrVideoRequired;
       nextErrors.videoUrl = content.validation.videoOrImageRequired;
     }
@@ -492,7 +536,9 @@ export const CreateLink = ({
       }
     }
 
-    if (secondaryUrl.trim() && !videoUrl.trim()) {
+    if (mobileDirectMode && secondaryUrl.trim()) {
+      nextErrors.secondaryUrl = content.validation.directModeSecondaryDisabled;
+    } else if (secondaryUrl.trim() && !videoUrl.trim()) {
       nextErrors.secondaryUrl = content.validation.secondaryNeedsVideo;
     } else if (
       secondaryUrl.trim() &&
@@ -784,6 +830,58 @@ export const CreateLink = ({
               </p>
             </div>
 
+            <button
+              type="button"
+              onClick={() => setMobileDirectMode(!mobileDirectMode)}
+              className={cn(
+                "flex w-full items-center justify-between rounded-3xl border px-5 py-4 text-left transition-all",
+                mobileDirectMode
+                  ? "border-fuchsia-300 bg-fuchsia-50/80 dark:border-fuchsia-500/30 dark:bg-fuchsia-500/10"
+                  : "border-gray-100 bg-gray-50/80 hover:bg-gray-100 dark:border-slate-700 dark:bg-slate-900/60 dark:hover:bg-slate-900",
+              )}
+            >
+              <div>
+                <p
+                  className={cn(
+                    "text-[11px] font-black uppercase tracking-widest",
+                    mobileDirectMode
+                      ? "text-fuchsia-700 dark:text-fuchsia-200"
+                      : "text-gray-500 dark:text-slate-300",
+                  )}
+                >
+                  {page.mobileDirectModeTitle}
+                </p>
+                <p
+                  className={cn(
+                    "mt-1 text-xs font-medium",
+                    mobileDirectMode
+                      ? "text-fuchsia-900/75 dark:text-fuchsia-100/80"
+                      : "text-gray-500 dark:text-slate-400",
+                  )}
+                >
+                  {page.mobileDirectModeDescription}
+                </p>
+              </div>
+              <span
+                className={cn(
+                  "rounded-full px-3 py-1 text-[11px] font-black uppercase tracking-wider",
+                  mobileDirectMode
+                    ? "bg-fuchsia-100 text-fuchsia-700 dark:bg-fuchsia-500/20 dark:text-fuchsia-100"
+                    : "bg-slate-100 text-slate-500 dark:bg-slate-700 dark:text-slate-300",
+                )}
+              >
+                {mobileDirectMode
+                  ? page.mobileDirectModeEnabled
+                  : page.mobileDirectModeDisabled}
+              </span>
+            </button>
+
+            {mobileDirectMode && (
+              <div className="rounded-[1.35rem] border border-fuchsia-100 bg-fuchsia-50/70 p-4 text-sm font-medium text-fuchsia-900 dark:border-fuchsia-500/20 dark:bg-fuchsia-500/10 dark:text-fuchsia-100">
+                {page.mobileDirectModeNote}
+              </div>
+            )}
+
             <div className="grid grid-cols-1 gap-6">
               <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
                 <div>
@@ -921,29 +1019,31 @@ export const CreateLink = ({
                 </div>
               </div>
 
-              <button
-                type="button"
-                onClick={() => setShowSecondaryFlow((prev) => !prev)}
-                className="flex w-full items-center justify-between rounded-3xl border border-amber-100 bg-amber-50/70 px-5 py-4 text-left transition-all hover:bg-amber-100/70 dark:border-amber-500/20 dark:bg-amber-500/10 dark:hover:bg-amber-500/15"
-              >
-                <div>
-                  <p className="text-[11px] font-black uppercase tracking-widest text-amber-700 dark:text-amber-300">
-                    {page.secondaryTitle}
-                  </p>
-                  <p className="mt-1 text-xs font-medium text-amber-900/70 dark:text-amber-100/70">
-                    {page.secondaryDescription}
-                  </p>
-                </div>
-                <ChevronDown
-                  size={18}
-                  className={cn(
-                    "shrink-0 text-amber-700/60 transition-transform dark:text-amber-200/70",
-                    showSecondaryFlow && "rotate-180",
-                  )}
-                />
-              </button>
+              {!mobileDirectMode && (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => setShowSecondaryFlow((prev) => !prev)}
+                    className="flex w-full items-center justify-between rounded-3xl border border-amber-100 bg-amber-50/70 px-5 py-4 text-left transition-all hover:bg-amber-100/70 dark:border-amber-500/20 dark:bg-amber-500/10 dark:hover:bg-amber-500/15"
+                  >
+                    <div>
+                      <p className="text-[11px] font-black uppercase tracking-widest text-amber-700 dark:text-amber-300">
+                        {page.secondaryTitle}
+                      </p>
+                      <p className="mt-1 text-xs font-medium text-amber-900/70 dark:text-amber-100/70">
+                        {page.secondaryDescription}
+                      </p>
+                    </div>
+                    <ChevronDown
+                      size={18}
+                      className={cn(
+                        "shrink-0 text-amber-700/60 transition-transform dark:text-amber-200/70",
+                        showSecondaryFlow && "rotate-180",
+                      )}
+                    />
+                  </button>
 
-              {showSecondaryFlow && (
+                  {showSecondaryFlow && (
                 <div className="grid grid-cols-1 gap-6 rounded-[1.75rem] border border-amber-100 bg-amber-50/60 p-4 sm:p-5">
                   <div>
                     <p className="mb-1 text-[11px] font-black uppercase tracking-widest text-amber-700">
@@ -1027,6 +1127,8 @@ export const CreateLink = ({
                     </div>
                   </div>
                 </div>
+                  )}
+                </>
               )}
 
               <button
@@ -1277,198 +1379,209 @@ export const CreateLink = ({
                           placeholder={page.abVariantBImagePlaceholder}
                           className="w-full rounded-2xl bg-white px-6 py-4 font-medium text-gray-900 dark:bg-slate-700 dark:text-slate-100"
                         />
-                        <input
-                          type="url"
-                          value={abVariantBVideoUrl}
-                          onChange={(e) =>
-                            setAbVariantBVideoUrl(e.target.value)
-                          }
-                          placeholder={page.abVariantBVideoPlaceholder}
-                          className="w-full rounded-2xl bg-white px-6 py-4 font-medium text-gray-900 dark:bg-slate-700 dark:text-slate-100"
-                        />
-                        <input
-                          type="url"
-                          value={abVariantBSecondaryUrl}
-                          onChange={(e) =>
-                            setAbVariantBSecondaryUrl(e.target.value)
-                          }
-                          placeholder={page.abVariantBSecondaryPlaceholder}
-                          className="w-full rounded-2xl bg-white px-6 py-4 font-medium text-gray-900 dark:bg-slate-700 dark:text-slate-100 md:col-span-2"
-                        />
+                        {!mobileDirectMode && (
+                          <>
+                            <input
+                              type="url"
+                              value={abVariantBVideoUrl}
+                              onChange={(e) =>
+                                setAbVariantBVideoUrl(e.target.value)
+                              }
+                              placeholder={page.abVariantBVideoPlaceholder}
+                              className="w-full rounded-2xl bg-white px-6 py-4 font-medium text-gray-900 dark:bg-slate-700 dark:text-slate-100"
+                            />
+                            <input
+                              type="url"
+                              value={abVariantBSecondaryUrl}
+                              onChange={(e) =>
+                                setAbVariantBSecondaryUrl(e.target.value)
+                              }
+                              placeholder={page.abVariantBSecondaryPlaceholder}
+                              className="w-full rounded-2xl bg-white px-6 py-4 font-medium text-gray-900 dark:bg-slate-700 dark:text-slate-100 md:col-span-2"
+                            />
+                          </>
+                        )}
                       </div>
+                    )}
+                    {abTestEnabled && mobileDirectMode && (
+                      <p className="text-xs font-bold text-emerald-800/80">
+                        {page.mobileDirectModeAbNote}
+                      </p>
                     )}
                   </div>
                 </div>
               )}
 
               <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 lg:items-stretch">
-                <div className="flex flex-col space-y-4">
-                  <label className="flex items-center gap-2 px-1 text-[11px] font-black uppercase tracking-widest text-gray-400">
-                    <VideoIcon size={14} className="text-orange-500" />{" "}
-                    {page.videoLabel}
-                  </label>
-                  <input
-                    type="file"
-                    accept="video/*"
-                    ref={videoInputRef}
-                    onChange={handleVideoUpload}
-                    className="hidden"
-                  />
-                  <button
-                    type="button"
-                    disabled={videoUploadBlocked}
-                    onClick={() => videoInputRef?.current?.click()}
-                    onDragEnter={(event) => {
-                      event.preventDefault();
-                      setIsDraggingVideo(true);
-                    }}
-                    onDragOver={(event) => {
-                      event.preventDefault();
-                      if (!isDraggingVideo) {
+                {!mobileDirectMode && (
+                  <div className="flex flex-col space-y-4">
+                    <label className="flex items-center gap-2 px-1 text-[11px] font-black uppercase tracking-widest text-gray-400">
+                      <VideoIcon size={14} className="text-orange-500" />{" "}
+                      {page.videoLabel}
+                    </label>
+                    <input
+                      type="file"
+                      accept="video/*"
+                      ref={videoInputRef}
+                      onChange={handleVideoUpload}
+                      className="hidden"
+                    />
+                    <button
+                      type="button"
+                      disabled={videoUploadBlocked}
+                      onClick={() => videoInputRef?.current?.click()}
+                      onDragEnter={(event) => {
+                        event.preventDefault();
                         setIsDraggingVideo(true);
-                      }
-                    }}
-                    onDragLeave={(event) => {
-                      event.preventDefault();
-                      const nextTarget = event.relatedTarget as Node | null;
-                      if (!event.currentTarget.contains(nextTarget)) {
-                        setIsDraggingVideo(false);
-                      }
-                    }}
-                    onDrop={handleVideoDrop}
-                    data-field="videoUrl"
-                    className={cn(
-                      "group flex min-h-21 w-full flex-col items-start gap-4 rounded-2xl border-2 border-dashed px-5 py-5 text-left transition-all sm:flex-row sm:items-center sm:justify-between sm:px-6",
-                      videoUploadBlocked &&
-                        "cursor-not-allowed opacity-60 saturate-0",
-                      isDraggingVideo
-                        ? "border-orange-400 bg-orange-100/80 shadow-lg shadow-orange-100"
-                        : "border-orange-100 bg-orange-50/30 hover:border-orange-300 hover:bg-orange-50/50",
-                    )}
-                  >
-                    <div className="flex items-center gap-3 font-bold text-orange-400 group-hover:text-orange-600">
-                      <div className="relative flex h-10 w-10 items-center justify-center rounded-xl bg-white shadow-sm dark:bg-slate-800">
-                        {uploadingVideo ? (
-                          <svg
-                            className="h-10 w-10 -rotate-90"
-                            viewBox="0 0 36 36"
-                            aria-hidden="true"
-                          >
-                            <circle
-                              cx="18"
-                              cy="18"
-                              r="14"
-                              fill="none"
-                              stroke="currentColor"
-                              strokeOpacity="0.15"
-                              strokeWidth="3"
-                            />
-                            <circle
-                              cx="18"
-                              cy="18"
-                              r="14"
-                              fill="none"
-                              stroke="currentColor"
-                              strokeWidth="3"
-                              strokeLinecap="round"
-                              strokeDasharray="87.96"
-                              strokeDashoffset={uploadProgressOffset}
-                            />
-                          </svg>
-                        ) : (
-                          <UploadCloud size={20} />
-                        )}
-                        {uploadingVideo && (
-                          <span className="absolute inset-0 flex items-center justify-center text-[9px] font-black text-orange-600">
-                            {videoUploadProgress > 0
-                              ? `${videoUploadProgress}%`
-                              : "..."}
-                          </span>
-                        )}
-                      </div>
-                      <span className="text-[11px] uppercase tracking-wider sm:text-xs">
-                        {uploadingVideo
-                          ? videoUploadProgress > 0
-                            ? page.videoUploading
-                            : page.videoPreparing
-                          : videoUrl
-                            ? t("createLink.page.videoReplaceWithProvider", {
-                                provider: videoProviderLabel,
-                              })
-                            : t("createLink.page.videoUploadWithProvider", {
-                                provider: videoProviderLabel,
-                              })}
-                      </span>
-                    </div>
-                    {videoUrl && (
-                      <div className="rounded-full bg-green-100 p-1">
-                        <Check className="text-green-600" size={14} />
-                      </div>
-                    )}
-                  </button>
-                  <p className="px-1 text-[11px] font-medium text-gray-500">
-                    {page.videoDropHelp}
-                  </p>
-                  {userLimits && (
-                    <p className="px-1 text-[11px] font-bold text-violet-600 dark:text-violet-300">
-                      {userLimits.dailyVideoUploads === null
-                        ? page.videoQuotaUnlimited
-                        : t("createLink.page.videoQuotaRemaining", {
-                            remaining: videoUploadsRemainingToday ?? 0,
-                            limit: userLimits.dailyVideoUploads,
-                          })}
-                    </p>
-                  )}
-                  {videoUploadBlocked && (
-                    <p className="px-1 text-[11px] font-bold text-amber-600 dark:text-amber-300">
-                      {userLimits?.dailyVideoUploads === 0
-                        ? page.videoQuotaUnsupported
-                        : page.videoQuotaExhausted}
-                    </p>
-                  )}
-                  {renderFieldError("videoUrl")}
-
-                  {videoUploadSuccess && (
-                    <div className="flex items-center gap-2 rounded-xl border border-green-100 bg-green-50 px-4 py-2 text-[10px] font-black uppercase tracking-widest text-green-600">
-                      <ShieldCheck size={14} />
-                      {t("createLink.page.videoUploadSuccessWithProvider", {
-                        provider: videoProviderLabel,
-                      })}
-                    </div>
-                  )}
-
-                  {(videoPreviewUrl || videoUrl) && (
-                    <div
+                      }}
+                      onDragOver={(event) => {
+                        event.preventDefault();
+                        if (!isDraggingVideo) {
+                          setIsDraggingVideo(true);
+                        }
+                      }}
+                      onDragLeave={(event) => {
+                        event.preventDefault();
+                        const nextTarget = event.relatedTarget as Node | null;
+                        if (!event.currentTarget.contains(nextTarget)) {
+                          setIsDraggingVideo(false);
+                        }
+                      }}
+                      onDrop={handleVideoDrop}
+                      data-field="videoUrl"
                       className={cn(
-                        "relative mt-auto overflow-hidden rounded-3xl bg-black shadow-2xl ring-4 ring-white",
-                        videoPreviewOrientation === "portrait"
-                          ? "mx-auto aspect-9/16 w-full max-w-[18rem]"
-                          : videoPreviewOrientation === "square"
-                            ? "mx-auto aspect-square w-full max-w-[24rem]"
-                            : "aspect-video w-full",
+                        "group flex min-h-21 w-full flex-col items-start gap-4 rounded-2xl border-2 border-dashed px-5 py-5 text-left transition-all sm:flex-row sm:items-center sm:justify-between sm:px-6",
+                        videoUploadBlocked &&
+                          "cursor-not-allowed opacity-60 saturate-0",
+                        isDraggingVideo
+                          ? "border-orange-400 bg-orange-100/80 shadow-lg shadow-orange-100"
+                          : "border-orange-100 bg-orange-50/30 hover:border-orange-300 hover:bg-orange-50/50",
                       )}
                     >
-                      <video
-                        src={videoPreviewUrl || videoUrl}
-                        controls
-                        playsInline
-                        preload="metadata"
-                        onLoadedMetadata={handleVideoPreviewMetadata}
-                        className="h-full w-full bg-black object-contain"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setVideoUrl("");
-                          setVideoPreviewOrientation("landscape");
-                        }}
-                        className="absolute right-4 top-4 rounded-full bg-black/50 p-2 text-white shadow-lg backdrop-blur-sm transition-all hover:bg-red-600"
+                      <div className="flex items-center gap-3 font-bold text-orange-400 group-hover:text-orange-600">
+                        <div className="relative flex h-10 w-10 items-center justify-center rounded-xl bg-white shadow-sm dark:bg-slate-800">
+                          {uploadingVideo ? (
+                            <svg
+                              className="h-10 w-10 -rotate-90"
+                              viewBox="0 0 36 36"
+                              aria-hidden="true"
+                            >
+                              <circle
+                                cx="18"
+                                cy="18"
+                                r="14"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeOpacity="0.15"
+                                strokeWidth="3"
+                              />
+                              <circle
+                                cx="18"
+                                cy="18"
+                                r="14"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="3"
+                                strokeLinecap="round"
+                                strokeDasharray="87.96"
+                                strokeDashoffset={uploadProgressOffset}
+                              />
+                            </svg>
+                          ) : (
+                            <UploadCloud size={20} />
+                          )}
+                          {uploadingVideo && (
+                            <span className="absolute inset-0 flex items-center justify-center text-[9px] font-black text-orange-600">
+                              {videoUploadProgress > 0
+                                ? `${videoUploadProgress}%`
+                                : "..."}
+                            </span>
+                          )}
+                        </div>
+                        <span className="text-[11px] uppercase tracking-wider sm:text-xs">
+                          {uploadingVideo
+                            ? videoUploadProgress > 0
+                              ? page.videoUploading
+                              : page.videoPreparing
+                            : videoUrl
+                              ? t("createLink.page.videoReplaceWithProvider", {
+                                  provider: videoProviderLabel,
+                                })
+                              : t("createLink.page.videoUploadWithProvider", {
+                                  provider: videoProviderLabel,
+                                })}
+                        </span>
+                      </div>
+                      {videoUrl && (
+                        <div className="rounded-full bg-green-100 p-1">
+                          <Check className="text-green-600" size={14} />
+                        </div>
+                      )}
+                    </button>
+                    <p className="px-1 text-[11px] font-medium text-gray-500">
+                      {page.videoDropHelp}
+                    </p>
+                    {userLimits && (
+                      <p className="px-1 text-[11px] font-bold text-violet-600 dark:text-violet-300">
+                        {userLimits.dailyVideoUploads === null
+                          ? page.videoQuotaUnlimited
+                          : t("createLink.page.videoQuotaRemaining", {
+                              remaining: videoUploadsRemainingToday ?? 0,
+                              limit: userLimits.dailyVideoUploads,
+                            })}
+                      </p>
+                    )}
+                    {videoUploadBlocked && (
+                      <p className="px-1 text-[11px] font-bold text-amber-600 dark:text-amber-300">
+                        {userLimits?.dailyVideoUploads === 0
+                          ? page.videoQuotaUnsupported
+                          : page.videoQuotaExhausted}
+                      </p>
+                    )}
+                    {renderFieldError("videoUrl")}
+
+                    {videoUploadSuccess && (
+                      <div className="flex items-center gap-2 rounded-xl border border-green-100 bg-green-50 px-4 py-2 text-[10px] font-black uppercase tracking-widest text-green-600">
+                        <ShieldCheck size={14} />
+                        {t("createLink.page.videoUploadSuccessWithProvider", {
+                          provider: videoProviderLabel,
+                        })}
+                      </div>
+                    )}
+
+                    {(videoPreviewUrl || videoUrl) && (
+                      <div
+                        className={cn(
+                          "relative mt-auto overflow-hidden rounded-3xl bg-black shadow-2xl ring-4 ring-white",
+                          videoPreviewOrientation === "portrait"
+                            ? "mx-auto aspect-9/16 w-full max-w-[18rem]"
+                            : videoPreviewOrientation === "square"
+                              ? "mx-auto aspect-square w-full max-w-[24rem]"
+                              : "aspect-video w-full",
+                        )}
                       >
-                        <X size={16} />
-                      </button>
-                    </div>
-                  )}
-                </div>
+                        <video
+                          src={videoPreviewUrl || videoUrl}
+                          controls
+                          playsInline
+                          preload="metadata"
+                          onLoadedMetadata={handleVideoPreviewMetadata}
+                          className="h-full w-full bg-black object-contain"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setVideoUrl("");
+                            setVideoPreviewOrientation("landscape");
+                          }}
+                          className="absolute right-4 top-4 rounded-full bg-black/50 p-2 text-white shadow-lg backdrop-blur-sm transition-all hover:bg-red-600"
+                        >
+                          <X size={16} />
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 <div className="flex flex-col space-y-4">
                   <label className="flex items-center gap-2 px-1 text-[11px] font-black uppercase tracking-widest text-gray-400">
@@ -1549,7 +1662,9 @@ export const CreateLink = ({
                     )}
                   </button>
                   <p className="px-1 text-[11px] font-medium text-gray-500 dark:text-slate-400">
-                    {page.thumbnailDropHelp}
+                    {mobileDirectMode
+                      ? page.mobileDirectModeImageHelp
+                      : page.thumbnailDropHelp}
                   </p>
                   {thumbnailUploadSuccess && (
                     <div className="flex items-center gap-2 rounded-xl border border-green-100 bg-green-50 px-4 py-2 text-[10px] font-black uppercase tracking-widest text-green-600 dark:border-green-900/50 dark:bg-green-950/30 dark:text-green-300">

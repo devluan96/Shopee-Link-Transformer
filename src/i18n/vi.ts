@@ -1180,6 +1180,10 @@ export const vi = {
       redirectDelayRange: "Độ trễ phải nằm trong khoảng 1 đến 10 giây.",
       dropVideo: "Vui lòng thả đúng file video hợp lệ.",
       dropImage: "Vui lòng thả đúng file ảnh đại diện.",
+      directModeImageRequired:
+        "Mobile TikTok direct mode yêu cầu ảnh đại diện.",
+      directModeSecondaryDisabled:
+        "Mobile TikTok direct mode không hỗ trợ liên kết bước 2.",
     },
     page: {
       title: "Tạo trang đích mới",
@@ -1324,6 +1328,17 @@ export const vi = {
         "Tải ảnh đại diện lên {provider} thành công",
       thumbnailUrlPlaceholder: "Đường dẫn ảnh bìa...",
       thumbnailPreviewAlt: "Xem trước ảnh đại diện",
+      mobileDirectModeTitle: "Mobile TikTok direct mode",
+      mobileDirectModeDescription:
+        "Bỏ landing video trên mobile để ưu tiên redirect thẳng sang app Shopee hoặc TikTok.",
+      mobileDirectModeEnabled: "Đang bật",
+      mobileDirectModeDisabled: "Đang tắt",
+      mobileDirectModeNote:
+        "Mode này chỉ dùng ảnh đại diện. Khi bật, link sẽ đi theo flow direct redirect trên mobile để tăng khả năng nhảy thẳng app.",
+      mobileDirectModeAbNote:
+        "Biến thể B trong direct mode chỉ giữ title, description, ảnh và link chính. Video và bước 2 sẽ được tắt.",
+      mobileDirectModeImageHelp:
+        "Direct mode không dùng video. Hãy tải hoặc dán 1 ảnh đại diện để link mobile redirect thẳng sang app.",
     },
     result: {
       review: "Chế độ xem trước",

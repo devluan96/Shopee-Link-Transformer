@@ -1198,6 +1198,10 @@ export const en = {
       redirectDelayRange: "Delay must be between 1 and 10 seconds.",
       dropVideo: "Please drop a valid video file.",
       dropImage: "Please drop a valid image file for the thumbnail.",
+      directModeImageRequired:
+        "Mobile TikTok direct mode requires a thumbnail image.",
+      directModeSecondaryDisabled:
+        "Mobile TikTok direct mode does not support the step-2 URL.",
     },
     page: {
       title: "Create a new landing page",
@@ -1340,6 +1344,17 @@ export const en = {
         "Thumbnail uploaded to {provider} successfully",
       thumbnailUrlPlaceholder: "Cover image URL...",
       thumbnailPreviewAlt: "Thumbnail preview",
+      mobileDirectModeTitle: "Mobile TikTok direct mode",
+      mobileDirectModeDescription:
+        "Skip the video landing flow on mobile and prioritize a direct redirect into the Shopee or TikTok app.",
+      mobileDirectModeEnabled: "Enabled",
+      mobileDirectModeDisabled: "Disabled",
+      mobileDirectModeNote:
+        "This mode is image-only. When enabled, mobile traffic follows the direct redirect path to improve the chance of opening the target app immediately.",
+      mobileDirectModeAbNote:
+        "Variant B in direct mode keeps only the title, description, image, and primary URL. Video and step-2 are disabled.",
+      mobileDirectModeImageHelp:
+        "Direct mode does not use video. Upload or paste one thumbnail image so the mobile link can redirect straight into the app.",
     },
     result: {
       review: "Preview mode",
