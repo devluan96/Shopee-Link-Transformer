@@ -24,6 +24,7 @@ interface UseLinkCreatorProps {
 
 export interface LinkCreatorState {
   url: string;
+  mobileDirectMode: boolean;
   customTitle: string;
   customDescription: string;
   customShortCode: string;
@@ -58,6 +59,7 @@ export interface LinkCreatorState {
 
 export interface LinkCreatorActions {
   setUrl: (v: string) => void;
+  setMobileDirectMode: (v: boolean) => void;
   setCustomTitle: (v: string) => void;
   setCustomDescription: (v: string) => void;
   setCustomShortCode: (v: string) => void;
@@ -100,6 +102,7 @@ export function useLinkCreator({
 }: UseLinkCreatorProps): LinkCreatorState & LinkCreatorActions {
   const { t } = useLocale();
   const [url, setUrl] = useState("");
+  const [mobileDirectMode, setMobileDirectMode] = useState(false);
   const [customTitle, setCustomTitle] = useState("");
   const [customDescription, setCustomDescription] = useState("");
   const [customShortCode, setCustomShortCode] = useState("");
@@ -164,6 +167,7 @@ export function useLinkCreator({
           method: "POST",
           body: JSON.stringify({
             url: url.trim(),
+            mobileDirectMode,
             customShortCode,
             customTitle,
             customDescription,
@@ -232,6 +236,7 @@ export function useLinkCreator({
       url,
       user,
       canAccessCreate,
+      mobileDirectMode,
       customShortCode,
       customTitle,
       customDescription,
@@ -268,6 +273,7 @@ export function useLinkCreator({
 
   const resetForm = useCallback(() => {
     setUrl("");
+    setMobileDirectMode(false);
     setCustomTitle("");
     setCustomDescription("");
     setCustomShortCode("");
@@ -301,6 +307,7 @@ export function useLinkCreator({
 
   return {
     url,
+    mobileDirectMode,
     customTitle,
     customDescription,
     customShortCode,
@@ -332,6 +339,7 @@ export function useLinkCreator({
     error,
     result,
     setUrl,
+    setMobileDirectMode,
     setCustomTitle,
     setCustomDescription,
     setCustomShortCode,

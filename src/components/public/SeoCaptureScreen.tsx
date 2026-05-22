@@ -186,6 +186,7 @@ export function SeoCaptureScreen({ screen }: { screen: CaptureScreen }) {
       ? "https://www.tiktok.com/@hotsnew/video/7483920192"
       : "https://shopee.vn/product/123/456",
   );
+  const [mobileDirectMode, setMobileDirectMode] = useState(false);
   const [customTitle, setCustomTitle] = useState(
     isTikTok
       ? "Link bio TikTok affiliate cho creator"
@@ -306,6 +307,8 @@ export function SeoCaptureScreen({ screen }: { screen: CaptureScreen }) {
       <CreateLink
         url={url}
         setUrl={setUrl}
+        mobileDirectMode={mobileDirectMode}
+        setMobileDirectMode={setMobileDirectMode}
         customTitle={customTitle}
         setCustomTitle={setCustomTitle}
         customDescription={customDescription}

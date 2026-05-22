@@ -500,6 +500,8 @@ export default function App() {
     error,
     result,
     setUrl,
+    setMobileDirectMode,
+    mobileDirectMode,
     setCustomTitle,
     setCustomDescription,
     setCustomShortCode,
@@ -1115,6 +1117,8 @@ export default function App() {
               <CreateLink
                 url={url}
                 setUrl={setUrl}
+                mobileDirectMode={mobileDirectMode}
+                setMobileDirectMode={setMobileDirectMode}
                 customTitle={customTitle}
                 setCustomTitle={setCustomTitle}
                 customDescription={customDescription}
