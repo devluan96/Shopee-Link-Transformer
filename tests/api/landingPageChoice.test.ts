@@ -78,3 +78,21 @@ test("renderChoiceLandingPage attaches playback listeners before starting previe
     "playback tracking should be re-synced after preview start",
   );
 });
+
+test("renderChoiceLandingPage sends primary overlay clicks through server redirect", () => {
+  const html = renderChoiceLandingPage(
+    sampleLink,
+    "https://test.hotsnew.click/test11",
+    "https://test.hotsnew.click/api/v1/links/link-1/track",
+  );
+
+  assert.match(
+    html,
+    /<a id="overlay" class="overlay delayed-hidden" href="https:\/\/test\.hotsnew\.click\/api\/v1\/links\/link-1\/open\?stage=primary"/,
+  );
+  assert.match(
+    html,
+    /const secondaryRedirectUrl = "https:\/\/test\.hotsnew\.click\/api\/v1\/links\/link-1\/open\?stage=secondary";/,
+  );
+  assert.doesNotMatch(html, /window\.location\.assign\(url\)/);
+});

@@ -129,6 +129,128 @@ const shouldIgnoreTrackingRequest = (req: Request) => {
   );
 };
 
+const fetchEffectiveTrackedLink = async (supabase: ReturnType<typeof getSupabase>, req: Request, linkId: string) => {
+  const userAgent = req.headers["user-agent"] || "";
+  const { data: link, error: linkError } = await supabase
+    .from("links")
+    .select(
+      "id, user_id, short_code, custom_title, original_url, secondary_url, ab_test_enabled, ab_variant_b_title, ab_variant_b_description, ab_variant_b_image_url, ab_variant_b_video_url, ab_variant_b_original_url, ab_variant_b_secondary_url",
+    )
+    .eq("id", linkId)
+    .maybeSingle();
+
+  if (linkError || !link) {
+    return { link: null, effectiveLink: null, userAgent };
+  }
+
+  const { effectiveLink } = resolveEffectiveAbLink(
+    link,
+    req,
+    typeof userAgent === "string" ? userAgent : "",
+  );
+
+  return { link, effectiveLink, userAgent };
+};
+
+const trackPrimaryOpen = async (
+  supabase: ReturnType<typeof getSupabase>,
+  req: Request,
+  link: Record<string, any>,
+  effectiveLink: Record<string, any>,
+  userAgent: string,
+) => {
+  const { source, source_detail, referer } = getTrafficSourceFromRequest(req);
+  const ipAddress = getClientIp(req);
+
+  let clickInserted = false;
+  try {
+    clickInserted = await insertClickWithTracking(supabase, {
+      link_id: effectiveLink.id,
+      user_agent: userAgent,
+      ip_address: ipAddress,
+      source,
+      source_detail,
+      referer,
+    });
+  } catch (trackError) {
+    console.error("Click tracking error:", trackError);
+  }
+
+  let outboundInserted = false;
+  try {
+    outboundInserted = await insertOutboundEvent(supabase, {
+      link_id: effectiveLink.id,
+      short_code: effectiveLink.short_code,
+      stage: "primary",
+      destination_url: effectiveLink.original_url,
+      user_agent: userAgent,
+      ip_address: ipAddress,
+      source,
+      source_detail,
+      referer,
+    });
+  } catch (trackError) {
+    console.error("Outbound tracking error:", trackError);
+  }
+
+  if (outboundInserted) {
+    try {
+      await supabase.rpc("increment_link_clicks", { link_id: link.id });
+    } catch (e: any) {
+      console.error("Failed to increment clicks:", e.message);
+    }
+  }
+
+  if (link.user_id && (clickInserted || outboundInserted)) {
+    try {
+      const clickData = {
+        source: source || "direct",
+        created_at: new Date().toISOString(),
+      };
+      handleClickNotification(
+        supabase,
+        link.user_id,
+        effectiveLink.id,
+        effectiveLink.short_code,
+        clickData,
+        {
+          linkTitle: effectiveLink.custom_title || null,
+        },
+      );
+    } catch (notifyError) {
+      console.error("Notification error:", notifyError);
+    }
+  }
+
+  return { clickInserted, outboundInserted };
+};
+
+const trackSecondaryOpen = async (
+  supabase: ReturnType<typeof getSupabase>,
+  req: Request,
+  effectiveLink: Record<string, any>,
+) => {
+  const { source, source_detail, referer } = getTrafficSourceFromRequest(req);
+  const userAgent = req.headers["user-agent"] || "";
+  const ipAddress = getClientIp(req);
+
+  try {
+    await insertOutboundEvent(supabase, {
+      link_id: effectiveLink.id,
+      short_code: effectiveLink.short_code,
+      stage: "secondary",
+      destination_url: effectiveLink.secondary_url,
+      user_agent: typeof userAgent === "string" ? userAgent : null,
+      ip_address: ipAddress,
+      source,
+      source_detail,
+      referer,
+    });
+  } catch (trackError) {
+    console.error("Secondary outbound tracking error:", trackError);
+  }
+};
+
 // A. MIDDLEWARES
 app.use(
   cors({
@@ -564,6 +686,66 @@ app.get("/s/:shortCode", async (req, res) => {
 });
 
 // F. OUTBOUND TRACKING
+app.get("/api/v1/links/:linkId/open", async (req, res) => {
+  try {
+    const { linkId } = req.params;
+    const stage = req.query.stage === "secondary" ? "secondary" : "primary";
+
+    if (!linkId) {
+      return res.status(400).send("Missing linkId");
+    }
+
+    res.setHeader(
+      "Cache-Control",
+      "no-store, no-cache, must-revalidate, proxy-revalidate",
+    );
+    res.setHeader("Pragma", "no-cache");
+    res.setHeader("Expires", "0");
+    res.setHeader("Surrogate-Control", "no-store");
+
+    const supabase = getSupabase();
+    const { link, effectiveLink, userAgent } = await fetchEffectiveTrackedLink(
+      supabase,
+      req,
+      linkId,
+    );
+
+    if (!link || !effectiveLink) {
+      return res.status(404).send("Link not found");
+    }
+
+    const destinationUrl =
+      stage === "secondary"
+        ? effectiveLink.secondary_url
+        : effectiveLink.original_url;
+
+    if (!destinationUrl) {
+      return res.status(400).send("Missing destination URL");
+    }
+
+    if (shouldIgnoreTrackingRequest(req)) {
+      return res.redirect(destinationUrl);
+    }
+
+    if (stage === "secondary") {
+      await trackSecondaryOpen(supabase, req, effectiveLink);
+    } else {
+      await trackPrimaryOpen(
+        supabase,
+        req,
+        link,
+        effectiveLink,
+        typeof userAgent === "string" ? userAgent : "",
+      );
+    }
+
+    return res.redirect(destinationUrl);
+  } catch (e: any) {
+    console.error("Open redirect error:", e);
+    return res.status(500).send("Server error: " + (e.message || "Unknown"));
+  }
+});
+
 app.post("/api/v1/links/:linkId/track-preview-click", async (req, res) => {
   try {
     const { linkId } = req.params;
@@ -606,89 +788,22 @@ app.post("/api/v1/links/:linkId/track", async (req, res) => {
     }
 
     const supabase = getSupabase();
-    const { source, source_detail, referer } = getTrafficSourceFromRequest(req);
-    const userAgent = req.headers["user-agent"] || "";
-    const ipAddress = getClientIp(req);
-
-    // Fetch link details to get required fields
-    const { data: link, error: linkError } = await supabase
-      .from("links")
-      .select(
-        "id, user_id, short_code, custom_title, original_url, secondary_url, ab_test_enabled, ab_variant_b_title, ab_variant_b_description, ab_variant_b_image_url, ab_variant_b_video_url, ab_variant_b_original_url, ab_variant_b_secondary_url",
-      )
-      .eq("id", linkId)
-      .maybeSingle();
-
-    if (linkError || !link) {
-      return res.status(404).json({ error: "Link not found" });
-    }
-    const { effectiveLink } = resolveEffectiveAbLink(
-      link,
+    const { link, effectiveLink, userAgent } = await fetchEffectiveTrackedLink(
+      supabase,
       req,
-      typeof userAgent === "string" ? userAgent : "",
+      linkId,
     );
 
-    // Record real click when user clicks overlay (not just page load)
-    let clickInserted = false;
-    try {
-      clickInserted = await insertClickWithTracking(supabase, {
-        link_id: effectiveLink.id,
-        user_agent: userAgent,
-        ip_address: ipAddress,
-        source,
-        source_detail,
-        referer,
-      });
-    } catch (trackError) {
-      console.error("Click tracking error:", trackError);
+    if (!link || !effectiveLink) {
+      return res.status(404).json({ error: "Link not found" });
     }
-
-    let outboundInserted = false;
-    try {
-      outboundInserted = await insertOutboundEvent(supabase, {
-        link_id: effectiveLink.id,
-        short_code: effectiveLink.short_code,
-        stage: "primary",
-        destination_url: effectiveLink.original_url,
-        user_agent: userAgent,
-        ip_address: ipAddress,
-        source,
-        source_detail,
-        referer,
-      });
-    } catch (trackError) {
-      console.error("Outbound tracking error:", trackError);
-    }
-
-    if (outboundInserted) {
-      try {
-        await supabase.rpc("increment_link_clicks", { link_id: link.id });
-      } catch (e: any) {
-        console.error("Failed to increment clicks:", e.message);
-      }
-    }
-
-    // Send notification (fire and forget)
-    if (link.user_id && (clickInserted || outboundInserted)) {
-      try {
-        const clickData = {
-          source: source || "direct",
-          created_at: new Date().toISOString(),
-        };
-        handleClickNotification(
-          supabase,
-          link.user_id,
-          effectiveLink.id,
-          effectiveLink.short_code,
-          clickData,
-          {
-            linkTitle: effectiveLink.custom_title || null,
-          },
-        );
-      } catch (notifyError) {
-        console.error("Notification error:", notifyError);
-      }
-    }
+    const { outboundInserted } = await trackPrimaryOpen(
+      supabase,
+      req,
+      link,
+      effectiveLink,
+      typeof userAgent === "string" ? userAgent : "",
+    );
 
     return res.json({
       success: true,
