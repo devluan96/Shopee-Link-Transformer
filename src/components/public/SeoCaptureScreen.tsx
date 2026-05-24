@@ -211,19 +211,6 @@ export function SeoCaptureScreen({ screen }: { screen: CaptureScreen }) {
   const [customDomain, setCustomDomain] = useState(
     isTikTok ? "new-express.xyz" : "hotsnew.click",
   );
-  const [utmSource, setUtmSource] = useState(
-    isTikTok ? "tiktok" : "facebook",
-  );
-  const [utmMedium, setUtmMedium] = useState(
-    isTikTok ? "bio" : "group-post",
-  );
-  const [utmCampaign, setUtmCampaign] = useState(
-    isTikTok ? "creator-launch" : "flash-sale",
-  );
-  const [utmContent, setUtmContent] = useState(
-    isTikTok ? "creator-a" : "group-a",
-  );
-  const [utmTerm, setUtmTerm] = useState(isTikTok ? "bio-link" : "deal-link");
   const [shopeeAffiliateParams, setShopeeAffiliateParams] = useState("sub_id=flashsale");
   const [tiktokAffiliateParams, setTiktokAffiliateParams] = useState("utm_id=creator-a");
   const [secondaryUrl, setSecondaryUrl] = useState("");
@@ -329,16 +316,6 @@ export function SeoCaptureScreen({ screen }: { screen: CaptureScreen }) {
         canUseCustomDomains
         linkQuota={mockQuota}
         userLimits={mockLimits}
-        utmSource={utmSource}
-        setUtmSource={setUtmSource}
-        utmMedium={utmMedium}
-        setUtmMedium={setUtmMedium}
-        utmCampaign={utmCampaign}
-        setUtmCampaign={setUtmCampaign}
-        utmContent={utmContent}
-        setUtmContent={setUtmContent}
-        utmTerm={utmTerm}
-        setUtmTerm={setUtmTerm}
         shopeeAffiliateParams={shopeeAffiliateParams}
         setShopeeAffiliateParams={setShopeeAffiliateParams}
         tiktokAffiliateParams={tiktokAffiliateParams}

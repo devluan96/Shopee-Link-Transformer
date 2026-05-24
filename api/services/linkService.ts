@@ -7,7 +7,7 @@ import {
   ensureSameShopeeHostname,
   normalizeRedirectDelayMs,
 } from "../utils/normalizers.js";
-import { TIKTOK_HOST_REGEX } from "../config/constants.js";
+import { SHOPEE_HOST_REGEX, TIKTOK_HOST_REGEX } from "../config/constants.js";
 import {
   assertWorkspaceWriteAccessForLink,
   getAccessibleWorkspaceIds,
@@ -77,31 +77,18 @@ const parseAffiliateParams = (value?: string | null) => {
   return [...params.keys()].length ? params : null;
 };
 
-const appendUrlParams = (
-  targetUrl: string,
-  params: Array<[string, string | undefined]>,
-) => {
-  const url = new URL(targetUrl);
-  params.forEach(([key, value]) => {
-    const nextValue = value?.trim();
-    if (!nextValue) return;
-    url.searchParams.set(key, nextValue);
-  });
-  return url.toString();
+type MarketingParamInput = {
+  shopeeAffiliateParams?: string;
+  tiktokAffiliateParams?: string;
 };
 
-const applyAffiliateParams = (
-  targetUrl: string,
-  affiliateParams: URLSearchParams | null,
+export const applyMarketingParamsToDestination = (
+  requestedUrl: string,
+  normalizedUrl: string,
+  data: MarketingParamInput,
 ) => {
-  if (!affiliateParams) return targetUrl;
-  const url = new URL(targetUrl);
-  affiliateParams.forEach((value, key) => {
-    if (key && value) {
-      url.searchParams.set(key, value);
-    }
-  });
-  return url.toString();
+  const trimmedRequestedUrl = requestedUrl.trim();
+  return trimmedRequestedUrl || normalizedUrl;
 };
 
 const generateUniquePublicSlug = async (
@@ -144,37 +131,13 @@ const inferSecondaryTargetType = (
   }
 };
 
-const createMarketingUrlApplier = (data: {
-  utmSource?: string;
-  utmMedium?: string;
-  utmCampaign?: string;
-  utmContent?: string;
-  utmTerm?: string;
-  shopeeAffiliateParams?: string;
-  tiktokAffiliateParams?: string;
-}) => {
-  const affiliateShopeeParams = parseAffiliateParams(
-    data.shopeeAffiliateParams,
-  );
-  const affiliateTikTokParams = parseAffiliateParams(
-    data.tiktokAffiliateParams,
-  );
-
-  return (targetUrl: string) => {
-    const urlWithUtm = appendUrlParams(targetUrl, [
-      ["utm_source", data.utmSource],
-      ["utm_medium", data.utmMedium],
-      ["utm_campaign", data.utmCampaign],
-      ["utm_content", data.utmContent],
-      ["utm_term", data.utmTerm],
-    ]);
-
-    const hostname = new URL(urlWithUtm).hostname;
-    if (TIKTOK_HOST_REGEX.test(hostname)) {
-      return applyAffiliateParams(urlWithUtm, affiliateTikTokParams);
-    }
-    return applyAffiliateParams(urlWithUtm, affiliateShopeeParams);
-  };
+const createMarketingUrlApplier = (data: MarketingParamInput) => {
+  return (requestedUrl: string, normalizedUrl?: string) =>
+    applyMarketingParamsToDestination(
+      requestedUrl,
+      normalizedUrl || requestedUrl,
+      data,
+    );
 };
 
 export const createLink = async (
@@ -196,11 +159,6 @@ export const createLink = async (
     tags?: string[];
     workspaceId?: string;
     customDomain?: string;
-    utmSource?: string;
-    utmMedium?: string;
-    utmCampaign?: string;
-    utmContent?: string;
-    utmTerm?: string;
     shopeeAffiliateParams?: string;
     tiktokAffiliateParams?: string;
     abTestEnabled?: boolean;
@@ -228,7 +186,7 @@ export const createLink = async (
   if (!normalizedPrimaryUrl) {
     throw new Error("Link gốc không hợp lệ.");
   }
-  const primaryUrl = applyMarketingParams(normalizedPrimaryUrl);
+  const primaryUrl = applyMarketingParams(data.url, normalizedPrimaryUrl);
   const mobileDirectMode = !!data.mobileDirectMode;
   const primaryImageUrl = data.customImageUrl?.trim() || null;
   const primaryVideoUrl = mobileDirectMode
@@ -296,7 +254,10 @@ export const createLink = async (
     if (!normalizedSecondaryUrl) {
       throw new Error("Link bước 2 không hợp lệ.");
     }
-    secondaryUrl = applyMarketingParams(normalizedSecondaryUrl);
+    secondaryUrl = applyMarketingParams(
+      requestedSecondaryUrl,
+      normalizedSecondaryUrl,
+    );
 
     if (
       allowTikTokAsSecondary &&
@@ -321,7 +282,10 @@ export const createLink = async (
     if (!normalizedVariantBOriginalUrl) {
       throw new Error("Link variant B không hợp lệ.");
     }
-    abVariantBOriginalUrl = applyMarketingParams(normalizedVariantBOriginalUrl);
+    abVariantBOriginalUrl = applyMarketingParams(
+      requestedVariantBOriginalUrl,
+      normalizedVariantBOriginalUrl,
+    );
   }
 
   let abVariantBSecondaryUrl: string | null = null;
@@ -338,6 +302,7 @@ export const createLink = async (
       throw new Error("Link variant B bước 2 không hợp lệ.");
     }
     abVariantBSecondaryUrl = applyMarketingParams(
+      requestedVariantBSecondaryUrl,
       normalizedVariantBSecondaryUrl,
     );
   }
@@ -379,11 +344,6 @@ export const createLink = async (
       redirect_delay_ms: delayMs,
       usage_context: data.usageContext?.trim() || null,
       expires_at: expiresAt,
-      utm_source: data.utmSource?.trim() || null,
-      utm_medium: data.utmMedium?.trim() || null,
-      utm_campaign: data.utmCampaign?.trim() || null,
-      utm_content: data.utmContent?.trim() || null,
-      utm_term: data.utmTerm?.trim() || null,
       shopee_affiliate_params: data.shopeeAffiliateParams?.trim() || null,
       tiktok_affiliate_params: data.tiktokAffiliateParams?.trim() || null,
       ab_test_enabled: !!data.abTestEnabled,
@@ -447,7 +407,7 @@ export const getUserLinks = async (
   const { data, error } = await supabase
     .from("links")
     .select(
-      "id, short_code, slug, original_url, custom_domain, workspace_id, folder_name, tags, custom_title, custom_description, custom_image_url, video_url, created_at, expires_at, secondary_url, redirect_delay_ms, usage_context, user_id, utm_source, utm_medium, utm_campaign, utm_content, utm_term, shopee_affiliate_params, tiktok_affiliate_params, ab_test_enabled, ab_variant_b_title, ab_variant_b_description, ab_variant_b_image_url, ab_variant_b_video_url, ab_variant_b_original_url, ab_variant_b_secondary_url",
+      "id, short_code, slug, original_url, custom_domain, workspace_id, folder_name, tags, custom_title, custom_description, custom_image_url, video_url, created_at, expires_at, secondary_url, redirect_delay_ms, usage_context, user_id, shopee_affiliate_params, tiktok_affiliate_params, ab_test_enabled, ab_variant_b_title, ab_variant_b_description, ab_variant_b_image_url, ab_variant_b_video_url, ab_variant_b_original_url, ab_variant_b_secondary_url",
     )
     .in("workspace_id", filteredWorkspaceIds)
     .order("created_at", { ascending: false });
@@ -475,11 +435,6 @@ export const updateLink = async (
     folder_name: string | null;
     tags: string[];
     custom_domain: string | null;
-    utm_source: string;
-    utm_medium: string;
-    utm_campaign: string;
-    utm_content: string;
-    utm_term: string;
     shopee_affiliate_params: string;
     tiktok_affiliate_params: string;
     ab_test_enabled: boolean;
@@ -496,7 +451,7 @@ export const updateLink = async (
   const { data: existingLink, error: existingLinkError } = await supabase
     .from("links")
     .select(
-      "id, original_url, secondary_url, video_url, utm_source, utm_medium, utm_campaign, utm_content, utm_term, shopee_affiliate_params, tiktok_affiliate_params",
+      "id, original_url, secondary_url, video_url, shopee_affiliate_params, tiktok_affiliate_params",
     )
     .eq("id", linkId)
     .maybeSingle();
@@ -520,11 +475,6 @@ export const updateLink = async (
     folder_name: string | null;
     tags: string[];
     custom_domain: string | null;
-    utm_source: string;
-    utm_medium: string;
-    utm_campaign: string;
-    utm_content: string;
-    utm_term: string;
     shopee_affiliate_params: string;
     tiktok_affiliate_params: string;
     ab_test_enabled: boolean;
@@ -586,26 +536,6 @@ export const updateLink = async (
 
   if (shouldNormalizeChoiceFlow) {
     const applyMarketingParams = createMarketingUrlApplier({
-      utmSource:
-        ("utm_source" in normalizedData
-          ? normalizedData.utm_source
-          : existingLink.utm_source) || undefined,
-      utmMedium:
-        ("utm_medium" in normalizedData
-          ? normalizedData.utm_medium
-          : existingLink.utm_medium) || undefined,
-      utmCampaign:
-        ("utm_campaign" in normalizedData
-          ? normalizedData.utm_campaign
-          : existingLink.utm_campaign) || undefined,
-      utmContent:
-        ("utm_content" in normalizedData
-          ? normalizedData.utm_content
-          : existingLink.utm_content) || undefined,
-      utmTerm:
-        ("utm_term" in normalizedData
-          ? normalizedData.utm_term
-          : existingLink.utm_term) || undefined,
       shopeeAffiliateParams:
         ("shopee_affiliate_params" in normalizedData
           ? normalizedData.shopee_affiliate_params
@@ -627,7 +557,10 @@ export const updateLink = async (
       throw new Error("Link gá»‘c khÃ´ng há»£p lá»‡.");
     }
 
-    const primaryUrl = applyMarketingParams(normalizedPrimaryUrl);
+    const primaryUrl = applyMarketingParams(
+      requestedPrimaryUrl,
+      normalizedPrimaryUrl,
+    );
     normalizedData.original_url = primaryUrl;
 
     const requestedSecondaryUrl =
@@ -667,7 +600,10 @@ export const updateLink = async (
         throw new Error("Link bÆ°á»›c 2 khÃ´ng há»£p lá»‡.");
       }
 
-      const secondaryUrl = applyMarketingParams(normalizedSecondaryUrl);
+      const secondaryUrl = applyMarketingParams(
+        trimmedSecondaryUrl,
+        normalizedSecondaryUrl,
+      );
       if (
         effectiveSecondaryTargetType === "tiktok" &&
         !TIKTOK_HOST_REGEX.test(new URL(secondaryUrl).hostname)
@@ -735,7 +671,7 @@ export const copyLinkToWorkspace = async (
   const { data: sourceLink, error: sourceError } = await supabase
     .from("links")
     .select(
-      "id, original_url, custom_domain, folder_name, tags, custom_title, custom_description, custom_image_url, video_url, secondary_url, redirect_delay_ms, usage_context, expires_at, utm_source, utm_medium, utm_campaign, utm_content, utm_term, shopee_affiliate_params, tiktok_affiliate_params, ab_test_enabled, ab_variant_b_title, ab_variant_b_description, ab_variant_b_image_url, ab_variant_b_video_url, ab_variant_b_original_url, ab_variant_b_secondary_url",
+      "id, original_url, custom_domain, folder_name, tags, custom_title, custom_description, custom_image_url, video_url, secondary_url, redirect_delay_ms, usage_context, expires_at, shopee_affiliate_params, tiktok_affiliate_params, ab_test_enabled, ab_variant_b_title, ab_variant_b_description, ab_variant_b_image_url, ab_variant_b_video_url, ab_variant_b_original_url, ab_variant_b_secondary_url",
     )
     .eq("id", linkId)
     .maybeSingle();
@@ -762,11 +698,6 @@ export const copyLinkToWorkspace = async (
     customDomain: options?.preserveCustomDomain
       ? sourceLink.custom_domain || undefined
       : undefined,
-    utmSource: sourceLink.utm_source || undefined,
-    utmMedium: sourceLink.utm_medium || undefined,
-    utmCampaign: sourceLink.utm_campaign || undefined,
-    utmContent: sourceLink.utm_content || undefined,
-    utmTerm: sourceLink.utm_term || undefined,
     shopeeAffiliateParams: sourceLink.shopee_affiliate_params || undefined,
     tiktokAffiliateParams: sourceLink.tiktok_affiliate_params || undefined,
     abTestEnabled: options?.preserveAbTesting

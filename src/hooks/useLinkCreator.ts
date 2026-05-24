@@ -33,11 +33,6 @@ export interface LinkCreatorState {
   tagsText: string;
   customImageUrl: string;
   customDomain: string;
-  utmSource: string;
-  utmMedium: string;
-  utmCampaign: string;
-  utmContent: string;
-  utmTerm: string;
   shopeeAffiliateParams: string;
   tiktokAffiliateParams: string;
   secondaryUrl: string;
@@ -68,11 +63,6 @@ export interface LinkCreatorActions {
   setTagsText: (v: string) => void;
   setCustomImageUrl: (v: string) => void;
   setCustomDomain: (v: string) => void;
-  setUtmSource: (v: string) => void;
-  setUtmMedium: (v: string) => void;
-  setUtmCampaign: (v: string) => void;
-  setUtmContent: (v: string) => void;
-  setUtmTerm: (v: string) => void;
   setShopeeAffiliateParams: (v: string) => void;
   setTiktokAffiliateParams: (v: string) => void;
   setSecondaryUrl: (v: string) => void;
@@ -111,11 +101,6 @@ export function useLinkCreator({
   const [tagsText, setTagsText] = useState("");
   const [customImageUrl, setCustomImageUrl] = useState("");
   const [customDomain, setCustomDomain] = useState("");
-  const [utmSource, setUtmSource] = useState("");
-  const [utmMedium, setUtmMedium] = useState("");
-  const [utmCampaign, setUtmCampaign] = useState("");
-  const [utmContent, setUtmContent] = useState("");
-  const [utmTerm, setUtmTerm] = useState("");
   const [shopeeAffiliateParams, setShopeeAffiliateParams] = useState("");
   const [tiktokAffiliateParams, setTiktokAffiliateParams] = useState("");
   const [secondaryUrl, setSecondaryUrl] = useState("");
@@ -180,11 +165,6 @@ export function useLinkCreator({
               .map((tag) => tag.trim())
               .filter(Boolean),
             customImageUrl,
-            utmSource,
-            utmMedium,
-            utmCampaign,
-            utmContent,
-            utmTerm,
             shopeeAffiliateParams,
             tiktokAffiliateParams,
             secondaryUrl: secondaryUrl.trim(),
@@ -246,11 +226,6 @@ export function useLinkCreator({
       folderName,
       tagsText,
       customImageUrl,
-      utmSource,
-      utmMedium,
-      utmCampaign,
-      utmContent,
-      utmTerm,
       shopeeAffiliateParams,
       tiktokAffiliateParams,
       secondaryUrl,
@@ -282,11 +257,6 @@ export function useLinkCreator({
     setTagsText("");
     setCustomImageUrl("");
     setCustomDomain("");
-    setUtmSource("");
-    setUtmMedium("");
-    setUtmCampaign("");
-    setUtmContent("");
-    setUtmTerm("");
     setShopeeAffiliateParams("");
     setTiktokAffiliateParams("");
     setSecondaryUrl("");
@@ -316,11 +286,6 @@ export function useLinkCreator({
     tagsText,
     customImageUrl,
     customDomain,
-    utmSource,
-    utmMedium,
-    utmCampaign,
-    utmContent,
-    utmTerm,
     shopeeAffiliateParams,
     tiktokAffiliateParams,
     secondaryUrl,
@@ -348,11 +313,6 @@ export function useLinkCreator({
     setTagsText,
     setCustomImageUrl,
     setCustomDomain,
-    setUtmSource,
-    setUtmMedium,
-    setUtmCampaign,
-    setUtmContent,
-    setUtmTerm,
     setShopeeAffiliateParams,
     setTiktokAffiliateParams,
     setSecondaryUrl,
