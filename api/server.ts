@@ -6,7 +6,7 @@ import helmet from "helmet";
 import cors from "cors";
 
 // Config
-import { PORT } from "./config/constants.js";
+import { PORT, TIKTOK_HOST_REGEX } from "./config/constants.js";
 import { getSupabase } from "./config/supabase.js";
 
 // Middleware
@@ -39,7 +39,10 @@ import {
   insertOutboundEvent,
 } from "./utils/clickTracking.js";
 import { handleClickNotification } from "./services/notificationService.js";
-import { renderChoiceLandingPage } from "./templates/landingPageChoice.js";
+import {
+  renderChoiceLandingPage,
+  renderTikTokDirectHandoffPage,
+} from "./templates/landingPageChoice.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -80,7 +83,10 @@ const resolveEffectiveAbLink = (
   baseLink: PublicLinkRecord & Record<string, any>,
   req: Request,
   userAgent: string,
-) => {
+): {
+  effectiveLink: PublicLinkRecord & Record<string, any>;
+  abVariant: "a" | "b";
+} => {
   const isPreviewBot = isSocialPreviewBot(userAgent);
   if (!baseLink.ab_test_enabled || isPreviewBot) {
     return { effectiveLink: baseLink, abVariant: "a" };
@@ -127,6 +133,97 @@ const shouldIgnoreTrackingRequest = (req: Request) => {
     xPurpose.includes("preview") ||
     xMoz.includes("prefetch")
   );
+};
+
+const MOBILE_USER_AGENT_REGEX =
+  /android|iphone|ipad|ipod|mobile|windows phone|iemobile/i;
+
+const isMobileUserAgent = (userAgent: string) =>
+  MOBILE_USER_AGENT_REGEX.test(userAgent);
+
+const isTikTokUrl = (value?: string | null) => {
+  if (!value) return false;
+
+  try {
+    return TIKTOK_HOST_REGEX.test(new URL(value).hostname);
+  } catch {
+    return false;
+  }
+};
+
+const trackDirectPublicOpen = async (
+  supabase: ReturnType<typeof getSupabase>,
+  req: Request,
+  link: PublicLinkRecord,
+  effectiveLink: PublicLinkRecord,
+  userAgent: string,
+  abVariant: "a" | "b",
+) => {
+  const { source, source_detail, referer } = getTrafficSourceFromRequest(req);
+  const ipAddress = getClientIp(req);
+
+  let clickInserted = false;
+  try {
+    clickInserted = await insertClickWithTracking(supabase, {
+      link_id: link.id,
+      user_agent: userAgent,
+      ip_address: ipAddress,
+      source,
+      source_detail,
+      referer,
+    });
+  } catch (trackError) {
+    console.error("Direct click tracking error:", trackError);
+  }
+
+  let outboundInserted = false;
+  try {
+    outboundInserted = await insertOutboundEvent(supabase, {
+      link_id: link.id,
+      short_code: effectiveLink.short_code,
+      stage: "primary",
+      destination_url: effectiveLink.original_url,
+      user_agent: typeof userAgent === "string" ? userAgent : null,
+      ip_address: ipAddress,
+      source,
+      source_detail,
+      referer,
+    });
+  } catch (trackError) {
+    console.error("Direct outbound tracking error:", trackError);
+  }
+
+  if (outboundInserted) {
+    try {
+      await supabase.rpc("increment_link_clicks", { link_id: link.id });
+    } catch (rpcError: any) {
+      console.error(
+        "Direct increment clicks failed:",
+        rpcError?.message || rpcError,
+      );
+    }
+  }
+
+  if (link.user_id && (clickInserted || outboundInserted)) {
+    try {
+      handleClickNotification(
+        supabase,
+        link.user_id,
+        link.id,
+        link.short_code,
+        {
+          source:
+            abVariant === "b" ? `${source || "direct"}:ab-b` : source || "direct",
+          created_at: new Date().toISOString(),
+        },
+        {
+          linkTitle: effectiveLink.custom_title || null,
+        },
+      );
+    } catch (notifyError) {
+      console.error("Direct notification error:", notifyError);
+    }
+  }
 };
 
 const fetchEffectiveTrackedLink = async (supabase: ReturnType<typeof getSupabase>, req: Request, linkId: string) => {
@@ -347,7 +444,7 @@ app.get("/s-choice/:shortCode", async (req, res) => {
     const { data: link, error } = await supabase
       .from("links")
       .select(
-        "id, user_id, short_code, slug, original_url, custom_domain, custom_title, custom_description, custom_image_url, video_url, secondary_url, redirect_delay_ms, expires_at, ab_test_enabled, ab_variant_b_title, ab_variant_b_description, ab_variant_b_image_url, ab_variant_b_video_url, ab_variant_b_original_url, ab_variant_b_secondary_url",
+        "id, user_id, short_code, slug, original_url, custom_domain, tags, custom_title, custom_description, custom_image_url, video_url, secondary_url, redirect_delay_ms, expires_at, ab_test_enabled, ab_variant_b_title, ab_variant_b_description, ab_variant_b_image_url, ab_variant_b_video_url, ab_variant_b_original_url, ab_variant_b_secondary_url",
       )
       .eq("short_code", shortCode)
       .maybeSingle();
@@ -460,7 +557,7 @@ const handlePublicShortLinkRequest = async (
     const { data: link, error } = await supabase
       .from("links")
       .select(
-        "id, user_id, short_code, slug, original_url, custom_domain, custom_title, custom_description, custom_image_url, video_url, secondary_url, redirect_delay_ms, expires_at, ab_test_enabled, ab_variant_b_title, ab_variant_b_description, ab_variant_b_image_url, ab_variant_b_video_url, ab_variant_b_original_url, ab_variant_b_secondary_url",
+        "id, user_id, short_code, slug, original_url, custom_domain, tags, custom_title, custom_description, custom_image_url, video_url, secondary_url, redirect_delay_ms, expires_at, ab_test_enabled, ab_variant_b_title, ab_variant_b_description, ab_variant_b_image_url, ab_variant_b_video_url, ab_variant_b_original_url, ab_variant_b_secondary_url",
       )
       .eq(lookupField, shortCode)
       .maybeSingle();
@@ -501,18 +598,17 @@ const handlePublicShortLinkRequest = async (
       `);
     }
 
-    // Store request info for potential tracking (used when user clicks overlay)
-    const { source, source_detail, referer } = getTrafficSourceFromRequest(req);
     const userAgent = req.headers["user-agent"] || "";
-    const ipAddress = getClientIp(req);
     const isPreviewBot = isSocialPreviewBot(
       typeof userAgent === "string" ? userAgent : "",
     );
-    let { effectiveLink, abVariant } = resolveEffectiveAbLink(
+    const resolvedAbLink = resolveEffectiveAbLink(
       link,
       req,
       typeof userAgent === "string" ? userAgent : "",
     );
+    let effectiveLink = resolvedAbLink.effectiveLink;
+    let abVariant: "a" | "b" = resolvedAbLink.abVariant;
 
     if (link.ab_test_enabled && !isPreviewBot) {
       const cookieMap = parseCookieHeader(
@@ -520,7 +616,8 @@ const handlePublicShortLinkRequest = async (
       );
       const abCookieName = getAbCookieName(link.id);
       if (!cookieMap.has(abCookieName)) {
-        abVariant = Math.random() < 0.5 ? "a" : "b";
+        const nextAbVariant: "a" | "b" = Math.random() < 0.5 ? "a" : "b";
+        abVariant = nextAbVariant;
         res.append(
           "Set-Cookie",
           `${abCookieName}=${abVariant}; Max-Age=2592000; Path=/; SameSite=Lax`,
@@ -546,6 +643,10 @@ const handlePublicShortLinkRequest = async (
     const isPreviewRequest =
       isPreviewBot || shouldIgnoreTrackingRequest(req);
     const shouldRenderPreviewPage = hasVideoLanding || isPreviewRequest;
+    const shouldUseTikTokDirectHandoff =
+      !hasVideoLanding &&
+      isMobileUserAgent(typeof userAgent === "string" ? userAgent : "") &&
+      isTikTokUrl(effectiveLink.original_url);
 
     if (shouldRenderPreviewPage) {
       const publicBaseUrl =
@@ -574,69 +675,34 @@ const handlePublicShortLinkRequest = async (
       return res.redirect(effectiveLink.original_url);
     }
 
-    let clickInserted = false;
-    try {
-      clickInserted = await insertClickWithTracking(supabase, {
-        link_id: link.id,
-        user_agent: userAgent,
-        ip_address: ipAddress,
-        source,
-        source_detail,
-        referer,
+    await trackDirectPublicOpen(
+      supabase,
+      req,
+      link,
+      effectiveLink,
+      typeof userAgent === "string" ? userAgent : "",
+      abVariant,
+    );
+
+    if (shouldUseTikTokDirectHandoff) {
+      const publicBaseUrl =
+        getPublicBaseUrl(req) || `${req.protocol}://${req.get("host")}`;
+      const canonicalUrl = buildPrettyLinkUrl(publicBaseUrl, {
+        slug: effectiveLink.slug,
+        shortCode: effectiveLink.short_code,
+        title: effectiveLink.custom_title,
       });
-    } catch (trackError) {
-      console.error("Direct click tracking error:", trackError);
-    }
 
-    let outboundInserted = false;
-    try {
-      outboundInserted = await insertOutboundEvent(supabase, {
-        link_id: link.id,
-        short_code: effectiveLink.short_code,
-        stage: "primary",
-        destination_url: effectiveLink.original_url,
-        user_agent: typeof userAgent === "string" ? userAgent : null,
-        ip_address: ipAddress,
-        source,
-        source_detail,
-        referer,
-      });
-    } catch (trackError) {
-      console.error("Direct outbound tracking error:", trackError);
-    }
-
-    if (outboundInserted) {
-      try {
-        await supabase.rpc("increment_link_clicks", { link_id: link.id });
-      } catch (rpcError: any) {
-        console.error(
-          "Direct increment clicks failed:",
-          rpcError?.message || rpcError,
+      return res
+        .status(200)
+        .type("html")
+        .send(
+          renderTikTokDirectHandoffPage(
+            effectiveLink,
+            canonicalUrl,
+            effectiveLink.original_url,
+          ),
         );
-      }
-    }
-
-    if (link.user_id && (clickInserted || outboundInserted)) {
-      try {
-        handleClickNotification(
-          supabase,
-          link.user_id,
-          link.id,
-          link.short_code,
-          {
-            source:
-              abVariant === "b"
-                ? `${source || "direct"}:ab-b`
-                : source || "direct",
-            created_at: new Date().toISOString(),
-          },
-          {
-            linkTitle: effectiveLink.custom_title || null,
-          },
-        );
-      } catch (notifyError) {
-        console.error("Direct notification error:", notifyError);
-      }
     }
 
     return res.redirect(effectiveLink.original_url);

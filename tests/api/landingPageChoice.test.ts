@@ -1,6 +1,9 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { renderChoiceLandingPage } from "../../api/templates/landingPageChoice.js";
+import {
+  renderChoiceLandingPage,
+  renderTikTokDirectHandoffPage,
+} from "../../api/templates/landingPageChoice.js";
 import type { PublicLinkRecord } from "../../api/types/index.js";
 
 const sampleLink: PublicLinkRecord = {
@@ -95,4 +98,33 @@ test("renderChoiceLandingPage sends primary overlay clicks through server redire
     /const secondaryRedirectUrl = "https:\/\/test\.hotsnew\.click\/api\/v1\/links\/link-1\/open\?stage=secondary";/,
   );
   assert.doesNotMatch(html, /window\.location\.assign\(url\)/);
+});
+
+test("renderTikTokDirectHandoffPage exposes app-link metadata and web fallback", () => {
+  const html = renderTikTokDirectHandoffPage(
+    {
+      ...sampleLink,
+      original_url:
+        "https://www.tiktok.com/view/product/1734913024708937503?_svg=1",
+      video_url: null,
+    },
+    "https://test.hotsnew.click/test11",
+    "https://www.tiktok.com/view/product/1734913024708937503?_svg=1",
+  );
+
+  assert.match(html, /property="al:android:url"/);
+  assert.match(html, /property="al:ios:url"/);
+  assert.match(html, /snssdk1180:\/\/ec\/pdp/);
+  assert.match(
+    html,
+    /window\.location\.replace\(appUrl\)/,
+  );
+  assert.match(
+    html,
+    /window\.location\.replace\(webUrl\)/,
+  );
+  assert.match(
+    html,
+    /requestParams=.*product_id/i,
+  );
 });
