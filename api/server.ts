@@ -6,7 +6,7 @@ import helmet from "helmet";
 import cors from "cors";
 
 // Config
-import { PORT, TIKTOK_HOST_REGEX } from "./config/constants.js";
+import { PORT } from "./config/constants.js";
 import { getSupabase } from "./config/supabase.js";
 
 // Middleware
@@ -39,10 +39,7 @@ import {
   insertOutboundEvent,
 } from "./utils/clickTracking.js";
 import { handleClickNotification } from "./services/notificationService.js";
-import {
-  renderChoiceLandingPage,
-  renderTikTokDirectHandoffPage,
-} from "./templates/landingPageChoice.js";
+import { renderChoiceLandingPage } from "./templates/landingPageChoice.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -133,22 +130,6 @@ const shouldIgnoreTrackingRequest = (req: Request) => {
     xPurpose.includes("preview") ||
     xMoz.includes("prefetch")
   );
-};
-
-const MOBILE_USER_AGENT_REGEX =
-  /android|iphone|ipad|ipod|mobile|windows phone|iemobile/i;
-
-const isMobileUserAgent = (userAgent: string) =>
-  MOBILE_USER_AGENT_REGEX.test(userAgent);
-
-const isTikTokUrl = (value?: string | null) => {
-  if (!value) return false;
-
-  try {
-    return TIKTOK_HOST_REGEX.test(new URL(value).hostname);
-  } catch {
-    return false;
-  }
 };
 
 const trackDirectPublicOpen = async (
@@ -643,11 +624,6 @@ const handlePublicShortLinkRequest = async (
     const isPreviewRequest =
       isPreviewBot || shouldIgnoreTrackingRequest(req);
     const shouldRenderPreviewPage = hasVideoLanding || isPreviewRequest;
-    const shouldUseTikTokDirectHandoff =
-      !hasVideoLanding &&
-      isMobileUserAgent(typeof userAgent === "string" ? userAgent : "") &&
-      isTikTokUrl(effectiveLink.original_url);
-
     if (shouldRenderPreviewPage) {
       const publicBaseUrl =
         getPublicBaseUrl(req) || `${req.protocol}://${req.get("host")}`;
@@ -683,27 +659,6 @@ const handlePublicShortLinkRequest = async (
       typeof userAgent === "string" ? userAgent : "",
       abVariant,
     );
-
-    if (shouldUseTikTokDirectHandoff) {
-      const publicBaseUrl =
-        getPublicBaseUrl(req) || `${req.protocol}://${req.get("host")}`;
-      const canonicalUrl = buildPrettyLinkUrl(publicBaseUrl, {
-        slug: effectiveLink.slug,
-        shortCode: effectiveLink.short_code,
-        title: effectiveLink.custom_title,
-      });
-
-      return res
-        .status(200)
-        .type("html")
-        .send(
-          renderTikTokDirectHandoffPage(
-            effectiveLink,
-            canonicalUrl,
-            effectiveLink.original_url,
-          ),
-        );
-    }
 
     return res.redirect(effectiveLink.original_url);
   } catch (e: any) {
