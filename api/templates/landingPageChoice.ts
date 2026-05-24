@@ -32,6 +32,214 @@ const escapeJsString = (str: string): string => {
     .replace(/\t/g, "\\t");
 };
 
+const extractTikTokProductId = (targetUrl: string) => {
+  const match = targetUrl.match(/\/view\/product\/(\d+)/i);
+  return match?.[1] || "";
+};
+
+const buildTikTokAppSchemeUrl = (targetUrl: string) => {
+  const appUrl = new URL("snssdk1180://ec/pdp");
+  const productId = extractTikTokProductId(targetUrl);
+
+  appUrl.searchParams.set("biz_type", "0");
+  appUrl.searchParams.set("gd_label", "share_from_pdp_auto");
+  appUrl.searchParams.set("need_mall", "1");
+  appUrl.searchParams.set("needlaunchlog", "1");
+  appUrl.searchParams.set("page_name", "reflow_pdp");
+  appUrl.searchParams.set("params_url", targetUrl);
+  appUrl.searchParams.set("refer", "web");
+  appUrl.searchParams.set("is_commerce", "1");
+
+  if (productId) {
+    appUrl.searchParams.set(
+      "requestParams",
+      JSON.stringify({ product_id: [productId] }),
+    );
+  }
+
+  return appUrl.toString();
+};
+
+export const renderTikTokDirectHandoffPage = (
+  link: PublicLinkRecord,
+  canonicalUrl: string,
+  targetUrl: string,
+) => {
+  const title = capitalizeFirstCharacter(
+    link.custom_title?.trim() || "Mở TikTok Shop",
+  );
+  const description = capitalizeFirstCharacter(
+    link.custom_description?.trim() ||
+      "Đang mở TikTok. Nếu ứng dụng không bật, trình duyệt sẽ chuyển sang trang web sản phẩm.",
+  );
+  const originBase = new URL(canonicalUrl).origin;
+  const imageUrl = link.custom_image_url?.trim() || `${originBase}/og-image.png`;
+  const faviconUrl = imageUrl || `${originBase}/logo-app-192.png`;
+  const appSchemeUrl = buildTikTokAppSchemeUrl(targetUrl);
+
+  return `<!DOCTYPE html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>${escapeHtml(title)}</title>
+    <meta name="description" content="${escapeHtml(description)}" />
+    <meta name="robots" content="noindex, nofollow" />
+    <link rel="icon" href="${escapeHtml(faviconUrl)}" />
+    <link rel="apple-touch-icon" href="${escapeHtml(faviconUrl)}" />
+    <link rel="canonical" href="${escapeHtml(canonicalUrl)}" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="${escapeHtml(title)}" />
+    <meta property="og:description" content="${escapeHtml(description)}" />
+    <meta property="og:image" content="${escapeHtml(imageUrl)}" />
+    <meta property="og:url" content="${escapeHtml(canonicalUrl)}" />
+    <meta property="al:android:url" content="${escapeHtml(appSchemeUrl)}" />
+    <meta property="al:android:package" content="com.ss.android.ugc.trill" />
+    <meta property="al:android:app_name" content="TIKTOK" />
+    <meta property="al:ios:url" content="${escapeHtml(appSchemeUrl)}" />
+    <meta property="al:ios:app_name" content="TIKTOK" />
+    <meta property="al:ios:app_store_id" content="1235601864" />
+    <meta property="al:web:should_fallback" content="true" />
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #070b14;
+        --panel: rgba(15, 23, 42, 0.9);
+        --border: rgba(255, 255, 255, 0.12);
+        --text: #f8fafc;
+        --muted: rgba(226, 232, 240, 0.76);
+        --accent: #fe2c55;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 1.25rem;
+        font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+        color: var(--text);
+        background:
+          radial-gradient(circle at top left, rgba(254, 44, 85, 0.28), transparent 28%),
+          radial-gradient(circle at bottom right, rgba(37, 244, 238, 0.18), transparent 24%),
+          linear-gradient(180deg, #020617, #0f172a);
+      }
+      .card {
+        width: min(30rem, 100%);
+        border: 1px solid var(--border);
+        border-radius: 1.5rem;
+        background: var(--panel);
+        backdrop-filter: blur(18px);
+        box-shadow: 0 2rem 5rem rgba(2, 6, 23, 0.45);
+        overflow: hidden;
+      }
+      .hero {
+        aspect-ratio: 16 / 9;
+        background: #0f172a;
+      }
+      .hero img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        display: block;
+      }
+      .content {
+        padding: 1.25rem;
+      }
+      h1 {
+        margin: 0 0 0.5rem;
+        font-size: 1.15rem;
+        line-height: 1.5;
+      }
+      p {
+        margin: 0;
+        color: var(--muted);
+        line-height: 1.6;
+        font-size: 0.95rem;
+      }
+      .actions {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 0.75rem;
+        margin-top: 1rem;
+      }
+      .button {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 3rem;
+        padding: 0.9rem 1rem;
+        border-radius: 999px;
+        font-weight: 800;
+        text-decoration: none;
+      }
+      .button-primary {
+        background: var(--accent);
+        color: white;
+      }
+      .button-secondary {
+        border: 1px solid var(--border);
+        color: var(--text);
+      }
+    </style>
+  </head>
+  <body>
+    <main class="card">
+      <div class="hero">
+        <img src="${escapeHtml(imageUrl)}" alt="${escapeHtml(title)}" />
+      </div>
+      <div class="content">
+        <h1>${escapeHtml(title)}</h1>
+        <p>${escapeHtml(description)}</p>
+        <div class="actions">
+          <a class="button button-primary" href="${escapeHtml(appSchemeUrl)}">Mở TikTok</a>
+          <a class="button button-secondary" href="${escapeHtml(targetUrl)}">Mở bằng web</a>
+        </div>
+      </div>
+    </main>
+    <script>
+      (() => {
+        const appUrl = "${escapeJsString(appSchemeUrl)}";
+        const webUrl = "${escapeJsString(targetUrl)}";
+        let fallbackTimer = null;
+        let launched = false;
+
+        const cancelFallback = () => {
+          if (fallbackTimer !== null) {
+            window.clearTimeout(fallbackTimer);
+            fallbackTimer = null;
+          }
+        };
+
+        const fallbackToWeb = () => {
+          if (document.hidden) return;
+          window.location.replace(webUrl);
+        };
+
+        const tryOpenApp = () => {
+          if (launched) return;
+          launched = true;
+          fallbackTimer = window.setTimeout(fallbackToWeb, 900);
+          window.location.replace(appUrl);
+        };
+
+        document.addEventListener("visibilitychange", () => {
+          if (document.hidden) {
+            cancelFallback();
+          }
+        });
+        window.addEventListener("pagehide", cancelFallback);
+        window.addEventListener("blur", cancelFallback);
+        window.addEventListener("load", () => {
+          window.setTimeout(tryOpenApp, 60);
+        });
+      })();
+    </script>
+  </body>
+</html>`;
+};
+
 export const renderChoiceLandingPage = (
   link: PublicLinkRecord,
   canonicalUrl: string,
