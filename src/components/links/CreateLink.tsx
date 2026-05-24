@@ -76,16 +76,6 @@ interface CreateLinkProps {
     canCreate: boolean;
   } | null;
   userLimits?: UserLimits | null;
-  utmSource: string;
-  setUtmSource: (v: string) => void;
-  utmMedium: string;
-  setUtmMedium: (v: string) => void;
-  utmCampaign: string;
-  setUtmCampaign: (v: string) => void;
-  utmContent: string;
-  setUtmContent: (v: string) => void;
-  utmTerm: string;
-  setUtmTerm: (v: string) => void;
   shopeeAffiliateParams: string;
   setShopeeAffiliateParams: (v: string) => void;
   tiktokAffiliateParams: string;
@@ -167,16 +157,6 @@ export const CreateLink = ({
   canUseCustomDomains,
   linkQuota,
   userLimits,
-  utmSource,
-  setUtmSource,
-  utmMedium,
-  setUtmMedium,
-  utmCampaign,
-  setUtmCampaign,
-  utmContent,
-  setUtmContent,
-  utmTerm,
-  setUtmTerm,
   shopeeAffiliateParams,
   setShopeeAffiliateParams,
   tiktokAffiliateParams,
@@ -251,15 +231,6 @@ export const CreateLink = ({
 
   const [selectedExpirePresetDays, setSelectedExpirePresetDays] =
     React.useState<number | null>(null);
-  const [campaignTrackingEnabled, setCampaignTrackingEnabled] = React.useState(
-    Boolean(
-      utmSource.trim() ||
-      utmMedium.trim() ||
-      utmCampaign.trim() ||
-      utmContent.trim() ||
-      utmTerm.trim(),
-    ),
-  );
   const normalizedShortCodePreview = customShortCode
     ? normalizeVietnameseSlug(customShortCode)
     : "";
@@ -411,58 +382,6 @@ export const CreateLink = ({
 
     setSelectedExpirePresetDays(Math.round(diffMs / DAY_IN_MS));
   }, [expiresAt]);
-
-  const inferTrackingSource = React.useCallback(() => {
-    const normalizedUsage = usageContext.trim().toLowerCase();
-
-    if (normalizedUsage.includes("facebook")) return "facebook";
-    if (normalizedUsage.includes("tiktok")) return "tiktok";
-    if (normalizedUsage.includes("zalo")) return "zalo";
-    if (normalizedUsage.includes("live")) return "livestream";
-
-    return "social";
-  }, [usageContext]);
-
-  React.useEffect(() => {
-    if (!campaignTrackingEnabled) {
-      if (utmSource) setUtmSource("");
-      if (utmMedium) setUtmMedium("");
-      if (utmCampaign) setUtmCampaign("");
-      if (utmContent) setUtmContent("");
-      if (utmTerm) setUtmTerm("");
-      return;
-    }
-
-    if (!utmSource.trim()) {
-      setUtmSource(inferTrackingSource());
-    }
-
-    if (utmMedium !== "social") {
-      setUtmMedium("social");
-    }
-
-    if (!utmContent.trim() && normalizedShortCodePreview) {
-      setUtmContent(normalizedShortCodePreview);
-    }
-
-    if (utmTerm) {
-      setUtmTerm("");
-    }
-  }, [
-    campaignTrackingEnabled,
-    inferTrackingSource,
-    normalizedShortCodePreview,
-    setUtmCampaign,
-    setUtmContent,
-    setUtmMedium,
-    setUtmSource,
-    setUtmTerm,
-    utmCampaign,
-    utmContent,
-    utmMedium,
-    utmSource,
-    utmTerm,
-  ]);
 
   const isValidShopeeUrl = (value: string) => {
     try {
@@ -1155,86 +1074,6 @@ export const CreateLink = ({
 
               {showAdvancedSettings && (
                 <div className="space-y-6">
-                  <div className="grid grid-cols-1 gap-6 rounded-[1.75rem] border border-sky-100 bg-sky-50/60 p-4 sm:p-5">
-                    <div>
-                      <p className="mb-1 text-[11px] font-black uppercase tracking-widest text-sky-700">
-                        {page.marketingTitle}
-                      </p>
-                      <p className="text-xs font-medium leading-relaxed text-sky-900/70">
-                        {page.marketingDescription}
-                      </p>
-                    </div>
-                    <div className="grid grid-cols-1 gap-6">
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setCampaignTrackingEnabled((current) => !current)
-                        }
-                        className={cn(
-                          "flex w-full items-center justify-between rounded-2xl border px-5 py-4 text-left transition",
-                          campaignTrackingEnabled
-                            ? "border-sky-300 bg-white text-slate-900 shadow-sm dark:border-sky-500 dark:bg-slate-700 dark:text-slate-100"
-                            : "border-sky-100 bg-white/70 text-slate-500 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-300",
-                        )}
-                      >
-                        <div>
-                          <p className="text-sm font-black">
-                            {page.campaignToggleTitle}
-                          </p>
-                          <p className="mt-1 text-xs font-medium opacity-70">
-                            {page.campaignToggleDescription}
-                          </p>
-                        </div>
-                        <span
-                          className={cn(
-                            "rounded-full px-3 py-1 text-[11px] font-black uppercase tracking-wider",
-                            campaignTrackingEnabled
-                              ? "bg-sky-100 text-sky-700 dark:bg-sky-500/20 dark:text-sky-200"
-                              : "bg-slate-100 text-slate-500 dark:bg-slate-600/40 dark:text-slate-300",
-                          )}
-                        >
-                          {campaignTrackingEnabled
-                            ? page.campaignEnabled
-                            : page.campaignDisabled}
-                        </span>
-                      </button>
-                    </div>
-                    {campaignTrackingEnabled && (
-                      <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-                        <div className="space-y-2">
-                          <label className="px-1 text-[11px] font-black uppercase tracking-widest text-sky-700">
-                            {page.utmSourceLabel}
-                          </label>
-                          <input
-                            type="text"
-                            value={utmSource}
-                            onChange={(e) => setUtmSource(e.target.value)}
-                            placeholder={page.utmSourcePlaceholder}
-                            className="w-full rounded-2xl bg-white px-6 py-4 font-medium text-gray-900 dark:bg-slate-700 dark:text-slate-100"
-                          />
-                          <p className="px-1 text-[11px] font-medium text-sky-900/60">
-                            {page.utmSourceHelp}
-                          </p>
-                        </div>
-                        <div className="space-y-2">
-                          <label className="px-1 text-[11px] font-black uppercase tracking-widest text-sky-700">
-                            {page.utmCampaignLabel}
-                          </label>
-                          <input
-                            type="text"
-                            value={utmCampaign}
-                            onChange={(e) => setUtmCampaign(e.target.value)}
-                            placeholder={page.utmCampaignPlaceholder}
-                            className="w-full rounded-2xl bg-white px-6 py-4 font-medium text-gray-900 dark:bg-slate-700 dark:text-slate-100"
-                          />
-                          <p className="px-1 text-[11px] font-medium text-sky-900/60">
-                            {page.utmCampaignHelp}
-                          </p>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-
                   <div>
                     <label className="mb-3 flex items-center gap-2 px-1 text-[11px] font-black uppercase tracking-widest text-gray-400">
                       <Type size={14} className="text-orange-500" />{" "}
@@ -1597,6 +1436,7 @@ export const CreateLink = ({
                   />
                   <button
                     type="button"
+                    data-field="customImageUrl"
                     onClick={() => thumbnailInputRef.current?.click()}
                     onDragOver={(event) => event.preventDefault()}
                     onDrop={handleThumbnailDrop}
@@ -1674,21 +1514,6 @@ export const CreateLink = ({
                       })}
                     </div>
                   )}
-                  <input
-                    data-field="customImageUrl"
-                    type="url"
-                    value={customImageUrl}
-                    onChange={(e) => {
-                      setCustomImageUrl(e.target.value);
-                      clearFieldError("customImageUrl");
-                      clearFieldError("videoUrl");
-                    }}
-                    placeholder={page.thumbnailUrlPlaceholder}
-                    className={inputClass(
-                      "customImageUrl",
-                      "min-h-21 w-full rounded-2xl bg-gray-50 px-6 py-4 font-medium text-gray-900 dark:bg-slate-700 dark:text-slate-100 focus:bg-white dark:focus:bg-slate-700",
-                    )}
-                  />
                   {renderFieldError("customImageUrl")}
 
                   {customImageUrl && (

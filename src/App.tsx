@@ -478,11 +478,6 @@ export default function App() {
     tagsText,
     customImageUrl,
     customDomain,
-    utmSource,
-    utmMedium,
-    utmCampaign,
-    utmContent,
-    utmTerm,
     shopeeAffiliateParams,
     tiktokAffiliateParams,
     secondaryUrl,
@@ -510,11 +505,6 @@ export default function App() {
     setTagsText,
     setCustomImageUrl,
     setCustomDomain,
-    setUtmSource,
-    setUtmMedium,
-    setUtmCampaign,
-    setUtmContent,
-    setUtmTerm,
     setShopeeAffiliateParams,
     setTiktokAffiliateParams,
     setSecondaryUrl,
@@ -1139,16 +1129,6 @@ export default function App() {
                 canUseCustomDomains={canUseCustomDomains}
                 linkQuota={linkQuota}
                 userLimits={userLimits}
-                utmSource={utmSource}
-                setUtmSource={setUtmSource}
-                utmMedium={utmMedium}
-                setUtmMedium={setUtmMedium}
-                utmCampaign={utmCampaign}
-                setUtmCampaign={setUtmCampaign}
-                utmContent={utmContent}
-                setUtmContent={setUtmContent}
-                utmTerm={utmTerm}
-                setUtmTerm={setUtmTerm}
                 shopeeAffiliateParams={shopeeAffiliateParams}
                 setShopeeAffiliateParams={setShopeeAffiliateParams}
                 tiktokAffiliateParams={tiktokAffiliateParams}
