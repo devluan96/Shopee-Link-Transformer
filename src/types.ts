@@ -196,12 +196,25 @@ export type Tab =
   | "admin"
   | "profile";
 
+export type AnalyticsFocusSource = "all" | "shopee" | "tiktok";
+export type AnalyticsFocusPeriod = "today" | "7d" | "30d";
+
+export interface AnalyticsFocusContext {
+  source: AnalyticsFocusSource;
+  period: AnalyticsFocusPeriod;
+}
+
 export interface LinkStats {
   totalLinks: number;
   totalClicks: number;
   totalShopeeClicks?: number;
   totalTiktokClicks?: number;
+  todayClicks?: number;
+  yesterdayClicks?: number;
+  todayShopeeClicks?: number;
+  todayTiktokClicks?: number;
   recentClicks: Array<{ date: string; clicks: number }>;
+  recentShopeeClicks?: Array<{ date: string; clicks: number }>;
   topLinks: Array<{ short_code: string; slug?: string; title: string; clicks: number }>;
   growthPercentage: number;
 }

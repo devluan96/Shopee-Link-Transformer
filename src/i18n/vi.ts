@@ -566,6 +566,33 @@ export const vi = {
       title: "Nguồn lưu lượng",
       empty: "Chưa có dữ liệu nguồn lưu lượng.",
     },
+    updatedAt: "Dữ liệu analytics cập nhật lúc {time}",
+    focus: {
+      title: "Ngữ cảnh từ dashboard",
+      note: "Thống kê cơ bản và phân tích nâng cao bên dưới đều đi theo ngữ cảnh này, dùng outbound activity làm nguồn dữ liệu chung.",
+      clear: "Xem toàn bộ",
+      shopeeToday: "Đang mở theo ngữ cảnh Shopee hôm nay.",
+      tiktokToday: "Đang mở theo ngữ cảnh TikTok hôm nay.",
+      allToday: "Đang mở theo ngữ cảnh so sánh hôm nay với hôm qua.",
+      all30d: "Đang mở theo ngữ cảnh tăng trưởng 30 ngày.",
+      shopee7d: "Đang mở theo ngữ cảnh Shopee 7 ngày gần đây.",
+      default: "Đang mở theo ngữ cảnh từ dashboard.",
+    },
+    ["updatedAtMeta"]: "Dữ liệu analytics cập nhật lúc {time}",
+    ["filteredGrowthLabel"]: "so với kỳ trước",
+    ["filteredChartDescription"]:
+      "Hoạt động outbound đã được lọc theo ngữ cảnh được chọn từ dashboard.",
+    ["focusContext"]: {
+      title: "Ngữ cảnh từ dashboard",
+      note: "Thống kê cơ bản và phân tích nâng cao bên dưới đều đi theo ngữ cảnh này, dùng outbound activity làm nguồn dữ liệu chung.",
+      clear: "Xem toàn bộ",
+      shopeeToday: "Đang mở theo ngữ cảnh Shopee hôm nay.",
+      tiktokToday: "Đang mở theo ngữ cảnh TikTok hôm nay.",
+      allToday: "Đang mở theo ngữ cảnh so sánh hôm nay với hôm qua.",
+      all30d: "Đang mở theo ngữ cảnh tăng trưởng 30 ngày.",
+      shopee7d: "Đang mở theo ngữ cảnh Shopee 7 ngày gần đây.",
+      default: "Đang mở theo ngữ cảnh từ dashboard.",
+    },
     overview: {
       greeting: {
         morning: "Chào buổi sáng",
@@ -575,14 +602,29 @@ export const vi = {
       hero: {
         badge: "Bảng điều khiển hiệu suất",
         title: "{greeting}, đây là nhịp tăng trưởng chiến dịch của bạn.",
+        today: "Lượt click hôm nay",
+        todayDetail: "Tổng lượt nhấp chuyển hướng được ghi nhận trong hôm nay.",
+        todayEmpty: "Chưa có lượt nhấp chuyển hướng nào được ghi nhận hôm nay.",
+        todayDeltaUp: "Nhiều hơn hôm qua {count} lượt nhấp.",
+        todayDeltaDown: "Ít hơn hôm qua {count} lượt nhấp.",
+        todayDeltaFlat: "Đang bằng với số lượt nhấp của hôm qua.",
       },
       summary: {
         growth: "Tăng trưởng 30 ngày",
         efficiency: "Hiệu quả",
-        recent: "7 ngày gần đây",
-        recentBest: "{count} lượt nhấp ở ngày tốt nhất",
-        recentEmpty: "Chưa có dữ liệu lịch sử",
+        recent: "Shopee 7 ngày gần đây",
+        recentBest: "{count} lượt sang Shopee ở ngày cao nhất",
+        recentEmpty: "Chưa có dữ liệu click Shopee gần đây",
+        yesterday: "Hôm qua",
+        yesterdayDetail: "Tổng lượt nhấp đã ghi nhận trong ngày hôm qua.",
+        todayShopee: "Shopee hôm nay",
+        todayTiktok: "TikTok hôm nay",
+        todayShare: "{share}% số click hôm nay",
+        topLinkToday: "Top link hôm nay",
+        topLinkTodayEmpty: "Chưa có link nào phát sinh click hôm nay",
       },
+      lastUpdated: "Cập nhật lúc {time}",
+      ["lastUpdatedMeta"]: "Cập nhật lúc {time}",
       efficiency: {
         veryHigh: {
           label: "Rất cao",
@@ -612,7 +654,7 @@ export const vi = {
       },
       metrics: {
         totalLinks: "Tổng liên kết",
-        outboundClicks: "Lượt nhấp chuyển hướng",
+        outboundClicks: "Tổng lượt nhấp",
         toShopee: "Ra Shopee",
         toTiktok: "Ra TikTok",
         totalLinksDetail: "{avg} lượt nhấp trung bình mỗi liên kết",
@@ -625,11 +667,11 @@ export const vi = {
       },
       recent: {
         eyebrow: "Nhịp nhấp gần đây",
-        title: "Diễn biến outbound theo ngày",
-        emptyTitle: "Dữ liệu sẽ xuất hiện khi có lượt nhấp mới",
+        title: "Diễn biến click Shopee theo ngày",
+        emptyTitle: "Dữ liệu sẽ xuất hiện khi có click Shopee mới",
         action: "Mở phân tích",
         chartEmpty:
-          "Hệ thống chưa có dữ liệu lượt nhấp gần đây để dựng xu hướng.",
+          "Hệ thống chưa có đủ dữ liệu click Shopee gần đây để dựng xu hướng.",
       },
       trafficDistribution: {
         eyebrow: "Phân bổ traffic",
@@ -1138,6 +1180,10 @@ export const vi = {
       redirectDelayRange: "Độ trễ phải nằm trong khoảng 1 đến 10 giây.",
       dropVideo: "Vui lòng thả đúng file video hợp lệ.",
       dropImage: "Vui lòng thả đúng file ảnh đại diện.",
+      directModeImageRequired:
+        "Mobile TikTok direct mode yêu cầu ảnh đại diện.",
+      directModeSecondaryDisabled:
+        "Mobile TikTok direct mode không hỗ trợ liên kết bước 2.",
     },
     page: {
       title: "Tạo trang đích mới",
@@ -1282,6 +1328,17 @@ export const vi = {
         "Tải ảnh đại diện lên {provider} thành công",
       thumbnailUrlPlaceholder: "Đường dẫn ảnh bìa...",
       thumbnailPreviewAlt: "Xem trước ảnh đại diện",
+      mobileDirectModeTitle: "Mobile TikTok direct mode",
+      mobileDirectModeDescription:
+        "Bỏ landing video trên mobile để ưu tiên redirect thẳng sang app Shopee hoặc TikTok.",
+      mobileDirectModeEnabled: "Đang bật",
+      mobileDirectModeDisabled: "Đang tắt",
+      mobileDirectModeNote:
+        "Mode này chỉ dùng ảnh đại diện. Khi bật, link sẽ đi theo flow direct redirect trên mobile để tăng khả năng nhảy thẳng app.",
+      mobileDirectModeAbNote:
+        "Biến thể B trong direct mode chỉ giữ title, description, ảnh và link chính. Video và bước 2 sẽ được tắt.",
+      mobileDirectModeImageHelp:
+        "Direct mode không dùng video. Hãy tải hoặc dán 1 ảnh đại diện để link mobile redirect thẳng sang app.",
     },
     result: {
       review: "Chế độ xem trước",

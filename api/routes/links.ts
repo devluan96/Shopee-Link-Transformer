@@ -147,6 +147,55 @@ type LinkRouteDeps = {
   deleteLink: typeof linkService.deleteLink;
 };
 
+type ConvertPayload = Record<string, any> & {
+  url: string;
+  customDomain?: string;
+  customImageUrl?: string;
+  secondaryUrl?: string;
+  videoUrl?: string;
+  abVariantBVideoUrl?: string;
+  abVariantBSecondaryUrl?: string;
+  mobileDirectMode?: boolean;
+};
+
+const prepareConvertPayload = (
+  body: any,
+  canUseCustomDomain: boolean,
+): { payload?: ConvertPayload; error?: string } => {
+  const payload: ConvertPayload = {
+    ...body,
+    mobileDirectMode: !!body?.mobileDirectMode,
+    customDomain: canUseCustomDomain ? body?.customDomain : undefined,
+  };
+
+  if (payload.mobileDirectMode) {
+    if (!payload.customImageUrl?.trim()) {
+      return {
+        error: "Mobile TikTok direct mode yêu cầu ảnh đại diện.",
+      };
+    }
+
+    if (payload.secondaryUrl?.trim()) {
+      return {
+        error: "Mobile TikTok direct mode không hỗ trợ liên kết bước 2.",
+      };
+    }
+
+    payload.videoUrl = "";
+    payload.secondaryUrl = "";
+    payload.abVariantBVideoUrl = "";
+    payload.abVariantBSecondaryUrl = "";
+  }
+
+  if (payload.secondaryUrl?.trim() && !payload.videoUrl?.trim()) {
+    return {
+      error: "Link bước 2 chỉ được dùng khi landing page có video.",
+    };
+  }
+
+  return { payload };
+};
+
 const defaultLinkRouteDeps: LinkRouteDeps = {
   getSupabase,
   getDailyLinkQuota,
@@ -180,27 +229,26 @@ export const createConvertHandler = (deps: Partial<LinkRouteDeps> = {}) => {
         });
       }
 
-      const payload = {
+      const incomingPayload = {
         ...req.body,
         customDomain: canUseCustomDomain ? req.body?.customDomain : undefined,
       };
+      const { payload, error } = prepareConvertPayload(incomingPayload, true);
 
-      if (payload.secondaryUrl?.trim() && !payload.videoUrl?.trim()) {
-        return res.status(400).json({
-          error: "Link bước 2 chỉ được dùng khi landing page có video.",
-        });
+      if (error) {
+        return res.status(400).json({ error });
       }
 
       const featureLimits = resolvedDeps.getFeatureLimitsForProfile(
         req.authProfile || undefined,
       );
-      if (payload.abTestEnabled && !featureLimits.canUseAbTesting) {
+      if (payload?.abTestEnabled && !featureLimits.canUseAbTesting) {
         return res.status(403).json({
           error: "A/B testing chỉ mở cho gói năm hoặc admin.",
         });
       }
 
-      const link = await resolvedDeps.createLink(supabase, userId, payload);
+      const link = await resolvedDeps.createLink(supabase, userId, payload!);
       return res.json(link);
     } catch (e: any) {
       console.error("❌ Convert error:", e);
@@ -256,27 +304,26 @@ router.post(
         });
       }
 
-      const payload = {
+      const incomingPayload = {
         ...req.body,
         customDomain: canUseCustomDomain ? req.body?.customDomain : undefined,
       };
+      const { payload, error } = prepareConvertPayload(incomingPayload, true);
 
-      if (payload.secondaryUrl?.trim() && !payload.videoUrl?.trim()) {
-        return res.status(400).json({
-          error: "Link bước 2 chỉ được dùng khi landing page có video.",
-        });
+      if (error) {
+        return res.status(400).json({ error });
       }
 
       const featureLimits = featureLimitService.getFeatureLimitsForProfile(
         req.authProfile || undefined,
       );
-      if (payload.abTestEnabled && !featureLimits.canUseAbTesting) {
+      if (payload?.abTestEnabled && !featureLimits.canUseAbTesting) {
         return res.status(403).json({
           error: "A/B testing chỉ mở cho gói năm hoặc admin.",
         });
       }
 
-      const link = await linkService.createLink(supabase, userId, payload);
+      const link = await linkService.createLink(supabase, userId, payload!);
       return res.json(link);
     } catch (e: any) {
       console.error("❌ Convert error:", e);
@@ -386,11 +433,6 @@ router.patch(
         "secondary_url",
         "secondaryTargetType",
         "custom_domain",
-        "utm_source",
-        "utm_medium",
-        "utm_campaign",
-        "utm_content",
-        "utm_term",
         "shopee_affiliate_params",
         "tiktok_affiliate_params",
         "ab_test_enabled",

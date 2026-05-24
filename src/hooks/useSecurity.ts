@@ -56,7 +56,7 @@ export function useSecurity({
   const accessLogsRefreshTimeoutRef = useRef<number | null>(null);
 
   const isAdminRole =
-    profile?.role === "admin" || user?.email === "devluan1996@gmail.com";
+    profile?.role === "admin";
 
   const fetchSecurityOverview = useCallback(async () => {
     if (!user) return;
@@ -166,8 +166,11 @@ export function useSecurity({
         const response = await fetchWithAuth(
           "/api/v1/admin/security/access-logs?limit=100",
         );
-        const logs = await response.json();
-        setAdminAccessLogs(logs as AccessLogEntry[]);
+        const logs = await response.json().catch(() => null);
+        if (!response.ok) {
+          throw new Error(logs?.error || "Khong the tai nhat ky truy cap");
+        }
+        setAdminAccessLogs(Array.isArray(logs) ? logs : []);
       } catch (e: any) {
         if (options?.reportError !== false) {
           toast.error(e.message || "Khong the tai nhat ky truy cap");
@@ -184,8 +187,11 @@ export function useSecurity({
         const response = await fetchWithAuth(
           "/api/v1/admin/security/blocked-ips",
         );
-        const blocked = await response.json();
-        setBlockedIps(blocked as BlockedIpEntry[]);
+        const blocked = await response.json().catch(() => null);
+        if (!response.ok) {
+          throw new Error(blocked?.error || "Khong the tai danh sach IP bi chan");
+        }
+        setBlockedIps(Array.isArray(blocked) ? blocked : []);
       } catch (e: any) {
         if (options?.reportError !== false) {
           toast.error(e.message || "Khong the tai danh sach IP bi chan");
@@ -218,7 +224,10 @@ export function useSecurity({
           body: JSON.stringify(payload),
         },
       );
-      const data = await response.json();
+      const data = await response.json().catch(() => null);
+      if (!response.ok) {
+        throw new Error(data?.error || "Khong the chan IP");
+      }
       toast.success("Da chan IP.");
       await fetchBlockedIpList({ reportError: false });
       return data as BlockedIpEntry;
@@ -232,7 +241,10 @@ export function useSecurity({
         `/api/v1/admin/security/blocked-ips/${blockedIpId}`,
         { method: "DELETE" },
       );
-      await response.json();
+      const data = await response.json().catch(() => null);
+      if (!response.ok) {
+        throw new Error(data?.error || "Khong the bo chan IP");
+      }
       toast.success("Da bo chan IP.");
       await fetchBlockedIpList({ reportError: false });
     },

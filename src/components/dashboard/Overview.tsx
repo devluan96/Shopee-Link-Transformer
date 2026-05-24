@@ -15,7 +15,7 @@ import {
 } from "lucide-react";
 import { buildPrettyLinkPath } from "@/src/lib/linkPaths";
 import { useLocale } from "@/src/hooks/useLocale";
-import { Tab } from "@/src/types";
+import { AnalyticsFocusContext, Tab } from "@/src/types";
 
 interface OverviewProps {
   stats: {
@@ -23,11 +23,18 @@ interface OverviewProps {
     totalClicks: number;
     totalShopeeClicks?: number;
     totalTiktokClicks?: number;
+    todayClicks?: number;
+    yesterdayClicks?: number;
+    todayShopeeClicks?: number;
+    todayTiktokClicks?: number;
     recentClicks: Array<{ date: string; clicks: number }>;
+    recentShopeeClicks?: Array<{ date: string; clicks: number }>;
     topLinks: Array<{ short_code: string; slug?: string; title: string; clicks: number }>;
     growthPercentage: number;
   } | null;
+  lastUpdatedAt?: string | null;
   setActiveTab: (tab: Tab) => void;
+  onOpenAnalyticsFocus?: (focus: AnalyticsFocusContext) => void;
   canAccessCreate: boolean;
   compactDesktop?: boolean;
 }
@@ -50,54 +57,16 @@ const formatChartDate = (value: string, locale: "vi" | "en") => {
   }).format(parsed);
 };
 
-const getGreeting = (hour: number, t: (path: string) => string) => {
-  if (hour < 12) return t("analytics.overview.greeting.morning");
-  if (hour < 18) return t("analytics.overview.greeting.afternoon");
-  return t("analytics.overview.greeting.evening");
-};
+const formatUpdatedAt = (value: string, locale: "vi" | "en") => {
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return value;
 
-const getEfficiencyMeta = (
-  avgClicksPerLink: number,
-  totalClicks: number,
-  t: (path: string) => string,
-) => {
-  if (avgClicksPerLink >= 10) {
-    return {
-      label: t("analytics.overview.efficiency.veryHigh.label"),
-      tone: "text-emerald-300",
-      note: t("analytics.overview.efficiency.veryHigh.note"),
-    };
-  }
-
-  if (avgClicksPerLink >= 5) {
-    return {
-      label: t("analytics.overview.efficiency.high.label"),
-      tone: "text-sky-300",
-      note: t("analytics.overview.efficiency.high.note"),
-    };
-  }
-
-  if (avgClicksPerLink >= 2) {
-    return {
-      label: t("analytics.overview.efficiency.medium.label"),
-      tone: "text-amber-300",
-      note: t("analytics.overview.efficiency.medium.note"),
-    };
-  }
-
-  if (totalClicks > 0) {
-    return {
-      label: t("analytics.overview.efficiency.rising.label"),
-      tone: "text-orange-300",
-      note: t("analytics.overview.efficiency.rising.note"),
-    };
-  }
-
-  return {
-    label: t("analytics.overview.efficiency.empty.label"),
-    tone: "text-slate-300",
-    note: t("analytics.overview.efficiency.empty.note"),
-  };
+  return new Intl.DateTimeFormat(locale === "vi" ? "vi-VN" : "en-US", {
+    hour: "2-digit",
+    minute: "2-digit",
+    day: "2-digit",
+    month: "2-digit",
+  }).format(parsed);
 };
 
 const getGrowthLabel = (value: number, t: (path: string) => string) => {
@@ -157,24 +126,28 @@ const getMetricDescription = ({
 
 export const Overview = ({
   stats,
+  lastUpdatedAt = null,
   setActiveTab,
+  onOpenAnalyticsFocus,
   canAccessCreate,
   compactDesktop = false,
 }: OverviewProps) => {
   const { locale, t } = useLocale();
-  const greeting = getGreeting(new Date().getHours(), t);
   const totalLinks = stats?.totalLinks || 0;
   const totalClicks = stats?.totalClicks || 0;
   const totalShopeeClicks = stats?.totalShopeeClicks || 0;
   const totalTiktokClicks = stats?.totalTiktokClicks || 0;
-  const recentClicks = stats?.recentClicks || [];
+  const todayClicks = stats?.todayClicks || 0;
+  const yesterdayClicks = stats?.yesterdayClicks || 0;
+  const todayShopeeClicks = stats?.todayShopeeClicks || 0;
+  const todayTiktokClicks = stats?.todayTiktokClicks || 0;
+  const recentShopeeClicks = stats?.recentShopeeClicks || [];
   const topLinks = stats?.topLinks || [];
   const growthPercentage = Number.isFinite(stats?.growthPercentage)
     ? stats?.growthPercentage || 0
     : 0;
 
   const avgClicksPerLink = totalLinks > 0 ? totalClicks / totalLinks : 0;
-  const efficiency = getEfficiencyMeta(avgClicksPerLink, totalClicks, t);
   const totalMarketplaceClicks = totalShopeeClicks + totalTiktokClicks;
   const otherClicks = Math.max(totalClicks - totalMarketplaceClicks, 0);
   const shopeeShare =
@@ -182,8 +155,33 @@ export const Overview = ({
   const tiktokShare =
     totalClicks > 0 ? (totalTiktokClicks / totalClicks) * 100 : 0;
   const otherShare = totalClicks > 0 ? (otherClicks / totalClicks) * 100 : 0;
+  const todayChange = todayClicks - yesterdayClicks;
+  const todayShopeeShare =
+    todayClicks > 0 ? (todayShopeeClicks / todayClicks) * 100 : 0;
+  const todayTiktokShare =
+    todayClicks > 0 ? (todayTiktokClicks / todayClicks) * 100 : 0;
+  const todayDeltaCopy =
+    todayClicks <= 0
+      ? t("analytics.overview.hero.todayEmpty")
+      : todayChange > 0
+        ? t("analytics.overview.hero.todayDeltaUp", {
+            count: formatNumber(Math.abs(todayChange), locale),
+          })
+        : todayChange < 0
+          ? t("analytics.overview.hero.todayDeltaDown", {
+              count: formatNumber(Math.abs(todayChange), locale),
+            })
+          : t("analytics.overview.hero.todayDeltaFlat");
+  const todayDeltaTone =
+    todayClicks <= 0
+      ? "border-white/10 bg-white/6 text-slate-300"
+      : todayChange > 0
+        ? "border-emerald-400/20 bg-emerald-400/10 text-emerald-200"
+        : todayChange < 0
+          ? "border-amber-400/20 bg-amber-400/10 text-amber-200"
+          : "border-sky-400/20 bg-sky-400/10 text-sky-200";
 
-  const recentWindow = recentClicks.slice(-7);
+  const recentWindow = recentShopeeClicks.slice(-7);
   const maxRecentClicks = recentWindow.reduce(
     (max, item) => Math.max(max, item.clicks),
     0,
@@ -193,73 +191,6 @@ export const Overview = ({
     (best, item) => (!best || item.clicks > best.clicks ? item : best),
     null,
   );
-
-  const primaryCards = [
-    {
-      key: "totalLinks" as const,
-      label: t("analytics.overview.metrics.totalLinks"),
-      value: formatNumber(totalLinks, locale),
-      detail: getMetricDescription({
-        metric: "totalLinks",
-        value: totalLinks,
-        totalClicks,
-        totalLinks,
-        locale,
-        t,
-      }),
-      icon: List,
-      iconWrap: "bg-orange-500/12 text-orange-300 ring-1 ring-orange-400/20",
-      accent: "from-orange-500/18 via-orange-400/6 to-transparent",
-    },
-    {
-      key: "outboundClicks" as const,
-      label: t("analytics.overview.metrics.outboundClicks"),
-      value: formatNumber(totalClicks, locale),
-      detail: getMetricDescription({
-        metric: "outboundClicks",
-        value: totalClicks,
-        totalClicks,
-        totalLinks,
-        locale,
-        t,
-      }),
-      icon: MousePointer2,
-      iconWrap: "bg-sky-500/12 text-sky-300 ring-1 ring-sky-400/20",
-      accent: "from-sky-500/18 via-sky-400/6 to-transparent",
-    },
-    {
-      key: "toShopee" as const,
-      label: t("analytics.overview.metrics.toShopee"),
-      value: formatNumber(totalShopeeClicks, locale),
-      detail: getMetricDescription({
-        metric: "toShopee",
-        value: totalShopeeClicks,
-        totalClicks,
-        totalLinks,
-        locale,
-        t,
-      }),
-      icon: ShoppingBag,
-      iconWrap: "bg-orange-500/14 text-orange-300 ring-1 ring-orange-400/25",
-      accent: "from-orange-500/20 via-amber-400/8 to-transparent",
-    },
-    {
-      key: "toTiktok" as const,
-      label: t("analytics.overview.metrics.toTiktok"),
-      value: formatNumber(totalTiktokClicks, locale),
-      detail: getMetricDescription({
-        metric: "toTiktok",
-        value: totalTiktokClicks,
-        totalClicks,
-        totalLinks,
-        locale,
-        t,
-      }),
-      icon: PlaySquare,
-      iconWrap: "bg-cyan-400/14 text-cyan-200 ring-1 ring-cyan-300/25",
-      accent: "from-cyan-400/20 via-pink-500/8 to-transparent",
-    },
-  ];
 
   const channels = [
     {
@@ -293,28 +224,55 @@ export const Overview = ({
         ? t("analytics.overview.suggestions.missingChannel")
         : t("analytics.overview.suggestions.ready");
 
+  const marketplaceFlow = [
+    {
+      label: t("analytics.overview.metrics.toShopee"),
+      value: totalShopeeClicks,
+      share: shopeeShare,
+      icon: ShoppingBag,
+      iconWrap: "bg-orange-500/14 text-orange-300 ring-1 ring-orange-400/25",
+      color: "from-orange-400 via-orange-300 to-amber-300",
+    },
+    {
+      label: t("analytics.overview.metrics.toTiktok"),
+      value: totalTiktokClicks,
+      share: tiktokShare,
+      icon: PlaySquare,
+      iconWrap: "bg-cyan-400/14 text-cyan-200 ring-1 ring-cyan-300/25",
+      color: "from-cyan-400 via-sky-300 to-blue-300",
+    },
+  ];
+
+  const openAnalyticsFocus = (focus: AnalyticsFocusContext) => {
+    if (onOpenAnalyticsFocus) {
+      onOpenAnalyticsFocus(focus);
+      return;
+    }
+    setActiveTab("analytics");
+  };
+
   return (
     <div className="relative">
       <div className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-72 bg-[radial-gradient(circle_at_top_left,rgba(251,146,60,0.16),transparent_36%),radial-gradient(circle_at_top_right,rgba(14,165,233,0.14),transparent_30%)]" />
 
       <div
-        className={`grid min-w-0 gap-8 ${
+        className={`grid min-w-0 items-stretch gap-6 ${
           compactDesktop
             ? "2xl:grid-cols-[minmax(0,1.55fr)_minmax(300px,0.95fr)]"
             : "xl:grid-cols-[minmax(0,1.65fr)_minmax(300px,0.95fr)]"
         }`}
       >
-        <section className="relative min-w-0 overflow-hidden rounded-4xl border border-slate-200/70 bg-[linear-gradient(135deg,#0f172a_0%,#111827_42%,#1e293b_100%)] p-7 text-white shadow-[0_30px_80px_-40px_rgba(15,23,42,0.9)] ring-1 ring-white/10 lg:p-9">
+        <section className="relative h-full min-w-0 overflow-hidden rounded-4xl border border-slate-200/70 bg-[linear-gradient(135deg,#0f172a_0%,#111827_42%,#1e293b_100%)] p-5 text-white shadow-[0_30px_80px_-40px_rgba(15,23,42,0.9)] ring-1 ring-white/10 sm:p-7 lg:p-9">
           <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(251,146,60,0.18),transparent_34%),radial-gradient(circle_at_bottom_right,rgba(56,189,248,0.12),transparent_32%)]" />
           <div className="pointer-events-none absolute -right-24 top-10 h-64 w-64 rounded-full bg-orange-500/10 blur-3xl" />
           <div className="pointer-events-none absolute -left-20 bottom-0 h-52 w-52 rounded-full bg-sky-500/10 blur-3xl" />
 
-          <div className="relative flex flex-col gap-8">
+          <div className="relative flex flex-col gap-6 lg:gap-7">
             <div
               className={`grid gap-6 ${
                 compactDesktop
-                  ? "2xl:grid-cols-[minmax(0,1.1fr)_300px] 2xl:items-start"
-                  : "xl:grid-cols-[minmax(0,1.15fr)_320px] xl:items-start"
+                  ? "2xl:grid-cols-[minmax(0,1fr)_280px] 2xl:items-start"
+                  : "xl:grid-cols-[minmax(0,1.05fr)_300px] xl:items-start"
               }`}
             >
               <div className="min-w-0">
@@ -322,19 +280,97 @@ export const Overview = ({
                   <Sparkles size={14} className="text-orange-300" />
                   {t("analytics.overview.hero.badge")}
                 </div>
-                <h2
-                  className={`max-w-3xl text-3xl font-black tracking-tight text-white md:text-4xl ${
-                    compactDesktop
-                      ? "xl:text-[2.55rem] xl:leading-[1.04] 2xl:text-[3rem]"
-                      : "xl:text-[3.25rem] xl:leading-[1.02]"
-                  }`}
-                >
-                  {t("analytics.overview.hero.title", { greeting })}
-                </h2>
+                {lastUpdatedAt && (
+                  <div className="mb-4 text-[11px] font-medium text-slate-400">
+                    {t("analytics.overview.lastUpdatedMeta", {
+                      time: formatUpdatedAt(lastUpdatedAt, locale),
+                    })}
+                  </div>
+                )}
+                <div className="max-w-2xl">
+                  <div className="text-[11px] font-semibold uppercase tracking-[0.26em] text-slate-400">
+                    {t("analytics.overview.hero.today")}
+                  </div>
+                  <div
+                    className={`mt-3 text-[3.4rem] font-black tracking-[-0.06em] text-white sm:text-[4.5rem] md:text-[5rem] ${
+                      compactDesktop
+                        ? "xl:text-[5.2rem] xl:leading-[0.92]"
+                        : "xl:text-[5.8rem] xl:leading-[0.9]"
+                    }`}
+                  >
+                    {formatNumber(todayClicks, locale)}
+                  </div>
+                  <div
+                    className={`mt-4 inline-flex max-w-md rounded-full border px-4 py-2 text-sm font-semibold ${todayDeltaTone}`}
+                  >
+                    {todayDeltaCopy}
+                  </div>
+                  <div className="mt-5 grid max-w-3xl gap-3 sm:grid-cols-2">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        openAnalyticsFocus({ source: "shopee", period: "today" })
+                      }
+                      className="rounded-2xl border border-white/10 bg-white/7 p-4 text-left backdrop-blur-sm transition hover:border-orange-300/30 hover:bg-white/10"
+                    >
+                      <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">
+                        {t("analytics.overview.summary.todayShopee")}
+                      </div>
+                      <div className="mt-2 text-2xl font-black text-white">
+                        {formatNumber(todayShopeeClicks, locale)}
+                      </div>
+                      <div className="mt-1 text-xs text-slate-400">
+                        {t("analytics.overview.summary.todayShare", {
+                          share: formatNumber(todayShopeeShare, locale),
+                        })}
+                      </div>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() =>
+                        openAnalyticsFocus({ source: "tiktok", period: "today" })
+                      }
+                      className="rounded-2xl border border-white/10 bg-white/7 p-4 text-left backdrop-blur-sm transition hover:border-cyan-300/30 hover:bg-white/10"
+                    >
+                      <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">
+                        {t("analytics.overview.summary.todayTiktok")}
+                      </div>
+                      <div className="mt-2 text-2xl font-black text-white">
+                        {formatNumber(todayTiktokClicks, locale)}
+                      </div>
+                      <div className="mt-1 text-xs text-slate-400">
+                        {t("analytics.overview.summary.todayShare", {
+                          share: formatNumber(todayTiktokShare, locale),
+                        })}
+                      </div>
+                    </button>
+                  </div>
+                </div>
               </div>
 
-              <div className="grid w-full gap-3 sm:grid-cols-3 xl:grid-cols-1">
-                <div className="rounded-2xl border border-white/10 bg-white/7 p-4 backdrop-blur-sm">
+              <div className="flex w-full snap-x gap-3 overflow-x-auto pb-1 sm:grid sm:grid-cols-2 sm:overflow-visible sm:pb-0 xl:grid-cols-1">
+                <button
+                  type="button"
+                  onClick={() => openAnalyticsFocus({ source: "all", period: "today" })}
+                  className="min-w-[208px] snap-start rounded-2xl border border-white/10 bg-white/7 p-4 text-left backdrop-blur-sm transition hover:border-white/20 hover:bg-white/10 sm:min-w-0 xl:p-3.5"
+                >
+                  <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">
+                    {t("analytics.overview.summary.yesterday")}
+                  </div>
+                  <div className="mt-3 text-2xl font-black text-white">
+                    {formatNumber(yesterdayClicks, locale)}
+                  </div>
+                  <div className="mt-2 text-xs text-slate-400">
+                    {t("analytics.overview.summary.yesterdayDetail")}
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => openAnalyticsFocus({ source: "all", period: "30d" })}
+                  className="min-w-[208px] snap-start rounded-2xl border border-white/10 bg-white/7 p-4 text-left backdrop-blur-sm transition hover:border-white/20 hover:bg-white/10 sm:min-w-0 xl:p-3.5"
+                >
                   <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">
                     {t("analytics.overview.summary.growth")}
                   </div>
@@ -345,30 +381,22 @@ export const Overview = ({
                       className={
                         growthPercentage >= 0
                           ? "text-emerald-300"
-                          : "text-rose-300"
+                          : "text-rose-300 rotate-90"
                       }
                     />
                   </div>
                   <div className="mt-2 text-xs text-slate-400">
                     {getGrowthLabel(growthPercentage, t)}
                   </div>
-                </div>
+                </button>
 
-                <div className="rounded-2xl border border-white/10 bg-white/7 p-4 backdrop-blur-sm">
-                  <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">
-                    {t("analytics.overview.summary.efficiency")}
-                  </div>
-                  <div
-                    className={`mt-3 text-2xl font-black ${efficiency.tone}`}
-                  >
-                    {efficiency.label}
-                  </div>
-                  <div className="mt-2 text-xs text-slate-400">
-                    {efficiency.note}
-                  </div>
-                </div>
-
-                <div className="rounded-2xl border border-white/10 bg-white/7 p-4 backdrop-blur-sm">
+                <button
+                  type="button"
+                  onClick={() =>
+                    openAnalyticsFocus({ source: "shopee", period: "7d" })
+                  }
+                  className="min-w-[208px] snap-start rounded-2xl border border-white/10 bg-white/7 p-4 text-left backdrop-blur-sm transition hover:border-white/20 hover:bg-white/10 sm:col-span-2 sm:min-w-0 xl:col-span-1 xl:p-3.5"
+                >
                   <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">
                     {t("analytics.overview.summary.recent")}
                   </div>
@@ -382,39 +410,128 @@ export const Overview = ({
                         })
                       : t("analytics.overview.summary.recentEmpty")}
                   </div>
-                </div>
+                </button>
               </div>
             </div>
 
             <div
-              className={`grid gap-4 sm:grid-cols-2 ${
-                compactDesktop ? "2xl:grid-cols-4" : "xl:grid-cols-4"
+              className={`grid gap-3 ${
+                compactDesktop
+                  ? "2xl:grid-cols-[minmax(0,0.92fr)_auto_minmax(0,1fr)_auto_minmax(0,1.28fr)]"
+                  : "lg:grid-cols-[minmax(0,0.92fr)_auto_minmax(0,1fr)_auto_minmax(0,1.28fr)]"
               }`}
             >
-              {primaryCards.map((card) => (
-                <div
-                  key={card.key}
-                  className="relative overflow-hidden rounded-[1.75rem] border border-white/10 bg-white/8 p-5 shadow-[0_20px_55px_-45px_rgba(15,23,42,0.65)] backdrop-blur-md"
-                >
-                  <div
-                    className={`pointer-events-none absolute inset-x-0 top-0 h-20 bg-linear-to-br ${card.accent}`}
-                  />
-                  <div
-                    className={`relative flex h-12 w-12 items-center justify-center rounded-2xl ${card.iconWrap}`}
-                  >
-                    <card.icon size={22} />
+              <div className="flex h-full flex-col justify-between rounded-[1.75rem] border border-white/10 bg-white/8 p-5 backdrop-blur-md lg:min-h-[244px]">
+                <div>
+                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-orange-500/12 text-orange-300 ring-1 ring-orange-400/20">
+                    <List size={22} />
                   </div>
-                  <div className="relative mt-5 text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">
-                    {card.label}
+                  <div className="mt-5 text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">
+                    {t("analytics.overview.metrics.totalLinks")}
                   </div>
-                  <div className="relative mt-2 text-3xl font-black tracking-tight text-white">
-                    {card.value}
-                  </div>
-                  <div className="relative mt-2 text-sm leading-6 text-slate-300">
-                    {card.detail}
+                  <div className="mt-2 text-4xl font-black tracking-tight text-white">
+                    {formatNumber(totalLinks, locale)}
                   </div>
                 </div>
-              ))}
+                <div className="mt-6 rounded-2xl border border-white/8 bg-slate-950/18 p-4 text-sm leading-6 text-slate-300">
+                  {getMetricDescription({
+                    metric: "totalLinks",
+                    value: totalLinks,
+                    totalClicks,
+                    totalLinks,
+                    locale,
+                    t,
+                  })}
+                </div>
+              </div>
+
+              <div className="flex items-center justify-center lg:self-center">
+                <div className="flex h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-white/6 text-orange-300">
+                  <ArrowRight size={16} className="rotate-90 lg:rotate-0" />
+                </div>
+              </div>
+
+              <div className="flex h-full flex-col justify-between rounded-[1.75rem] border border-white/10 bg-white/8 p-5 backdrop-blur-md lg:min-h-[244px]">
+                <div>
+                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-sky-500/12 text-sky-300 ring-1 ring-sky-400/20">
+                    <MousePointer2 size={22} />
+                  </div>
+                  <div className="mt-5 text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">
+                    {t("analytics.overview.metrics.outboundClicks")}
+                  </div>
+                  <div className="mt-2 text-4xl font-black tracking-tight text-white">
+                    {formatNumber(totalClicks, locale)}
+                  </div>
+                </div>
+                <div className="mt-6 rounded-2xl border border-white/8 bg-slate-950/18 p-4 text-sm leading-6 text-slate-300">
+                  {getMetricDescription({
+                    metric: "outboundClicks",
+                    value: totalClicks,
+                    totalClicks,
+                    totalLinks,
+                    locale,
+                    t,
+                  })}
+                </div>
+              </div>
+
+              <div className="flex items-center justify-center lg:self-center">
+                <div className="flex h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-white/6 text-sky-300">
+                  <ArrowRight size={16} className="rotate-90 lg:rotate-0" />
+                </div>
+              </div>
+
+              <div className="flex h-full flex-col rounded-[1.75rem] border border-white/10 bg-[linear-gradient(135deg,rgba(251,146,60,0.1),rgba(255,255,255,0.05),rgba(56,189,248,0.08))] p-5 backdrop-blur-md lg:min-h-[244px]">
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <div className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">
+                      {t("analytics.overview.trafficDistribution.eyebrow")}
+                    </div>
+                    <div className="mt-2 text-lg font-bold text-white">
+                      {t("analytics.overview.actionPanel.channelsWithData")}
+                    </div>
+                  </div>
+                  <div className="rounded-full border border-white/10 bg-white/6 px-3 py-1 text-[11px] font-semibold text-slate-200">
+                    {channelCount}/2
+                  </div>
+                </div>
+
+                <div className="mt-5 space-y-4">
+                  {marketplaceFlow.map((channel) => (
+                    <div key={channel.label}>
+                      <div className="mb-2 flex items-center justify-between gap-3">
+                        <div className="flex min-w-0 items-center gap-3">
+                          <div
+                            className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl ${channel.iconWrap}`}
+                          >
+                            <channel.icon size={18} />
+                          </div>
+                          <div className="min-w-0">
+                            <div className="truncate text-sm font-semibold text-white">
+                              {channel.label}
+                            </div>
+                            <div className="text-[11px] uppercase tracking-[0.18em] text-slate-400">
+                              {formatNumber(channel.share, locale)}%
+                            </div>
+                          </div>
+                        </div>
+                        <div className="text-right text-xl font-black text-white">
+                          {formatNumber(channel.value, locale)}
+                        </div>
+                      </div>
+                      <div className="h-2.5 overflow-hidden rounded-full bg-white/8">
+                        <div
+                          className={`h-full rounded-full bg-linear-to-r ${channel.color}`}
+                          style={{
+                            width: `${Math.max(channel.share, channel.value > 0 ? 10 : 0)}%`,
+                          }}
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+              </div>
             </div>
 
             <div
@@ -529,8 +646,8 @@ export const Overview = ({
           </div>
         </section>
 
-        <section className="grid min-w-0 gap-6">
-          <div className="min-w-0 overflow-hidden rounded-4xl border border-orange-200/70 bg-[linear-gradient(135deg,#fff7ed_0%,#ffffff_52%,#eff6ff_100%)] p-6 shadow-[0_25px_70px_-50px_rgba(249,115,22,0.45)] dark:border-slate-700 dark:bg-[linear-gradient(135deg,#1e293b_0%,#111827_55%,#0f172a_100%)]">
+        <section className="flex h-full min-w-0 flex-col gap-6">
+          <div className="min-w-0 flex-none overflow-hidden rounded-4xl border border-orange-200/70 bg-[linear-gradient(135deg,#fff7ed_0%,#ffffff_52%,#eff6ff_100%)] p-6 shadow-[0_25px_70px_-50px_rgba(249,115,22,0.45)] dark:border-slate-700 dark:bg-[linear-gradient(135deg,#1e293b_0%,#111827_55%,#0f172a_100%)]">
             <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.24em] text-orange-500 dark:text-orange-300">
               <Zap size={14} />
               {t("analytics.overview.actionPanel.eyebrow")}
@@ -584,7 +701,7 @@ export const Overview = ({
             </div>
           </div>
 
-          <div className="min-w-0 rounded-4xl border border-slate-200/70 bg-white/90 p-6 shadow-[0_25px_70px_-45px_rgba(15,23,42,0.45)] ring-1 ring-slate-100 backdrop-blur dark:border-slate-700 dark:bg-slate-800/90 dark:ring-slate-700">
+          <div className="min-w-0 flex-1 rounded-4xl border border-slate-200/70 bg-white/90 p-6 shadow-[0_25px_70px_-45px_rgba(15,23,42,0.45)] ring-1 ring-slate-100 backdrop-blur dark:border-slate-700 dark:bg-slate-800/90 dark:ring-slate-700">
             <div className="mb-5 flex items-start justify-between gap-3">
               <div>
                 <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400 dark:text-slate-500">

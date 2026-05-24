@@ -5,9 +5,11 @@ import {
   TrendingUp,
   PieChart as PieChartIcon,
   BarChart3,
+  Filter,
   Map,
   ShoppingBag,
   PlaySquare,
+  X,
 } from "lucide-react";
 import {
   ResponsiveContainer,
@@ -21,7 +23,7 @@ import {
   Cell,
 } from "recharts";
 import { buildPrettyLinkPath } from "@/src/lib/linkPaths";
-import { AnalyticsData } from "@/src/types";
+import { AnalyticsData, AnalyticsFocusContext } from "@/src/types";
 import { AdvancedAnalytics } from "./AdvancedAnalytics";
 import { useLocale } from "@/src/hooks/useLocale";
 
@@ -33,15 +35,56 @@ interface AnalyticsProps {
     init?: RequestInit,
   ) => Promise<Response>;
   currentWorkspaceId?: string;
+  focusContext?: AnalyticsFocusContext | null;
+  lastUpdatedAt?: string | null;
+  onClearFocus?: () => void;
 }
 
 const TRAFFIC_COLORS = ["#3b82f6", "#ef4444", "#10b981", "#f59e0b", "#8b5cf6"];
+
+const formatUpdatedAt = (value: string, locale: "vi" | "en") => {
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return value;
+
+  return new Intl.DateTimeFormat(locale === "vi" ? "vi-VN" : "en-US", {
+    hour: "2-digit",
+    minute: "2-digit",
+    day: "2-digit",
+    month: "2-digit",
+  }).format(parsed);
+};
+
+const getFocusLabel = (
+  focus: AnalyticsFocusContext,
+  t: (path: string) => string,
+) => {
+  if (focus.source === "shopee" && focus.period === "today") {
+    return t("analytics.focusContext.shopeeToday");
+  }
+  if (focus.source === "tiktok" && focus.period === "today") {
+    return t("analytics.focusContext.tiktokToday");
+  }
+  if (focus.source === "all" && focus.period === "today") {
+    return t("analytics.focusContext.allToday");
+  }
+  if (focus.source === "all" && focus.period === "30d") {
+    return t("analytics.focusContext.all30d");
+  }
+  if (focus.source === "shopee" && focus.period === "7d") {
+    return t("analytics.focusContext.shopee7d");
+  }
+
+  return t("analytics.focusContext.default");
+};
 
 export const Analytics = ({
   analyticsData,
   linksCount,
   fetchWithAuth,
   currentWorkspaceId,
+  focusContext = null,
+  lastUpdatedAt = null,
+  onClearFocus,
 }: AnalyticsProps) => {
   const { locale, messages, t } = useLocale();
   const [activeView, setActiveView] = useState<"basic" | "advanced">("basic");
@@ -57,6 +100,12 @@ export const Analytics = ({
   const totalShopeeClicks = analyticsData?.totalShopeeClicks || 0;
   const totalTiktokClicks = analyticsData?.totalTiktokClicks || 0;
   const growthDisplay = `${growthPercentage >= 0 ? "+" : ""}${growthPercentage.toFixed(1)}%`;
+  const filteredGrowthLabel = focusContext
+    ? t("analytics.filteredGrowthLabel")
+    : content.stats.growth;
+  const chartDescription = focusContext
+    ? t("analytics.filteredChartDescription")
+    : content.chart.description;
 
   const formatChartDate = (value: string) => {
     const parsed = new Date(value);
@@ -98,7 +147,7 @@ export const Analytics = ({
       bg: "bg-blue-50",
     },
     {
-      label: content.stats.growth,
+      label: filteredGrowthLabel,
       value: growthDisplay,
       icon: TrendingUp,
       color: growthPercentage >= 0 ? "text-green-500" : "text-red-500",
@@ -108,6 +157,59 @@ export const Analytics = ({
 
   return (
     <div className="space-y-8 pb-12 dark:bg-slate-900">
+      {focusContext && (
+        <div className="rounded-[2rem] border border-slate-200 bg-[linear-gradient(135deg,rgba(249,250,251,0.96),rgba(255,247,237,0.92))] p-5 shadow-sm dark:border-slate-700 dark:bg-[linear-gradient(135deg,rgba(15,23,42,0.98),rgba(30,41,59,0.96))]">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+            <div className="min-w-0">
+              <div className="inline-flex items-center gap-2 rounded-full border border-orange-200 bg-white/80 px-3 py-1 text-[10px] font-black uppercase tracking-[0.22em] text-orange-600 dark:border-orange-400/20 dark:bg-slate-900/50 dark:text-orange-200">
+                <Filter size={12} />
+                {t("analytics.focusContext.title")}
+              </div>
+              {focusContext && (
+                <>
+                  <div className="mt-3 text-base font-black text-slate-900 dark:text-slate-100">
+                    {getFocusLabel(focusContext, t)}
+                  </div>
+                  <p className="mt-1 max-w-2xl text-sm text-slate-500 dark:text-slate-400">
+                    {t("analytics.focusContext.note")}
+                  </p>
+                </>
+              )}
+            </div>
+
+            <div className="flex flex-wrap items-center gap-3">
+              {lastUpdatedAt && (
+                <div className="rounded-full border border-slate-200 bg-white/80 px-3 py-1.5 text-xs font-semibold text-slate-500 dark:border-slate-700 dark:bg-slate-900/50 dark:text-slate-400">
+                  {t("analytics.updatedAtMeta", {
+                    time: formatUpdatedAt(lastUpdatedAt, locale),
+                  })}
+                </div>
+              )}
+              {focusContext && onClearFocus && (
+                <button
+                  type="button"
+                  onClick={onClearFocus}
+                  className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white/80 px-3 py-1.5 text-xs font-black uppercase tracking-[0.18em] text-slate-600 transition hover:border-slate-300 hover:text-slate-900 dark:border-slate-700 dark:bg-slate-900/50 dark:text-slate-300 dark:hover:border-slate-600 dark:hover:text-slate-100"
+                >
+                  <X size={12} />
+                  {t("analytics.focusContext.clear")}
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {!focusContext && lastUpdatedAt && (
+        <div className="flex justify-end">
+          <div className="rounded-full border border-slate-200 bg-white/80 px-3 py-1.5 text-xs font-semibold text-slate-500 shadow-sm dark:border-slate-700 dark:bg-slate-900/50 dark:text-slate-400">
+            {t("analytics.updatedAtMeta", {
+              time: formatUpdatedAt(lastUpdatedAt, locale),
+            })}
+          </div>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-5">
         {stats.map((stat, idx) => (
           <div
@@ -160,6 +262,7 @@ export const Analytics = ({
         <AdvancedAnalytics
           fetchWithAuth={fetchWithAuth}
           currentWorkspaceId={currentWorkspaceId}
+          focusContext={focusContext}
         />
       ) : (
         <>
@@ -170,7 +273,7 @@ export const Analytics = ({
                   {content.chart.title}
                 </h3>
                 <p className="text-xs font-medium text-gray-400 dark:text-slate-400">
-                  {content.chart.description}
+                  {chartDescription}
                 </p>
               </div>
               <div className="flex flex-wrap gap-2">

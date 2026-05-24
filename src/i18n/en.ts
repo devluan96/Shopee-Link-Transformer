@@ -570,6 +570,21 @@ export const en = {
       title: "Traffic sources",
       empty: "No traffic source data yet.",
     },
+    updatedAtMeta: "Analytics updated at {time}",
+    filteredGrowthLabel: "vs previous window",
+    filteredChartDescription:
+      "Filtered outbound activity for the selected dashboard context.",
+    focusContext: {
+      title: "Dashboard context",
+      note: "Basic and advanced analytics below follow this context, using outbound activity as the shared source of truth.",
+      clear: "View full analytics",
+      shopeeToday: "Opened from the Shopee today context.",
+      tiktokToday: "Opened from the TikTok today context.",
+      allToday: "Opened from the today versus yesterday context.",
+      all30d: "Opened from the 30-day growth context.",
+      shopee7d: "Opened from the Shopee last 7 days context.",
+      default: "Opened from dashboard context.",
+    },
     overview: {
       greeting: {
         morning: "Good morning",
@@ -579,14 +594,28 @@ export const en = {
       hero: {
         badge: "Performance dashboard",
         title: "{greeting}, here is the growth rhythm of your campaigns.",
+        today: "Today's clicks",
+        todayDetail: "Total outbound clicks recorded so far today.",
+        todayEmpty: "No outbound clicks have been recorded yet today.",
+        todayDeltaUp: "{count} more clicks than yesterday.",
+        todayDeltaDown: "{count} fewer clicks than yesterday.",
+        todayDeltaFlat: "Matching yesterday's click count so far.",
       },
       summary: {
         growth: "30-day growth",
         efficiency: "Efficiency",
-        recent: "Last 7 days",
-        recentBest: "{count} clicks on the best day",
-        recentEmpty: "No history available yet",
+        recent: "Shopee last 7 days",
+        recentBest: "{count} Shopee clicks on the best day",
+        recentEmpty: "No recent Shopee click history yet",
+        yesterday: "Yesterday",
+        yesterdayDetail: "Total clicks recorded during the previous day.",
+        todayShopee: "Shopee today",
+        todayTiktok: "TikTok today",
+        todayShare: "{share}% of today's clicks",
+        topLinkToday: "Top link today",
+        topLinkTodayEmpty: "No link has received clicks today yet",
       },
+      lastUpdatedMeta: "Updated at {time}",
       efficiency: {
         veryHigh: {
           label: "Very high",
@@ -616,7 +645,7 @@ export const en = {
       },
       metrics: {
         totalLinks: "Total links",
-        outboundClicks: "Outbound clicks",
+        outboundClicks: "Total clicks",
         toShopee: "To Shopee",
         toTiktok: "To TikTok",
         totalLinksDetail: "{avg} average clicks per link",
@@ -629,11 +658,11 @@ export const en = {
       },
       recent: {
         eyebrow: "Recent click rhythm",
-        title: "Outbound trend by day",
-        emptyTitle: "Data will appear once new clicks arrive",
+        title: "Shopee click trend by day",
+        emptyTitle: "Data will appear once new Shopee clicks arrive",
         action: "Open analytics",
         chartEmpty:
-          "The system does not have enough recent click data to build a trend yet.",
+          "The system does not have enough recent Shopee click data to build a trend yet.",
       },
       trafficDistribution: {
         eyebrow: "Traffic distribution",
@@ -1169,6 +1198,10 @@ export const en = {
       redirectDelayRange: "Delay must be between 1 and 10 seconds.",
       dropVideo: "Please drop a valid video file.",
       dropImage: "Please drop a valid image file for the thumbnail.",
+      directModeImageRequired:
+        "Mobile TikTok direct mode requires a thumbnail image.",
+      directModeSecondaryDisabled:
+        "Mobile TikTok direct mode does not support the step-2 URL.",
     },
     page: {
       title: "Create a new landing page",
@@ -1311,6 +1344,17 @@ export const en = {
         "Thumbnail uploaded to {provider} successfully",
       thumbnailUrlPlaceholder: "Cover image URL...",
       thumbnailPreviewAlt: "Thumbnail preview",
+      mobileDirectModeTitle: "Mobile TikTok direct mode",
+      mobileDirectModeDescription:
+        "Skip the video landing flow on mobile and prioritize a direct redirect into the Shopee or TikTok app.",
+      mobileDirectModeEnabled: "Enabled",
+      mobileDirectModeDisabled: "Disabled",
+      mobileDirectModeNote:
+        "This mode is image-only. When enabled, mobile traffic follows the direct redirect path to improve the chance of opening the target app immediately.",
+      mobileDirectModeAbNote:
+        "Variant B in direct mode keeps only the title, description, image, and primary URL. Video and step-2 are disabled.",
+      mobileDirectModeImageHelp:
+        "Direct mode does not use video. Upload or paste one thumbnail image so the mobile link can redirect straight into the app.",
     },
     result: {
       review: "Preview mode",

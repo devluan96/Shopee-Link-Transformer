@@ -1,5 +1,5 @@
 const SOCIAL_PREVIEW_BOT_REGEX =
-  /facebookexternalhit|Facebot|meta-externalagent|meta-externalfetcher|Twitterbot|LinkedInBot|Slackbot|Discordbot|TelegramBot|WhatsApp|SkypeUriPreview|Pinterest|Zalo|Googlebot|bingbot|embedly/i;
+  /facebookexternalhit|Facebot|meta-externalagent|meta-externalfetcher|Twitterbot|LinkedInBot|Slackbot|Discordbot|TelegramBot|WhatsApp|SkypeUriPreview|Pinterest|Googlebot|bingbot|embedly/i;
 const META_PREVIEW_BOT_REGEX =
   /facebookexternalhit|Facebot|meta-externalagent|meta-externalfetcher/i;
 

@@ -48,6 +48,8 @@ type FormField =
 interface CreateLinkProps {
   url: string;
   setUrl: (v: string) => void;
+  mobileDirectMode: boolean;
+  setMobileDirectMode: (v: boolean) => void;
   customTitle: string;
   setCustomTitle: (v: string) => void;
   customDescription: string;
@@ -74,16 +76,6 @@ interface CreateLinkProps {
     canCreate: boolean;
   } | null;
   userLimits?: UserLimits | null;
-  utmSource: string;
-  setUtmSource: (v: string) => void;
-  utmMedium: string;
-  setUtmMedium: (v: string) => void;
-  utmCampaign: string;
-  setUtmCampaign: (v: string) => void;
-  utmContent: string;
-  setUtmContent: (v: string) => void;
-  utmTerm: string;
-  setUtmTerm: (v: string) => void;
   shopeeAffiliateParams: string;
   setShopeeAffiliateParams: (v: string) => void;
   tiktokAffiliateParams: string;
@@ -116,7 +108,7 @@ interface CreateLinkProps {
   uploadingVideo: boolean;
   videoUploadProgress: number;
   videoUploadSuccess: boolean;
-  videoUploadProvider?: "cloudinary" | "imagekit" | "supabase" | null;
+  videoUploadProvider?: "cloudinary" | "supabase" | null;
   videoInputRef: RefObject<HTMLInputElement | null>;
   handleVideoUpload: (e: ChangeEvent<HTMLInputElement>) => void;
   handleVideoFileUpload: (file: File) => Promise<void>;
@@ -124,7 +116,7 @@ interface CreateLinkProps {
   uploadingThumbnail: boolean;
   thumbnailUploadProgress: number;
   thumbnailUploadSuccess: boolean;
-  thumbnailUploadProvider?: "cloudinary" | "imagekit" | "supabase" | null;
+  thumbnailUploadProvider?: "cloudinary" | "supabase" | null;
   handleThumbnailUpload: (e: ChangeEvent<HTMLInputElement>) => Promise<void>;
   handleThumbnailFileUpload: (file: File) => Promise<void>;
   handleConvert: (e: FormEvent) => void;
@@ -143,6 +135,8 @@ interface CreateLinkProps {
 export const CreateLink = ({
   url,
   setUrl,
+  mobileDirectMode,
+  setMobileDirectMode,
   customTitle,
   setCustomTitle,
   customDescription,
@@ -163,16 +157,6 @@ export const CreateLink = ({
   canUseCustomDomains,
   linkQuota,
   userLimits,
-  utmSource,
-  setUtmSource,
-  utmMedium,
-  setUtmMedium,
-  utmCampaign,
-  setUtmCampaign,
-  utmContent,
-  setUtmContent,
-  utmTerm,
-  setUtmTerm,
   shopeeAffiliateParams,
   setShopeeAffiliateParams,
   tiktokAffiliateParams,
@@ -230,10 +214,7 @@ export const CreateLink = ({
   const { messages, t } = useLocale();
   const content = messages.createLink;
   const page = content.page;
-  const defaultDomainLabel = page.defaultDomain.replace(
-    "hotsnew.click",
-    DEFAULT_OUTPUT_DOMAIN,
-  );
+  const defaultDomainLabel = DEFAULT_OUTPUT_DOMAIN;
   const zaloContactUrl = "https://zalo.me/0969361607";
   const [fieldErrors, setFieldErrors] = React.useState<
     Partial<Record<FormField, string>>
@@ -245,37 +226,17 @@ export const CreateLink = ({
     React.useState<"landscape" | "portrait" | "square">("landscape");
   const [isDraggingVideo, setIsDraggingVideo] = React.useState(false);
   const [showQrModal, setShowQrModal] = React.useState(false);
+  const [showSecondaryFlow, setShowSecondaryFlow] = React.useState(false);
   const [showAdvancedSettings, setShowAdvancedSettings] = React.useState(false);
 
-  const currentPlanLabel =
-    linkQuota?.plan === "admin"
-      ? page.adminPlan
-      : linkQuota?.plan === "yearly"
-        ? page.yearlyPlan
-        : linkQuota?.plan === "monthly"
-          ? page.monthlyPlan
-          : page.freePlan;
-
-  const handleLockedDomainClick = React.useCallback(() => {
-    toast.info(page.customDomainLocked);
-  }, [page.customDomainLocked]);
   const [selectedExpirePresetDays, setSelectedExpirePresetDays] =
     React.useState<number | null>(null);
-  const [campaignTrackingEnabled, setCampaignTrackingEnabled] = React.useState(
-    Boolean(
-      utmSource.trim() ||
-      utmMedium.trim() ||
-      utmCampaign.trim() ||
-      utmContent.trim() ||
-      utmTerm.trim(),
-    ),
-  );
   const normalizedShortCodePreview = customShortCode
     ? normalizeVietnameseSlug(customShortCode)
     : "";
   const convertedResultUrl = result?.converted_url
-      ? result.converted_url
-      : result?.short_code
+    ? result.converted_url
+    : result?.short_code
       ? buildPrettyLinkUrl(DEFAULT_SITE_URL, {
           slug: result.slug,
           shortCode: result.short_code,
@@ -287,14 +248,10 @@ export const CreateLink = ({
           fallbackToLegacy: false,
         });
   const uploadProgressOffset = 87.96 - (87.96 * videoUploadProgress) / 100;
-  const getProviderLabel = (
-    provider?: "cloudinary" | "imagekit" | "supabase" | null,
-  ) => {
+  const getProviderLabel = (provider?: "cloudinary" | "supabase" | null) => {
     switch (provider) {
       case "cloudinary":
         return "Cloudinary";
-      case "imagekit":
-        return "ImageKit";
       case "supabase":
         return "Supabase";
       default:
@@ -308,6 +265,8 @@ export const CreateLink = ({
     userLimits?.videoUploadsRemainingToday ?? null;
   const videoUploadBlocked =
     userLimits?.dailyVideoUploads === 0 || videoUploadsRemainingToday === 0;
+  const submitDisabled =
+    loading || uploadingVideo || (linkQuota ? !linkQuota.canCreate : false);
   const canUseSecondaryFlow = Boolean(videoUrl.trim());
   const localizedUsageOptions = LINK_USAGE_OPTIONS.map((option) => {
     switch (option.value) {
@@ -354,6 +313,42 @@ export const CreateLink = ({
   }, [clearFieldError, customImageUrl, videoUrl]);
 
   React.useEffect(() => {
+    if (!mobileDirectMode) return;
+
+    if (videoUrl.trim()) {
+      setVideoUrl("");
+    }
+    if (secondaryUrl.trim()) {
+      setSecondaryUrl("");
+    }
+    if (secondaryTargetType !== "shopee") {
+      setSecondaryTargetType("shopee");
+    }
+    if (abVariantBVideoUrl.trim()) {
+      setAbVariantBVideoUrl("");
+    }
+    if (abVariantBSecondaryUrl.trim()) {
+      setAbVariantBSecondaryUrl("");
+    }
+    clearFieldError("videoUrl");
+    clearFieldError("secondaryUrl");
+    setShowSecondaryFlow(false);
+  }, [
+    abVariantBSecondaryUrl,
+    abVariantBVideoUrl,
+    clearFieldError,
+    mobileDirectMode,
+    secondaryTargetType,
+    secondaryUrl,
+    setAbVariantBSecondaryUrl,
+    setAbVariantBVideoUrl,
+    setSecondaryTargetType,
+    setSecondaryUrl,
+    setVideoUrl,
+    videoUrl,
+  ]);
+
+  React.useEffect(() => {
     if (canUseSecondaryFlow) return;
 
     if (secondaryUrl.trim()) {
@@ -387,58 +382,6 @@ export const CreateLink = ({
 
     setSelectedExpirePresetDays(Math.round(diffMs / DAY_IN_MS));
   }, [expiresAt]);
-
-  const inferTrackingSource = React.useCallback(() => {
-    const normalizedUsage = usageContext.trim().toLowerCase();
-
-    if (normalizedUsage.includes("facebook")) return "facebook";
-    if (normalizedUsage.includes("tiktok")) return "tiktok";
-    if (normalizedUsage.includes("zalo")) return "zalo";
-    if (normalizedUsage.includes("live")) return "livestream";
-
-    return "social";
-  }, [usageContext]);
-
-  React.useEffect(() => {
-    if (!campaignTrackingEnabled) {
-      if (utmSource) setUtmSource("");
-      if (utmMedium) setUtmMedium("");
-      if (utmCampaign) setUtmCampaign("");
-      if (utmContent) setUtmContent("");
-      if (utmTerm) setUtmTerm("");
-      return;
-    }
-
-    if (!utmSource.trim()) {
-      setUtmSource(inferTrackingSource());
-    }
-
-    if (utmMedium !== "social") {
-      setUtmMedium("social");
-    }
-
-    if (!utmContent.trim() && normalizedShortCodePreview) {
-      setUtmContent(normalizedShortCodePreview);
-    }
-
-    if (utmTerm) {
-      setUtmTerm("");
-    }
-  }, [
-    campaignTrackingEnabled,
-    inferTrackingSource,
-    normalizedShortCodePreview,
-    setUtmCampaign,
-    setUtmContent,
-    setUtmMedium,
-    setUtmSource,
-    setUtmTerm,
-    utmCampaign,
-    utmContent,
-    utmMedium,
-    utmSource,
-    utmTerm,
-  ]);
 
   const isValidShopeeUrl = (value: string) => {
     try {
@@ -492,7 +435,11 @@ export const CreateLink = ({
       nextErrors.customDescription = content.validation.descriptionRequired;
     }
 
-    if (!customImageUrl.trim() && !videoUrl.trim()) {
+    if (mobileDirectMode) {
+      if (!customImageUrl.trim()) {
+        nextErrors.customImageUrl = content.validation.directModeImageRequired;
+      }
+    } else if (!customImageUrl.trim() && !videoUrl.trim()) {
       nextErrors.customImageUrl = content.validation.imageOrVideoRequired;
       nextErrors.videoUrl = content.validation.videoOrImageRequired;
     }
@@ -508,7 +455,9 @@ export const CreateLink = ({
       }
     }
 
-    if (secondaryUrl.trim() && !videoUrl.trim()) {
+    if (mobileDirectMode && secondaryUrl.trim()) {
+      nextErrors.secondaryUrl = content.validation.directModeSecondaryDisabled;
+    } else if (secondaryUrl.trim() && !videoUrl.trim()) {
       nextErrors.secondaryUrl = content.validation.secondaryNeedsVideo;
     } else if (
       secondaryUrl.trim() &&
@@ -554,12 +503,18 @@ export const CreateLink = ({
         [
           "folderName",
           "tagsText",
+          "customImageUrl",
+          "videoUrl",
           "secondaryUrl",
           "redirectDelayMs",
           "expiresAt",
         ].includes(firstErrorField)
       ) {
-        setShowAdvancedSettings(true);
+        if (firstErrorField === "secondaryUrl") {
+          setShowSecondaryFlow(true);
+        } else {
+          setShowAdvancedSettings(true);
+        }
       }
       const element = document.querySelector<HTMLElement>(
         `[data-field="${firstErrorField}"]`,
@@ -731,6 +686,7 @@ export const CreateLink = ({
           )}
 
           <form
+            id="create-link-form"
             onSubmit={handleSubmit}
             noValidate
             className="relative space-y-6 overflow-hidden rounded-4xl border border-gray-100 dark:border-slate-700 bg-white/95 dark:bg-slate-800/95 p-5 shadow-2xl backdrop-blur-xl sm:space-y-8 sm:rounded-[3rem] sm:p-8 lg:p-10"
@@ -748,11 +704,7 @@ export const CreateLink = ({
               </div>
               <button
                 type="submit"
-                disabled={
-                  loading ||
-                  uploadingVideo ||
-                  (linkQuota ? !linkQuota.canCreate : false)
-                }
+                disabled={submitDisabled}
                 className="flex w-full items-center justify-center gap-3 rounded-[1.25rem] bg-linear-to-r from-orange-600 to-amber-500 px-5 py-4 text-center text-[11px] font-black uppercase tracking-[0.16em] text-white shadow-xl shadow-orange-600/30 transition-all hover:-translate-y-0.5 hover:shadow-2xl hover:shadow-orange-600/40 active:scale-[0.98] disabled:grayscale disabled:opacity-50 sm:w-auto sm:shrink-0 sm:px-7 sm:text-xs"
               >
                 {loading ? (
@@ -796,6 +748,58 @@ export const CreateLink = ({
                 {page.originalHelp}
               </p>
             </div>
+
+            <button
+              type="button"
+              onClick={() => setMobileDirectMode(!mobileDirectMode)}
+              className={cn(
+                "flex w-full items-center justify-between rounded-3xl border px-5 py-4 text-left transition-all",
+                mobileDirectMode
+                  ? "border-fuchsia-300 bg-fuchsia-50/80 dark:border-fuchsia-500/30 dark:bg-fuchsia-500/10"
+                  : "border-gray-100 bg-gray-50/80 hover:bg-gray-100 dark:border-slate-700 dark:bg-slate-900/60 dark:hover:bg-slate-900",
+              )}
+            >
+              <div>
+                <p
+                  className={cn(
+                    "text-[11px] font-black uppercase tracking-widest",
+                    mobileDirectMode
+                      ? "text-fuchsia-700 dark:text-fuchsia-200"
+                      : "text-gray-500 dark:text-slate-300",
+                  )}
+                >
+                  {page.mobileDirectModeTitle}
+                </p>
+                <p
+                  className={cn(
+                    "mt-1 text-xs font-medium",
+                    mobileDirectMode
+                      ? "text-fuchsia-900/75 dark:text-fuchsia-100/80"
+                      : "text-gray-500 dark:text-slate-400",
+                  )}
+                >
+                  {page.mobileDirectModeDescription}
+                </p>
+              </div>
+              <span
+                className={cn(
+                  "rounded-full px-3 py-1 text-[11px] font-black uppercase tracking-wider",
+                  mobileDirectMode
+                    ? "bg-fuchsia-100 text-fuchsia-700 dark:bg-fuchsia-500/20 dark:text-fuchsia-100"
+                    : "bg-slate-100 text-slate-500 dark:bg-slate-700 dark:text-slate-300",
+                )}
+              >
+                {mobileDirectMode
+                  ? page.mobileDirectModeEnabled
+                  : page.mobileDirectModeDisabled}
+              </span>
+            </button>
+
+            {mobileDirectMode && (
+              <div className="rounded-[1.35rem] border border-fuchsia-100 bg-fuchsia-50/70 p-4 text-sm font-medium text-fuchsia-900 dark:border-fuchsia-500/20 dark:bg-fuchsia-500/10 dark:text-fuchsia-100">
+                {page.mobileDirectModeNote}
+              </div>
+            )}
 
             <div className="grid grid-cols-1 gap-6">
               <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
@@ -878,79 +882,177 @@ export const CreateLink = ({
                     )}
                   </span>
                 </p>
-            <p className="mt-1 px-1 text-[11px] font-medium text-gray-400">
-              {t("createLink.page.shortCodeMax", {
-                max: MAX_SHORT_CODE_LENGTH,
-              })}
-            </p>
-          </div>
-
-          <div className="rounded-[1.75rem] border border-sky-100 bg-sky-50/60 p-4 sm:p-5">
-            <div className="mb-4 flex items-start gap-3">
-              <div className="rounded-2xl bg-white p-3 text-sky-600 shadow-sm dark:bg-slate-800 dark:text-sky-300">
-                <Globe size={18} />
-              </div>
-              <div>
-                <p className="text-[11px] font-black uppercase tracking-widest text-sky-700">
-                  {page.outputDomainTitle}
-                </p>
-                <p className="mt-1 text-xs font-medium leading-relaxed text-sky-900/70">
-                  {page.outputDomainDescription}
+                <p className="mt-1 px-1 text-[11px] font-medium text-gray-400">
+                  {t("createLink.page.shortCodeMax", {
+                    max: MAX_SHORT_CODE_LENGTH,
+                  })}
                 </p>
               </div>
-            </div>
 
-            {canUseCustomDomains ? (
-              <select
-                value={customDomain}
-                onChange={(e) => setCustomDomain(e.target.value)}
-                className="w-full rounded-2xl bg-white px-6 py-4 font-medium text-gray-900 dark:bg-slate-700 dark:text-slate-100"
-              >
-                <option value="">{defaultDomainLabel}</option>
-                {availableOutputDomains
-                  .filter((domain) => domain !== DEFAULT_OUTPUT_DOMAIN)
-                  .map((domain) => (
-                    <option key={domain} value={domain}>
-                      {domain}
-                    </option>
-                  ))}
-              </select>
-            ) : (
-              <div className="space-y-3">
-                <button
-                  type="button"
-                  onClick={handleLockedDomainClick}
-                  className="flex w-full items-center justify-between gap-4 rounded-2xl border border-sky-200 bg-white px-5 py-4 text-left transition hover:border-sky-300 hover:bg-sky-50/70 dark:border-slate-600 dark:bg-slate-700 dark:hover:bg-slate-650"
-                >
-                  <div>
-                    <p className="text-base font-black text-gray-900 dark:text-slate-100">
-                      {defaultDomainLabel}
-                    </p>
-                    <p className="mt-1 text-xs font-medium text-sky-900/70 dark:text-slate-300">
-                      {page.customDomainLocked}
-                    </p>
+              <div className="rounded-[1.35rem] border border-sky-100 bg-sky-50/60 p-4 sm:p-5">
+                <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="shrink-0 rounded-2xl bg-white p-3 text-sky-600 shadow-sm dark:bg-slate-800 dark:text-sky-300">
+                      <Globe size={18} />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-[11px] font-black uppercase leading-none tracking-widest text-sky-700">
+                        {page.outputDomainTitle}
+                      </p>
+                      <p className="mt-1 text-[11px] font-medium leading-snug text-sky-900/65 dark:text-slate-300">
+                        {page.outputDomainDescription}
+                      </p>
+                    </div>
                   </div>
-                  <span className="shrink-0 rounded-full bg-sky-100 px-3 py-1 text-[11px] font-black uppercase tracking-wider text-sky-700 dark:bg-sky-500/20 dark:text-sky-200">
-                    {currentPlanLabel}
-                  </span>
-                </button>
 
-                {linkQuota?.plan === "free" && (
+                  {canUseCustomDomains ? (
+                    <select
+                      value={customDomain}
+                      onChange={(e) => setCustomDomain(e.target.value)}
+                      className="w-full rounded-2xl bg-white px-5 py-4 font-medium text-gray-900 shadow-sm dark:bg-slate-700 dark:text-slate-100 lg:w-65"
+                    >
+                      <option value="">{defaultDomainLabel}</option>
+                      {availableOutputDomains
+                        .filter((domain) => domain !== DEFAULT_OUTPUT_DOMAIN)
+                        .map((domain) => (
+                          <option key={domain} value={domain}>
+                            {domain}
+                          </option>
+                        ))}
+                    </select>
+                  ) : (
+                    <div className="flex w-full flex-col gap-2 lg:w-65">
+                      <select
+                        value=""
+                        disabled
+                        aria-disabled="true"
+                        className="w-full cursor-not-allowed rounded-2xl border border-sky-200 bg-white px-5 py-4 font-medium text-gray-900 shadow-sm opacity-100 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100"
+                      >
+                        <option value="">{defaultDomainLabel}</option>
+                      </select>
+                      <p className="px-1 text-[11px] font-medium text-sky-900/70 dark:text-slate-300">
+                        {page.customDomainLocked}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {!mobileDirectMode && (
+                <>
                   <button
                     type="button"
-                    onClick={() => setActiveTab("pricing")}
-                    className="inline-flex items-center justify-center rounded-2xl bg-sky-600 px-5 py-3 text-xs font-black uppercase tracking-widest text-white transition-all hover:bg-sky-700"
+                    onClick={() => setShowSecondaryFlow((prev) => !prev)}
+                    className="flex w-full items-center justify-between rounded-3xl border border-amber-100 bg-amber-50/70 px-5 py-4 text-left transition-all hover:bg-amber-100/70 dark:border-amber-500/20 dark:bg-amber-500/10 dark:hover:bg-amber-500/15"
                   >
-                    {page.domainUpgradeCta}
+                    <div>
+                      <p className="text-[11px] font-black uppercase tracking-widest text-amber-700 dark:text-amber-300">
+                        {page.secondaryTitle}
+                      </p>
+                      <p className="mt-1 text-xs font-medium text-amber-900/70 dark:text-amber-100/70">
+                        {page.secondaryDescription}
+                      </p>
+                    </div>
+                    <ChevronDown
+                      size={18}
+                      className={cn(
+                        "shrink-0 text-amber-700/60 transition-transform dark:text-amber-200/70",
+                        showSecondaryFlow && "rotate-180",
+                      )}
+                    />
                   </button>
-                )}
-              </div>
-            )}
-          </div>
 
-          <button
-            type="button"
-            onClick={() => setShowAdvancedSettings((prev) => !prev)}
+                  {showSecondaryFlow && (
+                <div className="grid grid-cols-1 gap-6 rounded-[1.75rem] border border-amber-100 bg-amber-50/60 p-4 sm:p-5">
+                  <div>
+                    <p className="mb-1 text-[11px] font-black uppercase tracking-widest text-amber-700">
+                      {page.secondaryTitle}
+                    </p>
+                    <p className="text-xs font-medium leading-relaxed text-amber-900/70">
+                      {page.secondaryDescription}
+                    </p>
+                    <p className="mt-2 text-xs font-bold leading-relaxed text-amber-800">
+                      {page.secondaryWarning}
+                    </p>
+                  </div>
+                  <div className="grid grid-cols-1 gap-6">
+                    <div>
+                      <label className="mb-3 flex items-center gap-2 px-1 text-[11px] font-black uppercase tracking-widest text-gray-500">
+                        <Type size={14} className="text-orange-500" />{" "}
+                        {page.secondaryTargetLabel}
+                      </label>
+                      <select
+                        value={secondaryTargetType}
+                        disabled={!canUseSecondaryFlow}
+                        onChange={(e) =>
+                          setSecondaryTargetType(
+                            e.target.value === "tiktok" ? "tiktok" : "shopee",
+                          )
+                        }
+                        className={`w-full rounded-2xl px-6 py-4 font-medium outline-none transition-all focus:ring-4 focus:ring-orange-500/10 ${
+                          canUseSecondaryFlow
+                            ? "bg-white text-gray-900 dark:bg-slate-700 dark:text-slate-100"
+                            : "cursor-not-allowed bg-gray-100 text-gray-400 dark:bg-slate-800 dark:text-slate-500"
+                        }`}
+                      >
+                        <option value="shopee">
+                          {page.secondaryTargetShopee}
+                        </option>
+                        <option value="tiktok">
+                          {page.secondaryTargetTikTok}
+                        </option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="mb-3 flex items-center gap-2 px-1 text-[11px] font-black uppercase tracking-widest text-gray-500">
+                        <Globe size={14} className="text-orange-500" />{" "}
+                        {page.secondaryUrlLabel}
+                      </label>
+                      <input
+                        data-field="secondaryUrl"
+                        type="url"
+                        disabled={!canUseSecondaryFlow}
+                        value={secondaryUrl}
+                        onChange={(e) => {
+                          setSecondaryUrl(e.target.value);
+                          clearFieldError("secondaryUrl");
+                        }}
+                        placeholder={
+                          secondaryTargetType === "tiktok"
+                            ? page.secondaryUrlPlaceholderTikTok
+                            : page.secondaryUrlPlaceholderShopee
+                        }
+                        className={inputClass(
+                          "secondaryUrl",
+                          canUseSecondaryFlow
+                            ? "w-full rounded-2xl bg-white px-6 py-4 font-medium text-gray-900 dark:bg-slate-700 dark:text-slate-100"
+                            : "w-full cursor-not-allowed rounded-2xl bg-gray-100 px-6 py-4 font-medium text-gray-400 dark:bg-slate-800 dark:text-slate-500",
+                        )}
+                      />
+                      {renderFieldError("secondaryUrl")}
+                      {!canUseSecondaryFlow && (
+                        <p className="mt-2 px-1 text-[11px] font-medium text-gray-500">
+                          {page.secondaryUrlHelpDisabled}
+                        </p>
+                      )}
+                      {canUseSecondaryFlow && (
+                        <p className="mt-2 px-1 text-[11px] font-medium text-gray-500">
+                          {page.secondaryUrlHelpEmpty}{" "}
+                          {secondaryTargetType === "tiktok"
+                            ? page.secondaryUrlHelpTikTokOnly
+                            : page.secondaryUrlHelpShopeeOnly}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+                  )}
+                </>
+              )}
+
+              <button
+                type="button"
+                onClick={() => setShowAdvancedSettings((prev) => !prev)}
                 className="flex w-full items-center justify-between rounded-3xl border border-gray-100 bg-gray-50/80 px-5 py-4 text-left transition-all hover:bg-gray-100 dark:border-slate-700 dark:bg-slate-900/60 dark:hover:bg-slate-900"
               >
                 <div>
@@ -972,86 +1074,6 @@ export const CreateLink = ({
 
               {showAdvancedSettings && (
                 <div className="space-y-6">
-                  <div className="grid grid-cols-1 gap-6 rounded-[1.75rem] border border-sky-100 bg-sky-50/60 p-4 sm:p-5">
-                    <div>
-                      <p className="mb-1 text-[11px] font-black uppercase tracking-widest text-sky-700">
-                        {page.marketingTitle}
-                      </p>
-                      <p className="text-xs font-medium leading-relaxed text-sky-900/70">
-                        {page.marketingDescription}
-                      </p>
-                    </div>
-                    <div className="grid grid-cols-1 gap-6">
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setCampaignTrackingEnabled((current) => !current)
-                        }
-                        className={cn(
-                          "flex w-full items-center justify-between rounded-2xl border px-5 py-4 text-left transition",
-                          campaignTrackingEnabled
-                            ? "border-sky-300 bg-white text-slate-900 shadow-sm dark:border-sky-500 dark:bg-slate-700 dark:text-slate-100"
-                            : "border-sky-100 bg-white/70 text-slate-500 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-300",
-                        )}
-                      >
-                        <div>
-                          <p className="text-sm font-black">
-                            {page.campaignToggleTitle}
-                          </p>
-                          <p className="mt-1 text-xs font-medium opacity-70">
-                            {page.campaignToggleDescription}
-                          </p>
-                        </div>
-                        <span
-                          className={cn(
-                            "rounded-full px-3 py-1 text-[11px] font-black uppercase tracking-wider",
-                            campaignTrackingEnabled
-                              ? "bg-sky-100 text-sky-700 dark:bg-sky-500/20 dark:text-sky-200"
-                              : "bg-slate-100 text-slate-500 dark:bg-slate-600/40 dark:text-slate-300",
-                          )}
-                        >
-                          {campaignTrackingEnabled
-                            ? page.campaignEnabled
-                            : page.campaignDisabled}
-                        </span>
-                      </button>
-                    </div>
-                    {campaignTrackingEnabled && (
-                      <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-                        <div className="space-y-2">
-                          <label className="px-1 text-[11px] font-black uppercase tracking-widest text-sky-700">
-                            {page.utmSourceLabel}
-                          </label>
-                          <input
-                            type="text"
-                            value={utmSource}
-                            onChange={(e) => setUtmSource(e.target.value)}
-                            placeholder={page.utmSourcePlaceholder}
-                            className="w-full rounded-2xl bg-white px-6 py-4 font-medium text-gray-900 dark:bg-slate-700 dark:text-slate-100"
-                          />
-                          <p className="px-1 text-[11px] font-medium text-sky-900/60">
-                            {page.utmSourceHelp}
-                          </p>
-                        </div>
-                        <div className="space-y-2">
-                          <label className="px-1 text-[11px] font-black uppercase tracking-widest text-sky-700">
-                            {page.utmCampaignLabel}
-                          </label>
-                          <input
-                            type="text"
-                            value={utmCampaign}
-                            onChange={(e) => setUtmCampaign(e.target.value)}
-                            placeholder={page.utmCampaignPlaceholder}
-                            className="w-full rounded-2xl bg-white px-6 py-4 font-medium text-gray-900 dark:bg-slate-700 dark:text-slate-100"
-                          />
-                          <p className="px-1 text-[11px] font-medium text-sky-900/60">
-                            {page.utmCampaignHelp}
-                          </p>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-
                   <div>
                     <label className="mb-3 flex items-center gap-2 px-1 text-[11px] font-black uppercase tracking-widest text-gray-400">
                       <Type size={14} className="text-orange-500" />{" "}
@@ -1122,90 +1144,6 @@ export const CreateLink = ({
                     <p className="mt-2 px-1 text-[11px] font-medium text-gray-400">
                       {page.expiryHelp}
                     </p>
-                  </div>
-
-                  <div className="grid grid-cols-1 gap-6 rounded-[1.75rem] border border-amber-100 bg-amber-50/60 p-4 sm:p-5">
-                    <div>
-                      <p className="mb-1 text-[11px] font-black uppercase tracking-widest text-amber-700">
-                        {page.secondaryTitle}
-                      </p>
-                      <p className="text-xs font-medium leading-relaxed text-amber-900/70">
-                        {page.secondaryDescription}
-                      </p>
-                      <p className="mt-2 text-xs font-bold leading-relaxed text-amber-800">
-                        {page.secondaryWarning}
-                      </p>
-                    </div>
-                    <div className="grid grid-cols-1 gap-6">
-                      <div>
-                        <label className="mb-3 flex items-center gap-2 px-1 text-[11px] font-black uppercase tracking-widest text-gray-500">
-                          <Type size={14} className="text-orange-500" />{" "}
-                          {page.secondaryTargetLabel}
-                        </label>
-                        <select
-                          value={secondaryTargetType}
-                          disabled={!canUseSecondaryFlow}
-                          onChange={(e) =>
-                            setSecondaryTargetType(
-                              e.target.value === "tiktok" ? "tiktok" : "shopee",
-                            )
-                          }
-                          className={`w-full rounded-2xl px-6 py-4 font-medium outline-none transition-all focus:ring-4 focus:ring-orange-500/10 ${
-                            canUseSecondaryFlow
-                              ? "bg-white text-gray-900 dark:bg-slate-700 dark:text-slate-100"
-                              : "cursor-not-allowed bg-gray-100 text-gray-400 dark:bg-slate-800 dark:text-slate-500"
-                          }`}
-                        >
-                          <option value="shopee">
-                            {page.secondaryTargetShopee}
-                          </option>
-                          <option value="tiktok">
-                            {page.secondaryTargetTikTok}
-                          </option>
-                        </select>
-                      </div>
-                      <div>
-                        <label className="mb-3 flex items-center gap-2 px-1 text-[11px] font-black uppercase tracking-widest text-gray-500">
-                          <Globe size={14} className="text-orange-500" />{" "}
-                          {page.secondaryUrlLabel}
-                        </label>
-                        <input
-                          data-field="secondaryUrl"
-                          type="url"
-                          disabled={!canUseSecondaryFlow}
-                          value={secondaryUrl}
-                          onChange={(e) => {
-                            setSecondaryUrl(e.target.value);
-                            clearFieldError("secondaryUrl");
-                          }}
-                          placeholder={
-                            secondaryTargetType === "tiktok"
-                              ? page.secondaryUrlPlaceholderTikTok
-                              : page.secondaryUrlPlaceholderShopee
-                          }
-                          className={inputClass(
-                            "secondaryUrl",
-                            canUseSecondaryFlow
-                              ? "w-full rounded-2xl bg-white px-6 py-4 font-medium text-gray-900 dark:bg-slate-700 dark:text-slate-100"
-                              : "w-full cursor-not-allowed rounded-2xl bg-gray-100 px-6 py-4 font-medium text-gray-400 dark:bg-slate-800 dark:text-slate-500",
-                          )}
-                        />
-                        {renderFieldError("secondaryUrl")}
-                        {!canUseSecondaryFlow && (
-                          <p className="mt-2 px-1 text-[11px] font-medium text-gray-500">
-                            {page.secondaryUrlHelpDisabled}
-                          </p>
-                        )}
-                        {canUseSecondaryFlow && (
-                          <p className="mt-2 px-1 text-[11px] font-medium text-gray-500">
-                            {page.secondaryUrlHelpEmpty}{" "}
-                            {secondaryTargetType === "tiktok"
-                              ? page.secondaryUrlHelpTikTokOnly
-                              : page.secondaryUrlHelpShopeeOnly}
-                          </p>
-                        )}
-                      </div>
-                    </div>
                   </div>
 
                   <div className="grid grid-cols-1 gap-6 rounded-[1.75rem] border border-emerald-100 bg-emerald-50/60 p-4 sm:p-5">
@@ -1280,198 +1218,209 @@ export const CreateLink = ({
                           placeholder={page.abVariantBImagePlaceholder}
                           className="w-full rounded-2xl bg-white px-6 py-4 font-medium text-gray-900 dark:bg-slate-700 dark:text-slate-100"
                         />
-                        <input
-                          type="url"
-                          value={abVariantBVideoUrl}
-                          onChange={(e) =>
-                            setAbVariantBVideoUrl(e.target.value)
-                          }
-                          placeholder={page.abVariantBVideoPlaceholder}
-                          className="w-full rounded-2xl bg-white px-6 py-4 font-medium text-gray-900 dark:bg-slate-700 dark:text-slate-100"
-                        />
-                        <input
-                          type="url"
-                          value={abVariantBSecondaryUrl}
-                          onChange={(e) =>
-                            setAbVariantBSecondaryUrl(e.target.value)
-                          }
-                          placeholder={page.abVariantBSecondaryPlaceholder}
-                          className="w-full rounded-2xl bg-white px-6 py-4 font-medium text-gray-900 dark:bg-slate-700 dark:text-slate-100 md:col-span-2"
-                        />
+                        {!mobileDirectMode && (
+                          <>
+                            <input
+                              type="url"
+                              value={abVariantBVideoUrl}
+                              onChange={(e) =>
+                                setAbVariantBVideoUrl(e.target.value)
+                              }
+                              placeholder={page.abVariantBVideoPlaceholder}
+                              className="w-full rounded-2xl bg-white px-6 py-4 font-medium text-gray-900 dark:bg-slate-700 dark:text-slate-100"
+                            />
+                            <input
+                              type="url"
+                              value={abVariantBSecondaryUrl}
+                              onChange={(e) =>
+                                setAbVariantBSecondaryUrl(e.target.value)
+                              }
+                              placeholder={page.abVariantBSecondaryPlaceholder}
+                              className="w-full rounded-2xl bg-white px-6 py-4 font-medium text-gray-900 dark:bg-slate-700 dark:text-slate-100 md:col-span-2"
+                            />
+                          </>
+                        )}
                       </div>
+                    )}
+                    {abTestEnabled && mobileDirectMode && (
+                      <p className="text-xs font-bold text-emerald-800/80">
+                        {page.mobileDirectModeAbNote}
+                      </p>
                     )}
                   </div>
                 </div>
               )}
 
               <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 lg:items-stretch">
-                <div className="flex flex-col space-y-4">
-                  <label className="flex items-center gap-2 px-1 text-[11px] font-black uppercase tracking-widest text-gray-400">
-                    <VideoIcon size={14} className="text-orange-500" />{" "}
-                    {page.videoLabel}
-                  </label>
-                  <input
-                    type="file"
-                    accept="video/*"
-                    ref={videoInputRef}
-                    onChange={handleVideoUpload}
-                    className="hidden"
-                  />
-                  <button
-                    type="button"
-                    disabled={videoUploadBlocked}
-                    onClick={() => videoInputRef?.current?.click()}
-                    onDragEnter={(event) => {
-                      event.preventDefault();
-                      setIsDraggingVideo(true);
-                    }}
-                    onDragOver={(event) => {
-                      event.preventDefault();
-                      if (!isDraggingVideo) {
+                {!mobileDirectMode && (
+                  <div className="flex flex-col space-y-4">
+                    <label className="flex items-center gap-2 px-1 text-[11px] font-black uppercase tracking-widest text-gray-400">
+                      <VideoIcon size={14} className="text-orange-500" />{" "}
+                      {page.videoLabel}
+                    </label>
+                    <input
+                      type="file"
+                      accept="video/*"
+                      ref={videoInputRef}
+                      onChange={handleVideoUpload}
+                      className="hidden"
+                    />
+                    <button
+                      type="button"
+                      disabled={videoUploadBlocked}
+                      onClick={() => videoInputRef?.current?.click()}
+                      onDragEnter={(event) => {
+                        event.preventDefault();
                         setIsDraggingVideo(true);
-                      }
-                    }}
-                    onDragLeave={(event) => {
-                      event.preventDefault();
-                      const nextTarget = event.relatedTarget as Node | null;
-                      if (!event.currentTarget.contains(nextTarget)) {
-                        setIsDraggingVideo(false);
-                      }
-                    }}
-                    onDrop={handleVideoDrop}
-                    data-field="videoUrl"
-                    className={cn(
-                      "group flex min-h-21 w-full flex-col items-start gap-4 rounded-2xl border-2 border-dashed px-5 py-5 text-left transition-all sm:flex-row sm:items-center sm:justify-between sm:px-6",
-                      videoUploadBlocked &&
-                        "cursor-not-allowed opacity-60 saturate-0",
-                      isDraggingVideo
-                        ? "border-orange-400 bg-orange-100/80 shadow-lg shadow-orange-100"
-                        : "border-orange-100 bg-orange-50/30 hover:border-orange-300 hover:bg-orange-50/50",
-                    )}
-                  >
-                    <div className="flex items-center gap-3 font-bold text-orange-400 group-hover:text-orange-600">
-                      <div className="relative flex h-10 w-10 items-center justify-center rounded-xl bg-white shadow-sm dark:bg-slate-800">
-                        {uploadingVideo ? (
-                          <svg
-                            className="h-10 w-10 -rotate-90"
-                            viewBox="0 0 36 36"
-                            aria-hidden="true"
-                          >
-                            <circle
-                              cx="18"
-                              cy="18"
-                              r="14"
-                              fill="none"
-                              stroke="currentColor"
-                              strokeOpacity="0.15"
-                              strokeWidth="3"
-                            />
-                            <circle
-                              cx="18"
-                              cy="18"
-                              r="14"
-                              fill="none"
-                              stroke="currentColor"
-                              strokeWidth="3"
-                              strokeLinecap="round"
-                              strokeDasharray="87.96"
-                              strokeDashoffset={uploadProgressOffset}
-                            />
-                          </svg>
-                        ) : (
-                          <UploadCloud size={20} />
-                        )}
-                        {uploadingVideo && (
-                          <span className="absolute inset-0 flex items-center justify-center text-[9px] font-black text-orange-600">
-                            {videoUploadProgress > 0
-                              ? `${videoUploadProgress}%`
-                              : "..."}
-                          </span>
-                        )}
-                      </div>
-                      <span className="text-[11px] uppercase tracking-wider sm:text-xs">
-                        {uploadingVideo
-                          ? videoUploadProgress > 0
-                            ? page.videoUploading
-                            : page.videoPreparing
-                          : videoUrl
-                            ? t("createLink.page.videoReplaceWithProvider", {
-                                provider: videoProviderLabel,
-                              })
-                            : t("createLink.page.videoUploadWithProvider", {
-                                provider: videoProviderLabel,
-                              })}
-                      </span>
-                    </div>
-                    {videoUrl && (
-                      <div className="rounded-full bg-green-100 p-1">
-                        <Check className="text-green-600" size={14} />
-                      </div>
-                    )}
-                  </button>
-                  <p className="px-1 text-[11px] font-medium text-gray-500">
-                    {page.videoDropHelp}
-                  </p>
-                  {userLimits && (
-                    <p className="px-1 text-[11px] font-bold text-violet-600 dark:text-violet-300">
-                      {userLimits.dailyVideoUploads === null
-                        ? page.videoQuotaUnlimited
-                        : t("createLink.page.videoQuotaRemaining", {
-                            remaining: videoUploadsRemainingToday ?? 0,
-                            limit: userLimits.dailyVideoUploads,
-                          })}
-                    </p>
-                  )}
-                  {videoUploadBlocked && (
-                    <p className="px-1 text-[11px] font-bold text-amber-600 dark:text-amber-300">
-                      {userLimits?.dailyVideoUploads === 0
-                        ? page.videoQuotaUnsupported
-                        : page.videoQuotaExhausted}
-                    </p>
-                  )}
-                  {renderFieldError("videoUrl")}
-
-                  {videoUploadSuccess && (
-                    <div className="flex items-center gap-2 rounded-xl border border-green-100 bg-green-50 px-4 py-2 text-[10px] font-black uppercase tracking-widest text-green-600">
-                      <ShieldCheck size={14} />
-                      {t("createLink.page.videoUploadSuccessWithProvider", {
-                        provider: videoProviderLabel,
-                      })}
-                    </div>
-                  )}
-
-                  {(videoPreviewUrl || videoUrl) && (
-                    <div
+                      }}
+                      onDragOver={(event) => {
+                        event.preventDefault();
+                        if (!isDraggingVideo) {
+                          setIsDraggingVideo(true);
+                        }
+                      }}
+                      onDragLeave={(event) => {
+                        event.preventDefault();
+                        const nextTarget = event.relatedTarget as Node | null;
+                        if (!event.currentTarget.contains(nextTarget)) {
+                          setIsDraggingVideo(false);
+                        }
+                      }}
+                      onDrop={handleVideoDrop}
+                      data-field="videoUrl"
                       className={cn(
-                        "relative mt-auto overflow-hidden rounded-3xl bg-black shadow-2xl ring-4 ring-white",
-                        videoPreviewOrientation === "portrait"
-                          ? "mx-auto aspect-9/16 w-full max-w-[18rem]"
-                          : videoPreviewOrientation === "square"
-                            ? "mx-auto aspect-square w-full max-w-[24rem]"
-                            : "aspect-video w-full",
+                        "group flex min-h-21 w-full flex-col items-start gap-4 rounded-2xl border-2 border-dashed px-5 py-5 text-left transition-all sm:flex-row sm:items-center sm:justify-between sm:px-6",
+                        videoUploadBlocked &&
+                          "cursor-not-allowed opacity-60 saturate-0",
+                        isDraggingVideo
+                          ? "border-orange-400 bg-orange-100/80 shadow-lg shadow-orange-100"
+                          : "border-orange-100 bg-orange-50/30 hover:border-orange-300 hover:bg-orange-50/50",
                       )}
                     >
-                      <video
-                        src={videoPreviewUrl || videoUrl}
-                        controls
-                        playsInline
-                        preload="metadata"
-                        onLoadedMetadata={handleVideoPreviewMetadata}
-                        className="h-full w-full bg-black object-contain"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setVideoUrl("");
-                          setVideoPreviewOrientation("landscape");
-                        }}
-                        className="absolute right-4 top-4 rounded-full bg-black/50 p-2 text-white shadow-lg backdrop-blur-sm transition-all hover:bg-red-600"
+                      <div className="flex items-center gap-3 font-bold text-orange-400 group-hover:text-orange-600">
+                        <div className="relative flex h-10 w-10 items-center justify-center rounded-xl bg-white shadow-sm dark:bg-slate-800">
+                          {uploadingVideo ? (
+                            <svg
+                              className="h-10 w-10 -rotate-90"
+                              viewBox="0 0 36 36"
+                              aria-hidden="true"
+                            >
+                              <circle
+                                cx="18"
+                                cy="18"
+                                r="14"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeOpacity="0.15"
+                                strokeWidth="3"
+                              />
+                              <circle
+                                cx="18"
+                                cy="18"
+                                r="14"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="3"
+                                strokeLinecap="round"
+                                strokeDasharray="87.96"
+                                strokeDashoffset={uploadProgressOffset}
+                              />
+                            </svg>
+                          ) : (
+                            <UploadCloud size={20} />
+                          )}
+                          {uploadingVideo && (
+                            <span className="absolute inset-0 flex items-center justify-center text-[9px] font-black text-orange-600">
+                              {videoUploadProgress > 0
+                                ? `${videoUploadProgress}%`
+                                : "..."}
+                            </span>
+                          )}
+                        </div>
+                        <span className="text-[11px] uppercase tracking-wider sm:text-xs">
+                          {uploadingVideo
+                            ? videoUploadProgress > 0
+                              ? page.videoUploading
+                              : page.videoPreparing
+                            : videoUrl
+                              ? t("createLink.page.videoReplaceWithProvider", {
+                                  provider: videoProviderLabel,
+                                })
+                              : t("createLink.page.videoUploadWithProvider", {
+                                  provider: videoProviderLabel,
+                                })}
+                        </span>
+                      </div>
+                      {videoUrl && (
+                        <div className="rounded-full bg-green-100 p-1">
+                          <Check className="text-green-600" size={14} />
+                        </div>
+                      )}
+                    </button>
+                    <p className="px-1 text-[11px] font-medium text-gray-500">
+                      {page.videoDropHelp}
+                    </p>
+                    {userLimits && (
+                      <p className="px-1 text-[11px] font-bold text-violet-600 dark:text-violet-300">
+                        {userLimits.dailyVideoUploads === null
+                          ? page.videoQuotaUnlimited
+                          : t("createLink.page.videoQuotaRemaining", {
+                              remaining: videoUploadsRemainingToday ?? 0,
+                              limit: userLimits.dailyVideoUploads,
+                            })}
+                      </p>
+                    )}
+                    {videoUploadBlocked && (
+                      <p className="px-1 text-[11px] font-bold text-amber-600 dark:text-amber-300">
+                        {userLimits?.dailyVideoUploads === 0
+                          ? page.videoQuotaUnsupported
+                          : page.videoQuotaExhausted}
+                      </p>
+                    )}
+                    {renderFieldError("videoUrl")}
+
+                    {videoUploadSuccess && (
+                      <div className="flex items-center gap-2 rounded-xl border border-green-100 bg-green-50 px-4 py-2 text-[10px] font-black uppercase tracking-widest text-green-600">
+                        <ShieldCheck size={14} />
+                        {t("createLink.page.videoUploadSuccessWithProvider", {
+                          provider: videoProviderLabel,
+                        })}
+                      </div>
+                    )}
+
+                    {(videoPreviewUrl || videoUrl) && (
+                      <div
+                        className={cn(
+                          "relative mt-auto overflow-hidden rounded-3xl bg-black shadow-2xl ring-4 ring-white",
+                          videoPreviewOrientation === "portrait"
+                            ? "mx-auto aspect-9/16 w-full max-w-[18rem]"
+                            : videoPreviewOrientation === "square"
+                              ? "mx-auto aspect-square w-full max-w-[24rem]"
+                              : "aspect-video w-full",
+                        )}
                       >
-                        <X size={16} />
-                      </button>
-                    </div>
-                  )}
-                </div>
+                        <video
+                          src={videoPreviewUrl || videoUrl}
+                          controls
+                          playsInline
+                          preload="metadata"
+                          onLoadedMetadata={handleVideoPreviewMetadata}
+                          className="h-full w-full bg-black object-contain"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setVideoUrl("");
+                            setVideoPreviewOrientation("landscape");
+                          }}
+                          className="absolute right-4 top-4 rounded-full bg-black/50 p-2 text-white shadow-lg backdrop-blur-sm transition-all hover:bg-red-600"
+                        >
+                          <X size={16} />
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 <div className="flex flex-col space-y-4">
                   <label className="flex items-center gap-2 px-1 text-[11px] font-black uppercase tracking-widest text-gray-400">
@@ -1487,6 +1436,7 @@ export const CreateLink = ({
                   />
                   <button
                     type="button"
+                    data-field="customImageUrl"
                     onClick={() => thumbnailInputRef.current?.click()}
                     onDragOver={(event) => event.preventDefault()}
                     onDrop={handleThumbnailDrop}
@@ -1552,7 +1502,9 @@ export const CreateLink = ({
                     )}
                   </button>
                   <p className="px-1 text-[11px] font-medium text-gray-500 dark:text-slate-400">
-                    {page.thumbnailDropHelp}
+                    {mobileDirectMode
+                      ? page.mobileDirectModeImageHelp
+                      : page.thumbnailDropHelp}
                   </p>
                   {thumbnailUploadSuccess && (
                     <div className="flex items-center gap-2 rounded-xl border border-green-100 bg-green-50 px-4 py-2 text-[10px] font-black uppercase tracking-widest text-green-600 dark:border-green-900/50 dark:bg-green-950/30 dark:text-green-300">
@@ -1562,21 +1514,6 @@ export const CreateLink = ({
                       })}
                     </div>
                   )}
-                  <input
-                    data-field="customImageUrl"
-                    type="url"
-                    value={customImageUrl}
-                    onChange={(e) => {
-                      setCustomImageUrl(e.target.value);
-                      clearFieldError("customImageUrl");
-                      clearFieldError("videoUrl");
-                    }}
-                    placeholder={page.thumbnailUrlPlaceholder}
-                    className={inputClass(
-                      "customImageUrl",
-                      "min-h-21 w-full rounded-2xl bg-gray-50 px-6 py-4 font-medium text-gray-900 dark:bg-slate-700 dark:text-slate-100 focus:bg-white dark:focus:bg-slate-700",
-                    )}
-                  />
                   {renderFieldError("customImageUrl")}
 
                   {customImageUrl && (

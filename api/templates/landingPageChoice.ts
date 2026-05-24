@@ -2,9 +2,6 @@
 
 import { buildPublicVideoUrl } from "../utils/mediaUrl.js";
 
-const SHOPEE_HOST_REGEX = /(^|\.)shopee\.[a-z.]+$/i;
-const TIKTOK_HOST_REGEX =
-  /(^|\.)tiktok\.com$|(^|\.)vt\.tiktok\.com$|(^|\.)vm\.tiktok\.com$/i;
 const PRIMARY_RETURN_WINDOW_MS = 5 * 60 * 1000;
 
 const capitalizeFirstCharacter = (value: string) => {
@@ -35,6 +32,214 @@ const escapeJsString = (str: string): string => {
     .replace(/\t/g, "\\t");
 };
 
+const extractTikTokProductId = (targetUrl: string) => {
+  const match = targetUrl.match(/\/view\/product\/(\d+)/i);
+  return match?.[1] || "";
+};
+
+const buildTikTokAppSchemeUrl = (targetUrl: string) => {
+  const appUrl = new URL("snssdk1180://ec/pdp");
+  const productId = extractTikTokProductId(targetUrl);
+
+  appUrl.searchParams.set("biz_type", "0");
+  appUrl.searchParams.set("gd_label", "share_from_pdp_auto");
+  appUrl.searchParams.set("need_mall", "1");
+  appUrl.searchParams.set("needlaunchlog", "1");
+  appUrl.searchParams.set("page_name", "reflow_pdp");
+  appUrl.searchParams.set("params_url", targetUrl);
+  appUrl.searchParams.set("refer", "web");
+  appUrl.searchParams.set("is_commerce", "1");
+
+  if (productId) {
+    appUrl.searchParams.set(
+      "requestParams",
+      JSON.stringify({ product_id: [productId] }),
+    );
+  }
+
+  return appUrl.toString();
+};
+
+export const renderTikTokDirectHandoffPage = (
+  link: PublicLinkRecord,
+  canonicalUrl: string,
+  targetUrl: string,
+) => {
+  const title = capitalizeFirstCharacter(
+    link.custom_title?.trim() || "Mở TikTok Shop",
+  );
+  const description = capitalizeFirstCharacter(
+    link.custom_description?.trim() ||
+      "Đang mở TikTok. Nếu ứng dụng không bật, trình duyệt sẽ chuyển sang trang web sản phẩm.",
+  );
+  const originBase = new URL(canonicalUrl).origin;
+  const imageUrl = link.custom_image_url?.trim() || `${originBase}/og-image.png`;
+  const faviconUrl = imageUrl || `${originBase}/logo-app-192.png`;
+  const appSchemeUrl = buildTikTokAppSchemeUrl(targetUrl);
+
+  return `<!DOCTYPE html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>${escapeHtml(title)}</title>
+    <meta name="description" content="${escapeHtml(description)}" />
+    <meta name="robots" content="noindex, nofollow" />
+    <link rel="icon" href="${escapeHtml(faviconUrl)}" />
+    <link rel="apple-touch-icon" href="${escapeHtml(faviconUrl)}" />
+    <link rel="canonical" href="${escapeHtml(canonicalUrl)}" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="${escapeHtml(title)}" />
+    <meta property="og:description" content="${escapeHtml(description)}" />
+    <meta property="og:image" content="${escapeHtml(imageUrl)}" />
+    <meta property="og:url" content="${escapeHtml(canonicalUrl)}" />
+    <meta property="al:android:url" content="${escapeHtml(appSchemeUrl)}" />
+    <meta property="al:android:package" content="com.ss.android.ugc.trill" />
+    <meta property="al:android:app_name" content="TIKTOK" />
+    <meta property="al:ios:url" content="${escapeHtml(appSchemeUrl)}" />
+    <meta property="al:ios:app_name" content="TIKTOK" />
+    <meta property="al:ios:app_store_id" content="1235601864" />
+    <meta property="al:web:should_fallback" content="true" />
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #070b14;
+        --panel: rgba(15, 23, 42, 0.9);
+        --border: rgba(255, 255, 255, 0.12);
+        --text: #f8fafc;
+        --muted: rgba(226, 232, 240, 0.76);
+        --accent: #fe2c55;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 1.25rem;
+        font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+        color: var(--text);
+        background:
+          radial-gradient(circle at top left, rgba(254, 44, 85, 0.28), transparent 28%),
+          radial-gradient(circle at bottom right, rgba(37, 244, 238, 0.18), transparent 24%),
+          linear-gradient(180deg, #020617, #0f172a);
+      }
+      .card {
+        width: min(30rem, 100%);
+        border: 1px solid var(--border);
+        border-radius: 1.5rem;
+        background: var(--panel);
+        backdrop-filter: blur(18px);
+        box-shadow: 0 2rem 5rem rgba(2, 6, 23, 0.45);
+        overflow: hidden;
+      }
+      .hero {
+        aspect-ratio: 16 / 9;
+        background: #0f172a;
+      }
+      .hero img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        display: block;
+      }
+      .content {
+        padding: 1.25rem;
+      }
+      h1 {
+        margin: 0 0 0.5rem;
+        font-size: 1.15rem;
+        line-height: 1.5;
+      }
+      p {
+        margin: 0;
+        color: var(--muted);
+        line-height: 1.6;
+        font-size: 0.95rem;
+      }
+      .actions {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 0.75rem;
+        margin-top: 1rem;
+      }
+      .button {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 3rem;
+        padding: 0.9rem 1rem;
+        border-radius: 999px;
+        font-weight: 800;
+        text-decoration: none;
+      }
+      .button-primary {
+        background: var(--accent);
+        color: white;
+      }
+      .button-secondary {
+        border: 1px solid var(--border);
+        color: var(--text);
+      }
+    </style>
+  </head>
+  <body>
+    <main class="card">
+      <div class="hero">
+        <img src="${escapeHtml(imageUrl)}" alt="${escapeHtml(title)}" />
+      </div>
+      <div class="content">
+        <h1>${escapeHtml(title)}</h1>
+        <p>${escapeHtml(description)}</p>
+        <div class="actions">
+          <a class="button button-primary" href="${escapeHtml(appSchemeUrl)}">Mở TikTok</a>
+          <a class="button button-secondary" href="${escapeHtml(targetUrl)}">Mở bằng web</a>
+        </div>
+      </div>
+    </main>
+    <script>
+      (() => {
+        const appUrl = "${escapeJsString(appSchemeUrl)}";
+        const webUrl = "${escapeJsString(targetUrl)}";
+        let fallbackTimer = null;
+        let launched = false;
+
+        const cancelFallback = () => {
+          if (fallbackTimer !== null) {
+            window.clearTimeout(fallbackTimer);
+            fallbackTimer = null;
+          }
+        };
+
+        const fallbackToWeb = () => {
+          if (document.hidden) return;
+          window.location.replace(webUrl);
+        };
+
+        const tryOpenApp = () => {
+          if (launched) return;
+          launched = true;
+          fallbackTimer = window.setTimeout(fallbackToWeb, 900);
+          window.location.replace(appUrl);
+        };
+
+        document.addEventListener("visibilitychange", () => {
+          if (document.hidden) {
+            cancelFallback();
+          }
+        });
+        window.addEventListener("pagehide", cancelFallback);
+        window.addEventListener("blur", cancelFallback);
+        window.addEventListener("load", () => {
+          window.setTimeout(tryOpenApp, 60);
+        });
+      })();
+    </script>
+  </body>
+</html>`;
+};
+
 export const renderChoiceLandingPage = (
   link: PublicLinkRecord,
   canonicalUrl: string,
@@ -55,7 +260,6 @@ export const renderChoiceLandingPage = (
   );
   const imageUrl = link.custom_image_url?.trim() || "";
   const videoUrl = buildPublicVideoUrl(link.video_url);
-  const originalUrl = link.original_url.trim();
   const secondaryUrl = link.secondary_url?.trim() || "";
   const hasVideo = Boolean(videoUrl);
   const hasSecondaryRedirect = hasVideo && Boolean(secondaryUrl);
@@ -64,10 +268,12 @@ export const renderChoiceLandingPage = (
   const fallbackFavicon = `${originBase}/logo-app-192.png`;
   const faviconUrl = imageUrl || fallbackFavicon;
   const socialImageUrl = imageUrl || defaultOgImage;
-  const clickOnlyTrackingUrl =
+  const redirectOpenBaseUrl =
     clickTrackingUrl.slice(-6) === "/track"
-      ? `${clickTrackingUrl.slice(0, -6)}/track-preview-click`
-      : `${clickTrackingUrl}/track-preview-click`;
+      ? `${clickTrackingUrl.slice(0, -6)}/open`
+      : `${clickTrackingUrl}/open`;
+  const primaryRedirectUrl = `${redirectOpenBaseUrl}?stage=primary`;
+  const secondaryRedirectUrl = `${redirectOpenBaseUrl}?stage=secondary`;
   const secondaryStateKey = `hn.choice-state.${link.short_code}`;
   const robotsContent = isExperimental
     ? "noindex, nofollow"
@@ -200,6 +406,8 @@ export const renderChoiceLandingPage = (
         backdrop-filter: blur(5px);
         z-index: 9999;
         cursor: pointer;
+        color: inherit;
+        text-decoration: none;
         transition: opacity 220ms ease, visibility 220ms ease;
       }
       .overlay.hidden { opacity: 0; visibility: hidden; pointer-events: none; display: none !important; }
@@ -255,26 +463,21 @@ export const renderChoiceLandingPage = (
       </section>
     </main>
 
-    <div id="overlay" class="overlay delayed-hidden" role="button" tabindex="0" aria-label="${overlayAriaLabel}">${overlayHintMarkup}</div>
+    <a id="overlay" class="overlay delayed-hidden" href="${escapeHtml(primaryRedirectUrl)}" aria-label="${overlayAriaLabel}">${overlayHintMarkup}</a>
 
     <script>
       (() => {
         const overlay = document.getElementById("overlay");
         const mediaPanel = document.querySelector(".media-panel");
         const heroVideo = document.querySelector(".hero-video");
-        const primaryTargetUrl = "${escapeJsString(originalUrl)}";
+        const primaryRedirectUrl = "${escapeJsString(primaryRedirectUrl)}";
+        const secondaryRedirectUrl = "${escapeJsString(secondaryRedirectUrl)}";
         const secondaryTargetUrl = "${escapeJsString(secondaryUrl)}";
         const hasSecondaryRedirect = ${hasSecondaryRedirect ? "true" : "false"};
-        const clickOnlyTrackingUrl = "${escapeJsString(clickOnlyTrackingUrl)}";
-        const outboundTrackingUrl =
-          "${escapeJsString(clickTrackingUrl)}".slice(-6) === "/track"
-            ? "${escapeJsString(clickTrackingUrl)}".slice(0, -6) + "/track-outbound"
-            : "${escapeJsString(clickTrackingUrl)}" + "/track-outbound";
         const secondaryStateKey = "${escapeJsString(secondaryStateKey)}";
         const secondaryStateCookieName =
           "${escapeJsString(`hn_choice_state_${link.short_code}`)}";
 
-        let previewTracked = false;
         let overlayHandled = false;
         let overlayVisible = false;
         let awaitingSecondaryPlay = false;
@@ -298,34 +501,6 @@ export const renderChoiceLandingPage = (
             previewPlaybackStartedAt = 0;
           }
           clearPreviewPlaybackInterval();
-        };
-
-        const postJsonKeepalive = (url, payload) => {
-          if (!url) return;
-          const body = JSON.stringify(payload);
-          try {
-            if (navigator.sendBeacon) {
-              navigator.sendBeacon(url, new Blob([body], { type: "application/json" }));
-              return;
-            }
-          } catch (error) {}
-
-          fetch(url, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body,
-            keepalive: true,
-          }).catch(() => {});
-        };
-
-        const trackPreviewClick = () => {
-          if (previewTracked) return;
-          previewTracked = true;
-          postJsonKeepalive(clickOnlyTrackingUrl, { ts: Date.now() });
-        };
-
-        const trackOutbound = (stage) => {
-          postJsonKeepalive(outboundTrackingUrl, { stage, ts: Date.now() });
         };
 
         const hideOverlay = () => {
@@ -352,31 +527,6 @@ export const renderChoiceLandingPage = (
           overlay.style.opacity = "1";
           overlay.style.visibility = "visible";
           overlay.style.pointerEvents = "auto";
-        };
-
-        const isAffiliateCommerceUrl = (url) => {
-          if (!url) return false;
-          try {
-            const hostname = new URL(url).hostname.toLowerCase();
-            return /(^|\\.)shopee\\.[a-z.]+$/i.test(hostname) || /(^|\\.)tiktok\\.com$|(^|\\.)vt\\.tiktok\\.com$|(^|\\.)vm\\.tiktok\\.com$/i.test(hostname);
-          } catch (error) {
-            return false;
-          }
-        };
-
-        const openUrl = (url) => {
-          if (!url) return;
-          if (isAffiliateCommerceUrl(url)) {
-            window.location.assign(url);
-            return;
-          }
-
-          try {
-            const popup = window.open(url, "_blank", "noopener,noreferrer");
-            if (popup) return;
-          } catch (error) {}
-
-          window.location.href = url;
         };
 
         const setSecondaryStateCookie = (value) => {
@@ -521,12 +671,10 @@ export const renderChoiceLandingPage = (
         };
 
         const handleOverlayContinue = () => {
+          if (overlayHandled) return;
           overlayHandled = true;
-          trackPreviewClick();
           persistPrimaryOpened();
           hideOverlay();
-          trackOutbound("primary");
-          openUrl(primaryTargetUrl);
         };
 
         const handleSecondaryPlayIntent = () => {
@@ -539,8 +687,7 @@ export const renderChoiceLandingPage = (
               heroVideo.pause();
             }
           } catch (error) {}
-          trackOutbound("secondary");
-          openUrl(secondaryTargetUrl);
+          window.location.href = secondaryRedirectUrl;
         };
 
         const maybeShowOverlayAfterPlayback = () => {
@@ -608,9 +755,12 @@ export const renderChoiceLandingPage = (
         if (overlay) {
           overlay.addEventListener("click", handleOverlayContinue);
           overlay.addEventListener("keydown", (event) => {
-            if (event.key === "Enter" || event.key === " ") {
+            if (event.key === " ") {
               event.preventDefault();
               handleOverlayContinue();
+              if (overlay instanceof HTMLAnchorElement) {
+                overlay.click();
+              }
             }
           });
         }

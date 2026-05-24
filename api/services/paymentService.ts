@@ -1,6 +1,69 @@
+import crypto from "crypto";
 import { SUBSCRIPTION_PRICING, ZALOPAY_CREATE_ORDER_PATH, ZALOPAY_QUERY_ORDER_PATH } from "../config/constants.js";
 import { hmacSha256, getVietnamDatePrefix } from "../utils/helpers.js";
 import { PaidSubscriptionPlan } from "../types/index.js";
+
+const getZaloPayUserTag = (userId: string) =>
+  crypto.createHash("sha256").update(userId).digest("hex").slice(0, 12);
+
+const parseZaloPayAppTransId = (appTransId: string) => {
+  const parts = appTransId.split("_");
+  if (parts.length === 4) {
+    const [datePrefix, planToken, userTag, randomSuffix] = parts;
+    if (
+      /^\d{6}$/.test(datePrefix) &&
+      (planToken === "monthly" || planToken === "yearly") &&
+      /^[a-f0-9]{12}$/i.test(userTag) &&
+      /^\d{6}$/.test(randomSuffix)
+    ) {
+      return {
+        plan: planToken as PaidSubscriptionPlan,
+        userTag,
+      };
+    }
+  }
+
+  const legacyPlan = appTransId.includes("year")
+    ? "yearly"
+    : appTransId.includes("month")
+      ? "monthly"
+      : null;
+
+  if (!legacyPlan) {
+    return null;
+  }
+
+  return {
+    plan: legacyPlan as PaidSubscriptionPlan,
+    userTag: null,
+  };
+};
+
+export const buildZaloPayAppTransId = (
+  userId: string,
+  plan: PaidSubscriptionPlan,
+) => {
+  const datePrefix = getVietnamDatePrefix();
+  const randomSuffix = crypto.randomInt(0, 1_000_000).toString().padStart(6, "0");
+  const planToken = plan === "yearly" ? "yearly" : "monthly";
+
+  return `${datePrefix}_${planToken}_${getZaloPayUserTag(userId)}_${randomSuffix}`;
+};
+
+export const getZaloPayPlanFromAppTransId = (appTransId: string) =>
+  parseZaloPayAppTransId(appTransId)?.plan || null;
+
+export const isZaloPayAppTransOwnedByUser = (
+  appTransId: string,
+  userId: string,
+) => {
+  const parsed = parseZaloPayAppTransId(appTransId);
+  if (!parsed?.userTag) {
+    return false;
+  }
+
+  return parsed.userTag === getZaloPayUserTag(userId);
+};
 
 export const getZaloPayConfig = () => {
   const appIdRaw = process.env.ZALOPAY_APP_ID;
@@ -35,11 +98,7 @@ export const createZaloPayOrder = async (
   const config = getZaloPayConfig();
   const pricing = SUBSCRIPTION_PRICING[plan];
 
-  const datePrefix = getVietnamDatePrefix();
-  const randomSuffix = Math.floor(Math.random() * 1000000)
-    .toString()
-    .padStart(6, "0");
-  const appTransId = `${datePrefix}_${randomSuffix}`;
+  const appTransId = buildZaloPayAppTransId(userId, plan);
 
   const orderData = {
     app_id: config.appId,

@@ -51,6 +51,7 @@ export interface ManualPaymentRequestRecord {
 
 export interface PublicLinkRecord {
   id: string;
+  user_id?: string | null;
   short_code: string;
   slug?: string | null;
   original_url: string;

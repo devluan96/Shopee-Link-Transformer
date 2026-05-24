@@ -5,8 +5,23 @@ import { AuthenticatedRequest } from "../types/index.js";
 import * as userService from "../services/userService.js";
 import * as featureLimitService from "../services/featureLimitService.js";
 import * as notificationService from "../services/notificationService.js";
+import * as securityService from "../services/securityService.js";
 
 const router = Router();
+
+const logAdminAction = async (
+  req: AuthenticatedRequest,
+  action: string,
+  payload?: Record<string, unknown>,
+) => {
+  const supabase = getSupabase();
+  await securityService.logAdminAction(supabase, {
+    actorUserId: req.authUser?.id || null,
+    actorEmail: req.authUser?.email || req.authProfile?.email || null,
+    action,
+    metadata: payload,
+  });
+};
 
 // GET /api/v1/user/profile - Get current user profile
 router.get(
@@ -151,6 +166,14 @@ router.post(
       const { isApproved } = req.body;
 
       await userService.approveUser(supabase, targetUid, isApproved);
+      await logAdminAction(
+        req as AuthenticatedRequest,
+        isApproved ? "approve_user" : "unapprove_user",
+        {
+          target_user_id: targetUid,
+          isApproved: !!isApproved,
+        },
+      );
       return res.json({ success: true });
     } catch (e: any) {
       return res.status(500).json({ error: e.message });
@@ -175,6 +198,15 @@ router.post(
         plan,
         expiry,
       );
+      await logAdminAction(
+        req as AuthenticatedRequest,
+        "update_subscription",
+        {
+          target_user_id: targetUid,
+          plan,
+          expiry,
+        },
+      );
       return res.json({ success: true });
     } catch (e: any) {
       console.error("❌ Supabase Update Error:", e);
@@ -183,6 +215,43 @@ router.post(
         details:
           "Vui lòng kiểm tra bảng profiles đã có cột subscription_plan và subscription_expiry chưa.",
       });
+    }
+  },
+);
+
+router.post(
+  "/admin/users/:targetUid/role",
+  authenticate,
+  checkAdmin,
+  async (req: AuthenticatedRequest, res) => {
+    try {
+      const supabase = getSupabase();
+      const actorUserId = req.authUser?.id;
+      const { targetUid } = req.params;
+      const role =
+        req.body?.role === "admin"
+          ? "admin"
+          : req.body?.role === "user"
+            ? "user"
+            : null;
+
+      if (!actorUserId || !targetUid || !role) {
+        return res.status(400).json({ error: "Missing required parameters" });
+      }
+
+      if (targetUid === actorUserId) {
+        return res.status(400).json({ error: "Cannot change your own role" });
+      }
+
+      const profile = await userService.updateUserRole(supabase, targetUid, role);
+      await logAdminAction(req, "update_user_role", {
+        target_user_id: targetUid,
+        role,
+      });
+
+      return res.json({ success: true, profile });
+    } catch (e: any) {
+      return res.status(500).json({ error: e.message });
     }
   },
 );
@@ -198,6 +267,9 @@ router.delete(
       const { targetUid } = req.params;
 
       await userService.deleteUser(supabase, targetUid);
+      await logAdminAction(req as AuthenticatedRequest, "delete_user", {
+        target_user_id: targetUid,
+      });
       return res.json({ success: true });
     } catch (e: any) {
       return res.status(500).json({ error: e.message });

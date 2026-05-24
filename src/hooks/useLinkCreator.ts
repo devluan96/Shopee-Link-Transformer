@@ -24,6 +24,7 @@ interface UseLinkCreatorProps {
 
 export interface LinkCreatorState {
   url: string;
+  mobileDirectMode: boolean;
   customTitle: string;
   customDescription: string;
   customShortCode: string;
@@ -32,11 +33,6 @@ export interface LinkCreatorState {
   tagsText: string;
   customImageUrl: string;
   customDomain: string;
-  utmSource: string;
-  utmMedium: string;
-  utmCampaign: string;
-  utmContent: string;
-  utmTerm: string;
   shopeeAffiliateParams: string;
   tiktokAffiliateParams: string;
   secondaryUrl: string;
@@ -58,6 +54,7 @@ export interface LinkCreatorState {
 
 export interface LinkCreatorActions {
   setUrl: (v: string) => void;
+  setMobileDirectMode: (v: boolean) => void;
   setCustomTitle: (v: string) => void;
   setCustomDescription: (v: string) => void;
   setCustomShortCode: (v: string) => void;
@@ -66,11 +63,6 @@ export interface LinkCreatorActions {
   setTagsText: (v: string) => void;
   setCustomImageUrl: (v: string) => void;
   setCustomDomain: (v: string) => void;
-  setUtmSource: (v: string) => void;
-  setUtmMedium: (v: string) => void;
-  setUtmCampaign: (v: string) => void;
-  setUtmContent: (v: string) => void;
-  setUtmTerm: (v: string) => void;
   setShopeeAffiliateParams: (v: string) => void;
   setTiktokAffiliateParams: (v: string) => void;
   setSecondaryUrl: (v: string) => void;
@@ -100,6 +92,7 @@ export function useLinkCreator({
 }: UseLinkCreatorProps): LinkCreatorState & LinkCreatorActions {
   const { t } = useLocale();
   const [url, setUrl] = useState("");
+  const [mobileDirectMode, setMobileDirectMode] = useState(false);
   const [customTitle, setCustomTitle] = useState("");
   const [customDescription, setCustomDescription] = useState("");
   const [customShortCode, setCustomShortCode] = useState("");
@@ -108,11 +101,6 @@ export function useLinkCreator({
   const [tagsText, setTagsText] = useState("");
   const [customImageUrl, setCustomImageUrl] = useState("");
   const [customDomain, setCustomDomain] = useState("");
-  const [utmSource, setUtmSource] = useState("");
-  const [utmMedium, setUtmMedium] = useState("");
-  const [utmCampaign, setUtmCampaign] = useState("");
-  const [utmContent, setUtmContent] = useState("");
-  const [utmTerm, setUtmTerm] = useState("");
   const [shopeeAffiliateParams, setShopeeAffiliateParams] = useState("");
   const [tiktokAffiliateParams, setTiktokAffiliateParams] = useState("");
   const [secondaryUrl, setSecondaryUrl] = useState("");
@@ -164,6 +152,7 @@ export function useLinkCreator({
           method: "POST",
           body: JSON.stringify({
             url: url.trim(),
+            mobileDirectMode,
             customShortCode,
             customTitle,
             customDescription,
@@ -176,11 +165,6 @@ export function useLinkCreator({
               .map((tag) => tag.trim())
               .filter(Boolean),
             customImageUrl,
-            utmSource,
-            utmMedium,
-            utmCampaign,
-            utmContent,
-            utmTerm,
             shopeeAffiliateParams,
             tiktokAffiliateParams,
             secondaryUrl: secondaryUrl.trim(),
@@ -232,6 +216,7 @@ export function useLinkCreator({
       url,
       user,
       canAccessCreate,
+      mobileDirectMode,
       customShortCode,
       customTitle,
       customDescription,
@@ -241,11 +226,6 @@ export function useLinkCreator({
       folderName,
       tagsText,
       customImageUrl,
-      utmSource,
-      utmMedium,
-      utmCampaign,
-      utmContent,
-      utmTerm,
       shopeeAffiliateParams,
       tiktokAffiliateParams,
       secondaryUrl,
@@ -268,6 +248,7 @@ export function useLinkCreator({
 
   const resetForm = useCallback(() => {
     setUrl("");
+    setMobileDirectMode(false);
     setCustomTitle("");
     setCustomDescription("");
     setCustomShortCode("");
@@ -276,11 +257,6 @@ export function useLinkCreator({
     setTagsText("");
     setCustomImageUrl("");
     setCustomDomain("");
-    setUtmSource("");
-    setUtmMedium("");
-    setUtmCampaign("");
-    setUtmContent("");
-    setUtmTerm("");
     setShopeeAffiliateParams("");
     setTiktokAffiliateParams("");
     setSecondaryUrl("");
@@ -301,6 +277,7 @@ export function useLinkCreator({
 
   return {
     url,
+    mobileDirectMode,
     customTitle,
     customDescription,
     customShortCode,
@@ -309,11 +286,6 @@ export function useLinkCreator({
     tagsText,
     customImageUrl,
     customDomain,
-    utmSource,
-    utmMedium,
-    utmCampaign,
-    utmContent,
-    utmTerm,
     shopeeAffiliateParams,
     tiktokAffiliateParams,
     secondaryUrl,
@@ -332,6 +304,7 @@ export function useLinkCreator({
     error,
     result,
     setUrl,
+    setMobileDirectMode,
     setCustomTitle,
     setCustomDescription,
     setCustomShortCode,
@@ -340,11 +313,6 @@ export function useLinkCreator({
     setTagsText,
     setCustomImageUrl,
     setCustomDomain,
-    setUtmSource,
-    setUtmMedium,
-    setUtmCampaign,
-    setUtmContent,
-    setUtmTerm,
     setShopeeAffiliateParams,
     setTiktokAffiliateParams,
     setSecondaryUrl,
