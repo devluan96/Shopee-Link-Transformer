@@ -18,6 +18,7 @@ import {
   sendPasswordResetEmail,
   setRememberedEmail,
   setRememberLoginPreference,
+  signInWithGoogle,
   updatePassword,
 } from "@/src/lib/supabase";
 
@@ -32,7 +33,6 @@ export interface AuthState {
   loginPassword: string;
   registerEmail: string;
   registerPassword: string;
-  registerConfirmPassword: string;
   rememberMe: boolean;
   passwordRecoveryMode: boolean;
   recoveryPassword: string;
@@ -44,7 +44,6 @@ export interface AuthActions {
   setLoginPassword: (v: string) => void;
   setRegisterEmail: (v: string) => void;
   setRegisterPassword: (v: string) => void;
-  setRegisterConfirmPassword: (v: string) => void;
   setIsRegistering: (v: boolean) => void;
   setRememberMe: (v: boolean) => void;
   setAuthError: (v: string | null) => void;
@@ -52,6 +51,7 @@ export interface AuthActions {
   setRecoveryPassword: (v: string) => void;
   setRecoveryConfirmPassword: (v: string) => void;
   handleEmailAuth: (e: FormEvent) => Promise<void>;
+  handleGoogleAuth: () => Promise<void>;
   handleForgotPassword: () => Promise<void>;
   handlePasswordRecovery: (e: FormEvent) => Promise<void>;
   handleLogout: () => Promise<void>;
@@ -71,7 +71,6 @@ export function useAuth(): AuthState & AuthActions {
   const [loginPassword, setLoginPassword] = useState("");
   const [registerEmail, setRegisterEmail] = useState("");
   const [registerPassword, setRegisterPassword] = useState("");
-  const [registerConfirmPassword, setRegisterConfirmPassword] = useState("");
   const [rememberMe, setRememberMe] = useState(() =>
     getRememberLoginPreference(),
   );
@@ -146,7 +145,6 @@ export function useAuth(): AuthState & AuthActions {
 
     const { data: refreshed, error } = await supabase.auth.refreshSession();
     if (error) {
-      console.error("[Auth] refreshSession failed:", error);
       clearStoredSession();
       sessionRef.current = null;
       setUser(null);
@@ -247,7 +245,6 @@ export function useAuth(): AuthState & AuthActions {
       await logout();
       clearStoredSession();
     } catch (e) {
-      console.error("Logout error:", e);
       clearStoredSession();
     } finally {
       setAuthLoading(false);
@@ -269,21 +266,13 @@ export function useAuth(): AuthState & AuthActions {
 
       const safetyTimer = setTimeout(() => {
         setAuthLoading((prev) => {
-          if (prev) {
-            console.warn("⚠️ [Auth] Login taking too long, resetting spinner");
-            return false;
-          }
+          if (prev) return false;
           return prev;
         });
       }, 15000);
 
       try {
         if (isRegistering) {
-          if (registerPassword !== registerConfirmPassword) {
-            setAuthError(t("auth.panel.feedback.registerPasswordMismatch"));
-            return;
-          }
-
           const newUser = await registerWithEmail(registerEmail, registerPassword);
           const existingAccount = newUser?.identities?.length === 0;
           if (existingAccount) {
@@ -300,14 +289,12 @@ export function useAuth(): AuthState & AuthActions {
             setRememberedEmail(registerEmail);
           }
           setRegisterPassword("");
-          setRegisterConfirmPassword("");
         } else {
           await loginWithEmail(loginEmail, loginPassword);
           setRememberedEmail(rememberMe ? loginEmail : "");
           setAuthNotice(null);
         }
       } catch (err: unknown) {
-        console.error("❌ [Auth] Email auth error:", err);
         const errorMessage =
           err instanceof Error
             ? err.message
@@ -341,7 +328,6 @@ export function useAuth(): AuthState & AuthActions {
       loginPassword,
       registerEmail,
       registerPassword,
-      registerConfirmPassword,
       isRegistering,
       authLoading,
       rememberMe,
@@ -380,6 +366,33 @@ export function useAuth(): AuthState & AuthActions {
       setAuthLoading(false);
     }
   }, [loginEmail, rememberMe, t]);
+
+  const handleGoogleAuth = useCallback(async () => {
+    setAuthError(null);
+    setAuthNotice(null);
+    setRememberLoginPreference(true);
+    setAuthLoading(true);
+
+    try {
+      await signInWithGoogle();
+    } catch (err: unknown) {
+      const errorMessage =
+        err instanceof Error
+          ? err.message
+          : t("auth.panel.feedback.oauthFailed");
+      const rawMessage = errorMessage.toLowerCase();
+
+      if (
+        rawMessage.includes("provider is not enabled") ||
+        rawMessage.includes("unsupported provider")
+      ) {
+        setAuthError(t("auth.panel.feedback.oauthNotConfigured"));
+      } else {
+        setAuthError(errorMessage);
+      }
+      setAuthLoading(false);
+    }
+  }, [t]);
 
   const handlePasswordRecovery = useCallback(
     async (e: FormEvent) => {
@@ -443,7 +456,6 @@ export function useAuth(): AuthState & AuthActions {
         setLoginEmail(session?.user?.email ?? "");
         setLoginPassword("");
         setRegisterPassword("");
-        setRegisterConfirmPassword("");
         setRecoveryPassword("");
         setRecoveryConfirmPassword("");
         setAuthError(null);
@@ -491,9 +503,7 @@ export function useAuth(): AuthState & AuthActions {
           }
         }
       })
-      .catch((error) => {
-        console.error("[Auth] Initial session check failed:", error);
-      })
+      .catch(() => {})
       .finally(() => {
         if (!isMounted) return;
         setAuthInitialized(true);
@@ -502,10 +512,7 @@ export function useAuth(): AuthState & AuthActions {
 
     // Safety timeout
     const timer = setTimeout(() => {
-      setAuthLoading((prev) => {
-        if (prev) console.warn("⚠️ Auth loading safety timeout triggered");
-        return false;
-      });
+      setAuthLoading(() => false);
     }, 5000);
 
     return () => {
@@ -514,26 +521,6 @@ export function useAuth(): AuthState & AuthActions {
       clearTimeout(timer);
     };
   }, [isRecoveryLinkOpen, t]);
-
-  // Global error handlers
-  useEffect(() => {
-    window.onerror = (message, source, lineno, colno, error) => {
-      console.error(
-        "🔴 [Global Error]:",
-        message,
-        "at",
-        source,
-        ":",
-        lineno,
-        ":",
-        colno,
-        error,
-      );
-    };
-    window.onunhandledrejection = (event) => {
-      console.error("🔴 [Unhandled Rejection]:", event.reason);
-    };
-  }, []);
 
   return {
     user,
@@ -546,7 +533,6 @@ export function useAuth(): AuthState & AuthActions {
     loginPassword,
     registerEmail,
     registerPassword,
-    registerConfirmPassword,
     rememberMe,
     passwordRecoveryMode,
     recoveryPassword,
@@ -555,7 +541,6 @@ export function useAuth(): AuthState & AuthActions {
     setLoginPassword,
     setRegisterEmail,
     setRegisterPassword,
-    setRegisterConfirmPassword,
     setIsRegistering,
     setRememberMe,
     setAuthError,
@@ -563,6 +548,7 @@ export function useAuth(): AuthState & AuthActions {
     setRecoveryPassword,
     setRecoveryConfirmPassword,
     handleEmailAuth,
+    handleGoogleAuth,
     handleForgotPassword,
     handlePasswordRecovery,
     handleLogout,

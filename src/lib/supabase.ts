@@ -70,9 +70,6 @@ const authStorage = {
   },
 };
 
-console.log('🛠️ [Supabase Config] URL:', supabaseUrl ? 'Defined' : 'MISSING');
-console.log('🛠️ [Supabase Config] Key:', supabaseAnonKey ? 'Defined' : 'MISSING');
-
 if (!supabaseUrl || !supabaseAnonKey) {
   console.error('🚨 CRITICAL: Supabase environment variables are missing! Authentication will NOT work.');
 }
@@ -87,7 +84,6 @@ export const supabase = createClient(supabaseUrl || 'https://placeholder.supabas
 });
 
 export const signInWithGoogle = async () => {
-  console.log('📡 [Supabase] signInWithGoogle start');
   const timeout = new Promise((_, reject) => 
     setTimeout(() => reject(new Error('Supabase OAuth request timeout')), 10000)
   );
@@ -97,7 +93,7 @@ export const signInWithGoogle = async () => {
       supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: window.location.origin,
+          redirectTo: `${window.location.origin}${window.location.pathname}`,
         },
       }),
       timeout
@@ -107,7 +103,6 @@ export const signInWithGoogle = async () => {
       console.error('❌ [Supabase] OAuth error:', error);
       throw error;
     }
-    console.log('✅ [Supabase] signInWithOAuth success');
     return data;
   } catch (err) {
     console.error('💥 [Supabase] OAuth exception:', err);
@@ -116,7 +111,6 @@ export const signInWithGoogle = async () => {
 };
 
 export const registerWithEmail = async (email: string, pass: string) => {
-  console.log('📡 [Supabase] signUp start');
   const timeout = new Promise((_, reject) => 
     setTimeout(() => reject(new Error('Supabase request timeout')), 12000)
   );
@@ -131,7 +125,6 @@ export const registerWithEmail = async (email: string, pass: string) => {
       console.error('❌ [Supabase] signUp error:', error);
       throw error;
     }
-    console.log('✅ [Supabase] signUp success');
     return data.user;
   } catch (err) {
     console.error('💥 [Supabase] signUp exception:', err);
@@ -140,7 +133,6 @@ export const registerWithEmail = async (email: string, pass: string) => {
 };
 
 export const loginWithEmail = async (email: string, pass: string) => {
-  console.log('📡 [Supabase] signInWithPassword start for:', email);
   const timeout = new Promise((_, reject) => 
     setTimeout(() => reject(new Error('Supabase sign-in request timeout')), 10000)
   );
@@ -158,7 +150,6 @@ export const loginWithEmail = async (email: string, pass: string) => {
       console.error('❌ [Supabase] signInWithPassword error:', error);
       throw error;
     }
-    console.log('✅ [Supabase] signInWithPassword success');
     return data.user;
   } catch (err) {
     console.error('💥 [Supabase] signInWithPassword exception:', err);
