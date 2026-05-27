@@ -2,7 +2,11 @@ import { Router } from "express";
 import { authenticate, checkAdmin } from "../middleware/auth.js";
 import { getSupabase } from "../config/supabase.js";
 import { getPublicBaseUrl } from "../utils/helpers.js";
-import { AuthenticatedRequest, PaidSubscriptionPlan } from "../types/index.js";
+import {
+  AuthenticatedRequest,
+  ManualPaymentPlan,
+  PaidSubscriptionPlan,
+} from "../types/index.js";
 import * as paymentService from "../services/paymentService.js";
 import * as manualPaymentService from "../services/manualPaymentService.js";
 import * as userService from "../services/userService.js";
@@ -219,8 +223,11 @@ router.post(
         return res.status(400).json({ error: "Missing userId" });
       }
 
-      const { plan } = req.body as { plan: PaidSubscriptionPlan };
-      if (!plan || !["monthly", "yearly"].includes(plan)) {
+      const { plan } = req.body as { plan: ManualPaymentPlan };
+      if (
+        !plan ||
+        !["monthly", "yearly", "business_monthly", "business_yearly"].includes(plan)
+      ) {
         return res.status(400).json({ error: "Invalid plan" });
       }
 

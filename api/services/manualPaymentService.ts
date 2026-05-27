@@ -2,9 +2,8 @@ import { SupabaseClient } from "../config/supabase.js";
 import {
   ManualPaymentRequestRecord,
   ManualPaymentStatus,
-  PaidSubscriptionPlan,
+  ManualPaymentPlan,
 } from "../types/index.js";
-import { SUBSCRIPTION_PRICING } from "../config/constants.js";
 import * as userService from "./userService.js";
 import * as notificationService from "./notificationService.js";
 
@@ -15,16 +14,36 @@ export const buildAccountPaymentCode = (userId: string) =>
 
 export const buildTransferContent = (
   accountCode: string,
-  plan: PaidSubscriptionPlan,
-) => `${accountCode} ${plan === "monthly" ? "GOI THANG" : "GOI NAM"}`;
+  plan: ManualPaymentPlan,
+) => {
+  if (plan === "monthly") return `${accountCode} GOI THANG`;
+  if (plan === "yearly") return `${accountCode} GOI NAM`;
+  if (plan === "business_monthly") return `${accountCode} GOI BUSINESS THANG`;
+  return `${accountCode} GOI BUSINESS NAM`;
+};
 
-export const getManualPaymentPlanMeta = (plan: PaidSubscriptionPlan) => {
-  const pricing = SUBSCRIPTION_PRICING[plan];
+export const getManualPaymentPlanMeta = (plan: ManualPaymentPlan) => {
+  if (plan === "monthly") {
+    return { amount: 149000, label: "Gói tháng" };
+  }
 
-  return {
-    amount: pricing.amount,
-    label: plan === "monthly" ? "Gói tháng" : "Gói năm",
-  };
+  if (plan === "yearly") {
+    return { amount: 1430400, label: "Gói năm" };
+  }
+
+  if (plan === "business_monthly") {
+    return { amount: 299000, label: "Gói Business tháng" };
+  }
+
+  return { amount: 2870400, label: "Gói Business năm" };
+};
+
+const resolveSubscriptionPlan = (plan: ManualPaymentPlan): "monthly" | "yearly" => {
+  if (plan === "business_monthly" || plan === "business_yearly") {
+    return "yearly";
+  }
+
+  return plan;
 };
 
 const normalizePaymentRequest = (
@@ -39,7 +58,7 @@ const normalizePaymentRequest = (
       ? row.user_full_name
       : row.user_full_name ?? null,
   account_code: String(row.account_code),
-  plan: row.plan as PaidSubscriptionPlan,
+  plan: row.plan as ManualPaymentPlan,
   amount: Number(row.amount || 0),
   transfer_content: String(row.transfer_content),
   status: row.status as ManualPaymentStatus,
@@ -77,7 +96,7 @@ export const createManualPaymentRequest = async (
     userId: string;
     userEmail?: string | null;
     userFullName?: string | null;
-    plan: PaidSubscriptionPlan;
+    plan: ManualPaymentPlan;
   },
 ) => {
   const accountCode = buildAccountPaymentCode(payload.userId);
@@ -149,7 +168,7 @@ export const getAdminManualPaymentRequests = async (
 };
 
 const resolveNextExpiry = (
-  plan: PaidSubscriptionPlan,
+  plan: ManualPaymentPlan,
   currentExpiry?: string | null,
 ) => {
   const now = Date.now();
@@ -160,7 +179,7 @@ const resolveNextExpiry = (
       : now,
   );
 
-  if (plan === "monthly") {
+  if (resolveSubscriptionPlan(plan) === "monthly") {
     baseDate.setDate(baseDate.getDate() + 30);
   } else {
     baseDate.setFullYear(baseDate.getFullYear() + 1);
@@ -187,12 +206,13 @@ export const confirmManualPaymentRequest = async (
 
   const request = normalizePaymentRequest(existing);
   const profile = await userService.getUserProfile(supabase, request.user_id);
+  const subscriptionPlan = resolveSubscriptionPlan(request.plan);
   const expiry = resolveNextExpiry(request.plan, profile?.subscription_expiry);
 
   await userService.updateUserSubscription(
     supabase,
     request.user_id,
-    request.plan,
+    subscriptionPlan,
     expiry,
   );
   await userService.approveUser(supabase, request.user_id, true);

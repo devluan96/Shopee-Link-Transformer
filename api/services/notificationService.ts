@@ -69,12 +69,23 @@ export const createPaymentConfirmedNotification = async (
   supabase: SupabaseClient,
   payload: {
     userId: string;
-    plan: "monthly" | "yearly";
+    plan: "monthly" | "yearly" | "business_monthly" | "business_yearly";
     amount: number;
     paymentRequestId: string;
   },
 ) => {
-  const planLabel = payload.plan === "monthly" ? "gói tháng" : "gói năm";
+  const planLabel =
+    payload.plan === "monthly"
+      ? "gói tháng"
+      : payload.plan === "yearly"
+        ? "gói năm"
+        : payload.plan === "business_monthly"
+          ? "gói Business tháng"
+          : "gói Business năm";
+  const subscriptionPlan: "monthly" | "yearly" =
+    payload.plan === "business_monthly" || payload.plan === "business_yearly"
+      ? "yearly"
+      : payload.plan;
   await createAppNotification(supabase, {
     userId: payload.userId,
     type: "payment_confirmed",
@@ -82,7 +93,7 @@ export const createPaymentConfirmedNotification = async (
     message: `Quản trị viên đã xác nhận thanh toán ${payload.amount.toLocaleString("vi-VN")}đ cho ${planLabel}. Gói của bạn đã được kích hoạt.`,
     metadata: {
       payment_request_id: payload.paymentRequestId,
-      subscription_plan: payload.plan,
+      subscription_plan: subscriptionPlan,
       amount: payload.amount,
     },
     uniqueEventKey: `payment_confirmed:${payload.paymentRequestId}`,

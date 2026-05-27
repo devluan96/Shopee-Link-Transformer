@@ -482,8 +482,10 @@ export const vi = {
     status: {
       eyebrow: "Trạng thái hiện tại",
       free: "Gói miễn phí",
-      monthly: "Gói tháng",
-      yearly: "Gói năm",
+      monthly: "Gói Pro",
+      yearly: "Gói Business",
+      pro: "Gói Pro",
+      business: "Gói Business",
       activeUntil: "Gói đang hoạt động đến {date}.",
       badgeFree: "Miễn phí",
       badgeActive: "Đang hoạt động",
