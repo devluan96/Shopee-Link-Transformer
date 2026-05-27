@@ -1,6 +1,11 @@
 import { Request } from "express";
 
 export type SubscriptionPlan = "free" | "monthly" | "yearly";
+export type ManualPaymentPlan =
+  | "monthly"
+  | "yearly"
+  | "business_monthly"
+  | "business_yearly";
 export type PaidSubscriptionPlan = Exclude<SubscriptionPlan, "free">;
 export type WorkspaceRole = "owner" | "editor" | "viewer";
 export type ManualPaymentStatus = "pending" | "confirmed" | "rejected";
@@ -38,7 +43,7 @@ export interface ManualPaymentRequestRecord {
   user_email?: string | null;
   user_full_name?: string | null;
   account_code: string;
-  plan: PaidSubscriptionPlan;
+  plan: ManualPaymentPlan;
   amount: number;
   transfer_content: string;
   status: ManualPaymentStatus;

@@ -4,7 +4,12 @@ import {
   buildZaloPayAppTransId,
   isZaloPayAppTransOwnedByUser,
 } from "../../api/services/paymentService.js";
+import { SUBSCRIPTION_PRICING } from "../../api/config/constants.js";
 import { createZaloPayStatusHandler } from "../../api/routes/payment.js";
+import {
+  buildTransferContent,
+  getManualPaymentPlanMeta,
+} from "../../api/services/manualPaymentService.js";
 import { createMockRes } from "./testUtils.js";
 
 test("ZaloPay app trans id is tied to the owning user", () => {
@@ -13,6 +18,20 @@ test("ZaloPay app trans id is tied to the owning user", () => {
   assert.match(appTransId, /^\d{6}_(monthly|yearly)_[a-f0-9]{12}_\d{6}$/i);
   assert.equal(isZaloPayAppTransOwnedByUser(appTransId, "user-1"), true);
   assert.equal(isZaloPayAppTransOwnedByUser(appTransId, "user-2"), false);
+});
+
+test("yearly subscription pricing matches the 20% annual discount", () => {
+  assert.equal(SUBSCRIPTION_PRICING.monthly.amount, 149000);
+  assert.equal(SUBSCRIPTION_PRICING.yearly.amount, 1430400);
+});
+
+test("business manual payment pricing uses the dedicated business amounts", () => {
+  assert.equal(getManualPaymentPlanMeta("business_monthly").amount, 299000);
+  assert.equal(getManualPaymentPlanMeta("business_yearly").amount, 2870400);
+  assert.equal(
+    buildTransferContent("HN12345678", "business_yearly"),
+    "HN12345678 GOI BUSINESS NAM",
+  );
 });
 
 test("ZaloPay status handler blocks cross-account references", async () => {

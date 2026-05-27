@@ -21,7 +21,7 @@ export const SUBSCRIPTION_PRICING: Record<
     label: "Goi thang Premium",
   },
   yearly: {
-    amount: 1609200,
+    amount: 1430400,
     label: "Goi nam Premium",
   },
 };

@@ -164,7 +164,11 @@ export interface UserProfile {
   subscription_expiry?: string;
 }
 
-export type ManualPaymentPlan = "monthly" | "yearly";
+export type ManualPaymentPlan =
+  | "monthly"
+  | "yearly"
+  | "business_monthly"
+  | "business_yearly";
 export type ManualPaymentStatus = "pending" | "confirmed" | "rejected";
 
 export interface ManualPaymentRequest {
