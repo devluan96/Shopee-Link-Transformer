@@ -296,7 +296,7 @@ export const AdminPanel = ({
     const pendingUsers = allUsers.filter((u) => u.status !== "approved").length;
     const revenue = allUsers.reduce((sum, u) => {
       if (u.subscription_plan === "monthly") return sum + 149000;
-      if (u.subscription_plan === "yearly") return sum + 1609200;
+      if (u.subscription_plan === "yearly") return sum + 1430400;
       return sum;
     }, 0);
 
