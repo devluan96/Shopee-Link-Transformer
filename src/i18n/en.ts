@@ -275,6 +275,10 @@ export const en = {
         forgotPassword: "Forgot password?",
         rememberMe: "Remember sign-in on this device",
       },
+      oauth: {
+        google: "Continue with Google",
+        divider: "Or continue with email",
+      },
       actions: {
         login: "Access system",
         register: "Create account",
@@ -302,6 +306,9 @@ export const en = {
         resetEmailSent:
           "A password reset email has been sent. Open your inbox and follow the link to set a new password.",
         resetEmailFailed: "Unable to send the password reset email.",
+        oauthFailed: "Unable to start Google sign-in.",
+        oauthNotConfigured:
+          "Google sign-in is not enabled in Supabase yet. Configure the Google provider first.",
         tooManyRequests:
           "You have requested this too many times. Please wait a few minutes and try again.",
         newPasswordMin:

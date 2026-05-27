@@ -382,8 +382,8 @@ export function SeoCaptureScreen({ screen }: { screen: CaptureScreen }) {
 
 function CaptureFrame({ children }: { children: React.ReactNode }) {
   return (
-    <div className="min-h-dvh bg-[#f4efe8] p-6">
-      <div className="mx-auto max-w-[1500px] rounded-[2rem] border border-white/70 bg-white/70 p-6 shadow-[0_30px_90px_-45px_rgba(15,23,42,0.35)]">
+    <div className="min-h-dvh bg-[#f4efe8] p-6 transition-colors dark:bg-[#070b14]">
+      <div className="mx-auto max-w-[1500px] rounded-[2rem] border border-white/70 bg-white/70 p-6 shadow-[0_30px_90px_-45px_rgba(15,23,42,0.35)] transition-colors dark:border-slate-700/70 dark:bg-slate-900/72 dark:shadow-[0_40px_120px_-60px_rgba(15,23,42,0.9)]">
         {children}
       </div>
     </div>

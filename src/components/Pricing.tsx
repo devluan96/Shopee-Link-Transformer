@@ -33,7 +33,7 @@ interface PricingProps {
 
 const PLAN_AMOUNTS: Record<ManualPaymentPlan, number> = {
   monthly: 149000,
-  yearly: 1609200,
+  yearly: 1430400,
 };
 
 const buildAccountPaymentCode = (userId: string) =>
@@ -222,13 +222,13 @@ export const Pricing = ({
     {
       id: "yearly" as const,
       name: copy.plans.yearly.name,
-      price: locale === "vi" ? "1.609.200đ" : "1,609,200đ",
+      price: locale === "vi" ? "1.430.400đ" : "1,430,400đ",
       previousPrice: locale === "vi" ? "1.788.000đ" : "1,788,000đ",
       period: copy.plans.yearly.period,
       description:
         locale === "vi"
-          ? "Giảm 10% so với 12 tháng, phù hợp cho tài khoản vận hành lâu dài."
-          : "10% off compared with paying 12 monthly cycles.",
+          ? "Giảm 20% so với 12 tháng, phù hợp cho tài khoản vận hành lâu dài."
+          : "20% off compared with paying 12 monthly cycles.",
       features:
         locale === "vi"
           ? [
@@ -244,7 +244,7 @@ export const Pricing = ({
               "Built for larger teams with lower annual cost.",
             ],
       highlight: false,
-      badge: locale === "vi" ? "Giảm 10%" : "10% off",
+      badge: locale === "vi" ? "Giảm 20%" : "20% off",
     },
   ];
 

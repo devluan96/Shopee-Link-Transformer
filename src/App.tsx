@@ -254,7 +254,6 @@ export default function App() {
     loginPassword,
     registerEmail,
     registerPassword,
-    registerConfirmPassword,
     rememberMe,
     passwordRecoveryMode,
     recoveryPassword,
@@ -263,12 +262,12 @@ export default function App() {
     setLoginPassword,
     setRegisterEmail,
     setRegisterPassword,
-    setRegisterConfirmPassword,
     setIsRegistering,
     setRememberMe,
     setRecoveryPassword,
     setRecoveryConfirmPassword,
     handleEmailAuth,
+    handleGoogleAuth,
     handleForgotPassword,
     handlePasswordRecovery,
     fetchWithAuth,
@@ -882,8 +881,6 @@ export default function App() {
         setRegisterEmail={setRegisterEmail}
         registerPassword={registerPassword}
         setRegisterPassword={setRegisterPassword}
-        registerConfirmPassword={registerConfirmPassword}
-        setRegisterConfirmPassword={setRegisterConfirmPassword}
         rememberMe={rememberMe}
         setRememberMe={setRememberMe}
         passwordRecoveryMode={passwordRecoveryMode}
@@ -895,6 +892,7 @@ export default function App() {
         authError={authError}
         authNotice={authNotice}
         handleEmailAuth={handleEmailAuth}
+        handleGoogleAuth={handleGoogleAuth}
         handleForgotPassword={handleForgotPassword}
         handlePasswordRecovery={handlePasswordRecovery}
         resetLoading={() => {}}

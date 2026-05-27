@@ -275,6 +275,10 @@ export const vi = {
         forgotPassword: "Quên mật khẩu?",
         rememberMe: "Ghi nhớ đăng nhập trên thiết bị này",
       },
+      oauth: {
+        google: "Tiếp tục với Google",
+        divider: "Hoặc tiếp tục với email",
+      },
       actions: {
         login: "Truy cập hệ thống",
         register: "Tạo tài khoản",
@@ -301,6 +305,9 @@ export const vi = {
         resetEmailSent:
           "Đã gửi email đặt lại mật khẩu. Hãy mở hộp thư và bấm vào liên kết để nhập mật khẩu mới.",
         resetEmailFailed: "Không gửi được email đặt lại mật khẩu.",
+        oauthFailed: "Không thể bắt đầu đăng nhập bằng Google.",
+        oauthNotConfigured:
+          "Google đăng nhập chưa được bật trong Supabase. Hãy cấu hình Google provider trước.",
         tooManyRequests:
           "Bạn vừa yêu cầu quá nhiều lần. Vui lòng chờ vài phút rồi thử lại.",
         newPasswordMin: "Mật khẩu mới cần tối thiểu 6 ký tự.",
