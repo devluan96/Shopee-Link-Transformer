@@ -6,9 +6,6 @@ on:
       - staging
       - main
   push:
-    branches:
-      - staging
-      - main
   workflow_dispatch:
 
 concurrency:
