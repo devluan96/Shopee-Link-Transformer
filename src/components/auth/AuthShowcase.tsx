@@ -1,5 +1,6 @@
 ﻿import {
   Check,
+  ArrowLeftRight,
   ArrowRight,
   Bot,
   ChartNoAxesCombined,
@@ -16,6 +17,7 @@
   Workflow,
 } from "lucide-react";
 import { motion } from "motion/react";
+import { useState } from "react";
 import { useLocale } from "@/src/hooks/useLocale";
 import { cn } from "@/src/lib/utils";
 
@@ -31,6 +33,18 @@ const sectionMotion = {
   transition: { duration: 0.45, ease: "easeOut" as const },
 };
 
+const BILLING_DISCOUNT_RATE = 0.2;
+const BILLING_MONTHS_PER_YEAR = 12;
+
+const formatVnd = (value: number, locale: "vi" | "en") =>
+  `${new Intl.NumberFormat(locale === "vi" ? "vi-VN" : "en-US").format(value)}đ`;
+
+const getDiscountedMonthlyPrice = (monthlyPrice: number) =>
+  Math.round(monthlyPrice * (1 - BILLING_DISCOUNT_RATE));
+
+const getAnnualTotalPrice = (monthlyPrice: number) =>
+  getDiscountedMonthlyPrice(monthlyPrice) * BILLING_MONTHS_PER_YEAR;
+
 export function AuthShowcase({
   onOpenLogin,
   onOpenRegister,
@@ -39,6 +53,22 @@ export function AuthShowcase({
   const { locale } = useLocale();
   const isVi = locale === "vi";
   const isLight = tone === "light";
+  const [billingCycle, setBillingCycle] = useState<"monthly" | "annual">(
+    "monthly",
+  );
+  const billingCopy = isVi
+    ? {
+        monthly: "Tháng",
+        annual: "Năm",
+        save: "Giảm 20%",
+        billedAnnually: "Thanh toán theo năm",
+      }
+    : {
+        monthly: "Monthly",
+        annual: "Annual",
+        save: "Save 20%",
+        billedAnnually: "Billed annually",
+      };
 
   const copy = isVi
     ? {
@@ -1385,13 +1415,104 @@ export function AuthShowcase({
             <p className={cn("mx-auto mt-6 max-w-176 text-[16px] leading-7", isLight ? "text-slate-600" : "text-slate-400")}>
               {copy.pricing.description}
             </p>
+
+            <div className="relative mx-auto mt-8 inline-flex h-14 min-w-[18rem] items-center rounded-full border border-white/10 bg-white/5 p-1 shadow-[0_16px_36px_rgba(3,8,20,0.18)]">
+              <span
+                aria-hidden="true"
+                className={cn(
+                  "absolute inset-y-1 left-1 w-[calc(50%-1rem)] rounded-full bg-[linear-gradient(90deg,#ff7a00_0%,#ff5a00_100%)] shadow-[0_14px_28px_rgba(255,106,0,0.3)] transition-transform duration-300 ease-out",
+                  billingCycle === "annual" && "translate-x-full",
+                )}
+              />
+              <button
+                type="button"
+                onClick={() => setBillingCycle("monthly")}
+                aria-pressed={billingCycle === "monthly"}
+                className={cn(
+                  "relative z-10 flex-1 rounded-full px-4 py-2 text-left text-[12px] font-bold uppercase tracking-[0.16em] transition-all",
+                  billingCycle === "monthly"
+                    ? "text-white"
+                    : isLight
+                      ? "text-slate-500 hover:text-slate-800"
+                      : "text-slate-400 hover:text-white",
+                )}
+              >
+                {billingCopy.monthly}
+              </button>
+              <button
+                type="button"
+                onClick={() => setBillingCycle("annual")}
+                aria-pressed={billingCycle === "annual"}
+                className={cn(
+                  "relative z-10 flex-1 rounded-full px-4 py-2 text-right text-[12px] font-bold uppercase tracking-[0.16em] transition-all",
+                  billingCycle === "annual"
+                    ? "text-white"
+                    : isLight
+                      ? "text-slate-500 hover:text-slate-800"
+                      : "text-slate-400 hover:text-white",
+                )}
+              >
+                <span className="inline-flex items-center gap-2">
+                  <span>{billingCopy.annual}</span>
+                  <span className="rounded-full border border-emerald-400/20 bg-emerald-400/10 px-2 py-0.5 text-[10px] font-black uppercase tracking-[0.14em] text-emerald-300">
+                    {billingCopy.save}
+                  </span>
+                </span>
+              </button>
+              <button
+                type="button"
+                aria-label={
+                  isVi
+                    ? "Đổi giữa thanh toán theo tháng và theo năm"
+                    : "Toggle between monthly and annual billing"
+                }
+                onClick={() =>
+                  setBillingCycle((current) =>
+                    current === "monthly" ? "annual" : "monthly",
+                  )
+                }
+                className={cn(
+                  "absolute left-1/2 z-20 inline-flex h-8 w-8 -translate-x-1/2 items-center justify-center rounded-full border border-white/10 bg-slate-950 text-white shadow-[0_10px_24px_rgba(15,23,42,0.35)] transition-transform duration-300 ease-out",
+                  billingCycle === "annual" &&
+                    "translate-x-[calc(-50%+0.35rem)]",
+                )}
+              >
+                <ArrowLeftRight size={13} />
+              </button>
+            </div>
           </div>
 
           <div className="mt-14 grid gap-5 md:grid-cols-2 xl:grid-cols-3">
             {copy.pricing.plans.map((plan) => {
               const isFeatured = !!plan.featured;
               const isFree = plan.tier === "free";
+              const isAnnualCycle = billingCycle === "annual";
+              const monthlyPrice =
+                plan.tier === "free"
+                  ? 0
+                  : plan.tier === "pro"
+                    ? 149000
+                    : 299000;
+              const discountedMonthlyPrice = isFree
+                ? 0
+                : getDiscountedMonthlyPrice(monthlyPrice);
+              const annualTotalPrice = isFree
+                ? 0
+                : getAnnualTotalPrice(monthlyPrice);
+              const previousAnnualTotal = isFree
+                ? null
+                : monthlyPrice * BILLING_MONTHS_PER_YEAR;
               const buttonAction = onOpenRegister;
+              const displayPrice = isFree
+                ? 0
+                : isAnnualCycle
+                  ? discountedMonthlyPrice
+                  : monthlyPrice;
+              const displayPeriod = isFree
+                ? ""
+                : isVi
+                  ? "/ tháng"
+                  : "/ mo";
 
               return (
                 <div
@@ -1427,22 +1548,29 @@ export function AuthShowcase({
                       {plan.name}
                     </div>
 
-                    {plan.previousPrice && (
+                    {isAnnualCycle && !isFree && (
                       <div className="mt-5 text-[12px] font-semibold tracking-[0.02em] text-slate-500 line-through">
-                        {plan.previousPrice}
+                        {formatVnd(previousAnnualTotal ?? 0, locale)}
                       </div>
                     )}
 
                     <div className="mt-5 flex items-end gap-2">
                       <span className={cn("text-[3.1rem] font-bold leading-none tracking-[-0.05em]", isLight ? "text-slate-950" : "text-white")}>
-                        {plan.price}
+                        {isFree ? plan.price : formatVnd(displayPrice, locale)}
                       </span>
-                      {plan.period && (
+                      {displayPeriod && (
                         <span className="pb-2 text-[0.95rem] font-medium text-slate-400">
-                          {plan.period}
+                          {displayPeriod}
                         </span>
                       )}
                     </div>
+
+                    {isAnnualCycle && !isFree && (
+                      <p className="mt-2 text-[12px] font-medium text-slate-500">
+                        {formatVnd(annualTotalPrice, locale)}{" "}
+                        {billingCopy.billedAnnually}
+                      </p>
+                    )}
 
                     <p className="mt-5 min-h-12 text-[14px] leading-7 text-slate-400">
                       {plan.summary}

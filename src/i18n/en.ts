@@ -487,8 +487,10 @@ export const en = {
     status: {
       eyebrow: "Current status",
       free: "Free plan",
-      monthly: "Monthly plan",
-      yearly: "Yearly plan",
+      monthly: "Pro plan",
+      yearly: "Business plan",
+      pro: "Pro plan",
+      business: "Business plan",
       activeUntil: "Plan active until {date}.",
       badgeFree: "Free",
       badgeActive: "Active",
