@@ -5,7 +5,9 @@ on:
     branches:
       - staging
       - main
+  push:
   workflow_dispatch:
+  merge_group:
 
 concurrency:
   group: ci-${{ github.ref }}
