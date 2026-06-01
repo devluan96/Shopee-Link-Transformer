@@ -34,6 +34,10 @@ export const renderLinkLandingPage = (
   link: PublicLinkRecord,
   canonicalUrl: string,
   clickTrackingUrl: string,
+  options?: {
+    primaryRedirectUrl?: string;
+    secondaryRedirectUrl?: string;
+  },
 ) => {
   const title = capitalizeFirstCharacter(
     link.custom_title?.trim() || "HotsNew Click",
@@ -46,6 +50,9 @@ export const renderLinkLandingPage = (
   const videoUrl = buildPublicVideoUrl(link.video_url);
   const originalUrl = link.original_url.trim();
   const secondaryUrl = link.secondary_url?.trim() || "";
+  const primaryTargetUrl = options?.primaryRedirectUrl?.trim() || originalUrl;
+  const secondaryTargetUrl =
+    options?.secondaryRedirectUrl?.trim() || secondaryUrl;
   const redirectDelayMs = normalizeRedirectDelayMs(link.redirect_delay_ms);
   const hasSecondaryRedirect = Boolean(secondaryUrl);
   const originBase = new URL(canonicalUrl).origin;
@@ -266,8 +273,8 @@ export const renderLinkLandingPage = (
         const secondaryActionButton = document.getElementById("secondaryActionButton");
         const secondaryGate = document.getElementById("secondaryGate");
         const secondaryGateButton = document.getElementById("secondaryGateButton");
-        const primaryTargetUrl = "${escapeJsString(originalUrl)}";
-        const secondaryTargetUrl = "${escapeJsString(secondaryUrl)}";
+        const primaryTargetUrl = "${escapeJsString(primaryTargetUrl)}";
+        const secondaryTargetUrl = "${escapeJsString(secondaryTargetUrl)}";
         const hasVideo = ${hasVideo ? "true" : "false"};
         const hasSecondaryRedirect = ${hasSecondaryRedirect ? "true" : "false"};
         const clickTrackingUrl = "${escapeJsString(clickTrackingUrl)}";
@@ -354,7 +361,7 @@ export const renderLinkLandingPage = (
         const openUrl = (url) => {
           if (!url) return;
           if (isAffiliateCommerceUrl(url)) {
-            window.location.assign(url);
+            window.location.replace(url);
             return;
           }
 

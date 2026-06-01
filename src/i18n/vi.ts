@@ -803,6 +803,29 @@ export const vi = {
       save: "Lưu danh sách",
       saving: "Đang lưu...",
     },
+    deepLinks: {
+      title: "Profile deep link thông minh",
+      description:
+        "Cấu hình template theo thiết bị để mobile có thể nhảy thẳng vào app đích, còn desktop vẫn có đường dự phòng an toàn.",
+      shopee: "Shopee",
+      tiktok: "TikTok",
+      shopeeHelp: "Template cho các link đích Shopee.",
+      tiktokHelp: "Template cho các link đích TikTok.",
+      enabled: "Đang bật",
+      disabled: "Đang tắt",
+      iosPlaceholder: "Template iOS, ví dụ shopee://open?url={{encodedUrl}}",
+      androidPlaceholder:
+        "Template Android, ví dụ intent://open?url={{encodedUrl}}",
+      desktopPlaceholder: "Template fallback cho desktop hoặc URL đích",
+      templateHelp:
+        "Dùng {{url}} hoặc {{encodedUrl}} làm placeholder cho URL đích. Để trống field nào thì sẽ dùng lại URL gốc.",
+      note:
+        "Profile chỉ áp dụng khi URL đích được nhận diện là Shopee hoặc TikTok.",
+      usePreset: "Dùng preset",
+      reset: "Khôi phục",
+      save: "Lưu profile",
+      saving: "Đang lưu...",
+    },
     accessLogs: {
       title: "Nhật ký truy cập",
       description: "Lịch sử truy cập gần đây trên toàn hệ thống.",
@@ -1190,9 +1213,9 @@ export const vi = {
       dropVideo: "Vui lòng thả đúng file video hợp lệ.",
       dropImage: "Vui lòng thả đúng file ảnh đại diện.",
       directModeImageRequired:
-        "Mobile TikTok direct mode yêu cầu ảnh đại diện.",
+        "Mobile direct mode yêu cầu ảnh đại diện.",
       directModeSecondaryDisabled:
-        "Mobile TikTok direct mode không hỗ trợ liên kết bước 2.",
+        "Mobile direct mode không hỗ trợ liên kết bước 2.",
     },
     page: {
       title: "Tạo trang đích mới",
@@ -1337,7 +1360,7 @@ export const vi = {
         "Tải ảnh đại diện lên {provider} thành công",
       thumbnailUrlPlaceholder: "Đường dẫn ảnh bìa...",
       thumbnailPreviewAlt: "Xem trước ảnh đại diện",
-      mobileDirectModeTitle: "Mobile TikTok direct mode",
+      mobileDirectModeTitle: "Mobile direct mode",
       mobileDirectModeDescription:
         "Bỏ landing video trên mobile để ưu tiên redirect thẳng sang app Shopee hoặc TikTok.",
       mobileDirectModeEnabled: "Đang bật",

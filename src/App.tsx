@@ -52,6 +52,7 @@ const PERSISTED_TABS: Tab[] = [
   "install",
   "pricing",
   "create",
+  "workflow",
   "list",
   "analytics",
   "team",
@@ -128,6 +129,11 @@ const Pricing = lazyWithChunkRetry(() =>
 const AdminPanel = lazyWithChunkRetry(() =>
   import("./components/admin/AdminPanel").then((m) => ({
     default: m.AdminPanel,
+  })),
+);
+const WorkflowEditor = lazyWithChunkRetry(() =>
+  import("./components/workflow/WorkflowEditor").then((m) => ({
+    default: m.WorkflowEditor,
   })),
 );
 const Analytics = lazyWithChunkRetry(() =>
@@ -556,6 +562,8 @@ export default function App() {
     fetchPaymentRequests,
     outputDomains,
     outputDomainsLoading,
+    deepLinkProfiles,
+    deepLinkProfilesLoading,
     handleApproveUser,
     handleUpdateSubscription,
     handleUpdateUserRole,
@@ -563,6 +571,7 @@ export default function App() {
     handleConfirmPaymentRequest,
     handleRejectPaymentRequest,
     updateOutputDomains,
+    updateDeepLinkProfiles,
   } = useAdmin({ user, profile, fetchWithAuth, activeTab });
 
   // Clipboard Hook
@@ -703,6 +712,7 @@ export default function App() {
       "dashboard",
       "install",
       "pricing",
+      "workflow",
       "list",
       "analytics",
       "team",
@@ -802,6 +812,7 @@ export default function App() {
       install: "install",
       pricing: "pricing",
       create: "create",
+      workflow: "workflow",
       list: "list",
       analytics: "analytics",
       team: "team",
@@ -920,6 +931,17 @@ export default function App() {
         onVerify={verifyTwoFactorChallenge}
         onLogout={handleLogout}
       />
+    );
+  }
+
+  if (activeTab === "workflow") {
+    return (
+      <Suspense fallback={<TabLoading />}>
+        <WorkflowEditor
+          onBack={() => setActiveTab("dashboard")}
+          fetchWithAuth={fetchWithAuth}
+        />
+      </Suspense>
     );
   }
 
@@ -1211,22 +1233,22 @@ export default function App() {
             ))}
 
           {activeTab === "admin" && isAdminRole && (
-          <AdminPanel
-            allUsers={allUsers.filter(
-              (u) => u.id !== user?.id,
-            )}
-            adminLoading={adminLoading}
-            onRefreshUsers={fetchAllUsers}
-            onRefreshPayments={fetchPaymentRequests}
-            onRefreshSecurity={refreshAdminSecurity}
-            onUpdateUserRole={handleUpdateUserRole}
-            paymentRequests={paymentRequests}
-            paymentRequestsLoading={paymentRequestsLoading}
-            adminAccessLogs={adminAccessLogs}
+            <AdminPanel
+              allUsers={allUsers.filter((u) => u.id !== user?.id)}
+              adminLoading={adminLoading}
+              onRefreshUsers={fetchAllUsers}
+              onRefreshPayments={fetchPaymentRequests}
+              onRefreshSecurity={refreshAdminSecurity}
+              onUpdateUserRole={handleUpdateUserRole}
+              paymentRequests={paymentRequests}
+              paymentRequestsLoading={paymentRequestsLoading}
+              adminAccessLogs={adminAccessLogs}
               blockedIps={blockedIps}
               adminSecurityLoading={adminSecurityLoading}
               outputDomains={outputDomains}
               outputDomainsLoading={outputDomainsLoading}
+              deepLinkProfiles={deepLinkProfiles}
+              deepLinkProfilesLoading={deepLinkProfilesLoading}
               onBlockIp={blockIp}
               onUnblockIp={unblockIp}
               onlineUserIds={onlineUserIds}
@@ -1236,6 +1258,7 @@ export default function App() {
               onConfirmPaymentRequest={handleConfirmPaymentRequest}
               onRejectPaymentRequest={handleRejectPaymentRequest}
               onUpdateOutputDomains={updateOutputDomains}
+              onUpdateDeepLinkProfiles={updateDeepLinkProfiles}
               fetchWithAuth={fetchWithAuth}
             />
           )}

@@ -12,6 +12,7 @@ import {
   Link2,
   Search,
   Shield,
+  Smartphone,
   Trash2,
   Unlock,
   User,
@@ -26,11 +27,39 @@ import { toast } from "sonner";
 import {
   AccessLogEntry,
   BlockedIpEntry,
+  DeepLinkProfiles,
   ManualPaymentRequest,
   UserProfile,
 } from "@/src/types";
 import { useLocale } from "@/src/hooks/useLocale";
 import { DEFAULT_OUTPUT_DOMAIN } from "@/src/lib/appConfig";
+import { SocialPublisherPanel } from "./SocialPublisherPanel";
+
+const DEFAULT_DEEP_LINK_PROFILES: DeepLinkProfiles = {
+  shopee: {
+    enabled: true,
+    ios: "shopee://open?url={{encodedUrl}}",
+    android: "intent://open?url={{encodedUrl}}",
+    desktop: "{{url}}",
+  },
+  tiktok: {
+    enabled: true,
+    ios: "tiktok://open?url={{encodedUrl}}",
+    android: "intent://open?url={{encodedUrl}}",
+    desktop: "{{url}}",
+  },
+};
+
+const mergeDeepLinkProfiles = (profiles: DeepLinkProfiles) => ({
+  shopee: {
+    ...DEFAULT_DEEP_LINK_PROFILES.shopee,
+    ...profiles.shopee,
+  },
+  tiktok: {
+    ...DEFAULT_DEEP_LINK_PROFILES.tiktok,
+    ...profiles.tiktok,
+  },
+});
 
 interface UserLink {
   id: string;
@@ -63,6 +92,8 @@ interface AdminPanelProps {
   adminSecurityLoading: boolean;
   outputDomains: string[];
   outputDomainsLoading: boolean;
+  deepLinkProfiles: DeepLinkProfiles;
+  deepLinkProfilesLoading: boolean;
   onBlockIp: (payload: {
     ipAddress: string;
     reason?: string;
@@ -87,6 +118,7 @@ interface AdminPanelProps {
     input: RequestInfo | URL,
     init?: RequestInit,
   ) => Promise<Response>;
+  onUpdateDeepLinkProfiles: (profiles: DeepLinkProfiles) => Promise<void>;
 }
 
 export const AdminPanel = ({
@@ -99,6 +131,8 @@ export const AdminPanel = ({
   adminSecurityLoading,
   outputDomains,
   outputDomainsLoading,
+  deepLinkProfiles,
+  deepLinkProfilesLoading,
   onBlockIp,
   onUnblockIp,
   onUpdateOutputDomains,
@@ -113,6 +147,7 @@ export const AdminPanel = ({
   onConfirmPaymentRequest,
   onRejectPaymentRequest,
   fetchWithAuth,
+  onUpdateDeepLinkProfiles,
 }: AdminPanelProps) => {
   const { locale, messages, t } = useLocale();
   const dateLocale = locale === "vi" ? "vi-VN" : "en-US";
@@ -208,18 +243,26 @@ export const AdminPanel = ({
   const [domainDraft, setDomainDraft] = React.useState("");
   const [domainList, setDomainList] = React.useState<string[]>(outputDomains);
   const [savingDomains, setSavingDomains] = React.useState(false);
+  const [deepLinkDraft, setDeepLinkDraft] = React.useState<DeepLinkProfiles>(
+    mergeDeepLinkProfiles(deepLinkProfiles),
+  );
+  const [savingDeepLinks, setSavingDeepLinks] = React.useState(false);
   const [selectedUserRoleDraft, setSelectedUserRoleDraft] =
     React.useState<AdminRole>("user");
   const [selectedUserPlanDraft, setSelectedUserPlanDraft] = React.useState<
     "free" | "monthly" | "yearly"
   >("free");
   const [adminView, setAdminView] = React.useState<
-    "users" | "payments" | "system"
+    "users" | "payments" | "social" | "system"
   >("users");
 
   React.useEffect(() => {
     setDomainList(outputDomains);
   }, [outputDomains]);
+
+  React.useEffect(() => {
+    setDeepLinkDraft(mergeDeepLinkProfiles(deepLinkProfiles));
+  }, [deepLinkProfiles]);
 
   React.useEffect(() => {
     if (!selectedUser) return;
@@ -562,6 +605,57 @@ export const AdminPanel = ({
     });
   };
 
+  const updateDeepLinkTarget = (
+    platform: keyof DeepLinkProfiles,
+    field: "ios" | "android" | "desktop",
+    value: string,
+  ) => {
+    setDeepLinkDraft((current) => {
+      const currentTarget = current[platform] || {};
+      return {
+        ...current,
+        [platform]: {
+          ...currentTarget,
+          [field]: value,
+        },
+      };
+    });
+  };
+
+  const setDeepLinkEnabled = (
+    platform: keyof DeepLinkProfiles,
+    enabled: boolean,
+  ) => {
+    setDeepLinkDraft((current) => {
+      const currentTarget = current[platform] || {};
+      return {
+        ...current,
+        [platform]: {
+          ...currentTarget,
+          enabled,
+        },
+      };
+    });
+  };
+
+  const handleSaveDeepLinks = () => {
+    setConfirmAction({
+      title: "Save deep link profiles?",
+      description:
+        "Update smart deep link templates for Shopee and TikTok mobile routing?",
+      confirmLabel: "Save",
+      tone: "warning",
+      onConfirm: async () => {
+        setSavingDeepLinks(true);
+        try {
+          await onUpdateDeepLinkProfiles(deepLinkDraft);
+        } finally {
+          setSavingDeepLinks(false);
+        }
+      },
+    });
+  };
+
   const getStatusLabel = (status?: string) =>
     status === "approved" ? content.statuses.approved : content.statuses.pending;
 
@@ -761,6 +855,19 @@ export const AdminPanel = ({
         </button>
         <button
           type="button"
+          onClick={() => setAdminView("social")}
+          className={cn(
+            "inline-flex items-center gap-2 rounded-2xl px-5 py-3 text-sm font-black transition-all",
+            adminView === "social"
+              ? "bg-orange-600 text-white shadow-lg shadow-orange-200"
+              : "bg-white text-gray-600 shadow-sm ring-1 ring-gray-100 hover:bg-gray-50 dark:bg-slate-800 dark:text-slate-200 dark:ring-slate-700 dark:hover:bg-slate-700",
+          )}
+        >
+          <Globe size={18} />
+          Social publisher
+        </button>
+        <button
+          type="button"
           onClick={() => setAdminView("system")}
           className={cn(
             "inline-flex items-center gap-2 rounded-2xl px-5 py-3 text-sm font-black transition-all",
@@ -772,6 +879,25 @@ export const AdminPanel = ({
           <Shield size={18} />
           {viewCopy.systemTab}
         </button>
+      </div>
+
+      <div
+        className={cn(
+          "mb-8 grid grid-cols-1 gap-8 xl:grid-cols-[1.05fr_0.95fr]",
+          adminView !== "social" && "hidden",
+        )}
+      >
+        <section className="xl:col-span-2">
+          {fetchWithAuth ? (
+            <SocialPublisherPanel fetchWithAuth={fetchWithAuth} />
+          ) : (
+            <div className="rounded-[2.5rem] border border-gray-100 bg-white p-8 shadow-sm dark:border-slate-700 dark:bg-slate-800">
+              <p className="text-sm font-medium text-gray-500 dark:text-slate-400">
+                Social publisher requires fetchWithAuth.
+              </p>
+            </div>
+          )}
+        </section>
       </div>
 
       <div
@@ -839,6 +965,121 @@ export const AdminPanel = ({
               className="rounded-2xl bg-gray-900 px-6 py-4 text-xs font-black uppercase tracking-widest text-white disabled:opacity-60"
             >
               {savingDomains ? content.domains.saving : content.domains.save}
+            </button>
+          </div>
+        </section>
+
+        <section className="rounded-[2.5rem] border border-gray-100 bg-white p-8 shadow-sm dark:border-slate-700 dark:bg-slate-800 xl:col-span-2">
+          <div className="mb-6 flex items-center gap-3">
+            <Smartphone className="text-emerald-500" size={20} />
+            <div className="min-w-0 flex-1">
+              <h3 className="text-xl font-black text-gray-900 dark:text-slate-100">
+                {content.deepLinks.title}
+              </h3>
+              <p className="text-sm font-medium text-gray-500 dark:text-slate-400">
+                {content.deepLinks.description}
+              </p>
+            </div>
+          </div>
+
+          <div className="grid gap-5 xl:grid-cols-2">
+            {(["shopee", "tiktok"] as const).map((platform) => {
+              const target = deepLinkDraft[platform];
+              const enabled = !!target?.enabled;
+              const platformLabel =
+                platform === "shopee"
+                  ? content.deepLinks.shopee
+                  : content.deepLinks.tiktok;
+
+              return (
+                <div
+                  key={platform}
+                  className={cn(
+                    "rounded-[1.75rem] border p-5 shadow-sm transition-colors",
+                    enabled
+                      ? "border-emerald-200 bg-emerald-50/60 dark:border-emerald-900/40 dark:bg-emerald-950/20"
+                      : "border-gray-100 bg-gray-50/80 dark:border-slate-700 dark:bg-slate-900/50",
+                  )}
+                >
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <h4 className="text-base font-black text-gray-900 dark:text-slate-100">
+                        {platformLabel}
+                      </h4>
+                      <p className="mt-1 text-xs font-medium text-gray-500 dark:text-slate-400">
+                        {platform === "shopee"
+                          ? content.deepLinks.shopeeHelp
+                          : content.deepLinks.tiktokHelp}
+                      </p>
+                    </div>
+                    <label className="flex cursor-pointer items-center gap-2 rounded-full bg-white px-3 py-2 text-xs font-black uppercase tracking-widest text-gray-600 shadow-sm ring-1 ring-gray-200 dark:bg-slate-950 dark:text-slate-300 dark:ring-slate-700">
+                      <input
+                        type="checkbox"
+                        checked={enabled}
+                        onChange={(e) =>
+                          setDeepLinkEnabled(platform, e.target.checked)
+                        }
+                        className="h-4 w-4 accent-emerald-500"
+                      />
+                      <span>
+                        {enabled
+                          ? content.deepLinks.enabled
+                          : content.deepLinks.disabled}
+                      </span>
+                    </label>
+                  </div>
+
+                  <div className="mt-4 space-y-3">
+                    <input
+                      type="text"
+                      value={target?.ios || ""}
+                      onChange={(e) =>
+                        updateDeepLinkTarget(platform, "ios", e.target.value)
+                      }
+                      placeholder={content.deepLinks.iosPlaceholder}
+                      className="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm font-medium text-gray-900 placeholder:text-gray-400 focus:border-emerald-500 focus:outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+                    />
+                    <input
+                      type="text"
+                      value={target?.android || ""}
+                      onChange={(e) =>
+                        updateDeepLinkTarget(platform, "android", e.target.value)
+                      }
+                      placeholder={content.deepLinks.androidPlaceholder}
+                      className="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm font-medium text-gray-900 placeholder:text-gray-400 focus:border-emerald-500 focus:outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+                    />
+                    <input
+                      type="text"
+                      value={target?.desktop || ""}
+                      onChange={(e) =>
+                        updateDeepLinkTarget(platform, "desktop", e.target.value)
+                      }
+                      placeholder={content.deepLinks.desktopPlaceholder}
+                      className="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm font-medium text-gray-900 placeholder:text-gray-400 focus:border-emerald-500 focus:outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+                    />
+                  </div>
+
+                  <p className="mt-3 text-xs leading-5 text-gray-500 dark:text-slate-400">
+                    {content.deepLinks.templateHelp}
+                  </p>
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="mt-6 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <p className="text-xs font-medium text-gray-500 dark:text-slate-400">
+              {content.deepLinks.note}
+            </p>
+            <button
+              type="button"
+              onClick={handleSaveDeepLinks}
+              disabled={savingDeepLinks || deepLinkProfilesLoading}
+              className="rounded-2xl bg-emerald-600 px-6 py-4 text-xs font-black uppercase tracking-widest text-white disabled:opacity-60"
+            >
+              {savingDeepLinks
+                ? content.deepLinks.saving
+                : content.deepLinks.save}
             </button>
           </div>
         </section>

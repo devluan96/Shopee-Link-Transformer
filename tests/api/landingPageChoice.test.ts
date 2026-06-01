@@ -7,6 +7,7 @@ const sampleLink: PublicLinkRecord = {
   id: "link-1",
   short_code: "test11",
   original_url: "https://example.com/original",
+  secondary_url: "https://shopee.vn/secondary",
   custom_title: "test11",
   custom_description: "mo ta test",
   custom_image_url: "https://cdn.example.com/preview.jpg",
@@ -79,7 +80,7 @@ test("renderChoiceLandingPage attaches playback listeners before starting previe
   );
 });
 
-test("renderChoiceLandingPage sends primary overlay clicks through server redirect", () => {
+test("renderChoiceLandingPage sends primary overlay clicks directly to the target", () => {
   const html = renderChoiceLandingPage(
     sampleLink,
     "https://test.hotsnew.click/test11",
@@ -88,11 +89,37 @@ test("renderChoiceLandingPage sends primary overlay clicks through server redire
 
   assert.match(
     html,
-    /<a id="overlay" class="overlay delayed-hidden" href="https:\/\/test\.hotsnew\.click\/api\/v1\/links\/link-1\/open\?stage=primary"/,
+    /<a id="overlay" class="overlay delayed-hidden" href="https:\/\/example\.com\/original"/,
   );
   assert.match(
     html,
-    /const secondaryRedirectUrl = "https:\/\/test\.hotsnew\.click\/api\/v1\/links\/link-1\/open\?stage=secondary";/,
+    /const secondaryRedirectUrl = "https:\/\/shopee\.vn\/secondary";/,
   );
-  assert.doesNotMatch(html, /window\.location\.assign\(url\)/);
+  assert.match(
+    html,
+    /const outboundTrackingUrl = "https:\/\/test\.hotsnew\.click\/api\/v1\/links\/link-1\/track-outbound";/,
+  );
+  assert.match(html, /trackPrimaryClick\(\);/);
+  assert.match(html, /trackSecondaryOutbound\(\);/);
+});
+
+test("renderChoiceLandingPage accepts redirect overrides", () => {
+  const html = renderChoiceLandingPage(
+    sampleLink,
+    "https://test.hotsnew.click/test11",
+    "https://test.hotsnew.click/api/v1/links/link-1/track",
+    {
+      primaryRedirectUrl: "shopee://open?url=https%3A%2F%2Fexample.com%2Foriginal",
+      secondaryRedirectUrl: "tiktok://open?url=https%3A%2F%2Fshopee.vn%2Fsecondary",
+    },
+  );
+
+  assert.match(
+    html,
+    /<a id="overlay" class="overlay delayed-hidden" href="shopee:\/\/open\?url=https%3A%2F%2Fexample\.com%2Foriginal"/,
+  );
+  assert.match(
+    html,
+    /const secondaryRedirectUrl = "tiktok:\/\/open\?url=https%3A%2F%2Fshopee\.vn%2Fsecondary";/,
+  );
 });
