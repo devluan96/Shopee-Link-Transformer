@@ -52,8 +52,13 @@ const getEncryptionKey = () => {
   const rawKey =
     process.env.SECURITY_ENCRYPTION_KEY ||
     process.env.APP_SECRET ||
-    process.env.SUPABASE_SERVICE_ROLE_KEY ||
-    "hotsnew-dev-security-key";
+    process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+  if (!rawKey) {
+    throw new Error(
+      "SECURITY_ENCRYPTION_KEY is not configured. Set SECURITY_ENCRYPTION_KEY environment variable to encrypt sensitive data."
+    );
+  }
 
   return crypto.createHash("sha256").update(rawKey).digest();
 };
