@@ -9,8 +9,8 @@ import * as featureLimitService from "../services/featureLimitService.js";
 import * as notificationService from "../services/notificationService.js";
 import {
   attachTrackedSourcesToLinks,
+  countDisplayableOutboundClicks,
   fetchOutboundEventsForLinkIds,
-  filterRealOutboundEvents,
 } from "../utils/clickTracking.js";
 
 const router = Router();
@@ -591,11 +591,12 @@ router.get(
 
       const linkIds = links.map((l: any) => l.id);
 
-      const outboundEvents = filterRealOutboundEvents(
-        await fetchOutboundEventsForLinkIds(supabase, linkIds),
+      const outboundEvents = await fetchOutboundEventsForLinkIds(
+        supabase,
+        linkIds,
       );
 
-      return res.json({ clicks: outboundEvents.length });
+      return res.json({ clicks: countDisplayableOutboundClicks(outboundEvents) });
     } catch (e: any) {
       return res.status(500).json({ error: e.message });
     }
@@ -613,13 +614,14 @@ router.get(
 
       console.log("[API] Fetching click count for link:", linkId);
 
-      const outboundEvents = filterRealOutboundEvents(
-        await fetchOutboundEventsForLinkIds(supabase, [linkId]),
-      );
+      const outboundEvents = await fetchOutboundEventsForLinkIds(supabase, [
+        linkId,
+      ]);
 
-      console.log("[API] Click count result:", outboundEvents.length);
+      const clicks = countDisplayableOutboundClicks(outboundEvents);
+      console.log("[API] Click count result:", clicks);
 
-      return res.json({ clicks: outboundEvents.length });
+      return res.json({ clicks });
     } catch (e: any) {
       console.error("[API] Error fetching click count:", e);
       return res.status(500).json({ error: e.message });

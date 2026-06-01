@@ -192,3 +192,43 @@ test("summarizeFocusedAnalytics compares 7-day data against the previous 7 days"
     ["2026-05-20", "2026-05-21"],
   );
 });
+
+test("summaries ignore non-Shopee and non-TikTok outbound events", () => {
+  const referenceDate = new Date("2026-05-21T02:00:00.000Z");
+  const events = [
+    {
+      link_id: "link-1",
+      destination_url: "https://shopee.vn/product/1",
+      source: "facebook",
+      created_at: "2026-05-20T18:30:00.000Z",
+    },
+    {
+      link_id: "link-2",
+      destination_url: "https://www.tiktok.com/@demo/video/123",
+      source: "tiktok",
+      created_at: "2026-05-20T18:40:00.000Z",
+    },
+    {
+      link_id: "link-3",
+      destination_url: "https://example.com/article",
+      source: "direct",
+      created_at: "2026-05-20T18:50:00.000Z",
+    },
+  ];
+
+  const outboundSummary = summarizeOutboundEvents(events as any, referenceDate);
+  const focusedSummary = summarizeFocusedAnalytics(events as any, {}, referenceDate);
+
+  assert.equal(outboundSummary.totalClicks, 2);
+  assert.equal(outboundSummary.todayClicks, 2);
+  assert.equal(outboundSummary.totalShopeeClicks, 1);
+  assert.equal(outboundSummary.totalTiktokClicks, 1);
+
+  assert.equal(focusedSummary.totalClicks, 2);
+  assert.equal(focusedSummary.totalShopeeClicks, 1);
+  assert.equal(focusedSummary.totalTiktokClicks, 1);
+  assert.deepEqual(
+    focusedSummary.history,
+    [{ date: "2026-05-21", clicks: 2 }],
+  );
+});

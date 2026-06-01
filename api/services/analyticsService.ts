@@ -1,7 +1,7 @@
 import { SupabaseClient } from "../config/supabase.js";
 import {
   fetchOutboundEventsForLinkIds,
-  filterRealOutboundEvents,
+  filterDisplayableOutboundEvents,
   isShopeeDestinationUrl,
   isTikTokDestinationUrl,
 } from "../utils/clickTracking.js";
@@ -114,6 +114,7 @@ export const summarizeFocusedAnalytics = (
   filter: AnalyticsFilter = {},
   referenceDate = new Date(),
 ): FocusedAnalyticsSummary => {
+  const displayableEvents = filterDisplayableOutboundEvents(events as any[]);
   const source = filter.source || "all";
   const period = filter.period || "30d";
   const dayCount = getPeriodDayCount(period);
@@ -128,7 +129,7 @@ export const summarizeFocusedAnalytics = (
   let totalTiktokClicks = 0;
   let previousWindowClicks = 0;
 
-  events.forEach((event) => {
+  displayableEvents.forEach((event) => {
     if (!isSourceMatch(event, source) || !event.created_at) {
       return;
     }
@@ -196,6 +197,7 @@ export const summarizeOutboundEvents = (
   events: OutboundEventLike[],
   referenceDate = new Date(),
 ): OutboundEventSummary => {
+  const displayableEvents = filterDisplayableOutboundEvents(events as any[]);
   const today = new Date(referenceDate);
   const yesterday = new Date(referenceDate.getTime() - 24 * 60 * 60 * 1000);
   const todayKey = toVietnamDateKey(today);
@@ -223,7 +225,7 @@ export const summarizeOutboundEvents = (
   let last30DaysTiktokClicks = 0;
   let previousWindowClicks = 0;
 
-  events.forEach((event) => {
+  displayableEvents.forEach((event) => {
     const isShopee = isShopeeDestinationUrl(event.destination_url);
     const isTikTok = isTikTokDestinationUrl(event.destination_url);
     const linkId = event.link_id || undefined;
@@ -366,7 +368,7 @@ export const getUserStats = async (
     ]),
   );
 
-  const clicks = filterRealOutboundEvents(
+  const clicks = filterDisplayableOutboundEvents(
     await fetchOutboundEventsForLinkIds(supabase, linkIds),
   );
   const summary = summarizeOutboundEvents(clicks);
@@ -415,7 +417,7 @@ export const getUserAnalytics = async (
   }
 
   const linkIds = links.map((l: any) => l.id);
-  const clicks = filterRealOutboundEvents(
+  const clicks = filterDisplayableOutboundEvents(
     await fetchOutboundEventsForLinkIds(supabase, linkIds),
   );
   const summary = summarizeFocusedAnalytics(clicks, filter);
