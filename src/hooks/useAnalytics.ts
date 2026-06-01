@@ -7,6 +7,7 @@ import {
   UserProfile,
 } from "@/src/types";
 import { toast } from "sonner";
+import { supabase } from "@/src/lib/supabase";
 
 interface UseAnalyticsProps {
   user: User | null;
@@ -151,6 +152,33 @@ export function useAnalytics({
     setAnalyticsUpdatedAt(null);
     setAnalyticsDirty(!!user);
   }, [focusContext?.source, focusContext?.period, user?.id]);
+
+  useEffect(() => {
+    if (!user?.id || !workspaceResolved) return;
+
+    const channel = supabase
+      .channel(`analytics-links-sync:${user.id}:${currentWorkspaceId || "all"}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "links",
+          ...(currentWorkspaceId
+            ? { filter: `workspace_id=eq.${currentWorkspaceId}` }
+            : {}),
+        },
+        () => {
+          setStatsDirty(true);
+          setAnalyticsDirty(true);
+        },
+      )
+      .subscribe();
+
+    return () => {
+      void supabase.removeChannel(channel);
+    };
+  }, [currentWorkspaceId, user?.id, workspaceResolved]);
 
   useEffect(() => {
     const isAdminRole = profile?.role === "admin";
