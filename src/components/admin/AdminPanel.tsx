@@ -33,7 +33,6 @@ import {
 } from "@/src/types";
 import { useLocale } from "@/src/hooks/useLocale";
 import { DEFAULT_OUTPUT_DOMAIN } from "@/src/lib/appConfig";
-import { SocialPublisherPanel } from "./SocialPublisherPanel";
 
 const DEFAULT_DEEP_LINK_PROFILES: DeepLinkProfiles = {
   shopee: {
@@ -60,6 +59,14 @@ const mergeDeepLinkProfiles = (profiles: DeepLinkProfiles) => ({
     ...profiles.tiktok,
   },
 });
+
+const SocialPublisherUnavailable = () => (
+  <div className="rounded-[2.5rem] border border-gray-100 bg-white p-8 shadow-sm dark:border-slate-700 dark:bg-slate-800">
+    <p className="text-sm font-medium text-gray-500 dark:text-slate-400">
+      Social publisher is currently unavailable in this build.
+    </p>
+  </div>
+);
 
 interface UserLink {
   id: string;
@@ -888,15 +895,7 @@ export const AdminPanel = ({
         )}
       >
         <section className="xl:col-span-2">
-          {fetchWithAuth ? (
-            <SocialPublisherPanel fetchWithAuth={fetchWithAuth} />
-          ) : (
-            <div className="rounded-[2.5rem] border border-gray-100 bg-white p-8 shadow-sm dark:border-slate-700 dark:bg-slate-800">
-              <p className="text-sm font-medium text-gray-500 dark:text-slate-400">
-                Social publisher requires fetchWithAuth.
-              </p>
-            </div>
-          )}
+          <SocialPublisherUnavailable />
         </section>
       </div>
 
