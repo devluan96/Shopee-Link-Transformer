@@ -205,7 +205,6 @@ export type Tab =
   | "install"
   | "pricing"
   | "create"
-  | "workflow"
   | "list"
   | "analytics"
   | "team"

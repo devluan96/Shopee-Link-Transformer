@@ -171,13 +171,13 @@ const prepareConvertPayload = (
   if (payload.mobileDirectMode) {
     if (!payload.customImageUrl?.trim()) {
       return {
-        error: "Mobile TikTok direct mode yêu cầu ảnh đại diện.",
+        error: "Mobile direct mode yêu cầu ảnh đại diện.",
       };
     }
 
     if (payload.secondaryUrl?.trim()) {
       return {
-        error: "Mobile TikTok direct mode không hỗ trợ liên kết bước 2.",
+        error: "Mobile direct mode không hỗ trợ liên kết bước 2.",
       };
     }
 

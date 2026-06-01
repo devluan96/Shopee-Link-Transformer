@@ -136,7 +136,13 @@ const defaultMediaUploadPlanRouteDeps: MediaUploadPlanRouteDeps = {
 };
 
 const resolveRequestedResourceType = (value: unknown) =>
-  value === "video" ? "video" : value === "image" ? "image" : "auto";
+  value === "video"
+    ? "video"
+    : value === "audio"
+      ? "audio"
+      : value === "image"
+        ? "image"
+        : "auto";
 
 export const createMediaUploadPlanHandler = (
   deps: Partial<MediaUploadPlanRouteDeps> = {},
