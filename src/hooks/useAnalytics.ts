@@ -138,6 +138,11 @@ export function useAnalytics({
   const refreshStats = useCallback(() => setStatsDirty(true), []);
   const refreshAnalytics = useCallback(() => setAnalyticsDirty(true), []);
 
+  const markClickDataDirty = useCallback(() => {
+    setStatsDirty(true);
+    setAnalyticsDirty(true);
+  }, []);
+
   useEffect(() => {
     setStats(emptyStats);
     setAnalyticsData(emptyAnalyticsData);
@@ -156,7 +161,7 @@ export function useAnalytics({
   useEffect(() => {
     if (!user?.id || !workspaceResolved) return;
 
-    const channel = supabase
+    const linkChannel = supabase
       .channel(`analytics-links-sync:${user.id}:${currentWorkspaceId || "all"}`)
       .on(
         "postgres_changes",
@@ -169,16 +174,49 @@ export function useAnalytics({
             : {}),
         },
         () => {
-          setStatsDirty(true);
-          setAnalyticsDirty(true);
+          markClickDataDirty();
+        },
+      )
+      .subscribe();
+
+    const outboundChannel = supabase
+      .channel(
+        `analytics-outbound-sync:${user.id}:${currentWorkspaceId || "all"}`,
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "link_outbound_events",
+        },
+        () => {
+          markClickDataDirty();
+        },
+      )
+      .subscribe();
+
+    const rawClickChannel = supabase
+      .channel(`analytics-clicks-sync:${user.id}:${currentWorkspaceId || "all"}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "clicks",
+        },
+        () => {
+          markClickDataDirty();
         },
       )
       .subscribe();
 
     return () => {
-      void supabase.removeChannel(channel);
+      void supabase.removeChannel(linkChannel);
+      void supabase.removeChannel(outboundChannel);
+      void supabase.removeChannel(rawClickChannel);
     };
-  }, [currentWorkspaceId, user?.id, workspaceResolved]);
+  }, [currentWorkspaceId, markClickDataDirty, user?.id, workspaceResolved]);
 
   useEffect(() => {
     const isAdminRole = profile?.role === "admin";
