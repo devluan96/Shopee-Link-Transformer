@@ -123,3 +123,15 @@ test("renderChoiceLandingPage accepts redirect overrides", () => {
     /const secondaryRedirectUrl = "tiktok:\/\/open\?url=https%3A%2F%2Fshopee\.vn%2Fsecondary";/,
   );
 });
+
+test("renderChoiceLandingPage ignores invalid persisted secondary state", () => {
+  const html = renderChoiceLandingPage(
+    sampleLink,
+    "https://test.hotsnew.click/test11",
+    "https://test.hotsnew.click/api/v1/links/link-1/track",
+  );
+
+  assert.match(html, /rawState === "undefined"/);
+  assert.match(html, /rawState === "null"/);
+  assert.match(html, /clearLandingState\(\);/);
+});

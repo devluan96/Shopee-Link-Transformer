@@ -439,12 +439,24 @@ export const renderChoiceLandingPage = (
         const syncLandingState = () => {
           try {
             const rawState = readSecondaryState();
-            if (!rawState) {
+            if (!rawState || rawState === "undefined" || rawState === "null") {
               awaitingSecondaryPlay = false;
               return;
             }
 
-            const parsedState = JSON.parse(rawState);
+            let parsedState: Record<string, unknown>;
+            try {
+              const parsed = JSON.parse(rawState);
+              if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+                clearLandingState();
+                return;
+              }
+              parsedState = parsed as Record<string, unknown>;
+            } catch {
+              clearLandingState();
+              return;
+            }
+
             const secondaryOpenedAt = Number(parsedState?.secondaryOpenedAt || 0);
             const secondaryAgeMs = Date.now() - secondaryOpenedAt;
 
