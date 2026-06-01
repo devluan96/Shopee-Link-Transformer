@@ -2,6 +2,7 @@ import { Router } from "express";
 import { authenticate, checkAdmin } from "../middleware/auth.js";
 import { getSupabase } from "../config/supabase.js";
 import * as appSettingsService from "../services/appSettingsService.js";
+import * as deepLinkService from "../services/deepLinkService.js";
 import * as securityService from "../services/securityService.js";
 import { AuthenticatedRequest } from "../types/index.js";
 
@@ -12,6 +13,16 @@ router.get("/settings/output-domains", authenticate, async (req, res) => {
     const supabase = getSupabase();
     const domains = await appSettingsService.getLinkOutputDomains(supabase);
     return res.json({ domains });
+  } catch (e: any) {
+    return res.status(500).json({ error: e.message });
+  }
+});
+
+router.get("/settings/deeplink-profiles", authenticate, async (req, res) => {
+  try {
+    const supabase = getSupabase();
+    const profiles = await deepLinkService.getLinkDeepLinkProfiles(supabase);
+    return res.json({ profiles });
   } catch (e: any) {
     return res.status(500).json({ error: e.message });
   }
@@ -36,6 +47,31 @@ router.put(
         metadata: { domains: updated },
       });
       return res.json({ domains: updated });
+    } catch (e: any) {
+      return res.status(400).json({ error: e.message });
+    }
+  },
+);
+
+router.put(
+  "/admin/settings/deeplink-profiles",
+  authenticate,
+  checkAdmin,
+  async (req: AuthenticatedRequest, res) => {
+    try {
+      const supabase = getSupabase();
+      const profiles = req.body?.profiles || {};
+      const updated = await deepLinkService.updateLinkDeepLinkProfiles(
+        supabase,
+        profiles,
+      );
+      await securityService.logAdminAction(supabase, {
+        actorUserId: req.authUser?.id || null,
+        actorEmail: req.authUser?.email || req.authProfile?.email || null,
+        action: "update_deeplink_profiles",
+        metadata: { profiles: updated },
+      });
+      return res.json({ profiles: updated });
     } catch (e: any) {
       return res.status(400).json({ error: e.message });
     }

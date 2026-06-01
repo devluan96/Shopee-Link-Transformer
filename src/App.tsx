@@ -52,6 +52,7 @@ const PERSISTED_TABS: Tab[] = [
   "install",
   "pricing",
   "create",
+  "workflow",
   "list",
   "analytics",
   "team",
@@ -156,6 +157,21 @@ const WorkspaceManager = lazyWithChunkRetry(() =>
 const TabLoading = () => (
   <div className="flex items-center justify-center min-h-100">
     <div className="w-12 h-12 border-4 border-orange-500/20 border-t-orange-500 rounded-full animate-spin" />
+  </div>
+);
+
+const WorkflowUnavailable = () => (
+  <div className="mx-auto mt-12 max-w-2xl rounded-[3rem] border border-gray-100 bg-white p-10 text-center shadow-sm dark:border-slate-700 dark:bg-slate-800">
+    <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-3xl bg-orange-50 text-orange-600 dark:bg-orange-500/10">
+      <Zap className="h-10 w-10" />
+    </div>
+    <h3 className="mb-3 text-2xl font-black text-gray-900 dark:text-slate-100">
+      Workflow editor is unavailable
+    </h3>
+    <p className="mx-auto max-w-lg text-sm font-medium leading-6 text-gray-500 dark:text-slate-400">
+      This build does not include the workflow editor bundle. The rest of the app
+      is available normally.
+    </p>
   </div>
 );
 
@@ -556,6 +572,8 @@ export default function App() {
     fetchPaymentRequests,
     outputDomains,
     outputDomainsLoading,
+    deepLinkProfiles,
+    deepLinkProfilesLoading,
     handleApproveUser,
     handleUpdateSubscription,
     handleUpdateUserRole,
@@ -563,6 +581,7 @@ export default function App() {
     handleConfirmPaymentRequest,
     handleRejectPaymentRequest,
     updateOutputDomains,
+    updateDeepLinkProfiles,
   } = useAdmin({ user, profile, fetchWithAuth, activeTab });
 
   // Clipboard Hook
@@ -703,6 +722,7 @@ export default function App() {
       "dashboard",
       "install",
       "pricing",
+      "workflow",
       "list",
       "analytics",
       "team",
@@ -802,6 +822,7 @@ export default function App() {
       install: "install",
       pricing: "pricing",
       create: "create",
+      workflow: "workflow",
       list: "list",
       analytics: "analytics",
       team: "team",
@@ -921,6 +942,10 @@ export default function App() {
         onLogout={handleLogout}
       />
     );
+  }
+
+  if (activeTab === "workflow") {
+    return <WorkflowUnavailable />;
   }
 
   return (
@@ -1211,22 +1236,22 @@ export default function App() {
             ))}
 
           {activeTab === "admin" && isAdminRole && (
-          <AdminPanel
-            allUsers={allUsers.filter(
-              (u) => u.id !== user?.id,
-            )}
-            adminLoading={adminLoading}
-            onRefreshUsers={fetchAllUsers}
-            onRefreshPayments={fetchPaymentRequests}
-            onRefreshSecurity={refreshAdminSecurity}
-            onUpdateUserRole={handleUpdateUserRole}
-            paymentRequests={paymentRequests}
-            paymentRequestsLoading={paymentRequestsLoading}
-            adminAccessLogs={adminAccessLogs}
+            <AdminPanel
+              allUsers={allUsers.filter((u) => u.id !== user?.id)}
+              adminLoading={adminLoading}
+              onRefreshUsers={fetchAllUsers}
+              onRefreshPayments={fetchPaymentRequests}
+              onRefreshSecurity={refreshAdminSecurity}
+              onUpdateUserRole={handleUpdateUserRole}
+              paymentRequests={paymentRequests}
+              paymentRequestsLoading={paymentRequestsLoading}
+              adminAccessLogs={adminAccessLogs}
               blockedIps={blockedIps}
               adminSecurityLoading={adminSecurityLoading}
               outputDomains={outputDomains}
               outputDomainsLoading={outputDomainsLoading}
+              deepLinkProfiles={deepLinkProfiles}
+              deepLinkProfilesLoading={deepLinkProfilesLoading}
               onBlockIp={blockIp}
               onUnblockIp={unblockIp}
               onlineUserIds={onlineUserIds}
@@ -1236,6 +1261,7 @@ export default function App() {
               onConfirmPaymentRequest={handleConfirmPaymentRequest}
               onRejectPaymentRequest={handleRejectPaymentRequest}
               onUpdateOutputDomains={updateOutputDomains}
+              onUpdateDeepLinkProfiles={updateDeepLinkProfiles}
               fetchWithAuth={fetchWithAuth}
             />
           )}

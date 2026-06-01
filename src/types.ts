@@ -49,6 +49,17 @@ export type LinkUpdatePayload = Omit<
   secondaryTargetType?: "shopee" | "tiktok";
 };
 
+export type DeepLinkPlatform = "shopee" | "tiktok";
+
+export interface DeepLinkDeviceTarget {
+  enabled?: boolean;
+  ios?: string;
+  android?: string;
+  desktop?: string;
+}
+
+export type DeepLinkProfiles = Partial<Record<DeepLinkPlatform, DeepLinkDeviceTarget>>;
+
 export type WorkspaceRole = "owner" | "editor" | "viewer";
 export type WorkspaceInvitationStatus =
   | "pending"
@@ -194,6 +205,7 @@ export type Tab =
   | "install"
   | "pricing"
   | "create"
+  | "workflow"
   | "list"
   | "analytics"
   | "team"

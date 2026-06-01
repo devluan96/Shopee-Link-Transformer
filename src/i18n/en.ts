@@ -794,6 +794,29 @@ export const en = {
       save: "Save list",
       saving: "Saving...",
     },
+    deepLinks: {
+      title: "Smart deep link profiles",
+      description:
+        "Configure device-specific templates so mobile traffic can jump into the target app while desktop keeps a safe fallback.",
+      shopee: "Shopee",
+      tiktok: "TikTok",
+      shopeeHelp: "Templates for Shopee destination links.",
+      tiktokHelp: "Templates for TikTok destination links.",
+      enabled: "Enabled",
+      disabled: "Disabled",
+      iosPlaceholder: "iOS template, for example shopee://open?url={{encodedUrl}}",
+      androidPlaceholder:
+        "Android template, for example intent://open?url={{encodedUrl}}",
+      desktopPlaceholder: "Desktop fallback template or destination URL",
+      templateHelp:
+        "Use {{url}} or {{encodedUrl}} as the destination placeholder. Leave a field empty to fall back to the original URL.",
+      note:
+        "Profiles only apply when the destination URL is detected as Shopee or TikTok.",
+      usePreset: "Use preset",
+      reset: "Reset",
+      save: "Save profiles",
+      saving: "Saving...",
+    },
     accessLogs: {
       title: "Access logs",
       description: "Recent access history across the entire system.",
@@ -1208,9 +1231,9 @@ export const en = {
       dropVideo: "Please drop a valid video file.",
       dropImage: "Please drop a valid image file for the thumbnail.",
       directModeImageRequired:
-        "Mobile TikTok direct mode requires a thumbnail image.",
+        "Mobile direct mode requires a thumbnail image.",
       directModeSecondaryDisabled:
-        "Mobile TikTok direct mode does not support the step-2 URL.",
+        "Mobile direct mode does not support the step-2 URL.",
     },
     page: {
       title: "Create a new landing page",
@@ -1353,7 +1376,7 @@ export const en = {
         "Thumbnail uploaded to {provider} successfully",
       thumbnailUrlPlaceholder: "Cover image URL...",
       thumbnailPreviewAlt: "Thumbnail preview",
-      mobileDirectModeTitle: "Mobile TikTok direct mode",
+      mobileDirectModeTitle: "Mobile direct mode",
       mobileDirectModeDescription:
         "Skip the video landing flow on mobile and prioritize a direct redirect into the Shopee or TikTok app.",
       mobileDirectModeEnabled: "Enabled",

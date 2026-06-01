@@ -39,6 +39,10 @@ import {
   insertOutboundEvent,
 } from "./utils/clickTracking.js";
 import { handleClickNotification } from "./services/notificationService.js";
+import {
+  getLinkDeepLinkProfiles,
+  resolveDeepLinkUrl,
+} from "./services/deepLinkService.js";
 import { renderChoiceLandingPage } from "./templates/landingPageChoice.js";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -329,6 +333,12 @@ const trackSecondaryOpen = async (
   }
 };
 
+const resolveTrackedRedirectUrl = (
+  destinationUrl: string,
+  userAgent: string,
+  profiles: Awaited<ReturnType<typeof getLinkDeepLinkProfiles>>,
+) => resolveDeepLinkUrl(destinationUrl, userAgent, profiles);
+
 // A. MIDDLEWARES
 app.use(
   cors({
@@ -480,6 +490,20 @@ app.get("/s-choice/:shortCode", async (req, res) => {
 
     const publicBaseUrl =
       getPublicBaseUrl(req) || `${req.protocol}://${req.get("host")}`;
+    const deepLinkProfiles = await getLinkDeepLinkProfiles(supabase);
+    const userAgentString = typeof userAgent === "string" ? userAgent : "";
+    const primaryRedirectUrl = resolveTrackedRedirectUrl(
+      effectiveLink.original_url,
+      userAgentString,
+      deepLinkProfiles,
+    );
+    const secondaryRedirectUrl = effectiveLink.secondary_url?.trim()
+      ? resolveTrackedRedirectUrl(
+          effectiveLink.secondary_url,
+          userAgentString,
+          deepLinkProfiles,
+        )
+      : "";
     const canonicalUrl = buildPrettyLinkUrl(publicBaseUrl, {
       slug: effectiveLink.slug,
       shortCode: effectiveLink.short_code,
@@ -488,7 +512,7 @@ app.get("/s-choice/:shortCode", async (req, res) => {
     const clickTrackingUrl = `${publicBaseUrl}/api/v1/links/${link.id}/track`;
 
     if (!effectiveLink.video_url?.trim()) {
-      return res.redirect(effectiveLink.original_url);
+      return res.redirect(primaryRedirectUrl);
     }
 
     return res
@@ -498,8 +522,10 @@ app.get("/s-choice/:shortCode", async (req, res) => {
         renderChoiceLandingPage(effectiveLink, canonicalUrl, clickTrackingUrl, {
           experimental: true,
           preferImageCard: isMetaPreviewBot(
-            typeof userAgent === "string" ? userAgent : "",
+            userAgentString,
           ),
+          primaryRedirectUrl,
+          secondaryRedirectUrl,
         }),
       );
   } catch (e: any) {
@@ -624,6 +650,20 @@ const handlePublicShortLinkRequest = async (
     const isPreviewRequest =
       isPreviewBot || shouldIgnoreTrackingRequest(req);
     const shouldRenderPreviewPage = hasVideoLanding || isPreviewRequest;
+    const deepLinkProfiles = await getLinkDeepLinkProfiles(supabase);
+    const userAgentString = typeof userAgent === "string" ? userAgent : "";
+    const primaryRedirectUrl = resolveTrackedRedirectUrl(
+      effectiveLink.original_url,
+      userAgentString,
+      deepLinkProfiles,
+    );
+    const secondaryRedirectUrl = effectiveLink.secondary_url?.trim()
+      ? resolveTrackedRedirectUrl(
+          effectiveLink.secondary_url,
+          userAgentString,
+          deepLinkProfiles,
+        )
+      : "";
     if (shouldRenderPreviewPage) {
       const publicBaseUrl =
         getPublicBaseUrl(req) || `${req.protocol}://${req.get("host")}`;
@@ -638,17 +678,22 @@ const handlePublicShortLinkRequest = async (
         .status(200)
         .type("html")
         .send(
-          renderChoiceLandingPage(effectiveLink, canonicalUrl, clickTrackingUrl, {
-            experimental: false,
-            preferImageCard: isMetaPreviewBot(
-              typeof userAgent === "string" ? userAgent : "",
-            ),
-          }),
+          renderChoiceLandingPage(
+            effectiveLink,
+            canonicalUrl,
+            clickTrackingUrl,
+            {
+              experimental: false,
+              preferImageCard: isMetaPreviewBot(userAgentString),
+              primaryRedirectUrl,
+              secondaryRedirectUrl,
+            },
+          ),
         );
     }
 
     if (shouldIgnoreTrackingRequest(req)) {
-      return res.redirect(effectiveLink.original_url);
+      return res.redirect(primaryRedirectUrl);
     }
 
     await trackDirectPublicOpen(
@@ -660,7 +705,7 @@ const handlePublicShortLinkRequest = async (
       abVariant,
     );
 
-    return res.redirect(effectiveLink.original_url);
+    return res.redirect(primaryRedirectUrl);
   } catch (e: any) {
     console.error("[REDIRECT ERROR]", {
       shortCode,
@@ -743,9 +788,15 @@ app.get("/api/v1/links/:linkId/open", async (req, res) => {
     if (!destinationUrl) {
       return res.status(400).send("Missing destination URL");
     }
+    const deepLinkProfiles = await getLinkDeepLinkProfiles(supabase);
+    const resolvedDestinationUrl = resolveTrackedRedirectUrl(
+      destinationUrl,
+      typeof userAgent === "string" ? userAgent : "",
+      deepLinkProfiles,
+    );
 
     if (shouldIgnoreTrackingRequest(req)) {
-      return res.redirect(destinationUrl);
+      return res.redirect(resolvedDestinationUrl);
     }
 
     if (stage === "secondary") {
@@ -760,7 +811,7 @@ app.get("/api/v1/links/:linkId/open", async (req, res) => {
       );
     }
 
-    return res.redirect(destinationUrl);
+    return res.redirect(resolvedDestinationUrl);
   } catch (e: any) {
     console.error("Open redirect error:", e);
     return res.status(500).send("Server error: " + (e.message || "Unknown"));
@@ -1008,6 +1059,32 @@ app.get("*", (req, res) => {
 });
 
 // Start server
+const validateRequiredEnvVars = () => {
+  const requiredVars = [
+    "SECURITY_ENCRYPTION_KEY",
+    "APP_SECRET",
+    "SUPABASE_SERVICE_ROLE_KEY",
+  ];
+
+  const encryptionKey =
+    process.env.SECURITY_ENCRYPTION_KEY ||
+    process.env.APP_SECRET ||
+    process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+  if (!encryptionKey) {
+    console.error("❌ SECURITY_ENCRYPTION_KEY is not configured!");
+    console.error(
+      "Set one of these environment variables: SECURITY_ENCRYPTION_KEY, APP_SECRET, or SUPABASE_SERVICE_ROLE_KEY"
+    );
+    console.error(
+      "See docs/security-encryption-setup.md for instructions on generating a key."
+    );
+    process.exit(1);
+  }
+};
+
+validateRequiredEnvVars();
+
 app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
   console.log(`📊 Health check: http://localhost:${PORT}/api/health`);
