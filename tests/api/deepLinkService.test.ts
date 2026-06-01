@@ -55,6 +55,15 @@ test("resolveDeepLinkUrl picks platform and device templates", () => {
     ),
     "https://desktop.example/redirect?url=https%3A%2F%2Fwww.tiktok.com%2F%40demo%2Fvideo%2F123",
   );
+
+  assert.equal(
+    resolveDeepLinkUrl(
+      "https://s.shopee.vn/2qRr9Jvpsc",
+      "Mozilla/5.0 (Linux; Android 14; Pixel 8)",
+      profiles,
+    ),
+    "intent://android?url=https://s.shopee.vn/2qRr9Jvpsc",
+  );
 });
 
 test("resolveDeepLinkUrl falls back for unsupported destinations", () => {

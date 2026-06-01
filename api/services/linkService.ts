@@ -201,12 +201,12 @@ export const createLink = async (
     : data.abVariantBSecondaryUrl?.trim() || null;
 
   if (mobileDirectMode && !primaryImageUrl) {
-    throw new Error("Mobile TikTok direct mode yêu cầu ảnh đại diện.");
+    throw new Error("Mobile direct mode yêu cầu ảnh đại diện.");
   }
 
   if (mobileDirectMode && requestedSecondaryUrl) {
     throw new Error(
-      "Mobile TikTok direct mode không hỗ trợ liên kết bước 2.",
+      "Mobile direct mode không hỗ trợ liên kết bước 2.",
     );
   }
 

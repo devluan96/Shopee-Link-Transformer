@@ -60,14 +60,6 @@ const mergeDeepLinkProfiles = (profiles: DeepLinkProfiles) => ({
   },
 });
 
-const SocialPublisherUnavailable = () => (
-  <div className="rounded-[2.5rem] border border-gray-100 bg-white p-8 shadow-sm dark:border-slate-700 dark:bg-slate-800">
-    <p className="text-sm font-medium text-gray-500 dark:text-slate-400">
-      Social publisher is currently unavailable in this build.
-    </p>
-  </div>
-);
-
 interface UserLink {
   id: string;
   short_code: string;
@@ -260,7 +252,7 @@ export const AdminPanel = ({
     "free" | "monthly" | "yearly"
   >("free");
   const [adminView, setAdminView] = React.useState<
-    "users" | "payments" | "social" | "system"
+    "users" | "payments" | "system"
   >("users");
 
   React.useEffect(() => {
@@ -862,19 +854,6 @@ export const AdminPanel = ({
         </button>
         <button
           type="button"
-          onClick={() => setAdminView("social")}
-          className={cn(
-            "inline-flex items-center gap-2 rounded-2xl px-5 py-3 text-sm font-black transition-all",
-            adminView === "social"
-              ? "bg-orange-600 text-white shadow-lg shadow-orange-200"
-              : "bg-white text-gray-600 shadow-sm ring-1 ring-gray-100 hover:bg-gray-50 dark:bg-slate-800 dark:text-slate-200 dark:ring-slate-700 dark:hover:bg-slate-700",
-          )}
-        >
-          <Globe size={18} />
-          Social publisher
-        </button>
-        <button
-          type="button"
           onClick={() => setAdminView("system")}
           className={cn(
             "inline-flex items-center gap-2 rounded-2xl px-5 py-3 text-sm font-black transition-all",
@@ -886,17 +865,6 @@ export const AdminPanel = ({
           <Shield size={18} />
           {viewCopy.systemTab}
         </button>
-      </div>
-
-      <div
-        className={cn(
-          "mb-8 grid grid-cols-1 gap-8 xl:grid-cols-[1.05fr_0.95fr]",
-          adminView !== "social" && "hidden",
-        )}
-      >
-        <section className="xl:col-span-2">
-          <SocialPublisherUnavailable />
-        </section>
       </div>
 
       <div
