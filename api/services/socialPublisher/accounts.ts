@@ -1,12 +1,50 @@
 import crypto from "crypto";
 import type { SupabaseClient } from "../../config/supabase.js";
-import type {
-  SocialPublisherAccountDetails,
-  SocialPublisherAccountInput,
-  SocialPublisherAccountRecord,
-  SocialPublisherTarget,
-  SocialPublisherAccountSecrets,
-} from "./types.js";
+
+type SocialPublisherTarget = "youtube" | "tiktok" | "facebook_page";
+
+type SocialPublisherAccountInput = {
+  target: SocialPublisherTarget;
+  accountName: string;
+  externalAccountId?: string;
+  accessToken: string;
+  refreshToken?: string;
+  tokenExpiresAt?: string;
+  scopes?: string[];
+  metadata?: Record<string, unknown>;
+  providerAccountUrl?: string;
+};
+
+type SocialPublisherAccountRecord = {
+  id: string;
+  user_id: string;
+  target: SocialPublisherTarget;
+  account_name: string;
+  external_account_id?: string | null;
+  provider_account_url?: string | null;
+  token_expires_at?: string | null;
+  scopes: string[];
+  metadata?: Record<string, unknown> | null;
+  is_active: boolean;
+  last_connected_at?: string | null;
+  last_refreshed_at?: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+type SocialPublisherAccountDetails = SocialPublisherAccountRecord & {
+  access_token_preview: string;
+  refresh_token_preview?: string | null;
+  has_access_token: boolean;
+  has_refresh_token: boolean;
+};
+
+type SocialPublisherAccountSecrets = {
+  accountId: string;
+  accessToken: string | null;
+  refreshToken?: string | null;
+  tokenExpiresAt?: string | null;
+};
 
 const SOCIAL_PUBLISHER_TARGETS: SocialPublisherTarget[] = [
   "youtube",
