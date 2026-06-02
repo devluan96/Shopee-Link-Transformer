@@ -101,6 +101,24 @@ const inferDevicePlatform = (userAgent?: string | null) => {
   return "desktop" as const;
 };
 
+export const isMobileDeepLinkDestination = (destinationUrl: string) => {
+  return inferDestinationPlatform(destinationUrl) !== null;
+};
+
+export const shouldBypassLandingForMobileDeepLink = (
+  destinationUrl: string,
+  userAgent?: string | null,
+  profiles?: DeepLinkProfiles | null,
+) => {
+  const platform = inferDestinationPlatform(destinationUrl);
+  if (!platform) return false;
+
+  const profile = profiles?.[platform];
+  if (!profile?.enabled) return false;
+
+  return inferDevicePlatform(userAgent) !== "desktop";
+};
+
 export const applyDeepLinkTemplate = (
   template: string,
   destinationUrl: string,

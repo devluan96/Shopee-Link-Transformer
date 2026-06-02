@@ -42,6 +42,7 @@ import { handleClickNotification } from "./services/notificationService.js";
 import {
   getLinkDeepLinkProfiles,
   resolveDeepLinkUrl,
+  shouldBypassLandingForMobileDeepLink,
 } from "./services/deepLinkService.js";
 import { renderLinkLandingPage } from "./templates/landingPage.js";
 import { renderChoiceLandingPage } from "./templates/landingPageChoice.js";
@@ -517,6 +518,24 @@ app.get("/s-choice/:shortCode", async (req, res) => {
     });
     const clickTrackingUrl = `${publicBaseUrl}/api/v1/links/${link.id}/track`;
 
+    if (
+      shouldBypassLandingForMobileDeepLink(
+        effectiveLink.original_url,
+        userAgentString,
+        deepLinkProfiles,
+      )
+    ) {
+      await trackDirectPublicOpen(
+        supabase,
+        req,
+        link,
+        effectiveLink,
+        userAgentString,
+        abVariant,
+      );
+      return res.redirect(primaryRedirectUrl);
+    }
+
     if (!effectiveLink.video_url?.trim()) {
       return res.redirect(primaryRedirectUrl);
     }
@@ -670,6 +689,25 @@ const handlePublicShortLinkRequest = async (
           deepLinkProfiles,
         )
       : "";
+
+    if (
+      shouldBypassLandingForMobileDeepLink(
+        effectiveLink.original_url,
+        userAgentString,
+        deepLinkProfiles,
+      )
+    ) {
+      await trackDirectPublicOpen(
+        supabase,
+        req,
+        link,
+        effectiveLink,
+        userAgentString,
+        abVariant,
+      );
+      return res.redirect(primaryRedirectUrl);
+    }
+
     if (shouldRenderPreviewPage) {
       const publicBaseUrl =
         getPublicBaseUrl(req) || `${req.protocol}://${req.get("host")}`;

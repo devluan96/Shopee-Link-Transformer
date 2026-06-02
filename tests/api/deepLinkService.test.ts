@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import {
   applyDeepLinkTemplate,
   resolveDeepLinkUrl,
+  shouldBypassLandingForMobileDeepLink,
 } from "../../api/services/deepLinkService.js";
 
 test("applyDeepLinkTemplate replaces url placeholders", () => {
@@ -81,5 +82,51 @@ test("resolveDeepLinkUrl falls back for unsupported destinations", () => {
       profiles,
     ),
     "https://example.com/article/1",
+  );
+});
+
+test("shouldBypassLandingForMobileDeepLink bypasses landing only for enabled mobile Shopee and TikTok links", () => {
+  const profiles = {
+    shopee: {
+      enabled: true,
+      desktop: "{{url}}",
+    },
+    tiktok: {
+      enabled: true,
+      desktop: "{{url}}",
+    },
+  };
+
+  assert.equal(
+    shouldBypassLandingForMobileDeepLink(
+      "https://shopee.vn/product/123",
+      "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)",
+      profiles,
+    ),
+    true,
+  );
+  assert.equal(
+    shouldBypassLandingForMobileDeepLink(
+      "https://www.tiktok.com/@demo/video/123",
+      "Mozilla/5.0 (Linux; Android 14; Pixel 8)",
+      profiles,
+    ),
+    true,
+  );
+  assert.equal(
+    shouldBypassLandingForMobileDeepLink(
+      "https://example.com/article/1",
+      "Mozilla/5.0 (Linux; Android 14; Pixel 8)",
+      profiles,
+    ),
+    false,
+  );
+  assert.equal(
+    shouldBypassLandingForMobileDeepLink(
+      "https://shopee.vn/product/123",
+      "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
+      profiles,
+    ),
+    false,
   );
 });
