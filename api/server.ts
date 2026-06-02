@@ -527,10 +527,8 @@ app.get("/s-choice/:shortCode", async (req, res) => {
       return res.json({
         route: "s-choice",
         shortCode,
-        lookupField,
         userAgent: userAgentString,
         isPreviewBot,
-        abVariant,
         hasVideoLanding: Boolean(effectiveLink.video_url?.trim()),
         shouldRenderPreviewPage: false,
         shouldBypassLandingForMobileDeepLink: shouldBypassLandingForMobileDeepLink(
