@@ -451,7 +451,7 @@ export const renderChoiceLandingPage = (
                 clearLandingState();
                 return;
               }
-              parsedState = parsed as Record<string, unknown>;
+              parsedState = parsed;
             } catch {
               clearLandingState();
               return;
