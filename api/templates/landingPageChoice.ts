@@ -444,7 +444,7 @@ export const renderChoiceLandingPage = (
               return;
             }
 
-            let parsedState: Record<string, unknown>;
+            let parsedState;
             try {
               const parsed = JSON.parse(rawState);
               if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {

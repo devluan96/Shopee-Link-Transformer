@@ -707,6 +707,7 @@ app.get("/s-choice/:shortCode", async (req, res) => {
     }
 
     if (
+      !effectiveLink.video_url?.trim() &&
       shouldBypassLandingForMobileDeepLink(
         effectiveLink.original_url,
         userAgentString,
@@ -919,6 +920,7 @@ const handlePublicShortLinkRequest = async (
     }
 
     if (
+      !hasVideoLanding &&
       shouldBypassLandingForMobileDeepLink(
         effectiveLink.original_url,
         userAgentString,
