@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { User } from "@supabase/supabase-js";
 import {
   AnalyticsData,
@@ -79,6 +79,8 @@ export function useAnalytics({
   );
   const [statsDirty, setStatsDirty] = useState(true);
   const [analyticsDirty, setAnalyticsDirty] = useState(true);
+  const statsRequestSeqRef = useRef(0);
+  const analyticsRequestSeqRef = useRef(0);
 
   const buildStatsQuery = useCallback(() => {
     const params = new URLSearchParams();
@@ -106,30 +108,48 @@ export function useAnalytics({
 
   const fetchStats = useCallback(async () => {
     if (!user) return;
+    const requestSeq = ++statsRequestSeqRef.current;
     try {
+      const statsQuery = buildStatsQuery();
+      const cacheBust = `${statsQuery ? "&" : "?"}_ts=${Date.now()}`;
       const response = await fetchWithAuth(
-        `/api/v1/user/stats${buildStatsQuery()}`,
+        `/api/v1/user/stats${statsQuery}${cacheBust}`,
       );
       const data = await response.json();
+      if (requestSeq !== statsRequestSeqRef.current) {
+        return;
+      }
       setStats(data);
       setStatsUpdatedAt(new Date().toISOString());
       setStatsDirty(false);
     } catch (e) {
+      if (requestSeq !== statsRequestSeqRef.current) {
+        return;
+      }
       console.error(e);
     }
   }, [user, fetchWithAuth, buildStatsQuery]);
 
   const fetchAnalytics = useCallback(async () => {
     if (!user) return;
+    const requestSeq = ++analyticsRequestSeqRef.current;
     try {
+      const analyticsQuery = buildAnalyticsQuery();
+      const cacheBust = `${analyticsQuery ? "&" : "?"}_ts=${Date.now()}`;
       const res = await fetchWithAuth(
-        `/api/v1/user/analytics${buildAnalyticsQuery()}`,
+        `/api/v1/user/analytics${analyticsQuery}${cacheBust}`,
       );
       const data = await res.json();
+      if (requestSeq !== analyticsRequestSeqRef.current) {
+        return;
+      }
       setAnalyticsData(data);
       setAnalyticsUpdatedAt(new Date().toISOString());
       setAnalyticsDirty(false);
     } catch (e: any) {
+      if (requestSeq !== analyticsRequestSeqRef.current) {
+        return;
+      }
       console.error("Fetch analytics fail:", e?.message || e);
       toast.error("Không thể tải dữ liệu phân tích. Vui lòng thử lại sau.");
     }

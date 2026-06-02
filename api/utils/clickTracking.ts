@@ -10,9 +10,36 @@ import { parseDeviceInfo, getGeoInfo } from "./deviceDetection.js";
 import { LinkOutboundEvent } from "../types/index.js";
 
 const TRACKING_DEDUPE_WINDOW_MS = 60 * 1000;
+const PAGE_SIZE = 1000;
 
 const getRecentIsoTime = () =>
   new Date(Date.now() - TRACKING_DEDUPE_WINDOW_MS).toISOString();
+
+const fetchAllPagedRows = async <T>(
+  buildPage: (offset: number, limit: number) => Promise<{
+    data: T[] | null;
+    error: any;
+  }>,
+) => {
+  const rows: T[] = [];
+  let offset = 0;
+
+  while (true) {
+    const { data, error } = await buildPage(offset, PAGE_SIZE);
+    if (error) throw error;
+
+    const pageRows = (data || []) as T[];
+    rows.push(...pageRows);
+
+    if (pageRows.length < PAGE_SIZE) {
+      break;
+    }
+
+    offset += PAGE_SIZE;
+  }
+
+  return rows;
+};
 
 export const fetchClicksForLinkIds = async (
   supabase: SupabaseClient,
@@ -23,18 +50,54 @@ export const fetchClicksForLinkIds = async (
   const allClicks: any[] = [];
   for (const chunk of chunks) {
     let chunkClicks: any[] = [];
+    let lastError: unknown = null;
     for (const columns of CLICK_SELECT_ATTEMPTS) {
-      const { data, error } = await supabase
-        .from("clicks")
-        .select(columns)
-        .in("link_id", chunk)
-        .order("created_at", { ascending: false })
-        .limit(10000);
-      if (!error) {
-        chunkClicks = data || [];
+      try {
+        chunkClicks = await fetchAllPagedRows((offset, limit) =>
+          supabase
+            .from("clicks")
+            .select(columns)
+            .in("link_id", chunk)
+            .order("created_at", { ascending: false })
+            .range(offset, offset + limit - 1),
+        );
         break;
+      } catch (error) {
+        lastError = error;
       }
     }
+    if (!chunkClicks.length && lastError) throw lastError;
+    allClicks.push(...chunkClicks);
+  }
+  return allClicks;
+};
+
+export const fetchClicksForWorkspaceIds = async (
+  supabase: SupabaseClient,
+  workspaceIds: string[],
+) => {
+  if (!workspaceIds.length) return [];
+  const chunks = chunkArray(workspaceIds, 100);
+  const allClicks: any[] = [];
+  for (const chunk of chunks) {
+    let chunkClicks: any[] = [];
+    let lastError: unknown = null;
+    for (const columns of CLICK_SELECT_ATTEMPTS) {
+      try {
+        chunkClicks = await fetchAllPagedRows((offset, limit) =>
+          supabase
+            .from("clicks")
+            .select(columns)
+            .in("workspace_id", chunk)
+            .order("created_at", { ascending: false })
+            .range(offset, offset + limit - 1),
+        );
+        break;
+      } catch (error) {
+        lastError = error;
+      }
+    }
+    if (!chunkClicks.length && lastError) throw lastError;
     allClicks.push(...chunkClicks);
   }
   return allClicks;
@@ -83,17 +146,44 @@ export const fetchOutboundEventsForLinkIds = async (
   const allEvents: LinkOutboundEvent[] = [];
 
   for (const chunk of chunks) {
-    const { data, error } = await supabase
-      .from("link_outbound_events")
-      .select(
-        "id, link_id, short_code, stage, destination_url, source, source_detail, referer, user_agent, ip_address, created_at",
-      )
-      .in("link_id", chunk)
-      .order("created_at", { ascending: false })
-      .limit(10000);
+    const chunkEvents = await fetchAllPagedRows<LinkOutboundEvent>((offset, limit) =>
+      supabase
+        .from("link_outbound_events")
+        .select(
+          "id, link_id, short_code, stage, destination_url, source, source_detail, referer, user_agent, ip_address, created_at",
+        )
+        .in("link_id", chunk)
+        .order("created_at", { ascending: false })
+        .range(offset, offset + limit - 1),
+    );
 
-    if (error) throw error;
-    allEvents.push(...((data || []) as LinkOutboundEvent[]));
+    allEvents.push(...chunkEvents);
+  }
+
+  return allEvents;
+};
+
+export const fetchOutboundEventsForWorkspaceIds = async (
+  supabase: SupabaseClient,
+  workspaceIds: string[],
+) => {
+  if (!workspaceIds.length) return [];
+  const chunks = chunkArray(workspaceIds, 100);
+  const allEvents: LinkOutboundEvent[] = [];
+
+  for (const chunk of chunks) {
+    const chunkEvents = await fetchAllPagedRows<LinkOutboundEvent>((offset, limit) =>
+      supabase
+        .from("link_outbound_events")
+        .select(
+          "id, link_id, short_code, workspace_id, stage, destination_url, source, source_detail, referer, user_agent, ip_address, created_at",
+        )
+        .in("workspace_id", chunk)
+        .order("created_at", { ascending: false })
+        .range(offset, offset + limit - 1),
+    );
+
+    allEvents.push(...chunkEvents);
   }
 
   return allEvents;
@@ -120,6 +210,7 @@ export const insertOutboundEvent = async (
   payload: {
     link_id: string;
     short_code: string;
+    workspace_id?: string | null;
     stage: "primary" | "secondary";
     destination_url: string;
     user_agent?: string | null;
@@ -161,6 +252,7 @@ export const insertOutboundEvent = async (
 
   const { error } = await supabase.from("link_outbound_events").insert({
     ...payload,
+    workspace_id: payload.workspace_id ?? null,
     user_agent: userAgent,
   });
   if (error) throw error;
@@ -181,6 +273,7 @@ export const insertClickWithTracking = async (
 
   const fullPayload = {
     link_id: payload.link_id,
+    workspace_id: payload.workspace_id,
     user_agent: userAgent || null,
     ip_address: ipAddress || null,
     source: payload.source,

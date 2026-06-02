@@ -341,16 +341,16 @@ export const getUserStats = async (
 ) => {
   const links = await getFilteredLinks(supabase, userId, workspaceId);
   const count = links.length;
-
-  if (!links.length) {
+  if (!count) {
     return {
-      totalLinks: count,
+      totalLinks: 0,
       totalClicks: 0,
       todayClicks: 0,
       yesterdayClicks: 0,
       todayShopeeClicks: 0,
       todayTiktokClicks: 0,
       recentClicks: [],
+      recentShopeeClicks: [],
       topLinks: [],
       growthPercentage: 0,
     };
@@ -368,16 +368,24 @@ export const getUserStats = async (
     ]),
   );
 
-  const clicks = filterDisplayableOutboundEvents(
+  const rawEvents = filterDisplayableOutboundEvents(
     await fetchOutboundEventsForLinkIds(supabase, linkIds),
   );
+  const eventShortCodeMap = new Map<string, string>();
+  rawEvents.forEach((event: any) => {
+    if (event.link_id && event.short_code && !eventShortCodeMap.has(event.link_id)) {
+      eventShortCodeMap.set(event.link_id, event.short_code);
+    }
+  });
+
+  const clicks = rawEvents;
   const summary = summarizeOutboundEvents(clicks);
 
   const topLinks = Array.from(summary.topLinksAllTime.entries())
     .map(([id, total]) => ({
-      short_code: linkMetaMap.get(id)?.short_code || "",
+      short_code: linkMetaMap.get(id)?.short_code || eventShortCodeMap.get(id) || "",
       slug: linkMetaMap.get(id)?.slug,
-      title: linkMetaMap.get(id)?.title || "",
+      title: linkMetaMap.get(id)?.title || eventShortCodeMap.get(id) || "",
       clicks: total,
     }))
     .sort((a, b) => b.clicks - a.clicks)
@@ -406,7 +414,6 @@ export const getUserAnalytics = async (
   filter: AnalyticsFilter = {},
 ) => {
   const links = await getFilteredLinks(supabase, userId, workspaceId);
-
   if (!links.length) {
     return {
       history: [],
@@ -416,7 +423,7 @@ export const getUserAnalytics = async (
     };
   }
 
-  const linkIds = links.map((l: any) => l.id);
+  const linkIds = links.map((link: any) => link.id).filter(Boolean);
   const clicks = filterDisplayableOutboundEvents(
     await fetchOutboundEventsForLinkIds(supabase, linkIds),
   );
@@ -437,12 +444,19 @@ export const getUserAnalytics = async (
     ]),
   );
 
+  const eventShortCodeMap = new Map<string, string>();
+  clicks.forEach((event: any) => {
+    if (event.link_id && event.short_code && !eventShortCodeMap.has(event.link_id)) {
+      eventShortCodeMap.set(event.link_id, event.short_code);
+    }
+  });
+
   const topLinks = Array.from(summary.topLinkCounts.entries())
     .map(([id, clicks]) => ({
       id,
-      short_code: linkMetaMap.get(id)?.short_code || "",
+      short_code: linkMetaMap.get(id)?.short_code || eventShortCodeMap.get(id) || "",
       slug: linkMetaMap.get(id)?.slug,
-      title: linkMetaMap.get(id)?.title || "Unknown",
+      title: linkMetaMap.get(id)?.title || eventShortCodeMap.get(id) || "Unknown",
       clicks,
     }))
     .sort((a, b) => b.clicks - a.clicks)

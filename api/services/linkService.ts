@@ -738,8 +738,6 @@ export const deleteLink = async (
   await assertWorkspaceWriteAccessForLink(supabase, userId, linkId);
 
   await Promise.all([
-    supabase.from("clicks").delete().eq("link_id", linkId),
-    supabase.from("link_outbound_events").delete().eq("link_id", linkId),
     supabase.from("notification_logs").delete().eq("link_id", linkId),
   ]);
 
