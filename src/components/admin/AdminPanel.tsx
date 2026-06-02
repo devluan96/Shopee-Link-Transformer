@@ -37,14 +37,10 @@ import { DEFAULT_OUTPUT_DOMAIN } from "@/src/lib/appConfig";
 const DEFAULT_DEEP_LINK_PROFILES: DeepLinkProfiles = {
   shopee: {
     enabled: true,
-    ios: "shopee://open?url={{encodedUrl}}",
-    android: "intent://open?url={{encodedUrl}}",
     desktop: "{{url}}",
   },
   tiktok: {
     enabled: true,
-    ios: "tiktok://open?url={{encodedUrl}}",
-    android: "intent://open?url={{encodedUrl}}",
     desktop: "{{url}}",
   },
 };
@@ -641,7 +637,7 @@ export const AdminPanel = ({
     setConfirmAction({
       title: "Save deep link profiles?",
       description:
-        "Update smart deep link templates for Shopee and TikTok mobile routing?",
+        "Update desktop fallback templates for Shopee and TikTok deep-link routing?",
       confirmLabel: "Save",
       tone: "warning",
       onConfirm: async () => {
@@ -997,24 +993,6 @@ export const AdminPanel = ({
                   </div>
 
                   <div className="mt-4 space-y-3">
-                    <input
-                      type="text"
-                      value={target?.ios || ""}
-                      onChange={(e) =>
-                        updateDeepLinkTarget(platform, "ios", e.target.value)
-                      }
-                      placeholder={content.deepLinks.iosPlaceholder}
-                      className="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm font-medium text-gray-900 placeholder:text-gray-400 focus:border-emerald-500 focus:outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
-                    />
-                    <input
-                      type="text"
-                      value={target?.android || ""}
-                      onChange={(e) =>
-                        updateDeepLinkTarget(platform, "android", e.target.value)
-                      }
-                      placeholder={content.deepLinks.androidPlaceholder}
-                      className="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm font-medium text-gray-900 placeholder:text-gray-400 focus:border-emerald-500 focus:outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
-                    />
                     <input
                       type="text"
                       value={target?.desktop || ""}

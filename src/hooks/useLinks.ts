@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { User } from "@supabase/supabase-js";
 import { UserProfile, ConvertedLink, LinkUpdatePayload } from "@/src/types";
 import { toast } from "sonner";
@@ -49,6 +49,7 @@ export function useLinks({
   const [listLoading, setListLoading] = useState(false);
   const [linksDirty, setLinksDirty] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
+  const linksRequestSeqRef = useRef(0);
 
   const upsertLink = useCallback((link: ConvertedLink) => {
     setLinks((current) => {
@@ -64,19 +65,32 @@ export function useLinks({
 
   const fetchLinks = useCallback(async () => {
     if (!user) return;
+    const requestSeq = ++linksRequestSeqRef.current;
     setListLoading(true);
     try {
-      const query = currentWorkspaceId
-        ? `?workspaceId=${encodeURIComponent(currentWorkspaceId)}`
-        : "";
+      const params = new URLSearchParams();
+      if (currentWorkspaceId) {
+        params.set("workspaceId", currentWorkspaceId);
+      }
+      params.set("_ts", String(Date.now()));
+      const query = `?${params.toString()}`;
+
       const response = await fetchWithAuth(`/api/v1/user/links${query}`);
       const data = await response.json();
+      if (requestSeq !== linksRequestSeqRef.current) {
+        return;
+      }
       setLinks(data);
       setLinksDirty(false);
     } catch (e) {
+      if (requestSeq !== linksRequestSeqRef.current) {
+        return;
+      }
       console.error(e);
     } finally {
-      setListLoading(false);
+      if (requestSeq === linksRequestSeqRef.current) {
+        setListLoading(false);
+      }
     }
   }, [user, fetchWithAuth, currentWorkspaceId]);
 

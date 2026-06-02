@@ -654,12 +654,12 @@ export const en = {
       },
       metrics: {
         totalLinks: "Total links",
-        outboundClicks: "Total clicks",
+        outboundClicks: "Lifetime clicks",
         toShopee: "To Shopee",
         toTiktok: "To TikTok",
         totalLinksDetail: "{avg} average clicks per link",
         totalLinksEmpty: "Create your first link to unlock data",
-        outboundDetail: "Total outbound clicks sent to destinations",
+        outboundDetail: "All outbound clicks sent to destinations, including today",
         outboundEmpty: "No outbound session has been recorded yet",
         marketplaceShare: "{share}% of total outbound",
         shopeeEmpty: "No traffic to Shopee has been recorded yet",
@@ -797,21 +797,20 @@ export const en = {
     deepLinks: {
       title: "Smart deep link profiles",
       description:
-        "Configure device-specific templates so mobile traffic can jump into the target app while desktop keeps a safe fallback.",
+        "Mobile traffic now follows the original destination URL and the runtime handles app-opening behavior; this section only controls the desktop fallback.",
       shopee: "Shopee",
       tiktok: "TikTok",
-      shopeeHelp: "Templates for Shopee destination links.",
-      tiktokHelp: "Templates for TikTok destination links.",
+      shopeeHelp: "Settings for Shopee destination links.",
+      tiktokHelp: "Settings for TikTok destination links.",
       enabled: "Enabled",
       disabled: "Disabled",
-      iosPlaceholder: "iOS template, for example shopee://open?url={{encodedUrl}}",
-      androidPlaceholder:
-        "Android template, for example intent://open?url={{encodedUrl}}",
+      iosPlaceholder: "Kept only for legacy configs, if needed.",
+      androidPlaceholder: "Kept only for legacy configs, if needed.",
       desktopPlaceholder: "Desktop fallback template or destination URL",
       templateHelp:
-        "Use {{url}} or {{encodedUrl}} as the destination placeholder. Leave a field empty to fall back to the original URL.",
+        "Use {{url}} or {{encodedUrl}} as the destination placeholder. Mobile no longer uses separate templates in this section.",
       note:
-        "Profiles only apply when the destination URL is detected as Shopee or TikTok.",
+        "Profiles only apply when the destination URL is detected as Shopee or TikTok. Mobile follows the original URL, desktop uses the fallback.",
       usePreset: "Use preset",
       reset: "Reset",
       save: "Save profiles",

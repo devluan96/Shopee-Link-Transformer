@@ -42,7 +42,9 @@ import { handleClickNotification } from "./services/notificationService.js";
 import {
   getLinkDeepLinkProfiles,
   resolveDeepLinkUrl,
+  shouldUseDeepLinkSplash,
 } from "./services/deepLinkService.js";
+import { renderLinkLandingPage } from "./templates/landingPage.js";
 import { renderChoiceLandingPage } from "./templates/landingPageChoice.js";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -151,6 +153,7 @@ const trackDirectPublicOpen = async (
   try {
     clickInserted = await insertClickWithTracking(supabase, {
       link_id: link.id,
+      workspace_id: link.workspace_id || effectiveLink.workspace_id || null,
       user_agent: userAgent,
       ip_address: ipAddress,
       source,
@@ -166,6 +169,7 @@ const trackDirectPublicOpen = async (
     outboundInserted = await insertOutboundEvent(supabase, {
       link_id: link.id,
       short_code: effectiveLink.short_code,
+      workspace_id: link.workspace_id || effectiveLink.workspace_id || null,
       stage: "primary",
       destination_url: effectiveLink.original_url,
       user_agent: typeof userAgent === "string" ? userAgent : null,
@@ -216,7 +220,7 @@ const fetchEffectiveTrackedLink = async (supabase: ReturnType<typeof getSupabase
   const { data: link, error: linkError } = await supabase
     .from("links")
     .select(
-      "id, user_id, short_code, custom_title, original_url, secondary_url, ab_test_enabled, ab_variant_b_title, ab_variant_b_description, ab_variant_b_image_url, ab_variant_b_video_url, ab_variant_b_original_url, ab_variant_b_secondary_url",
+      "id, user_id, workspace_id, short_code, custom_title, original_url, secondary_url, ab_test_enabled, ab_variant_b_title, ab_variant_b_description, ab_variant_b_image_url, ab_variant_b_video_url, ab_variant_b_original_url, ab_variant_b_secondary_url",
     )
     .eq("id", linkId)
     .maybeSingle();
@@ -248,6 +252,7 @@ const trackPrimaryOpen = async (
   try {
     clickInserted = await insertClickWithTracking(supabase, {
       link_id: effectiveLink.id,
+      workspace_id: link.workspace_id || effectiveLink.workspace_id || null,
       user_agent: userAgent,
       ip_address: ipAddress,
       source,
@@ -263,6 +268,7 @@ const trackPrimaryOpen = async (
     outboundInserted = await insertOutboundEvent(supabase, {
       link_id: effectiveLink.id,
       short_code: effectiveLink.short_code,
+      workspace_id: link.workspace_id || effectiveLink.workspace_id || null,
       stage: "primary",
       destination_url: effectiveLink.original_url,
       user_agent: userAgent,
@@ -320,6 +326,7 @@ const trackSecondaryOpen = async (
     await insertOutboundEvent(supabase, {
       link_id: effectiveLink.id,
       short_code: effectiveLink.short_code,
+      workspace_id: effectiveLink.workspace_id || null,
       stage: "secondary",
       destination_url: effectiveLink.secondary_url,
       user_agent: typeof userAgent === "string" ? userAgent : null,
@@ -512,6 +519,25 @@ app.get("/s-choice/:shortCode", async (req, res) => {
     const clickTrackingUrl = `${publicBaseUrl}/api/v1/links/${link.id}/track`;
 
     if (!effectiveLink.video_url?.trim()) {
+      if (
+        shouldUseDeepLinkSplash(
+          effectiveLink.original_url,
+          userAgentString,
+          deepLinkProfiles,
+        )
+      ) {
+        return res
+          .status(200)
+          .type("html")
+          .send(
+            renderLinkLandingPage(effectiveLink, canonicalUrl, clickTrackingUrl, {
+              primaryRedirectUrl: effectiveLink.original_url,
+              autoOpen: true,
+              autoOpenDelayMs: 0,
+            }),
+          );
+      }
+
       return res.redirect(primaryRedirectUrl);
     }
 
@@ -692,6 +718,39 @@ const handlePublicShortLinkRequest = async (
         );
     }
 
+    if (
+      shouldUseDeepLinkSplash(
+        effectiveLink.original_url,
+        userAgentString,
+        deepLinkProfiles,
+      )
+    ) {
+      const publicBaseUrl =
+        getPublicBaseUrl(req) || `${req.protocol}://${req.get("host")}`;
+      const canonicalUrl = buildPrettyLinkUrl(publicBaseUrl, {
+        slug: effectiveLink.slug,
+        shortCode: effectiveLink.short_code,
+        title: effectiveLink.custom_title,
+      });
+      const clickTrackingUrl = `${publicBaseUrl}/api/v1/links/${link.id}/track`;
+
+      return res
+        .status(200)
+        .type("html")
+        .send(
+          renderLinkLandingPage(
+            effectiveLink,
+            canonicalUrl,
+            clickTrackingUrl,
+            {
+              primaryRedirectUrl: effectiveLink.original_url,
+              autoOpen: true,
+              autoOpenDelayMs: 0,
+            },
+          ),
+        );
+    }
+
     if (shouldIgnoreTrackingRequest(req)) {
       return res.redirect(primaryRedirectUrl);
     }
@@ -833,8 +892,19 @@ app.post("/api/v1/links/:linkId/track-preview-click", async (req, res) => {
     const userAgent = req.headers["user-agent"] || "";
     const ipAddress = getClientIp(req);
 
+    const { data: link, error: linkError } = await supabase
+      .from("links")
+      .select("id, workspace_id")
+      .eq("id", linkId)
+      .maybeSingle();
+
+    if (linkError || !link) {
+      return res.status(404).json({ error: "Link not found" });
+    }
+
     const inserted = await insertClickWithTracking(supabase, {
       link_id: linkId,
+      workspace_id: link.workspace_id || null,
       user_agent: userAgent,
       ip_address: ipAddress,
       source,
@@ -908,7 +978,7 @@ app.post("/api/v1/links/:linkId/track-outbound", async (req, res) => {
     const { data: link, error: linkError } = await supabase
       .from("links")
       .select(
-        "id, short_code, original_url, secondary_url, ab_test_enabled, ab_variant_b_title, ab_variant_b_description, ab_variant_b_image_url, ab_variant_b_video_url, ab_variant_b_original_url, ab_variant_b_secondary_url",
+        "id, workspace_id, short_code, original_url, secondary_url, ab_test_enabled, ab_variant_b_title, ab_variant_b_description, ab_variant_b_image_url, ab_variant_b_video_url, ab_variant_b_original_url, ab_variant_b_secondary_url",
       )
       .eq("id", linkId)
       .maybeSingle();
@@ -934,6 +1004,7 @@ app.post("/api/v1/links/:linkId/track-outbound", async (req, res) => {
     const inserted = await insertOutboundEvent(supabase, {
       link_id: effectiveLink.id,
       short_code: effectiveLink.short_code,
+      workspace_id: link.workspace_id || effectiveLink.workspace_id || null,
       stage,
       destination_url: destinationUrl,
       user_agent: typeof userAgent === "string" ? userAgent : null,

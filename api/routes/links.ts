@@ -704,11 +704,6 @@ router.post(
       }
 
       await Promise.all([
-        supabase.from("clicks").delete().in("link_id", deletableIds),
-        supabase
-          .from("link_outbound_events")
-          .delete()
-          .in("link_id", deletableIds),
         supabase.from("notification_logs").delete().in("link_id", deletableIds),
       ]);
 
