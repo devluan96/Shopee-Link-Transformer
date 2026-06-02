@@ -346,6 +346,11 @@ const resolveTrackedRedirectUrl = (
   profiles: Awaited<ReturnType<typeof getLinkDeepLinkProfiles>>,
 ) => resolveDeepLinkUrl(destinationUrl, userAgent, profiles);
 
+const shouldReturnInspectResponse = (req: Request) => {
+  const inspectValue = req.query.inspect ?? req.query.debug;
+  return inspectValue === "1" || inspectValue === "true";
+};
+
 // A. MIDDLEWARES
 app.use(
   cors({
@@ -517,6 +522,28 @@ app.get("/s-choice/:shortCode", async (req, res) => {
       title: effectiveLink.custom_title,
     });
     const clickTrackingUrl = `${publicBaseUrl}/api/v1/links/${link.id}/track`;
+
+    if (shouldReturnInspectResponse(req)) {
+      return res.json({
+        route: "s-choice",
+        shortCode,
+        lookupField,
+        userAgent: userAgentString,
+        isPreviewBot,
+        abVariant,
+        hasVideoLanding: Boolean(effectiveLink.video_url?.trim()),
+        shouldRenderPreviewPage: false,
+        shouldBypassLandingForMobileDeepLink: shouldBypassLandingForMobileDeepLink(
+          effectiveLink.original_url,
+          userAgentString,
+          deepLinkProfiles,
+        ),
+        originalUrl: effectiveLink.original_url,
+        primaryRedirectUrl,
+        secondaryRedirectUrl,
+        canonicalUrl,
+      });
+    }
 
     if (
       shouldBypassLandingForMobileDeepLink(
@@ -717,6 +744,28 @@ const handlePublicShortLinkRequest = async (
         title: effectiveLink.custom_title,
       });
       const clickTrackingUrl = `${publicBaseUrl}/api/v1/links/${link.id}/track`;
+
+      if (shouldReturnInspectResponse(req)) {
+        return res.json({
+          route: "public-link",
+          shortCode,
+          lookupField,
+          userAgent: userAgentString,
+          isPreviewBot,
+          abVariant,
+          hasVideoLanding,
+          shouldRenderPreviewPage,
+          shouldBypassLandingForMobileDeepLink: shouldBypassLandingForMobileDeepLink(
+            effectiveLink.original_url,
+            userAgentString,
+            deepLinkProfiles,
+          ),
+          originalUrl: effectiveLink.original_url,
+          primaryRedirectUrl,
+          secondaryRedirectUrl,
+          canonicalUrl,
+        });
+      }
 
       return res
         .status(200)
