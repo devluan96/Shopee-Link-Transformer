@@ -531,7 +531,7 @@ app.get("/s-choice/:shortCode", async (req, res) => {
         link,
         effectiveLink,
         userAgentString,
-        abVariant,
+        "a",
       );
       return res.redirect(primaryRedirectUrl);
     }
