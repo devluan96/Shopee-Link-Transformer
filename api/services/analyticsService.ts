@@ -345,6 +345,9 @@ export const getUserStats = async (
     return {
       totalLinks: 0,
       totalClicks: 0,
+      averageClicks: 0,
+      choiceModeCount: 0,
+      expiringSoonCount: 0,
       todayClicks: 0,
       yesterdayClicks: 0,
       todayShopeeClicks: 0,
@@ -380,6 +383,16 @@ export const getUserStats = async (
 
   const clicks = rawEvents;
   const summary = summarizeOutboundEvents(clicks);
+  const now = new Date();
+  const choiceModeCount = links.filter((link: any) => !!link.secondary_url).length;
+  const expiringSoonCount = links.filter((link: any) => {
+    if (!link.expires_at) return false;
+    const expiresAt = new Date(link.expires_at);
+    if (Number.isNaN(expiresAt.getTime())) return false;
+    if (expiresAt < now) return false;
+    const diffHours = (expiresAt.getTime() - now.getTime()) / (1000 * 60 * 60);
+    return diffHours <= 24;
+  }).length;
 
   const topLinks = Array.from(summary.topLinksAllTime.entries())
     .map(([id, total]) => ({
@@ -394,8 +407,11 @@ export const getUserStats = async (
   return {
     totalLinks: count,
     totalClicks: summary.totalClicks,
+    averageClicks: count ? Math.round(summary.totalClicks / count) : 0,
     totalShopeeClicks: summary.totalShopeeClicks,
     totalTiktokClicks: summary.totalTiktokClicks,
+    choiceModeCount,
+    expiringSoonCount,
     todayClicks: summary.todayClicks,
     yesterdayClicks: summary.yesterdayClicks,
     todayShopeeClicks: summary.todayShopeeClicks,

@@ -17,10 +17,14 @@ interface UseLinksProps {
   activeTab: string;
 }
 
+const LINKS_PAGE_SIZE = 5;
+
 export interface LinksState {
   links: ConvertedLink[];
   listLoading: boolean;
+  listLoadingMore: boolean;
   linksDirty: boolean;
+  linksHasMore: boolean;
   searchTerm: string;
 }
 
@@ -28,7 +32,9 @@ export interface LinksActions {
   setSearchTerm: (v: string) => void;
   setLinksDirty: (v: boolean) => void;
   upsertLink: (link: ConvertedLink) => void;
-  fetchLinks: () => Promise<void>;
+  fetchLinks: (options?: { reset?: boolean }) => Promise<void>;
+  loadMoreLinks: () => Promise<void>;
+  setLinksSortMode: (mode: "newest" | "top") => void;
   handleDeleteLink: (id: string) => Promise<void>;
   handleUpdateLink: (id: string, data: LinkUpdatePayload) => Promise<void>;
   handleShareLink: (id: string, workspaceId: string) => Promise<void>;
@@ -47,9 +53,33 @@ export function useLinks({
   const { t } = useLocale();
   const [links, setLinks] = useState<ConvertedLink[]>([]);
   const [listLoading, setListLoading] = useState(false);
+  const [listLoadingMore, setListLoadingMore] = useState(false);
   const [linksDirty, setLinksDirty] = useState(true);
+  const [linksHasMore, setLinksHasMore] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
+  const [linksSortMode, setLinksSortMode] = useState<"newest" | "top">("newest");
   const linksRequestSeqRef = useRef(0);
+  const linksOffsetRef = useRef(0);
+  const linksLoadMoreInFlightRef = useRef(false);
+
+  const mergeLinksWithoutDuplicates = useCallback(
+    (current: ConvertedLink[], incoming: ConvertedLink[]) => {
+      const seen = new Set(
+        current
+          .map((link) => link.id || link.short_code)
+          .filter((key): key is string => !!key),
+      );
+      const merged = [...current];
+      for (const link of incoming) {
+        const key = link.id || link.short_code;
+        if (!key || seen.has(key)) continue;
+        seen.add(key);
+        merged.push(link);
+      }
+      return merged;
+    },
+    [],
+  );
 
   const upsertLink = useCallback((link: ConvertedLink) => {
     setLinks((current) => {
@@ -63,36 +93,78 @@ export function useLinks({
     });
   }, []);
 
-  const fetchLinks = useCallback(async () => {
-    if (!user) return;
-    const requestSeq = ++linksRequestSeqRef.current;
-    setListLoading(true);
-    try {
-      const params = new URLSearchParams();
-      if (currentWorkspaceId) {
-        params.set("workspaceId", currentWorkspaceId);
-      }
-      params.set("_ts", String(Date.now()));
-      const query = `?${params.toString()}`;
+  const fetchLinks = useCallback(
+    async (options?: { reset?: boolean }) => {
+      if (!user) return;
 
-      const response = await fetchWithAuth(`/api/v1/user/links${query}`);
-      const data = await response.json();
-      if (requestSeq !== linksRequestSeqRef.current) {
-        return;
+      const reset = options?.reset ?? true;
+      const requestSeq = ++linksRequestSeqRef.current;
+      const requestOffset = reset ? 0 : linksOffsetRef.current;
+
+      if (reset) {
+        setListLoading(true);
+        setLinksHasMore(true);
+        linksOffsetRef.current = 0;
+        linksLoadMoreInFlightRef.current = false;
+      } else {
+        linksLoadMoreInFlightRef.current = true;
+        setListLoadingMore(true);
       }
-      setLinks(data);
-      setLinksDirty(false);
-    } catch (e) {
-      if (requestSeq !== linksRequestSeqRef.current) {
-        return;
+
+      try {
+        const params = new URLSearchParams();
+        if (currentWorkspaceId) {
+          params.set("workspaceId", currentWorkspaceId);
+        }
+        params.set("limit", String(LINKS_PAGE_SIZE));
+        params.set("offset", String(requestOffset));
+        params.set("sort", linksSortMode);
+        params.set("_ts", String(Date.now()));
+        const query = `?${params.toString()}`;
+
+        const response = await fetchWithAuth(`/api/v1/user/links${query}`);
+        const data = await response.json();
+        if (requestSeq !== linksRequestSeqRef.current) {
+          return;
+        }
+
+        const pageItems = Array.isArray(data) ? data : data.items || [];
+        const hasMore = Array.isArray(data) ? false : Boolean(data.hasMore);
+        linksOffsetRef.current = requestOffset + pageItems.length;
+        setLinksHasMore(hasMore);
+        setLinks((current) =>
+          reset
+            ? pageItems
+            : mergeLinksWithoutDuplicates(current, pageItems),
+        );
+        setLinksDirty(false);
+      } catch (e) {
+        if (requestSeq !== linksRequestSeqRef.current) {
+          return;
+        }
+        console.error(e);
+      } finally {
+        if (requestSeq === linksRequestSeqRef.current) {
+          setListLoading(false);
+          setListLoadingMore(false);
+          linksLoadMoreInFlightRef.current = false;
+        }
       }
-      console.error(e);
-    } finally {
-      if (requestSeq === linksRequestSeqRef.current) {
-        setListLoading(false);
-      }
+    },
+    [user, fetchWithAuth, currentWorkspaceId, linksSortMode, mergeLinksWithoutDuplicates],
+  );
+
+  const loadMoreLinks = useCallback(async () => {
+    if (
+      listLoading ||
+      listLoadingMore ||
+      linksLoadMoreInFlightRef.current ||
+      !linksHasMore
+    ) {
+      return;
     }
-  }, [user, fetchWithAuth, currentWorkspaceId]);
+    await fetchLinks({ reset: false });
+  }, [fetchLinks, listLoading, listLoadingMore, linksHasMore]);
 
   const handleDeleteLink = useCallback(
     async (id: string) => {
@@ -189,7 +261,10 @@ export function useLinks({
     setLinks([]);
     setSearchTerm("");
     setListLoading(false);
+    setListLoadingMore(false);
     setLinksDirty(!!user);
+    setLinksHasMore(true);
+    linksOffsetRef.current = 0;
   }, [user?.id, currentWorkspaceId]);
 
   useEffect(() => {
@@ -228,7 +303,7 @@ export function useLinks({
       activeTab === "list" &&
       (linksDirty || links.length === 0)
     ) {
-      fetchLinks();
+      fetchLinks({ reset: true });
     }
   }, [
     user,
@@ -249,10 +324,14 @@ export function useLinks({
     setLinksDirty,
     upsertLink,
     fetchLinks,
+    loadMoreLinks,
+    setLinksSortMode,
     handleDeleteLink,
     handleUpdateLink,
     handleShareLink,
     handleDeleteManyLinks,
     refreshLinks,
+    listLoadingMore,
+    linksHasMore,
   };
 }

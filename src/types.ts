@@ -224,6 +224,9 @@ export interface LinkStats {
   totalClicks: number;
   totalShopeeClicks?: number;
   totalTiktokClicks?: number;
+  choiceModeCount?: number;
+  expiringSoonCount?: number;
+  averageClicks?: number;
   todayClicks?: number;
   yesterdayClicks?: number;
   todayShopeeClicks?: number;

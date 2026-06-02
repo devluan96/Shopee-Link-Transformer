@@ -44,6 +44,9 @@ export interface AnalyticsActions {
 const emptyStats: LinkStats = {
   totalLinks: 0,
   totalClicks: 0,
+  averageClicks: 0,
+  choiceModeCount: 0,
+  expiringSoonCount: 0,
   todayClicks: 0,
   yesterdayClicks: 0,
   todayShopeeClicks: 0,
@@ -246,7 +249,9 @@ export function useAnalytics({
       user &&
       workspaceResolved &&
       isApproved &&
-      (activeTab === "dashboard" || activeTab === "analytics") &&
+      (activeTab === "dashboard" ||
+        activeTab === "analytics" ||
+        activeTab === "list") &&
       statsDirty
     ) {
       fetchStats();

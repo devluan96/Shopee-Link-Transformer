@@ -424,8 +424,19 @@ export const renderChoiceLandingPage = (
           }).catch(() => {});
         };
 
+        let primaryClickTrackingArmed = false;
+        let primaryClickTrackingSent = false;
+
         const trackPrimaryClick = () => {
+          if (primaryClickTrackingSent) return;
+          primaryClickTrackingSent = true;
           postJsonKeepalive(clickTrackingUrl, { ts: Date.now() });
+        };
+
+        const armPrimaryClickTracking = () => {
+          if (primaryClickTrackingArmed) return;
+          primaryClickTrackingArmed = true;
+          window.addEventListener("pagehide", trackPrimaryClick, { once: true });
         };
 
         const trackSecondaryOutbound = () => {
@@ -512,7 +523,7 @@ export const renderChoiceLandingPage = (
           if (overlayHandled) return;
           overlayHandled = true;
           persistPrimaryOpened();
-          trackPrimaryClick();
+          armPrimaryClickTracking();
           hideOverlay();
         };
 
