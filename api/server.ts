@@ -351,6 +351,68 @@ const shouldReturnInspectResponse = (req: Request) => {
   return inspectValue === "1" || inspectValue === "true";
 };
 
+const shouldReturnInspectHtmlResponse = (req: Request) => {
+  const inspectValue = req.query.inspect ?? req.query.debug;
+  return inspectValue === "html" || inspectValue === "page";
+};
+
+const renderInspectDebugPage = (title: string, data: Record<string, unknown>) => {
+  const json = JSON.stringify(data, null, 2);
+  return `<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>${escapeHtml(title)}</title>
+    <style>
+      body {
+        margin: 0;
+        padding: 1rem;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        background: #0f172a;
+        color: #e2e8f0;
+      }
+      .card {
+        max-width: 960px;
+        margin: 0 auto;
+        background: #111827;
+        border: 1px solid rgba(148, 163, 184, 0.2);
+        border-radius: 16px;
+        padding: 1rem;
+      }
+      h1 {
+        font-size: 1rem;
+        margin: 0 0 0.75rem;
+      }
+      p {
+        margin: 0 0 1rem;
+        color: #94a3b8;
+        line-height: 1.5;
+        font-size: 0.9rem;
+      }
+      pre {
+        margin: 0;
+        white-space: pre-wrap;
+        word-break: break-word;
+        font-size: 0.82rem;
+        line-height: 1.5;
+        color: #dbeafe;
+      }
+      code {
+        color: #f8fafc;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <h1>${escapeHtml(title)}</h1>
+      <p>Dùng trang này để kiểm tra nhanh response của server trên mobile/browser. Nếu bạn thấy popup trước khi trang này xuất hiện thì request đang bị browser/app chặn ngoài server.</p>
+      <pre>${escapeHtml(json)}</pre>
+    </div>
+  </body>
+</html>`;
+};
+
 // A. MIDDLEWARES
 app.use(
   cors({
@@ -524,7 +586,7 @@ app.get("/s-choice/:shortCode", async (req, res) => {
     const clickTrackingUrl = `${publicBaseUrl}/api/v1/links/${link.id}/track`;
 
     if (shouldReturnInspectResponse(req)) {
-      return res.json({
+      const inspectData = {
         route: "s-choice",
         shortCode,
         userAgent: userAgentString,
@@ -540,7 +602,16 @@ app.get("/s-choice/:shortCode", async (req, res) => {
         primaryRedirectUrl,
         secondaryRedirectUrl,
         canonicalUrl,
-      });
+      };
+
+      if (shouldReturnInspectHtmlResponse(req)) {
+        return res
+          .status(200)
+          .type("html")
+          .send(renderInspectDebugPage("Inspect: s-choice", inspectData));
+      }
+
+      return res.json(inspectData);
     }
 
     if (
@@ -744,7 +815,7 @@ const handlePublicShortLinkRequest = async (
       const clickTrackingUrl = `${publicBaseUrl}/api/v1/links/${link.id}/track`;
 
       if (shouldReturnInspectResponse(req)) {
-        return res.json({
+        const inspectData = {
           route: "public-link",
           shortCode,
           lookupField,
@@ -762,7 +833,16 @@ const handlePublicShortLinkRequest = async (
           primaryRedirectUrl,
           secondaryRedirectUrl,
           canonicalUrl,
-        });
+        };
+
+        if (shouldReturnInspectHtmlResponse(req)) {
+          return res
+            .status(200)
+            .type("html")
+            .send(renderInspectDebugPage("Inspect: public-link", inspectData));
+        }
+
+        return res.json(inspectData);
       }
 
       return res
