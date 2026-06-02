@@ -45,7 +45,7 @@ test("buildMediaUploadPlan skips cloudinary when DISABLE_CLOUDINARY_UPLOAD is en
   );
 });
 
-test("buildMediaUploadPlan prioritizes supabase before cloudinary for video uploads", () => {
+test("buildMediaUploadPlan prioritizes cloudinary before supabase for video uploads", () => {
   withEnv(
     {
       CLOUDINARY_CLOUD_NAME: "demo-cloud-1",
@@ -66,7 +66,7 @@ test("buildMediaUploadPlan prioritizes supabase before cloudinary for video uplo
             ? `cloudinary:${provider.cloudName}`
             : provider.provider,
         ),
-        ["supabase", "cloudinary:demo-cloud-1", "cloudinary:demo-cloud-2"],
+        ["cloudinary:demo-cloud-1", "cloudinary:demo-cloud-2", "supabase"],
       );
     },
   );

@@ -49,8 +49,8 @@ const DEFAULT_PROVIDER_ORDER: MediaUploadProvider[] = [
 ];
 
 const DEFAULT_PROVIDER_ORDER_FOR_VIDEO: MediaUploadProvider[] = [
-  "supabase",
   "cloudinary",
+  "supabase",
 ];
 
 const DEFAULT_SUPABASE_MAX_UPLOAD_BYTES = 100 * 1024 * 1024;
@@ -150,15 +150,28 @@ const normalizeProviderOrder = (
     return baseOrder;
   }
 
-  if (resourceType === "video" && normalized.includes("supabase")) {
-    return [
-      "supabase",
-      ...normalized.filter((provider) => provider !== "supabase"),
-    ];
-  }
+  if (resourceType === "video") {
+    const orderedVideoProviders: MediaUploadProvider[] = [];
 
-  if (resourceType === "video" && !normalized.includes("supabase")) {
-    return ["supabase", ...normalized];
+    if (normalized.includes("cloudinary")) {
+      orderedVideoProviders.push("cloudinary");
+    }
+
+    if (normalized.includes("supabase")) {
+      orderedVideoProviders.push("supabase");
+    }
+
+    const fallbackVideoOrder = DEFAULT_PROVIDER_ORDER_FOR_VIDEO.filter((provider) =>
+      normalized.includes(provider),
+    );
+
+    if (orderedVideoProviders.length) {
+      return [...orderedVideoProviders, ...fallbackVideoOrder].filter(
+        (provider, index, providers) => providers.indexOf(provider) === index,
+      );
+    }
+
+    return fallbackVideoOrder.length ? fallbackVideoOrder : baseOrder;
   }
 
   return normalized;
