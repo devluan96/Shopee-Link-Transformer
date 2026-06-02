@@ -786,6 +786,46 @@ const handlePublicShortLinkRequest = async (
         )
       : "";
 
+    const publicBaseUrl =
+      getPublicBaseUrl(req) || `${req.protocol}://${req.get("host")}`;
+    const canonicalUrl = buildPrettyLinkUrl(publicBaseUrl, {
+      slug: effectiveLink.slug,
+      shortCode: effectiveLink.short_code,
+      title: effectiveLink.custom_title,
+    });
+    const clickTrackingUrl = `${publicBaseUrl}/api/v1/links/${link.id}/track`;
+
+    if (shouldReturnInspectResponse(req)) {
+      const inspectData = {
+        route: "public-link",
+        shortCode,
+        lookupField,
+        userAgent: userAgentString,
+        isPreviewBot,
+        abVariant,
+        hasVideoLanding,
+        shouldRenderPreviewPage,
+        shouldBypassLandingForMobileDeepLink: shouldBypassLandingForMobileDeepLink(
+          effectiveLink.original_url,
+          userAgentString,
+          deepLinkProfiles,
+        ),
+        originalUrl: effectiveLink.original_url,
+        primaryRedirectUrl,
+        secondaryRedirectUrl,
+        canonicalUrl,
+      };
+
+      if (shouldReturnInspectHtmlResponse(req)) {
+        return res
+          .status(200)
+          .type("html")
+          .send(renderInspectDebugPage("Inspect: public-link", inspectData));
+      }
+
+      return res.json(inspectData);
+    }
+
     if (
       shouldBypassLandingForMobileDeepLink(
         effectiveLink.original_url,
@@ -805,46 +845,6 @@ const handlePublicShortLinkRequest = async (
     }
 
     if (shouldRenderPreviewPage) {
-      const publicBaseUrl =
-        getPublicBaseUrl(req) || `${req.protocol}://${req.get("host")}`;
-      const canonicalUrl = buildPrettyLinkUrl(publicBaseUrl, {
-        slug: effectiveLink.slug,
-        shortCode: effectiveLink.short_code,
-        title: effectiveLink.custom_title,
-      });
-      const clickTrackingUrl = `${publicBaseUrl}/api/v1/links/${link.id}/track`;
-
-      if (shouldReturnInspectResponse(req)) {
-        const inspectData = {
-          route: "public-link",
-          shortCode,
-          lookupField,
-          userAgent: userAgentString,
-          isPreviewBot,
-          abVariant,
-          hasVideoLanding,
-          shouldRenderPreviewPage,
-          shouldBypassLandingForMobileDeepLink: shouldBypassLandingForMobileDeepLink(
-            effectiveLink.original_url,
-            userAgentString,
-            deepLinkProfiles,
-          ),
-          originalUrl: effectiveLink.original_url,
-          primaryRedirectUrl,
-          secondaryRedirectUrl,
-          canonicalUrl,
-        };
-
-        if (shouldReturnInspectHtmlResponse(req)) {
-          return res
-            .status(200)
-            .type("html")
-            .send(renderInspectDebugPage("Inspect: public-link", inspectData));
-        }
-
-        return res.json(inspectData);
-      }
-
       return res
         .status(200)
         .type("html")
