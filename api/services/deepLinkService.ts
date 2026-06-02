@@ -89,6 +89,11 @@ const inferDestinationPlatform = (value?: string | null): DeepLinkPlatform | nul
   }
 };
 
+const isMobileUserAgent = (userAgent?: string | null) => {
+  const normalized = (userAgent || "").toLowerCase();
+  return /(iphone|ipad|ipod|android)/i.test(normalized);
+};
+
 const inferDevicePlatform = (userAgent?: string | null) => {
   const normalized = (userAgent || "").toLowerCase();
   if (/(iphone|ipad|ipod)/i.test(normalized)) return "ios" as const;
@@ -120,12 +125,11 @@ export const resolveDeepLinkUrl = (
   if (!profile?.enabled) return destinationUrl;
 
   const devicePlatform = inferDevicePlatform(userAgent);
-  const template =
-    devicePlatform === "ios"
-      ? profile.ios || profile.desktop
-      : devicePlatform === "android"
-        ? profile.android || profile.desktop
-        : profile.desktop;
+  if (devicePlatform !== "desktop") {
+    return destinationUrl;
+  }
+
+  const template = profile.desktop;
 
   if (!template) return destinationUrl;
 
@@ -134,4 +138,18 @@ export const resolveDeepLinkUrl = (
   } catch {
     return destinationUrl;
   }
+};
+
+export const shouldUseDeepLinkSplash = (
+  destinationUrl: string,
+  userAgent?: string | null,
+  profiles?: DeepLinkProfiles | null,
+) => {
+  const platform = inferDestinationPlatform(destinationUrl);
+  if (!platform) return false;
+
+  const profile = profiles?.[platform];
+  if (!profile?.enabled) return false;
+
+  return isMobileUserAgent(userAgent);
 };

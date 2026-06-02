@@ -14,15 +14,30 @@ const sampleLink: PublicLinkRecord = {
   video_url: "",
 };
 
-test("renderLinkLandingPage opens targets without replacing the current page", () => {
+test("renderLinkLandingPage opens targets in the same tab", () => {
   const html = renderLinkLandingPage(
     sampleLink,
     "https://test.hotsnew.click/test11",
     "https://test.hotsnew.click/api/v1/links/link-1/track",
   );
 
-  assert.doesNotMatch(html, /window\.location\.replace\(url\);/);
-  assert.match(html, /window\.open\(url, "_blank", "noopener,noreferrer"\)/);
+  assert.match(html, /window\.location\.replace\(url\);/);
   assert.match(html, /window\.location\.href = url;/);
   assert.doesNotMatch(html, /trackOutbound\("primary"\);/);
+});
+
+test("renderLinkLandingPage can auto-open the primary target", () => {
+  const html = renderLinkLandingPage(
+    sampleLink,
+    "https://test.hotsnew.click/test11",
+    "https://test.hotsnew.click/api/v1/links/link-1/track",
+    {
+      autoOpen: true,
+      autoOpenDelayMs: 0,
+    },
+  );
+
+  assert.match(html, /const autoOpenEnabled = true;/);
+  assert.match(html, /autoOpenTimerId = window\.setTimeout/);
+  assert.match(html, /openPrimaryStep\(\);/);
 });

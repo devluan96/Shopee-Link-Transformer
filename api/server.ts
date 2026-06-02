@@ -42,7 +42,9 @@ import { handleClickNotification } from "./services/notificationService.js";
 import {
   getLinkDeepLinkProfiles,
   resolveDeepLinkUrl,
+  shouldUseDeepLinkSplash,
 } from "./services/deepLinkService.js";
+import { renderLinkLandingPage } from "./templates/landingPage.js";
 import { renderChoiceLandingPage } from "./templates/landingPageChoice.js";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -517,6 +519,25 @@ app.get("/s-choice/:shortCode", async (req, res) => {
     const clickTrackingUrl = `${publicBaseUrl}/api/v1/links/${link.id}/track`;
 
     if (!effectiveLink.video_url?.trim()) {
+      if (
+        shouldUseDeepLinkSplash(
+          effectiveLink.original_url,
+          userAgentString,
+          deepLinkProfiles,
+        )
+      ) {
+        return res
+          .status(200)
+          .type("html")
+          .send(
+            renderLinkLandingPage(effectiveLink, canonicalUrl, clickTrackingUrl, {
+              primaryRedirectUrl: effectiveLink.original_url,
+              autoOpen: true,
+              autoOpenDelayMs: 0,
+            }),
+          );
+      }
+
       return res.redirect(primaryRedirectUrl);
     }
 
@@ -692,6 +713,39 @@ const handlePublicShortLinkRequest = async (
               preferImageCard: isMetaPreviewBot(userAgentString),
               primaryRedirectUrl,
               secondaryRedirectUrl,
+            },
+          ),
+        );
+    }
+
+    if (
+      shouldUseDeepLinkSplash(
+        effectiveLink.original_url,
+        userAgentString,
+        deepLinkProfiles,
+      )
+    ) {
+      const publicBaseUrl =
+        getPublicBaseUrl(req) || `${req.protocol}://${req.get("host")}`;
+      const canonicalUrl = buildPrettyLinkUrl(publicBaseUrl, {
+        slug: effectiveLink.slug,
+        shortCode: effectiveLink.short_code,
+        title: effectiveLink.custom_title,
+      });
+      const clickTrackingUrl = `${publicBaseUrl}/api/v1/links/${link.id}/track`;
+
+      return res
+        .status(200)
+        .type("html")
+        .send(
+          renderLinkLandingPage(
+            effectiveLink,
+            canonicalUrl,
+            clickTrackingUrl,
+            {
+              primaryRedirectUrl: effectiveLink.original_url,
+              autoOpen: true,
+              autoOpenDelayMs: 0,
             },
           ),
         );

@@ -17,7 +17,7 @@ test("applyDeepLinkTemplate replaces url placeholders", () => {
   );
 });
 
-test("resolveDeepLinkUrl picks platform and device templates", () => {
+test("resolveDeepLinkUrl keeps mobile users on the original destination", () => {
   const profiles = {
     shopee: {
       enabled: true,
@@ -37,7 +37,7 @@ test("resolveDeepLinkUrl picks platform and device templates", () => {
       "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)",
       profiles,
     ),
-    "shopee://ios?url=https%3A%2F%2Fshopee.vn%2Fproduct%2F123",
+    "https://shopee.vn/product/123",
   );
   assert.equal(
     resolveDeepLinkUrl(
@@ -45,7 +45,7 @@ test("resolveDeepLinkUrl picks platform and device templates", () => {
       "Mozilla/5.0 (Linux; Android 14; Pixel 8)",
       profiles,
     ),
-    "intent://android?url=https://shopee.vn/product/123",
+    "https://shopee.vn/product/123",
   );
   assert.equal(
     resolveDeepLinkUrl(
@@ -62,7 +62,7 @@ test("resolveDeepLinkUrl picks platform and device templates", () => {
       "Mozilla/5.0 (Linux; Android 14; Pixel 8)",
       profiles,
     ),
-    "intent://android?url=https://s.shopee.vn/2qRr9Jvpsc",
+    "https://s.shopee.vn/2qRr9Jvpsc",
   );
 });
 
