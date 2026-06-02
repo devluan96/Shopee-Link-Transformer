@@ -105,12 +105,15 @@ export const filterRealOutboundEvents = (events: LinkOutboundEvent[]) =>
 export const filterShopeeOutboundEvents = (events: LinkOutboundEvent[]) =>
   events.filter((event) => isShopeeDestinationUrl(event.destination_url));
 
-export const countDisplayableOutboundClicks = (events: LinkOutboundEvent[]) =>
+export const filterDisplayableOutboundEvents = (events: LinkOutboundEvent[]) =>
   filterRealOutboundEvents(events).filter(
     (event) =>
       isShopeeDestinationUrl(event.destination_url) ||
       isTikTokDestinationUrl(event.destination_url),
-  ).length;
+  );
+
+export const countDisplayableOutboundClicks = (events: LinkOutboundEvent[]) =>
+  filterDisplayableOutboundEvents(events).length;
 
 export const insertOutboundEvent = async (
   supabase: SupabaseClient,

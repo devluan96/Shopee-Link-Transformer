@@ -156,7 +156,22 @@ router.post("/billing/zalopay/callback", async (req, res) => {
       return res.status(400).json({ return_code: -1, return_message: "Invalid MAC" });
     }
 
-    const callbackData = JSON.parse(data);
+    let callbackData: Record<string, any>;
+    try {
+      const parsed = JSON.parse(data);
+      if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+        return res.status(400).json({
+          return_code: -1,
+          return_message: "Invalid callback payload",
+        });
+      }
+      callbackData = parsed as Record<string, any>;
+    } catch {
+      return res.status(400).json({
+        return_code: -1,
+        return_message: "Invalid callback payload",
+      });
+    }
     const { app_trans_id, zp_trans_id, amount } = callbackData;
 
     console.log(`âœ… ZaloPay callback received: ${app_trans_id}, amount: ${amount}`);

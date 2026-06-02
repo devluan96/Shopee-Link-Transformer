@@ -6,6 +6,10 @@ import * as userService from "../services/userService.js";
 import * as featureLimitService from "../services/featureLimitService.js";
 import * as notificationService from "../services/notificationService.js";
 import * as securityService from "../services/securityService.js";
+import {
+  countDisplayableOutboundClicks,
+  fetchOutboundEventsForLinkIds,
+} from "../utils/clickTracking.js";
 
 const router = Router();
 
@@ -297,25 +301,18 @@ router.get(
       if (linksError) throw linksError;
       if (!links || links.length === 0) return res.json([]);
 
-      // 2. Get click counts for all links in one query
+      // 2. Get outbound events for all links in one query
       const linkIds = links.map((l: any) => l.id);
-      const { data: clicks, error: clicksError } = await supabase
-        .from("clicks")
-        .select("link_id")
-        .in("link_id", linkIds);
-
-      if (clicksError) throw clicksError;
-
-      // 3. Count clicks per link
-      const clickCounts = new Map<string, number>();
-      clicks?.forEach((c: any) => {
-        clickCounts.set(c.link_id, (clickCounts.get(c.link_id) || 0) + 1);
-      });
-
-      // 4. Attach click counts to links
+      const outboundEvents = await fetchOutboundEventsForLinkIds(
+        supabase,
+        linkIds,
+      );
+      // 3. Attach displayable click counts to links
       const linksWithClicks = links.map((link: any) => ({
         ...link,
-        clicks: clickCounts.get(link.id) || 0,
+        clicks: countDisplayableOutboundClicks(
+          outboundEvents.filter((event: any) => event.link_id === link.id),
+        ),
       }));
 
       return res.json(linksWithClicks);

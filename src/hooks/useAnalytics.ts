@@ -7,6 +7,7 @@ import {
   UserProfile,
 } from "@/src/types";
 import { toast } from "sonner";
+import { supabase } from "@/src/lib/supabase";
 
 interface UseAnalyticsProps {
   user: User | null;
@@ -137,6 +138,11 @@ export function useAnalytics({
   const refreshStats = useCallback(() => setStatsDirty(true), []);
   const refreshAnalytics = useCallback(() => setAnalyticsDirty(true), []);
 
+  const markClickDataDirty = useCallback(() => {
+    setStatsDirty(true);
+    setAnalyticsDirty(true);
+  }, []);
+
   useEffect(() => {
     setStats(emptyStats);
     setAnalyticsData(emptyAnalyticsData);
@@ -151,6 +157,66 @@ export function useAnalytics({
     setAnalyticsUpdatedAt(null);
     setAnalyticsDirty(!!user);
   }, [focusContext?.source, focusContext?.period, user?.id]);
+
+  useEffect(() => {
+    if (!user?.id || !workspaceResolved) return;
+
+    const linkChannel = supabase
+      .channel(`analytics-links-sync:${user.id}:${currentWorkspaceId || "all"}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "links",
+          ...(currentWorkspaceId
+            ? { filter: `workspace_id=eq.${currentWorkspaceId}` }
+            : {}),
+        },
+        () => {
+          markClickDataDirty();
+        },
+      )
+      .subscribe();
+
+    const outboundChannel = supabase
+      .channel(
+        `analytics-outbound-sync:${user.id}:${currentWorkspaceId || "all"}`,
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "link_outbound_events",
+        },
+        () => {
+          markClickDataDirty();
+        },
+      )
+      .subscribe();
+
+    const rawClickChannel = supabase
+      .channel(`analytics-clicks-sync:${user.id}:${currentWorkspaceId || "all"}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "clicks",
+        },
+        () => {
+          markClickDataDirty();
+        },
+      )
+      .subscribe();
+
+    return () => {
+      void supabase.removeChannel(linkChannel);
+      void supabase.removeChannel(outboundChannel);
+      void supabase.removeChannel(rawClickChannel);
+    };
+  }, [currentWorkspaceId, markClickDataDirty, user?.id, workspaceResolved]);
 
   useEffect(() => {
     const isAdminRole = profile?.role === "admin";

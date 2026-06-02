@@ -348,23 +348,8 @@ export const renderLinkLandingPage = (
         const trackRealClick = () => postJsonKeepalive(clickTrackingUrl, { ts: Date.now() });
         const trackOutbound = (stage) => postJsonKeepalive(outboundTrackingUrl, { stage, ts: Date.now() });
 
-        const isAffiliateCommerceUrl = (url) => {
-          if (!url) return false;
-          try {
-            const hostname = new URL(url).hostname.toLowerCase();
-            return /(^|\.)shopee\.[a-z.]+$/i.test(hostname) || /(^|\.)tiktok\.com$|(^|\.)vt\.tiktok\.com$|(^|\.)vm\.tiktok\.com$/i.test(hostname);
-          } catch (error) {
-            return false;
-          }
-        };
-
         const openUrl = (url) => {
           if (!url) return;
-          if (isAffiliateCommerceUrl(url)) {
-            window.location.replace(url);
-            return;
-          }
-
           try {
             const popup = window.open(url, "_blank", "noopener,noreferrer");
             if (popup) return;
@@ -377,7 +362,6 @@ export const renderLinkLandingPage = (
           if (primaryOpened) return;
           primaryOpened = true;
           trackRealClick();
-          trackOutbound("primary");
           hideOverlay();
 
           if (hasSecondaryRedirect && secondaryGate) {
