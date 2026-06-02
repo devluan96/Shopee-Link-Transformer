@@ -16,6 +16,7 @@ import { auditAccessLogs, blockBlockedIps } from "./middleware/security.js";
 // Routes
 import apiRoutes from "./routes/index.js";
 import { PublicLinkRecord } from "./types/index.js";
+import * as securityService from "./services/securityService.js";
 
 // Utils
 import {
@@ -458,6 +459,97 @@ app.get("/api/health", (req, res) => {
       ),
     },
   });
+});
+
+app.get("/api/v1/debug/browser-probe", async (req, res) => {
+  try {
+    const supabase = getSupabase();
+    const ipAddress = getClientIp(req);
+    const userAgent =
+      typeof req.headers["user-agent"] === "string" ? req.headers["user-agent"] : "";
+    const tag = typeof req.query.tag === "string" ? req.query.tag : "browser-probe";
+    const mode = typeof req.query.mode === "string" ? req.query.mode : "html";
+    const payload = {
+      ok: false,
+      kind: "debug_probe",
+      tag,
+      mode,
+      userAgent,
+      path: req.originalUrl || req.path,
+    };
+
+    await securityService.logAccessEvent(supabase, {
+      ip_address: ipAddress,
+      method: req.method,
+      path: req.originalUrl || req.path,
+      status_code: 500,
+      user_agent: userAgent || null,
+      referer: typeof req.headers.referer === "string" ? req.headers.referer : null,
+      blocked: false,
+      block_reason: null,
+      metadata: {
+        kind: "debug_probe",
+        tag,
+        mode,
+        query: req.query,
+      },
+    });
+
+    if (mode === "json") {
+      return res.status(500).json(payload);
+    }
+
+    return res
+      .status(500)
+      .type("html")
+      .send(`<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Debug probe</title>
+    <style>
+      body {
+        margin: 0;
+        padding: 24px;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        background: #111827;
+        color: #e5e7eb;
+      }
+      .box {
+        max-width: 760px;
+        margin: 0 auto;
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        border-radius: 16px;
+        padding: 20px;
+        background: #0f172a;
+      }
+      h1 {
+        margin: 0 0 12px;
+        font-size: 18px;
+      }
+      pre {
+        white-space: pre-wrap;
+        word-break: break-word;
+        color: #bfdbfe;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="box">
+      <h1>Debug probe reached server</h1>
+      <pre>${escapeHtml(JSON.stringify(payload, null, 2))}</pre>
+    </div>
+  </body>
+</html>`);
+  } catch (error: any) {
+    console.error("[DEBUG PROBE ERROR]", error?.message || error);
+    return res.status(500).json({
+      ok: false,
+      kind: "debug_probe_error",
+      message: error?.message || "Unknown error",
+    });
+  }
 });
 
 app.get("/robots.txt", (req, res) => {
