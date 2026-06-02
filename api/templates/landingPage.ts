@@ -358,7 +358,21 @@ export const renderLinkLandingPage = (
           }).catch(() => {});
         };
 
-        const trackRealClick = () => postJsonKeepalive(clickTrackingUrl, { ts: Date.now() });
+        let primaryClickTrackingArmed = false;
+        let primaryClickTrackingSent = false;
+
+        const trackRealClick = () => {
+          if (primaryClickTrackingSent) return;
+          primaryClickTrackingSent = true;
+          postJsonKeepalive(clickTrackingUrl, { ts: Date.now() });
+        };
+
+        const armPrimaryClickTracking = () => {
+          if (primaryClickTrackingArmed) return;
+          primaryClickTrackingArmed = true;
+          window.addEventListener("pagehide", trackRealClick, { once: true });
+        };
+
         const trackOutbound = (stage) => postJsonKeepalive(outboundTrackingUrl, { stage, ts: Date.now() });
 
         const openUrl = (url) => {
@@ -375,7 +389,7 @@ export const renderLinkLandingPage = (
           if (primaryOpened) return;
           primaryOpened = true;
           clearAutoOpenTimer();
-          trackRealClick();
+          armPrimaryClickTracking();
           hideOverlay();
 
           if (hasSecondaryRedirect && secondaryGate) {
@@ -393,6 +407,7 @@ export const renderLinkLandingPage = (
           if (secondaryGate) {
             secondaryGate.classList.remove("is-visible");
           }
+          armPrimaryClickTracking();
           openUrl(secondaryTargetUrl);
         };
 

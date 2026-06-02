@@ -99,7 +99,7 @@ test("renderChoiceLandingPage sends primary overlay clicks directly to the targe
     html,
     /const outboundTrackingUrl = "https:\/\/test\.hotsnew\.click\/api\/v1\/links\/link-1\/track-outbound";/,
   );
-  assert.match(html, /trackPrimaryClick\(\);/);
+  assert.match(html, /window\.addEventListener\("pagehide", trackPrimaryClick, \{ once: true \}\);/);
   assert.match(html, /trackSecondaryOutbound\(\);/);
 });
 

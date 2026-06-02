@@ -331,11 +331,15 @@ export default function App() {
   const {
     links,
     listLoading,
+    listLoadingMore,
     linksDirty,
+    linksHasMore,
     searchTerm,
     setSearchTerm,
     setLinksDirty,
     upsertLink,
+    loadMoreLinks,
+    setLinksSortMode,
     handleDeleteLink,
     handleUpdateLink,
     handleShareLink,
@@ -1248,12 +1252,18 @@ export default function App() {
             <LinkList
               links={links}
               listLoading={listLoading}
+              listLoadingMore={listLoadingMore}
               searchTerm={searchTerm}
               setSearchTerm={setSearchTerm}
               workspaces={workspaces}
               currentWorkspaceId={currentWorkspaceId}
               canShareToWorkspace={currentWorkspace?.role === "owner"}
               showChoiceModeActions={isAdminRole}
+              stats={stats}
+              statsUpdatedAt={statsUpdatedAt}
+              hasMoreLinks={linksHasMore}
+              onLoadMoreLinks={loadMoreLinks}
+              onQuickFilterChange={setLinksSortMode}
               copyToClipboard={copyToClipboard}
               copiedId={copiedId || ""}
               onDeleteLink={handleDeleteLink}

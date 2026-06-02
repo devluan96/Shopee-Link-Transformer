@@ -395,6 +395,10 @@ export const getUserLinks = async (
   supabase: SupabaseClient,
   userId: string,
   workspaceId?: string,
+  options?: {
+    limit?: number;
+    offset?: number;
+  },
 ) => {
   const workspaceIds = await getAccessibleWorkspaceIds(supabase, userId);
   if (!workspaceIds.length) return [];
@@ -404,13 +408,28 @@ export const getUserLinks = async (
     : workspaceIds;
   if (!filteredWorkspaceIds.length) return [];
 
-  const { data, error } = await supabase
+  let query = supabase
     .from("links")
     .select(
       "id, short_code, slug, original_url, custom_domain, workspace_id, folder_name, tags, custom_title, custom_description, custom_image_url, video_url, created_at, expires_at, secondary_url, redirect_delay_ms, usage_context, user_id, shopee_affiliate_params, tiktok_affiliate_params, ab_test_enabled, ab_variant_b_title, ab_variant_b_description, ab_variant_b_image_url, ab_variant_b_video_url, ab_variant_b_original_url, ab_variant_b_secondary_url",
     )
     .in("workspace_id", filteredWorkspaceIds)
     .order("created_at", { ascending: false });
+
+  const limit =
+    typeof options?.limit === "number" && Number.isFinite(options?.limit)
+      ? Math.max(0, Math.floor(options.limit))
+      : null;
+  const offset =
+    typeof options?.offset === "number" && Number.isFinite(options?.offset)
+      ? Math.max(0, Math.floor(options.offset))
+      : 0;
+
+  if (limit !== null) {
+    query = query.range(offset, offset + Math.max(0, limit) - 1);
+  }
+
+  const { data, error } = await query;
 
   if (error) throw error;
   return data || [];

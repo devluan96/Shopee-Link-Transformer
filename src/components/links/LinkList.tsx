@@ -1,4 +1,4 @@
-import React, { useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   Search,
   Image as ImageIcon,
@@ -20,7 +20,7 @@ import {
   Filter,
   Share2,
 } from "lucide-react";
-import { ConvertedLink, LinkUpdatePayload, Workspace } from "@/src/types";
+import { ConvertedLink, LinkStats, LinkUpdatePayload, Workspace } from "@/src/types";
 import { formatDistanceToNow } from "date-fns";
 import { enUS, vi as viLocale } from "date-fns/locale";
 import { QRCodeCanvas } from "qrcode.react";
@@ -43,12 +43,18 @@ type QuickFilter = "all" | "choice" | "video" | "tiktok" | "expiring" | "top";
 interface LinkListProps {
   links: ConvertedLink[];
   listLoading: boolean;
+  listLoadingMore?: boolean;
   searchTerm: string;
   setSearchTerm: (v: string) => void;
   workspaces?: Workspace[];
   currentWorkspaceId?: string;
   canShareToWorkspace?: boolean;
   showChoiceModeActions?: boolean;
+  stats?: LinkStats;
+  statsUpdatedAt?: string | null;
+  hasMoreLinks?: boolean;
+  onLoadMoreLinks?: () => Promise<void> | void;
+  onQuickFilterChange?: (mode: "newest" | "top") => void;
   copyToClipboard: (text: string, id: string) => void;
   copiedId: string;
   onDeleteLink: (id: string) => Promise<void>;
@@ -60,12 +66,18 @@ interface LinkListProps {
 export const LinkList = ({
   links,
   listLoading,
+  listLoadingMore = false,
   searchTerm,
   setSearchTerm,
   workspaces = [],
   currentWorkspaceId,
   canShareToWorkspace = false,
   showChoiceModeActions = false,
+  stats,
+  statsUpdatedAt,
+  hasMoreLinks = false,
+  onLoadMoreLinks,
+  onQuickFilterChange,
   copyToClipboard,
   copiedId,
   onDeleteLink,
@@ -87,6 +99,7 @@ export const LinkList = ({
   const [isSharing, setIsSharing] = useState(false);
   const [showBulkDeleteConfirm, setShowBulkDeleteConfirm] = useState(false);
   const [quickFilter, setQuickFilter] = useState<QuickFilter>("all");
+  const loadMoreSentinelRef = useRef<HTMLDivElement | null>(null);
   const [editForm, setEditForm] = useState({
     shortCode: "",
     title: "",
@@ -374,7 +387,7 @@ export const LinkList = ({
   };
 
   const normalizedSearchTerm = searchTerm.trim().toLowerCase();
-  const displayedLinks = links.filter((link) => {
+  const filteredLinks = links.filter((link) => {
     const searchableText = [
       link.custom_title,
       link.custom_description,
@@ -416,6 +429,21 @@ export const LinkList = ({
     }
   });
 
+  const displayedLinks = (() => {
+    const nextLinks = [...filteredLinks];
+    if (quickFilter === "top") {
+      return nextLinks.sort((a, b) => {
+        const aClicks = (a.clicks || 0) + (a.tiktok_clicks || 0);
+        const bClicks = (b.clicks || 0) + (b.tiktok_clicks || 0);
+        if (bClicks !== aClicks) return bClicks - aClicks;
+        const aCreated = a.created_at ? new Date(a.created_at).getTime() : 0;
+        const bCreated = b.created_at ? new Date(b.created_at).getTime() : 0;
+        return bCreated - aCreated;
+      });
+    }
+    return nextLinks;
+  })();
+
   const visibleLinkIds = displayedLinks
     .map((link) => link.id ?? link.short_code)
     .filter((id): id is string => !!id);
@@ -432,26 +460,60 @@ export const LinkList = ({
     setSelectedIds(nextSet);
   };
 
-  const totalLinks = links.length;
-  const totalShopeeClicks = links.reduce(
-    (sum, link) => sum + (link.clicks || 0),
-    0,
-  );
-  const totalTiktokClicks = links.reduce(
-    (sum, link) => sum + (link.tiktok_clicks || 0),
-    0,
-  );
-  const totalOutboundClicks = totalShopeeClicks + totalTiktokClicks;
-  const choiceModeCount = links.filter((link) => !!link.secondary_url).length;
-  const expiringSoonCount = links.filter((link) =>
-    isLinkExpiringSoon(link.expires_at),
-  ).length;
-  const averageClicks = totalLinks
-    ? Math.round(totalOutboundClicks / totalLinks)
-    : 0;
+  const hasLoadedStats = !!statsUpdatedAt;
+  const totalLinks = hasLoadedStats ? stats?.totalLinks ?? 0 : 0;
+  const totalShopeeClicks =
+    hasLoadedStats && stats?.totalShopeeClicks !== undefined
+      ? stats.totalShopeeClicks
+      :
+    links.reduce((sum, link) => sum + (link.clicks || 0), 0);
+  const totalTiktokClicks =
+    hasLoadedStats && stats?.totalTiktokClicks !== undefined
+      ? stats.totalTiktokClicks
+      :
+    links.reduce((sum, link) => sum + (link.tiktok_clicks || 0), 0);
+  const totalOutboundClicks =
+    hasLoadedStats && stats?.totalClicks !== undefined
+      ? stats.totalClicks
+      : totalShopeeClicks + totalTiktokClicks;
+  const choiceModeCount =
+    hasLoadedStats && stats?.choiceModeCount !== undefined
+      ? stats.choiceModeCount
+      : links.filter((link) => !!link.secondary_url).length;
+  const expiringSoonCount =
+    hasLoadedStats && stats?.expiringSoonCount !== undefined
+      ? stats.expiringSoonCount
+      :
+    links.filter((link) => isLinkExpiringSoon(link.expires_at)).length;
+  const averageClicks =
+    hasLoadedStats && stats?.averageClicks !== undefined
+      ? stats.averageClicks
+      : totalLinks
+        ? Math.round(totalOutboundClicks / totalLinks)
+        : 0;
   const editUsageHasMatchingOption = localizedUsageOptions.some(
     (option) => option.value === editForm.usage,
   );
+
+  useEffect(() => {
+    if (!onLoadMoreLinks || !hasMoreLinks) return;
+
+    const sentinel = loadMoreSentinelRef.current;
+    if (!sentinel) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const [entry] = entries;
+        if (entry?.isIntersecting) {
+          void onLoadMoreLinks();
+        }
+      },
+      { rootMargin: "200px 0px" },
+    );
+
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [hasMoreLinks, onLoadMoreLinks, displayedLinks.length]);
 
   const confirmDelete = async () => {
     if (!deletingLink?.id) return;
@@ -467,35 +529,35 @@ export const LinkList = ({
   const renderStats = [
     {
       label: content.stats.total,
-      value: totalLinks,
+      value: hasLoadedStats ? totalLinks : "…",
       note: t("linkList.stats.totalNote", { shown: displayedLinks.length }),
       icon: <Sparkles size={15} />,
       tone: "border-orange-200/70 bg-orange-50/80 text-orange-700 dark:border-orange-500/20 dark:bg-orange-500/10 dark:text-orange-200",
     },
     {
       label: content.stats.shopee,
-      value: totalShopeeClicks,
+      value: hasLoadedStats ? totalShopeeClicks : "…",
       note: content.stats.shopeeNote,
       icon: <MousePointer2 size={15} />,
       tone: "border-blue-200/70 bg-blue-50/80 text-blue-700 dark:border-blue-500/20 dark:bg-blue-500/10 dark:text-blue-200",
     },
     {
       label: content.stats.tiktok,
-      value: totalTiktokClicks,
+      value: hasLoadedStats ? totalTiktokClicks : "…",
       note: content.stats.tiktokNote,
       icon: <BarChart3 size={15} />,
       tone: "border-cyan-200/70 bg-cyan-50/80 text-cyan-700 dark:border-cyan-500/20 dark:bg-cyan-500/10 dark:text-cyan-200",
     },
     {
       label: content.stats.choice,
-      value: choiceModeCount,
+      value: hasLoadedStats ? choiceModeCount : "…",
       note: content.stats.choiceNote,
       icon: <ShieldCheck size={15} />,
       tone: "border-amber-200/70 bg-amber-50/80 text-amber-700 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-200",
     },
     {
       label: content.stats.expiring,
-      value: expiringSoonCount,
+      value: hasLoadedStats ? expiringSoonCount : "…",
       note: t("linkList.stats.expiringNote", { count: averageClicks }),
       icon: <Clock3 size={15} />,
       tone: "border-rose-200/70 bg-rose-50/80 text-rose-700 dark:border-rose-500/20 dark:bg-rose-500/10 dark:text-rose-200",
@@ -519,7 +581,7 @@ export const LinkList = ({
               <p className="mt-2 max-w-2xl text-sm font-medium leading-6 text-slate-500 dark:text-slate-400">
                 {t("linkList.hero.description", {
                   shown: displayedLinks.length,
-                  total: links.length,
+                  total: totalLinks,
                 })}
               </p>
             </div>
@@ -581,7 +643,12 @@ export const LinkList = ({
                   <button
                     key={option.value}
                     type="button"
-                    onClick={() => setQuickFilter(option.value)}
+                    onClick={() => {
+                      setQuickFilter(option.value);
+                      onQuickFilterChange?.(
+                        option.value === "top" ? "top" : "newest",
+                      );
+                    }}
                     className={`rounded-full px-3.5 py-2 text-[10px] font-black uppercase tracking-[0.18em] transition-all ${
                       isActive
                         ? "bg-slate-900 text-white shadow-lg shadow-slate-900/15 dark:bg-white dark:text-slate-900"
@@ -660,7 +727,8 @@ export const LinkList = ({
             </p>
           </div>
         ) : (
-          displayedLinks.map((link) => {
+          <>
+            {displayedLinks.map((link) => {
             const linkId = link.id ?? link.short_code;
             const flowBadge = getSecondaryFlowBadge(
               link.original_url,
@@ -857,7 +925,14 @@ export const LinkList = ({
                 </div>
               </div>
             );
-          })
+            })}
+            <div ref={loadMoreSentinelRef} className="h-1 w-full" />
+            {listLoadingMore && (
+              <div className="rounded-[1.75rem] border border-slate-200/70 bg-white/70 px-6 py-8 text-center text-sm font-semibold text-slate-500 dark:border-slate-700 dark:bg-slate-900/40 dark:text-slate-400">
+                Đang tải thêm liên kết...
+              </div>
+            )}
+          </>
         )}
       </div>
 

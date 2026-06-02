@@ -388,20 +388,88 @@ router.get(
         typeof req.query.workspaceId === "string"
           ? req.query.workspaceId
           : undefined;
+      const sortMode =
+        typeof req.query.sort === "string" ? req.query.sort : "newest";
+      const requestedLimit =
+        typeof req.query.limit === "string" ? Number(req.query.limit) : NaN;
+      const requestedOffset =
+        typeof req.query.offset === "string" ? Number(req.query.offset) : 0;
+      const usePagination =
+        Number.isFinite(requestedLimit) && requestedLimit > 0;
+      const pageSize = usePagination
+        ? Math.min(Math.floor(requestedLimit), 50)
+        : null;
+      const pageOffset =
+        Number.isFinite(requestedOffset) && requestedOffset > 0
+          ? Math.floor(requestedOffset)
+          : 0;
+
+      const shouldUseTopSort = sortMode === "top";
+      if (shouldUseTopSort) {
+        const links = await linkService.getUserLinks(
+          supabase,
+          userId,
+          workspaceId,
+        );
+        const orderedLinks = [...(await attachTrackedSourcesToLinks(
+          supabase,
+          links,
+        ))].sort((a, b) => {
+          const aClicks = (a.clicks || 0) + (a.tiktok_clicks || 0);
+          const bClicks = (b.clicks || 0) + (b.tiktok_clicks || 0);
+          if (bClicks !== aClicks) return bClicks - aClicks;
+          const aCreated = a.created_at ? new Date(a.created_at).getTime() : 0;
+          const bCreated = b.created_at ? new Date(b.created_at).getTime() : 0;
+          return bCreated - aCreated;
+        });
+        const pageLinks = usePagination
+          ? orderedLinks.slice(pageOffset, pageOffset + (pageSize as number))
+          : orderedLinks;
+        await notificationService.maybeCreateLinkExpiryNotifications(
+          supabase,
+          userId,
+          pageLinks,
+        );
+        if (usePagination) {
+          return res.json({
+            items: pageLinks,
+            hasMore: orderedLinks.length > pageOffset + (pageSize as number),
+            nextOffset: pageOffset + pageLinks.length,
+          });
+        }
+        return res.json(pageLinks);
+      }
+
       const links = await linkService.getUserLinks(
         supabase,
         userId,
         workspaceId,
+        usePagination
+          ? {
+              limit: (pageSize as number) + 1,
+              offset: pageOffset,
+            }
+          : undefined,
       );
+      const pageLinks = usePagination
+        ? links.slice(0, pageSize as number)
+        : links;
       await notificationService.maybeCreateLinkExpiryNotifications(
         supabase,
         userId,
-        links,
+        pageLinks,
       );
       const linksWithSources = await attachTrackedSourcesToLinks(
         supabase,
-        links,
+        pageLinks,
       );
+      if (usePagination) {
+        return res.json({
+          items: linksWithSources,
+          hasMore: links.length > (pageSize as number),
+          nextOffset: pageOffset + linksWithSources.length,
+        });
+      }
       return res.json(linksWithSources);
     } catch (e: any) {
       return res.status(500).json({ error: e.message });
