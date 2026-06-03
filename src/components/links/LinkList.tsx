@@ -99,7 +99,6 @@ export const LinkList = ({
   const [isSharing, setIsSharing] = useState(false);
   const [showBulkDeleteConfirm, setShowBulkDeleteConfirm] = useState(false);
   const [quickFilter, setQuickFilter] = useState<QuickFilter>("all");
-  const loadMoreSentinelRef = useRef<HTMLDivElement | null>(null);
   const [editForm, setEditForm] = useState({
     shortCode: "",
     title: "",
@@ -498,22 +497,36 @@ export const LinkList = ({
   useEffect(() => {
     if (!onLoadMoreLinks || !hasMoreLinks) return;
 
-    const sentinel = loadMoreSentinelRef.current;
-    if (!sentinel) return;
+    const isNearBottom = () => {
+      if (listLoading || listLoadingMore) return false;
 
-    const observer = new IntersectionObserver(
-      (entries) => {
-        const [entry] = entries;
-        if (entry?.isIntersecting) {
-          void onLoadMoreLinks();
-        }
-      },
-      { rootMargin: "200px 0px" },
-    );
+      const doc = document.documentElement;
+      const body = document.body;
+      const scrollTop = window.scrollY ?? doc.scrollTop ?? body.scrollTop ?? 0;
+      const viewportBottom = scrollTop + window.innerHeight;
+      const pageHeight = Math.max(
+        doc.scrollHeight,
+        body?.scrollHeight ?? 0,
+        doc.offsetHeight,
+        body?.offsetHeight ?? 0,
+      );
 
-    observer.observe(sentinel);
-    return () => observer.disconnect();
-  }, [hasMoreLinks, onLoadMoreLinks, displayedLinks.length]);
+      return pageHeight - viewportBottom <= 8;
+    };
+
+    const maybeLoadMore = () => {
+      if (!isNearBottom()) return;
+      void onLoadMoreLinks();
+    };
+
+    window.addEventListener("scroll", maybeLoadMore, { passive: true });
+    window.addEventListener("resize", maybeLoadMore);
+
+    return () => {
+      window.removeEventListener("scroll", maybeLoadMore);
+      window.removeEventListener("resize", maybeLoadMore);
+    };
+  }, [hasMoreLinks, listLoading, listLoadingMore, onLoadMoreLinks]);
 
   const confirmDelete = async () => {
     if (!deletingLink?.id) return;
@@ -926,7 +939,6 @@ export const LinkList = ({
               </div>
             );
             })}
-            <div ref={loadMoreSentinelRef} className="h-1 w-full" />
             {listLoadingMore && (
               <div className="rounded-[1.75rem] border border-slate-200/70 bg-white/70 px-6 py-8 text-center text-sm font-semibold text-slate-500 dark:border-slate-700 dark:bg-slate-900/40 dark:text-slate-400">
                 Đang tải thêm liên kết...
