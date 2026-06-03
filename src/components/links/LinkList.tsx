@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   Search,
   Image as ImageIcon,
@@ -360,6 +360,62 @@ export const LinkList = ({
     }
   };
 
+  const captureVideoThumbnailBlob = useCallback(
+    async (file: File): Promise<Blob | null> => {
+      return new Promise((resolve) => {
+        const video = document.createElement("video");
+        const objectUrl = URL.createObjectURL(file);
+        video.src = objectUrl;
+        video.muted = true;
+        video.playsInline = true;
+        video.preload = "metadata";
+
+        const cleanup = () => {
+          URL.revokeObjectURL(objectUrl);
+          video.removeAttribute("src");
+          video.load();
+        };
+
+        video.onloadedmetadata = () => {
+          const duration = Number.isFinite(video.duration) ? video.duration : 0;
+          const targetTime =
+            duration > 0 ? Math.min(Math.max(duration * 0.2, 0.2), 2) : 0.2;
+          video.currentTime = targetTime;
+        };
+
+        video.onseeked = () => {
+          const canvas = document.createElement("canvas");
+          canvas.width = video.videoWidth;
+          canvas.height = video.videoHeight;
+          const ctx = canvas.getContext("2d");
+          if (!ctx) {
+            cleanup();
+            resolve(null);
+            return;
+          }
+
+          ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+          canvas.toBlob(
+            (blob) => {
+              cleanup();
+              resolve(blob);
+            },
+            "image/jpeg",
+            0.85,
+          );
+        };
+
+        video.onerror = () => {
+          cleanup();
+          resolve(null);
+        };
+
+        video.load();
+      });
+    },
+    [],
+  );
+
   const handleEditVideoUpload = async (
     e: React.ChangeEvent<HTMLInputElement>,
   ) => {
@@ -377,14 +433,41 @@ export const LinkList = ({
     setEditVideoUploadSuccess(false);
 
     try {
-      const uploadedUrl = await uploadAssetToCloudinary(
+      const thumbnailBlob = await captureVideoThumbnailBlob(file);
+      const videoUploadPromise = uploadAssetToCloudinary(
         file,
         "video",
         file.name,
         setEditVideoUploadProgress,
       );
+      const thumbnailUploadPromise = thumbnailBlob
+        ? uploadAssetToCloudinary(thumbnailBlob, "image", "thumb.jpg")
+        : Promise.resolve<string | null>(null);
 
-      setEditForm((current) => ({ ...current, video: uploadedUrl }));
+      const [videoResult, thumbnailResult] = await Promise.allSettled([
+        videoUploadPromise,
+        thumbnailUploadPromise,
+      ]);
+
+      if (videoResult.status === "rejected") {
+        throw videoResult.reason;
+      }
+
+      const uploadedUrl = videoResult.value;
+      setEditForm((current) => ({
+        ...current,
+        video: uploadedUrl,
+        img:
+          thumbnailResult.status === "fulfilled" && thumbnailResult.value
+            ? thumbnailResult.value
+            : current.img,
+      }));
+
+      if (thumbnailResult.status === "rejected") {
+        toast.error(
+          "Video đã tải lên, nhưng không cắt được ảnh đại diện mới từ video.",
+        );
+      }
       setEditVideoUploadSuccess(true);
       setTimeout(() => setEditVideoUploadSuccess(false), 5000);
     } catch (error: unknown) {

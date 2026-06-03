@@ -1152,7 +1152,8 @@ export const en = {
       thumbnailField: "Thumbnail URL",
       videoField: "Video URL",
       videoPlaceholder: "https://...",
-      videoHelp: "Leave blank to keep the current video.",
+      videoHelp:
+        "Uploading a new video will automatically cut a new thumbnail from it and replace the old cover. If you do not want to change the video, just skip this step.",
       expiresField: "Link expiry",
       expiresNone: "No expiry",
       expiresDay: "{count} days",

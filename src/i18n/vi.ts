@@ -1154,7 +1154,8 @@ export const vi = {
       thumbnailField: "Đường dẫn ảnh đại diện",
       videoField: "Đường dẫn video",
       videoPlaceholder: "https://...",
-      videoHelp: "Để trống nếu muốn giữ video hiện tại.",
+      videoHelp:
+        "Tải video mới sẽ tự cắt ảnh đại diện từ video này và thay ảnh cũ. Nếu không đổi video, cứ bỏ qua.",
       expiresField: "Thời hạn liên kết",
       expiresNone: "Không hết hạn",
       expiresDay: "{count} ngày",
