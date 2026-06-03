@@ -112,6 +112,7 @@ export const LinkList = ({
     secondaryTargetType: "shopee" as "shopee" | "tiktok",
     redirectDelayMs: 3000,
     expiresAt: "",
+    video: "",
   });
   const [isUpdating, setIsUpdating] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -279,6 +280,7 @@ export const LinkList = ({
       folder: link.folder_name || "",
       tagsText: (link.tags || []).join(", "),
       img: link.custom_image_url || "",
+      video: link.video_url || "",
       original: link.original_url || "",
       secondary: link.secondary_url || "",
       secondaryTargetType: getSecondaryTargetType(link.secondary_url),
@@ -320,6 +322,7 @@ export const LinkList = ({
           .map((tag) => tag.trim())
           .filter(Boolean),
         custom_image_url: editForm.img,
+        video_url: editForm.video,
         original_url: editForm.original,
         secondary_url: editForm.secondary,
         secondaryTargetType: editForm.secondaryTargetType,
@@ -995,6 +998,24 @@ export const LinkList = ({
                   placeholder="https://..."
                   className="w-full rounded-2xl border-2 border-transparent bg-gray-50 px-6 py-4 text-sm font-medium text-gray-900 outline-none transition-all focus:border-orange-500 dark:bg-slate-700 dark:text-slate-100"
                 />
+              </div>
+
+              <div className="space-y-1 lg:col-span-2">
+                <label className="ml-1 text-[10px] font-black uppercase tracking-widest text-gray-400">
+                  {content.editModal.videoField}
+                </label>
+                <input
+                  type="url"
+                  value={editForm.video}
+                  onChange={(e) =>
+                    setEditForm({ ...editForm, video: e.target.value })
+                  }
+                  placeholder={content.editModal.videoPlaceholder}
+                  className="w-full rounded-2xl border-2 border-transparent bg-gray-50 px-6 py-4 text-sm font-medium text-gray-900 outline-none transition-all focus:border-orange-500 dark:bg-slate-700 dark:text-slate-100"
+                />
+                <p className="px-1 text-[9px] font-medium text-gray-400 dark:text-slate-500">
+                  {content.editModal.videoHelp}
+                </p>
               </div>
 
               <div className="space-y-1">
