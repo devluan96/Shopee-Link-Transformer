@@ -16,6 +16,7 @@ import { auditAccessLogs, blockBlockedIps } from "./middleware/security.js";
 // Routes
 import apiRoutes from "./routes/index.js";
 import { PublicLinkRecord } from "./types/index.js";
+import * as securityService from "./services/securityService.js";
 
 // Utils
 import {
@@ -39,6 +40,12 @@ import {
   insertOutboundEvent,
 } from "./utils/clickTracking.js";
 import { handleClickNotification } from "./services/notificationService.js";
+import {
+  getLinkDeepLinkProfiles,
+  resolveDeepLinkUrl,
+  shouldBypassLandingForMobileDeepLink,
+} from "./services/deepLinkService.js";
+import { renderLinkLandingPage } from "./templates/landingPage.js";
 import { renderChoiceLandingPage } from "./templates/landingPageChoice.js";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -147,6 +154,7 @@ const trackDirectPublicOpen = async (
   try {
     clickInserted = await insertClickWithTracking(supabase, {
       link_id: link.id,
+      workspace_id: link.workspace_id || effectiveLink.workspace_id || null,
       user_agent: userAgent,
       ip_address: ipAddress,
       source,
@@ -162,6 +170,7 @@ const trackDirectPublicOpen = async (
     outboundInserted = await insertOutboundEvent(supabase, {
       link_id: link.id,
       short_code: effectiveLink.short_code,
+      workspace_id: link.workspace_id || effectiveLink.workspace_id || null,
       stage: "primary",
       destination_url: effectiveLink.original_url,
       user_agent: typeof userAgent === "string" ? userAgent : null,
@@ -212,7 +221,7 @@ const fetchEffectiveTrackedLink = async (supabase: ReturnType<typeof getSupabase
   const { data: link, error: linkError } = await supabase
     .from("links")
     .select(
-      "id, user_id, short_code, custom_title, original_url, secondary_url, ab_test_enabled, ab_variant_b_title, ab_variant_b_description, ab_variant_b_image_url, ab_variant_b_video_url, ab_variant_b_original_url, ab_variant_b_secondary_url",
+      "id, user_id, workspace_id, short_code, custom_title, original_url, secondary_url, ab_test_enabled, ab_variant_b_title, ab_variant_b_description, ab_variant_b_image_url, ab_variant_b_video_url, ab_variant_b_original_url, ab_variant_b_secondary_url",
     )
     .eq("id", linkId)
     .maybeSingle();
@@ -244,6 +253,7 @@ const trackPrimaryOpen = async (
   try {
     clickInserted = await insertClickWithTracking(supabase, {
       link_id: effectiveLink.id,
+      workspace_id: link.workspace_id || effectiveLink.workspace_id || null,
       user_agent: userAgent,
       ip_address: ipAddress,
       source,
@@ -259,6 +269,7 @@ const trackPrimaryOpen = async (
     outboundInserted = await insertOutboundEvent(supabase, {
       link_id: effectiveLink.id,
       short_code: effectiveLink.short_code,
+      workspace_id: link.workspace_id || effectiveLink.workspace_id || null,
       stage: "primary",
       destination_url: effectiveLink.original_url,
       user_agent: userAgent,
@@ -316,6 +327,7 @@ const trackSecondaryOpen = async (
     await insertOutboundEvent(supabase, {
       link_id: effectiveLink.id,
       short_code: effectiveLink.short_code,
+      workspace_id: effectiveLink.workspace_id || null,
       stage: "secondary",
       destination_url: effectiveLink.secondary_url,
       user_agent: typeof userAgent === "string" ? userAgent : null,
@@ -327,6 +339,79 @@ const trackSecondaryOpen = async (
   } catch (trackError) {
     console.error("Secondary outbound tracking error:", trackError);
   }
+};
+
+const resolveTrackedRedirectUrl = (
+  destinationUrl: string,
+  userAgent: string,
+  profiles: Awaited<ReturnType<typeof getLinkDeepLinkProfiles>>,
+) => resolveDeepLinkUrl(destinationUrl, userAgent, profiles);
+
+const shouldReturnInspectResponse = (req: Request) => {
+  const inspectValue = req.query.inspect ?? req.query.debug;
+  return inspectValue === "1" || inspectValue === "true";
+};
+
+const shouldReturnInspectHtmlResponse = (req: Request) => {
+  const inspectValue = req.query.inspect ?? req.query.debug;
+  return inspectValue === "html" || inspectValue === "page";
+};
+
+const renderInspectDebugPage = (title: string, data: Record<string, unknown>) => {
+  const json = JSON.stringify(data, null, 2);
+  return `<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>${escapeHtml(title)}</title>
+    <style>
+      body {
+        margin: 0;
+        padding: 1rem;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        background: #0f172a;
+        color: #e2e8f0;
+      }
+      .card {
+        max-width: 960px;
+        margin: 0 auto;
+        background: #111827;
+        border: 1px solid rgba(148, 163, 184, 0.2);
+        border-radius: 16px;
+        padding: 1rem;
+      }
+      h1 {
+        font-size: 1rem;
+        margin: 0 0 0.75rem;
+      }
+      p {
+        margin: 0 0 1rem;
+        color: #94a3b8;
+        line-height: 1.5;
+        font-size: 0.9rem;
+      }
+      pre {
+        margin: 0;
+        white-space: pre-wrap;
+        word-break: break-word;
+        font-size: 0.82rem;
+        line-height: 1.5;
+        color: #dbeafe;
+      }
+      code {
+        color: #f8fafc;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <h1>${escapeHtml(title)}</h1>
+      <p>Dùng trang này để kiểm tra nhanh response của server trên mobile/browser. Nếu bạn thấy popup trước khi trang này xuất hiện thì request đang bị browser/app chặn ngoài server.</p>
+      <pre>${escapeHtml(json)}</pre>
+    </div>
+  </body>
+</html>`;
 };
 
 // A. MIDDLEWARES
@@ -374,6 +459,97 @@ app.get("/api/health", (req, res) => {
       ),
     },
   });
+});
+
+app.get("/api/v1/debug/browser-probe", async (req, res) => {
+  try {
+    const supabase = getSupabase();
+    const ipAddress = getClientIp(req);
+    const userAgent =
+      typeof req.headers["user-agent"] === "string" ? req.headers["user-agent"] : "";
+    const tag = typeof req.query.tag === "string" ? req.query.tag : "browser-probe";
+    const mode = typeof req.query.mode === "string" ? req.query.mode : "html";
+    const payload = {
+      ok: false,
+      kind: "debug_probe",
+      tag,
+      mode,
+      userAgent,
+      path: req.originalUrl || req.path,
+    };
+
+    await securityService.logAccessEvent(supabase, {
+      ip_address: ipAddress,
+      method: req.method,
+      path: req.originalUrl || req.path,
+      status_code: 500,
+      user_agent: userAgent || null,
+      referer: typeof req.headers.referer === "string" ? req.headers.referer : null,
+      blocked: false,
+      block_reason: null,
+      metadata: {
+        kind: "debug_probe",
+        tag,
+        mode,
+        query: req.query,
+      },
+    });
+
+    if (mode === "json") {
+      return res.status(500).json(payload);
+    }
+
+    return res
+      .status(500)
+      .type("html")
+      .send(`<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Debug probe</title>
+    <style>
+      body {
+        margin: 0;
+        padding: 24px;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        background: #111827;
+        color: #e5e7eb;
+      }
+      .box {
+        max-width: 760px;
+        margin: 0 auto;
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        border-radius: 16px;
+        padding: 20px;
+        background: #0f172a;
+      }
+      h1 {
+        margin: 0 0 12px;
+        font-size: 18px;
+      }
+      pre {
+        white-space: pre-wrap;
+        word-break: break-word;
+        color: #bfdbfe;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="box">
+      <h1>Debug probe reached server</h1>
+      <pre>${escapeHtml(JSON.stringify(payload, null, 2))}</pre>
+    </div>
+  </body>
+</html>`);
+  } catch (error: any) {
+    console.error("[DEBUG PROBE ERROR]", error?.message || error);
+    return res.status(500).json({
+      ok: false,
+      kind: "debug_probe_error",
+      message: error?.message || "Unknown error",
+    });
+  }
 });
 
 app.get("/robots.txt", (req, res) => {
@@ -480,6 +656,20 @@ app.get("/s-choice/:shortCode", async (req, res) => {
 
     const publicBaseUrl =
       getPublicBaseUrl(req) || `${req.protocol}://${req.get("host")}`;
+    const deepLinkProfiles = await getLinkDeepLinkProfiles(supabase);
+    const userAgentString = typeof userAgent === "string" ? userAgent : "";
+    const primaryRedirectUrl = resolveTrackedRedirectUrl(
+      effectiveLink.original_url,
+      userAgentString,
+      deepLinkProfiles,
+    );
+    const secondaryRedirectUrl = effectiveLink.secondary_url?.trim()
+      ? resolveTrackedRedirectUrl(
+          effectiveLink.secondary_url,
+          userAgentString,
+          deepLinkProfiles,
+        )
+      : "";
     const canonicalUrl = buildPrettyLinkUrl(publicBaseUrl, {
       slug: effectiveLink.slug,
       shortCode: effectiveLink.short_code,
@@ -487,8 +677,56 @@ app.get("/s-choice/:shortCode", async (req, res) => {
     });
     const clickTrackingUrl = `${publicBaseUrl}/api/v1/links/${link.id}/track`;
 
+    if (shouldReturnInspectResponse(req)) {
+      const inspectData = {
+        route: "s-choice",
+        shortCode,
+        userAgent: userAgentString,
+        isPreviewBot,
+        hasVideoLanding: Boolean(effectiveLink.video_url?.trim()),
+        shouldRenderPreviewPage: false,
+        shouldBypassLandingForMobileDeepLink: shouldBypassLandingForMobileDeepLink(
+          effectiveLink.original_url,
+          userAgentString,
+          deepLinkProfiles,
+        ),
+        originalUrl: effectiveLink.original_url,
+        primaryRedirectUrl,
+        secondaryRedirectUrl,
+        canonicalUrl,
+      };
+
+      if (shouldReturnInspectHtmlResponse(req)) {
+        return res
+          .status(200)
+          .type("html")
+          .send(renderInspectDebugPage("Inspect: s-choice", inspectData));
+      }
+
+      return res.json(inspectData);
+    }
+
+    if (
+      !effectiveLink.video_url?.trim() &&
+      shouldBypassLandingForMobileDeepLink(
+        effectiveLink.original_url,
+        userAgentString,
+        deepLinkProfiles,
+      )
+    ) {
+      await trackDirectPublicOpen(
+        supabase,
+        req,
+        link,
+        effectiveLink,
+        userAgentString,
+        "a",
+      );
+      return res.redirect(primaryRedirectUrl);
+    }
+
     if (!effectiveLink.video_url?.trim()) {
-      return res.redirect(effectiveLink.original_url);
+      return res.redirect(primaryRedirectUrl);
     }
 
     return res
@@ -498,8 +736,10 @@ app.get("/s-choice/:shortCode", async (req, res) => {
         renderChoiceLandingPage(effectiveLink, canonicalUrl, clickTrackingUrl, {
           experimental: true,
           preferImageCard: isMetaPreviewBot(
-            typeof userAgent === "string" ? userAgent : "",
+            userAgentString,
           ),
+          primaryRedirectUrl,
+          secondaryRedirectUrl,
         }),
       );
   } catch (e: any) {
@@ -624,31 +864,101 @@ const handlePublicShortLinkRequest = async (
     const isPreviewRequest =
       isPreviewBot || shouldIgnoreTrackingRequest(req);
     const shouldRenderPreviewPage = hasVideoLanding || isPreviewRequest;
-    if (shouldRenderPreviewPage) {
-      const publicBaseUrl =
-        getPublicBaseUrl(req) || `${req.protocol}://${req.get("host")}`;
-      const canonicalUrl = buildPrettyLinkUrl(publicBaseUrl, {
-        slug: effectiveLink.slug,
-        shortCode: effectiveLink.short_code,
-        title: effectiveLink.custom_title,
-      });
-      const clickTrackingUrl = `${publicBaseUrl}/api/v1/links/${link.id}/track`;
+    const deepLinkProfiles = await getLinkDeepLinkProfiles(supabase);
+    const userAgentString = typeof userAgent === "string" ? userAgent : "";
+    const primaryRedirectUrl = resolveTrackedRedirectUrl(
+      effectiveLink.original_url,
+      userAgentString,
+      deepLinkProfiles,
+    );
+    const secondaryRedirectUrl = effectiveLink.secondary_url?.trim()
+      ? resolveTrackedRedirectUrl(
+          effectiveLink.secondary_url,
+          userAgentString,
+          deepLinkProfiles,
+        )
+      : "";
 
+    const publicBaseUrl =
+      getPublicBaseUrl(req) || `${req.protocol}://${req.get("host")}`;
+    const canonicalUrl = buildPrettyLinkUrl(publicBaseUrl, {
+      slug: effectiveLink.slug,
+      shortCode: effectiveLink.short_code,
+      title: effectiveLink.custom_title,
+    });
+    const clickTrackingUrl = `${publicBaseUrl}/api/v1/links/${link.id}/track`;
+
+    if (shouldReturnInspectResponse(req)) {
+      const inspectData = {
+        route: "public-link",
+        shortCode,
+        lookupField,
+        userAgent: userAgentString,
+        isPreviewBot,
+        abVariant,
+        hasVideoLanding,
+        shouldRenderPreviewPage,
+        shouldBypassLandingForMobileDeepLink: shouldBypassLandingForMobileDeepLink(
+          effectiveLink.original_url,
+          userAgentString,
+          deepLinkProfiles,
+        ),
+        originalUrl: effectiveLink.original_url,
+        primaryRedirectUrl,
+        secondaryRedirectUrl,
+        canonicalUrl,
+      };
+
+      if (shouldReturnInspectHtmlResponse(req)) {
+        return res
+          .status(200)
+          .type("html")
+          .send(renderInspectDebugPage("Inspect: public-link", inspectData));
+      }
+
+      return res.json(inspectData);
+    }
+
+    if (
+      !hasVideoLanding &&
+      shouldBypassLandingForMobileDeepLink(
+        effectiveLink.original_url,
+        userAgentString,
+        deepLinkProfiles,
+      )
+    ) {
+      await trackDirectPublicOpen(
+        supabase,
+        req,
+        link,
+        effectiveLink,
+        userAgentString,
+        abVariant,
+      );
+      return res.redirect(primaryRedirectUrl);
+    }
+
+    if (shouldRenderPreviewPage) {
       return res
         .status(200)
         .type("html")
         .send(
-          renderChoiceLandingPage(effectiveLink, canonicalUrl, clickTrackingUrl, {
-            experimental: false,
-            preferImageCard: isMetaPreviewBot(
-              typeof userAgent === "string" ? userAgent : "",
-            ),
-          }),
+          renderChoiceLandingPage(
+            effectiveLink,
+            canonicalUrl,
+            clickTrackingUrl,
+            {
+              experimental: false,
+              preferImageCard: isMetaPreviewBot(userAgentString),
+              primaryRedirectUrl,
+              secondaryRedirectUrl,
+            },
+          ),
         );
     }
 
     if (shouldIgnoreTrackingRequest(req)) {
-      return res.redirect(effectiveLink.original_url);
+      return res.redirect(primaryRedirectUrl);
     }
 
     await trackDirectPublicOpen(
@@ -660,7 +970,7 @@ const handlePublicShortLinkRequest = async (
       abVariant,
     );
 
-    return res.redirect(effectiveLink.original_url);
+    return res.redirect(primaryRedirectUrl);
   } catch (e: any) {
     console.error("[REDIRECT ERROR]", {
       shortCode,
@@ -743,9 +1053,15 @@ app.get("/api/v1/links/:linkId/open", async (req, res) => {
     if (!destinationUrl) {
       return res.status(400).send("Missing destination URL");
     }
+    const deepLinkProfiles = await getLinkDeepLinkProfiles(supabase);
+    const resolvedDestinationUrl = resolveTrackedRedirectUrl(
+      destinationUrl,
+      typeof userAgent === "string" ? userAgent : "",
+      deepLinkProfiles,
+    );
 
     if (shouldIgnoreTrackingRequest(req)) {
-      return res.redirect(destinationUrl);
+      return res.redirect(resolvedDestinationUrl);
     }
 
     if (stage === "secondary") {
@@ -760,7 +1076,7 @@ app.get("/api/v1/links/:linkId/open", async (req, res) => {
       );
     }
 
-    return res.redirect(destinationUrl);
+    return res.redirect(resolvedDestinationUrl);
   } catch (e: any) {
     console.error("Open redirect error:", e);
     return res.status(500).send("Server error: " + (e.message || "Unknown"));
@@ -782,8 +1098,19 @@ app.post("/api/v1/links/:linkId/track-preview-click", async (req, res) => {
     const userAgent = req.headers["user-agent"] || "";
     const ipAddress = getClientIp(req);
 
+    const { data: link, error: linkError } = await supabase
+      .from("links")
+      .select("id, workspace_id")
+      .eq("id", linkId)
+      .maybeSingle();
+
+    if (linkError || !link) {
+      return res.status(404).json({ error: "Link not found" });
+    }
+
     const inserted = await insertClickWithTracking(supabase, {
       link_id: linkId,
+      workspace_id: link.workspace_id || null,
       user_agent: userAgent,
       ip_address: ipAddress,
       source,
@@ -857,7 +1184,7 @@ app.post("/api/v1/links/:linkId/track-outbound", async (req, res) => {
     const { data: link, error: linkError } = await supabase
       .from("links")
       .select(
-        "id, short_code, original_url, secondary_url, ab_test_enabled, ab_variant_b_title, ab_variant_b_description, ab_variant_b_image_url, ab_variant_b_video_url, ab_variant_b_original_url, ab_variant_b_secondary_url",
+        "id, workspace_id, short_code, original_url, secondary_url, ab_test_enabled, ab_variant_b_title, ab_variant_b_description, ab_variant_b_image_url, ab_variant_b_video_url, ab_variant_b_original_url, ab_variant_b_secondary_url",
       )
       .eq("id", linkId)
       .maybeSingle();
@@ -883,6 +1210,7 @@ app.post("/api/v1/links/:linkId/track-outbound", async (req, res) => {
     const inserted = await insertOutboundEvent(supabase, {
       link_id: effectiveLink.id,
       short_code: effectiveLink.short_code,
+      workspace_id: link.workspace_id || effectiveLink.workspace_id || null,
       stage,
       destination_url: destinationUrl,
       user_agent: typeof userAgent === "string" ? userAgent : null,
@@ -1008,6 +1336,32 @@ app.get("*", (req, res) => {
 });
 
 // Start server
+const validateRequiredEnvVars = () => {
+  const requiredVars = [
+    "SECURITY_ENCRYPTION_KEY",
+    "APP_SECRET",
+    "SUPABASE_SERVICE_ROLE_KEY",
+  ];
+
+  const encryptionKey =
+    process.env.SECURITY_ENCRYPTION_KEY ||
+    process.env.APP_SECRET ||
+    process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+  if (!encryptionKey) {
+    console.error("❌ SECURITY_ENCRYPTION_KEY is not configured!");
+    console.error(
+      "Set one of these environment variables: SECURITY_ENCRYPTION_KEY, APP_SECRET, or SUPABASE_SERVICE_ROLE_KEY"
+    );
+    console.error(
+      "See docs/security-encryption-setup.md for instructions on generating a key."
+    );
+    process.exit(1);
+  }
+};
+
+validateRequiredEnvVars();
+
 app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
   console.log(`📊 Health check: http://localhost:${PORT}/api/health`);

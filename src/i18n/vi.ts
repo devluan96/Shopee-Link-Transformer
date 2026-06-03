@@ -663,12 +663,12 @@ export const vi = {
       },
       metrics: {
         totalLinks: "Tổng liên kết",
-        outboundClicks: "Tổng lượt nhấp",
+        outboundClicks: "Tổng lũy kế",
         toShopee: "Ra Shopee",
         toTiktok: "Ra TikTok",
         totalLinksDetail: "{avg} lượt nhấp trung bình mỗi liên kết",
         totalLinksEmpty: "Bắt đầu tạo liên kết đầu tiên để mở dữ liệu",
-        outboundDetail: "Tổng lượt nhấp điều hướng ra đích",
+        outboundDetail: "Tổng lượt nhấp điều hướng ra đích, bao gồm cả hôm nay",
         outboundEmpty: "Chưa có phiên outbound nào được ghi nhận",
         marketplaceShare: "{share}% tổng outbound",
         shopeeEmpty: "Chưa ghi nhận traffic đi Shopee",
@@ -801,6 +801,28 @@ export const vi = {
         "Chọn trước 2-3 domain đầu ra để người dùng gói năm chọn khi tạo link.",
       add: "Thêm domain",
       save: "Lưu danh sách",
+      saving: "Đang lưu...",
+    },
+    deepLinks: {
+      title: "Profile deep link thông minh",
+      description:
+        "Mobile giờ dùng URL gốc và tự xử lý hành vi mở app; phần cấu hình còn lại chỉ dành cho desktop fallback.",
+      shopee: "Shopee",
+      tiktok: "TikTok",
+      shopeeHelp: "Cấu hình cho link đích Shopee.",
+      tiktokHelp: "Cấu hình cho link đích TikTok.",
+      enabled: "Đang bật",
+      disabled: "Đang tắt",
+      iosPlaceholder: "Giữ lại cho cấu hình cũ, nếu cần.",
+      androidPlaceholder: "Giữ lại cho cấu hình cũ, nếu cần.",
+      desktopPlaceholder: "Desktop fallback hoặc URL đích",
+      templateHelp:
+        "Dùng {{url}} hoặc {{encodedUrl}} làm placeholder cho URL đích. Mobile không còn dùng template riêng trong phần này.",
+      note:
+        "Profile chỉ áp dụng khi URL đích được nhận diện là Shopee hoặc TikTok. Mobile sẽ đi theo URL gốc, desktop mới dùng fallback.",
+      usePreset: "Dùng preset",
+      reset: "Khôi phục",
+      save: "Lưu profile",
       saving: "Đang lưu...",
     },
     accessLogs: {
@@ -1130,6 +1152,10 @@ export const vi = {
       tagsPlaceholder: "facebook, retarget, campaign-a",
       tagsHelp: "Phân tách nhiều nhãn bằng dấu phẩy.",
       thumbnailField: "Đường dẫn ảnh đại diện",
+      videoField: "Đường dẫn video",
+      videoPlaceholder: "https://...",
+      videoHelp:
+        "Tải video mới sẽ tự cắt ảnh đại diện từ video này và thay ảnh cũ. Nếu không đổi video, cứ bỏ qua.",
       expiresField: "Thời hạn liên kết",
       expiresNone: "Không hết hạn",
       expiresDay: "{count} ngày",
@@ -1190,9 +1216,9 @@ export const vi = {
       dropVideo: "Vui lòng thả đúng file video hợp lệ.",
       dropImage: "Vui lòng thả đúng file ảnh đại diện.",
       directModeImageRequired:
-        "Mobile TikTok direct mode yêu cầu ảnh đại diện.",
+        "Mobile direct mode yêu cầu ảnh đại diện.",
       directModeSecondaryDisabled:
-        "Mobile TikTok direct mode không hỗ trợ liên kết bước 2.",
+        "Mobile direct mode không hỗ trợ liên kết bước 2.",
     },
     page: {
       title: "Tạo trang đích mới",
@@ -1337,7 +1363,7 @@ export const vi = {
         "Tải ảnh đại diện lên {provider} thành công",
       thumbnailUrlPlaceholder: "Đường dẫn ảnh bìa...",
       thumbnailPreviewAlt: "Xem trước ảnh đại diện",
-      mobileDirectModeTitle: "Mobile TikTok direct mode",
+      mobileDirectModeTitle: "Mobile direct mode",
       mobileDirectModeDescription:
         "Bỏ landing video trên mobile để ưu tiên redirect thẳng sang app Shopee hoặc TikTok.",
       mobileDirectModeEnabled: "Đang bật",

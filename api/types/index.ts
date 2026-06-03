@@ -101,6 +101,7 @@ export interface LinkOutboundEvent {
   id?: string | number;
   link_id: string;
   short_code: string;
+  workspace_id?: string | null;
   stage: "primary" | "secondary";
   destination_url: string;
   user_agent?: string | null;

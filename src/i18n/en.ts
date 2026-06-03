@@ -654,12 +654,12 @@ export const en = {
       },
       metrics: {
         totalLinks: "Total links",
-        outboundClicks: "Total clicks",
+        outboundClicks: "Lifetime clicks",
         toShopee: "To Shopee",
         toTiktok: "To TikTok",
         totalLinksDetail: "{avg} average clicks per link",
         totalLinksEmpty: "Create your first link to unlock data",
-        outboundDetail: "Total outbound clicks sent to destinations",
+        outboundDetail: "All outbound clicks sent to destinations, including today",
         outboundEmpty: "No outbound session has been recorded yet",
         marketplaceShare: "{share}% of total outbound",
         shopeeEmpty: "No traffic to Shopee has been recorded yet",
@@ -792,6 +792,28 @@ export const en = {
         "Preselect 2-3 output domains for yearly-plan users to choose from when creating links.",
       add: "Add domain",
       save: "Save list",
+      saving: "Saving...",
+    },
+    deepLinks: {
+      title: "Smart deep link profiles",
+      description:
+        "Mobile traffic now follows the original destination URL and the runtime handles app-opening behavior; this section only controls the desktop fallback.",
+      shopee: "Shopee",
+      tiktok: "TikTok",
+      shopeeHelp: "Settings for Shopee destination links.",
+      tiktokHelp: "Settings for TikTok destination links.",
+      enabled: "Enabled",
+      disabled: "Disabled",
+      iosPlaceholder: "Kept only for legacy configs, if needed.",
+      androidPlaceholder: "Kept only for legacy configs, if needed.",
+      desktopPlaceholder: "Desktop fallback template or destination URL",
+      templateHelp:
+        "Use {{url}} or {{encodedUrl}} as the destination placeholder. Mobile no longer uses separate templates in this section.",
+      note:
+        "Profiles only apply when the destination URL is detected as Shopee or TikTok. Mobile follows the original URL, desktop uses the fallback.",
+      usePreset: "Use preset",
+      reset: "Reset",
+      save: "Save profiles",
       saving: "Saving...",
     },
     accessLogs: {
@@ -1128,6 +1150,10 @@ export const en = {
       tagsPlaceholder: "facebook, retarget, campaign-a",
       tagsHelp: "Separate multiple tags with commas.",
       thumbnailField: "Thumbnail URL",
+      videoField: "Video URL",
+      videoPlaceholder: "https://...",
+      videoHelp:
+        "Uploading a new video will automatically cut a new thumbnail from it and replace the old cover. If you do not want to change the video, just skip this step.",
       expiresField: "Link expiry",
       expiresNone: "No expiry",
       expiresDay: "{count} days",
@@ -1208,9 +1234,9 @@ export const en = {
       dropVideo: "Please drop a valid video file.",
       dropImage: "Please drop a valid image file for the thumbnail.",
       directModeImageRequired:
-        "Mobile TikTok direct mode requires a thumbnail image.",
+        "Mobile direct mode requires a thumbnail image.",
       directModeSecondaryDisabled:
-        "Mobile TikTok direct mode does not support the step-2 URL.",
+        "Mobile direct mode does not support the step-2 URL.",
     },
     page: {
       title: "Create a new landing page",
@@ -1353,7 +1379,7 @@ export const en = {
         "Thumbnail uploaded to {provider} successfully",
       thumbnailUrlPlaceholder: "Cover image URL...",
       thumbnailPreviewAlt: "Thumbnail preview",
-      mobileDirectModeTitle: "Mobile TikTok direct mode",
+      mobileDirectModeTitle: "Mobile direct mode",
       mobileDirectModeDescription:
         "Skip the video landing flow on mobile and prioritize a direct redirect into the Shopee or TikTok app.",
       mobileDirectModeEnabled: "Enabled",

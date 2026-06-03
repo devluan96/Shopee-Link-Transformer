@@ -3,7 +3,7 @@ import { cloudinary } from "../config/cloudinary.js";
 import { CLOUDINARY_UPLOAD_FOLDER } from "../config/constants.js";
 import type { SupabaseClient } from "../config/supabase.js";
 
-export type MediaUploadResourceType = "image" | "video" | "auto";
+export type MediaUploadResourceType = "image" | "video" | "audio" | "auto";
 export type MediaUploadProvider = "cloudinary" | "supabase";
 
 export interface CloudinaryUploadPlan {
@@ -48,6 +48,11 @@ const DEFAULT_PROVIDER_ORDER: MediaUploadProvider[] = [
   "supabase",
 ];
 
+const DEFAULT_PROVIDER_ORDER_FOR_VIDEO: MediaUploadProvider[] = [
+  "cloudinary",
+  "supabase",
+];
+
 const DEFAULT_SUPABASE_MAX_UPLOAD_BYTES = 100 * 1024 * 1024;
 const CLOUDINARY_ACCOUNT_SUFFIXES = ["", "_2", "_3", "_4", "_5"] as const;
 
@@ -81,10 +86,50 @@ const getConfiguredCloudinaryAccounts = () =>
     } => !!account,
   );
 
-const normalizeProviderOrder = (): MediaUploadProvider[] => {
+const inferMediaUploadResourceType = (
+  resourceType: MediaUploadResourceType,
+  fileMeta?: MediaUploadFileMeta,
+): Exclude<MediaUploadResourceType, "auto"> => {
+  if (resourceType !== "auto") {
+    return resourceType;
+  }
+
+  const haystack = `${fileMeta?.contentType || ""} ${fileMeta?.fileName || ""}`
+    .toLowerCase()
+    .trim();
+
+  if (
+    haystack.includes("video/") ||
+    /\.(mp4|mov|m4v|webm|avi|mkv|gifv)$/i.test(fileMeta?.fileName || "")
+  ) {
+    return "video";
+  }
+
+  if (
+    haystack.includes("audio/") ||
+    /\.(mp3|wav|aac|m4a|ogg|flac|opus)$/i.test(fileMeta?.fileName || "")
+  ) {
+    return "audio";
+  }
+
+  return "image";
+};
+
+const normalizeProviderOrder = (
+  resourceType: Exclude<MediaUploadResourceType, "auto">,
+): MediaUploadProvider[] => {
+  if (resourceType === "audio") {
+    return ["supabase"];
+  }
+
   const rawOrder = process.env.MEDIA_UPLOAD_PROVIDER_ORDER;
+  const baseOrder =
+    resourceType === "video"
+      ? DEFAULT_PROVIDER_ORDER_FOR_VIDEO
+      : DEFAULT_PROVIDER_ORDER;
+
   if (!rawOrder?.trim()) {
-    return DEFAULT_PROVIDER_ORDER;
+    return baseOrder;
   }
 
   const seen = new Set<MediaUploadProvider>();
@@ -101,7 +146,35 @@ const normalizeProviderOrder = (): MediaUploadProvider[] => {
       return true;
     });
 
-  return normalized.length ? normalized : DEFAULT_PROVIDER_ORDER;
+  if (!normalized.length) {
+    return baseOrder;
+  }
+
+  if (resourceType === "video") {
+    const orderedVideoProviders: MediaUploadProvider[] = [];
+
+    if (normalized.includes("cloudinary")) {
+      orderedVideoProviders.push("cloudinary");
+    }
+
+    if (normalized.includes("supabase")) {
+      orderedVideoProviders.push("supabase");
+    }
+
+    const fallbackVideoOrder = DEFAULT_PROVIDER_ORDER_FOR_VIDEO.filter((provider) =>
+      normalized.includes(provider),
+    );
+
+    if (orderedVideoProviders.length) {
+      return [...orderedVideoProviders, ...fallbackVideoOrder].filter(
+        (provider, index, providers) => providers.indexOf(provider) === index,
+      );
+    }
+
+    return fallbackVideoOrder.length ? fallbackVideoOrder : baseOrder;
+  }
+
+  return normalized;
 };
 
 const getSupabaseUploadFolder = (resourceType: MediaUploadResourceType) => {
@@ -110,7 +183,9 @@ const getSupabaseUploadFolder = (resourceType: MediaUploadResourceType) => {
     return configured.replace(/^\/+|\/+$/g, "");
   }
 
-  return resourceType === "video" ? "videos" : "images";
+  if (resourceType === "video") return "videos";
+  if (resourceType === "audio") return "audio";
+  return "images";
 };
 
 export const getSupabaseMediaMaxUploadBytes = () => {
@@ -129,6 +204,10 @@ const sanitizeFileName = (value?: string | null) => {
 const getCloudinaryPlans = (
   resourceType: MediaUploadResourceType,
 ): CloudinaryUploadPlan[] => {
+  if (resourceType === "audio") {
+    return [];
+  }
+
   if (isCloudinaryUploadDisabled()) {
     return [];
   }
@@ -156,6 +235,14 @@ const getSupabaseBucket = (resourceType: MediaUploadResourceType) => {
   if (resourceType === "video") {
     return (
       process.env.SUPABASE_VIDEO_BUCKET?.trim() ||
+      process.env.SUPABASE_UPLOAD_BUCKET?.trim() ||
+      ""
+    );
+  }
+
+  if (resourceType === "audio") {
+    return (
+      process.env.SUPABASE_AUDIO_BUCKET?.trim() ||
       process.env.SUPABASE_UPLOAD_BUCKET?.trim() ||
       ""
     );
@@ -199,13 +286,17 @@ export const buildMediaUploadPlan = (
   resourceType: MediaUploadResourceType,
   fileMeta?: MediaUploadFileMeta,
 ): MediaUploadPlan[] => {
-  const supabasePlan = getSupabasePlan(resourceType, fileMeta);
+  const effectiveResourceType = inferMediaUploadResourceType(
+    resourceType,
+    fileMeta,
+  );
+  const supabasePlan = getSupabasePlan(effectiveResourceType, fileMeta);
   const plansByProvider: Record<MediaUploadProvider, MediaUploadPlan[]> = {
-    cloudinary: getCloudinaryPlans(resourceType),
+    cloudinary: getCloudinaryPlans(effectiveResourceType),
     supabase: supabasePlan ? [supabasePlan] : [],
   };
 
-  return normalizeProviderOrder()
+  return normalizeProviderOrder(effectiveResourceType)
     .flatMap((provider) => plansByProvider[provider]);
 };
 

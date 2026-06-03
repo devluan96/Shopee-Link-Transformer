@@ -34,6 +34,12 @@ export const renderLinkLandingPage = (
   link: PublicLinkRecord,
   canonicalUrl: string,
   clickTrackingUrl: string,
+  options?: {
+    primaryRedirectUrl?: string;
+    secondaryRedirectUrl?: string;
+    autoOpen?: boolean;
+    autoOpenDelayMs?: number;
+  },
 ) => {
   const title = capitalizeFirstCharacter(
     link.custom_title?.trim() || "HotsNew Click",
@@ -46,6 +52,11 @@ export const renderLinkLandingPage = (
   const videoUrl = buildPublicVideoUrl(link.video_url);
   const originalUrl = link.original_url.trim();
   const secondaryUrl = link.secondary_url?.trim() || "";
+  const primaryTargetUrl = options?.primaryRedirectUrl?.trim() || originalUrl;
+  const secondaryTargetUrl =
+    options?.secondaryRedirectUrl?.trim() || secondaryUrl;
+  const autoOpenEnabled = options?.autoOpen ?? false;
+  const autoOpenDelayMs = Math.max(0, options?.autoOpenDelayMs ?? 0);
   const redirectDelayMs = normalizeRedirectDelayMs(link.redirect_delay_ms);
   const hasSecondaryRedirect = Boolean(secondaryUrl);
   const originBase = new URL(canonicalUrl).origin;
@@ -266,8 +277,10 @@ export const renderLinkLandingPage = (
         const secondaryActionButton = document.getElementById("secondaryActionButton");
         const secondaryGate = document.getElementById("secondaryGate");
         const secondaryGateButton = document.getElementById("secondaryGateButton");
-        const primaryTargetUrl = "${escapeJsString(originalUrl)}";
-        const secondaryTargetUrl = "${escapeJsString(secondaryUrl)}";
+        const primaryTargetUrl = "${escapeJsString(primaryTargetUrl)}";
+        const secondaryTargetUrl = "${escapeJsString(secondaryTargetUrl)}";
+        const autoOpenEnabled = ${autoOpenEnabled ? "true" : "false"};
+        const autoOpenDelayMs = ${autoOpenDelayMs};
         const hasVideo = ${hasVideo ? "true" : "false"};
         const hasSecondaryRedirect = ${hasSecondaryRedirect ? "true" : "false"};
         const clickTrackingUrl = "${escapeJsString(clickTrackingUrl)}";
@@ -281,6 +294,7 @@ export const renderLinkLandingPage = (
         let previewPlaybackMs = 0;
         let previewPlaybackStartedAt = 0;
         let previewPlaybackIntervalId = null;
+        let autoOpenTimerId = null;
 
         const getPreviewPlaybackMs = () =>
           previewPlaybackMs +
@@ -290,6 +304,12 @@ export const renderLinkLandingPage = (
           if (previewPlaybackIntervalId === null) return;
           window.clearInterval(previewPlaybackIntervalId);
           previewPlaybackIntervalId = null;
+        };
+
+        const clearAutoOpenTimer = () => {
+          if (autoOpenTimerId === null) return;
+          window.clearTimeout(autoOpenTimerId);
+          autoOpenTimerId = null;
         };
 
         const stopPreviewPlaybackTracking = () => {
@@ -338,29 +358,28 @@ export const renderLinkLandingPage = (
           }).catch(() => {});
         };
 
-        const trackRealClick = () => postJsonKeepalive(clickTrackingUrl, { ts: Date.now() });
-        const trackOutbound = (stage) => postJsonKeepalive(outboundTrackingUrl, { stage, ts: Date.now() });
+        let primaryClickTrackingArmed = false;
+        let primaryClickTrackingSent = false;
 
-        const isAffiliateCommerceUrl = (url) => {
-          if (!url) return false;
-          try {
-            const hostname = new URL(url).hostname.toLowerCase();
-            return /(^|\.)shopee\.[a-z.]+$/i.test(hostname) || /(^|\.)tiktok\.com$|(^|\.)vt\.tiktok\.com$|(^|\.)vm\.tiktok\.com$/i.test(hostname);
-          } catch (error) {
-            return false;
-          }
+        const trackRealClick = () => {
+          if (primaryClickTrackingSent) return;
+          primaryClickTrackingSent = true;
+          postJsonKeepalive(clickTrackingUrl, { ts: Date.now() });
         };
+
+        const armPrimaryClickTracking = () => {
+          if (primaryClickTrackingArmed) return;
+          primaryClickTrackingArmed = true;
+          window.addEventListener("pagehide", trackRealClick, { once: true });
+        };
+
+        const trackOutbound = (stage) => postJsonKeepalive(outboundTrackingUrl, { stage, ts: Date.now() });
 
         const openUrl = (url) => {
           if (!url) return;
-          if (isAffiliateCommerceUrl(url)) {
-            window.location.assign(url);
-            return;
-          }
-
           try {
-            const popup = window.open(url, "_blank", "noopener,noreferrer");
-            if (popup) return;
+            window.location.replace(url);
+            return;
           } catch (error) {}
 
           window.location.href = url;
@@ -369,8 +388,8 @@ export const renderLinkLandingPage = (
         const openPrimaryStep = () => {
           if (primaryOpened) return;
           primaryOpened = true;
-          trackRealClick();
-          trackOutbound("primary");
+          clearAutoOpenTimer();
+          armPrimaryClickTracking();
           hideOverlay();
 
           if (hasSecondaryRedirect && secondaryGate) {
@@ -384,9 +403,11 @@ export const renderLinkLandingPage = (
         const openSecondaryStep = () => {
           if (!hasSecondaryRedirect || secondaryOpened) return;
           secondaryOpened = true;
+          clearAutoOpenTimer();
           if (secondaryGate) {
             secondaryGate.classList.remove("is-visible");
           }
+          armPrimaryClickTracking();
           openUrl(secondaryTargetUrl);
         };
 
@@ -480,6 +501,13 @@ export const renderLinkLandingPage = (
             event.preventDefault();
             openSecondaryStep();
           });
+        }
+
+        if (autoOpenEnabled) {
+          autoOpenTimerId = window.setTimeout(() => {
+            autoOpenTimerId = null;
+            openPrimaryStep();
+          }, autoOpenDelayMs);
         }
 
         if (heroVideo instanceof HTMLVideoElement) {

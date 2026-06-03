@@ -49,6 +49,17 @@ export type LinkUpdatePayload = Omit<
   secondaryTargetType?: "shopee" | "tiktok";
 };
 
+export type DeepLinkPlatform = "shopee" | "tiktok";
+
+export interface DeepLinkDeviceTarget {
+  enabled?: boolean;
+  ios?: string;
+  android?: string;
+  desktop?: string;
+}
+
+export type DeepLinkProfiles = Partial<Record<DeepLinkPlatform, DeepLinkDeviceTarget>>;
+
 export type WorkspaceRole = "owner" | "editor" | "viewer";
 export type WorkspaceInvitationStatus =
   | "pending"
@@ -213,6 +224,9 @@ export interface LinkStats {
   totalClicks: number;
   totalShopeeClicks?: number;
   totalTiktokClicks?: number;
+  choiceModeCount?: number;
+  expiringSoonCount?: number;
+  averageClicks?: number;
   todayClicks?: number;
   yesterdayClicks?: number;
   todayShopeeClicks?: number;

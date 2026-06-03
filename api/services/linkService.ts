@@ -201,12 +201,12 @@ export const createLink = async (
     : data.abVariantBSecondaryUrl?.trim() || null;
 
   if (mobileDirectMode && !primaryImageUrl) {
-    throw new Error("Mobile TikTok direct mode yêu cầu ảnh đại diện.");
+    throw new Error("Mobile direct mode yêu cầu ảnh đại diện.");
   }
 
   if (mobileDirectMode && requestedSecondaryUrl) {
     throw new Error(
-      "Mobile TikTok direct mode không hỗ trợ liên kết bước 2.",
+      "Mobile direct mode không hỗ trợ liên kết bước 2.",
     );
   }
 
@@ -395,6 +395,10 @@ export const getUserLinks = async (
   supabase: SupabaseClient,
   userId: string,
   workspaceId?: string,
+  options?: {
+    limit?: number;
+    offset?: number;
+  },
 ) => {
   const workspaceIds = await getAccessibleWorkspaceIds(supabase, userId);
   if (!workspaceIds.length) return [];
@@ -404,7 +408,7 @@ export const getUserLinks = async (
     : workspaceIds;
   if (!filteredWorkspaceIds.length) return [];
 
-  const { data, error } = await supabase
+  let query = supabase
     .from("links")
     .select(
       "id, short_code, slug, original_url, custom_domain, workspace_id, folder_name, tags, custom_title, custom_description, custom_image_url, video_url, created_at, expires_at, secondary_url, redirect_delay_ms, usage_context, user_id, shopee_affiliate_params, tiktok_affiliate_params, ab_test_enabled, ab_variant_b_title, ab_variant_b_description, ab_variant_b_image_url, ab_variant_b_video_url, ab_variant_b_original_url, ab_variant_b_secondary_url",
@@ -412,8 +416,101 @@ export const getUserLinks = async (
     .in("workspace_id", filteredWorkspaceIds)
     .order("created_at", { ascending: false });
 
+  const limit =
+    typeof options?.limit === "number" && Number.isFinite(options?.limit)
+      ? Math.max(0, Math.floor(options.limit))
+      : null;
+  const offset =
+    typeof options?.offset === "number" && Number.isFinite(options?.offset)
+      ? Math.max(0, Math.floor(options.offset))
+      : 0;
+
+  if (limit !== null) {
+    query = query.range(offset, offset + Math.max(0, limit) - 1);
+  }
+
+  const { data, error } = await query;
+
   if (error) throw error;
   return data || [];
+};
+
+type UserLinkWithClickCounts = {
+  id: string;
+  short_code: string;
+  slug: string | null;
+  original_url: string;
+  custom_domain: string | null;
+  workspace_id: string | null;
+  folder_name: string | null;
+  tags: string[] | null;
+  custom_title: string | null;
+  custom_description: string | null;
+  custom_image_url: string | null;
+  video_url: string | null;
+  created_at: string | null;
+  expires_at: string | null;
+  secondary_url: string | null;
+  redirect_delay_ms: number | null;
+  usage_context: string | null;
+  user_id: string;
+  shopee_affiliate_params: string | null;
+  tiktok_affiliate_params: string | null;
+  ab_test_enabled: boolean;
+  ab_variant_b_title: string | null;
+  ab_variant_b_description: string | null;
+  ab_variant_b_image_url: string | null;
+  ab_variant_b_video_url: string | null;
+  ab_variant_b_original_url: string | null;
+  ab_variant_b_secondary_url: string | null;
+  clicks: number;
+  tiktok_clicks: number;
+  total_count: number;
+};
+
+const normalizeTopLinkRow = (row: any): UserLinkWithClickCounts => ({
+  ...row,
+  clicks: Number(row?.clicks || 0),
+  tiktok_clicks: Number(row?.tiktok_clicks || 0),
+  total_count: Number(row?.total_count || 0),
+});
+
+export const getUserLinksByClickCounts = async (
+  supabase: SupabaseClient,
+  userId: string,
+  workspaceId?: string,
+  options?: {
+    limit?: number;
+    offset?: number;
+  },
+) => {
+  const workspaceIds = await getAccessibleWorkspaceIds(supabase, userId);
+  if (!workspaceIds.length) return [];
+
+  const filteredWorkspaceIds = workspaceId
+    ? workspaceIds.filter((id) => id === workspaceId)
+    : workspaceIds;
+  if (!filteredWorkspaceIds.length) return [];
+
+  const limitValue = options?.limit;
+  const offsetValue = options?.offset;
+  const limit =
+    typeof limitValue === "number" && Number.isFinite(limitValue)
+      ? Math.max(0, Math.floor(limitValue))
+      : null;
+  const offset =
+    typeof offsetValue === "number" && Number.isFinite(offsetValue)
+      ? Math.max(0, Math.floor(offsetValue))
+      : 0;
+
+  const { data, error } = await supabase.rpc("get_user_links_by_clicks", {
+    workspace_ids: filteredWorkspaceIds,
+    limit_count: limit,
+    offset_count: offset,
+  });
+
+  if (error) throw error;
+  return (data || []).map(normalizeTopLinkRow);
 };
 
 export const updateLink = async (
@@ -738,8 +835,6 @@ export const deleteLink = async (
   await assertWorkspaceWriteAccessForLink(supabase, userId, linkId);
 
   await Promise.all([
-    supabase.from("clicks").delete().eq("link_id", linkId),
-    supabase.from("link_outbound_events").delete().eq("link_id", linkId),
     supabase.from("notification_logs").delete().eq("link_id", linkId),
   ]);
 

@@ -45,7 +45,7 @@ test("buildMediaUploadPlan skips cloudinary when DISABLE_CLOUDINARY_UPLOAD is en
   );
 });
 
-test("buildMediaUploadPlan returns fallback cloudinary accounts before other providers", () => {
+test("buildMediaUploadPlan prioritizes cloudinary before supabase for video uploads", () => {
   withEnv(
     {
       CLOUDINARY_CLOUD_NAME: "demo-cloud-1",
@@ -66,12 +66,56 @@ test("buildMediaUploadPlan returns fallback cloudinary accounts before other pro
             ? `cloudinary:${provider.cloudName}`
             : provider.provider,
         ),
-        [
-          "cloudinary:demo-cloud-1",
-          "cloudinary:demo-cloud-2",
-          "supabase",
-        ],
+        ["cloudinary:demo-cloud-1", "cloudinary:demo-cloud-2", "supabase"],
       );
+    },
+  );
+});
+
+test("buildMediaUploadPlan keeps cloudinary first for image uploads", () => {
+  withEnv(
+    {
+      CLOUDINARY_CLOUD_NAME: "demo-cloud-1",
+      CLOUDINARY_API_KEY: "demo-key-1",
+      CLOUDINARY_API_SECRET: "demo-secret-1",
+      SUPABASE_UPLOAD_BUCKET: "media",
+      MEDIA_UPLOAD_PROVIDER_ORDER: "cloudinary,supabase",
+      DISABLE_CLOUDINARY_UPLOAD: "false",
+    },
+    () => {
+      const providers = buildMediaUploadPlan("image", { fileSize: 1024 });
+      assert.deepEqual(
+        providers.map((provider) =>
+          provider.provider === "cloudinary"
+            ? `cloudinary:${provider.cloudName}`
+            : provider.provider,
+        ),
+        ["cloudinary:demo-cloud-1", "supabase"],
+      );
+    },
+  );
+});
+
+test("buildMediaUploadPlan routes audio uploads to supabase only", () => {
+  withEnv(
+    {
+      SUPABASE_AUDIO_BUCKET: "audio-media",
+      CLOUDINARY_CLOUD_NAME: "demo-cloud-1",
+      CLOUDINARY_API_KEY: "demo-key-1",
+      CLOUDINARY_API_SECRET: "demo-secret-1",
+    },
+    () => {
+      const providers = buildMediaUploadPlan("audio", {
+        fileName: "voice-sample.mp3",
+        contentType: "audio/mpeg",
+      });
+
+      assert.deepEqual(
+        providers.map((provider) => provider.provider),
+        ["supabase"],
+      );
+      assert.equal((providers[0] as any).bucket, "audio-media");
+      assert.equal((providers[0] as any).folder, "audio");
     },
   );
 });

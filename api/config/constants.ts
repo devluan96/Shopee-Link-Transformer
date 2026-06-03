@@ -5,7 +5,7 @@ export const DEFAULT_REDIRECT_DELAY_MS = 3000;
 export const MIN_REDIRECT_DELAY_MS = 1000;
 export const MAX_REDIRECT_DELAY_MS = 10000;
 
-export const SHOPEE_HOST_REGEX = /(^|\.)shopee\.[a-z.]+$/i;
+export const SHOPEE_HOST_REGEX = /^(?:[a-z0-9-]+\.)*shopee\.[a-z.]+$/i;
 export const TIKTOK_HOST_REGEX =
   /(^|\.)tiktok\.com$|(^|\.)vt\.tiktok\.com$|(^|\.)vm\.tiktok\.com$/i;
 

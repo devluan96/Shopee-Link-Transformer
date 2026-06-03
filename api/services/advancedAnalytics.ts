@@ -2,8 +2,8 @@ import { SupabaseClient } from "../config/supabase.js";
 import {
   fetchOutboundEventsForLinkIds,
   fetchClicksForLinkIds,
+  filterDisplayableOutboundEvents,
   filterRealClicks,
-  filterRealOutboundEvents,
   isShopeeDestinationUrl,
   isTikTokDestinationUrl,
 } from "../utils/clickTracking.js";
@@ -255,7 +255,7 @@ const getFilteredAnalyticsEvents = async (
   }
 
   const rawOutboundEvents = await fetchOutboundEventsForLinkIds(supabase, linkIds);
-  const filteredOutboundEvents = filterRealOutboundEvents(rawOutboundEvents).filter(
+  const filteredOutboundEvents = filterDisplayableOutboundEvents(rawOutboundEvents).filter(
     (event) => {
       if (source === "shopee") return isShopeeDestinationUrl(event.destination_url);
       if (source === "tiktok") return isTikTokDestinationUrl(event.destination_url);

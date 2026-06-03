@@ -9,8 +9,8 @@ import * as featureLimitService from "../services/featureLimitService.js";
 import * as notificationService from "../services/notificationService.js";
 import {
   attachTrackedSourcesToLinks,
+  countDisplayableOutboundClicks,
   fetchOutboundEventsForLinkIds,
-  filterRealOutboundEvents,
 } from "../utils/clickTracking.js";
 
 const router = Router();
@@ -171,13 +171,13 @@ const prepareConvertPayload = (
   if (payload.mobileDirectMode) {
     if (!payload.customImageUrl?.trim()) {
       return {
-        error: "Mobile TikTok direct mode yêu cầu ảnh đại diện.",
+        error: "Mobile direct mode yêu cầu ảnh đại diện.",
       };
     }
 
     if (payload.secondaryUrl?.trim()) {
       return {
-        error: "Mobile TikTok direct mode không hỗ trợ liên kết bước 2.",
+        error: "Mobile direct mode không hỗ trợ liên kết bước 2.",
       };
     }
 
@@ -388,20 +388,86 @@ router.get(
         typeof req.query.workspaceId === "string"
           ? req.query.workspaceId
           : undefined;
+      const sortMode =
+        typeof req.query.sort === "string" ? req.query.sort : "newest";
+      const requestedLimit =
+        typeof req.query.limit === "string" ? Number(req.query.limit) : NaN;
+      const requestedOffset =
+        typeof req.query.offset === "string" ? Number(req.query.offset) : 0;
+      const usePagination =
+        Number.isFinite(requestedLimit) && requestedLimit > 0;
+      const pageSize = usePagination
+        ? Math.min(Math.floor(requestedLimit), 50)
+        : null;
+      const pageOffset =
+        Number.isFinite(requestedOffset) && requestedOffset > 0
+          ? Math.floor(requestedOffset)
+          : 0;
+
+      const shouldUseTopSort = sortMode === "top";
+      if (shouldUseTopSort) {
+        const topLinks = await linkService.getUserLinksByClickCounts(
+          supabase,
+          userId,
+          workspaceId,
+          usePagination
+            ? {
+                limit: pageSize as number,
+                offset: pageOffset,
+              }
+            : undefined,
+        );
+        const totalCount = topLinks[0]?.total_count || 0;
+        const pageLinks = topLinks.map(({ total_count, ...link }) => link);
+        await notificationService.maybeCreateLinkExpiryNotifications(
+          supabase,
+          userId,
+          pageLinks,
+        );
+        const linksWithSources = await attachTrackedSourcesToLinks(
+          supabase,
+          pageLinks,
+        );
+        if (usePagination) {
+          return res.json({
+            items: linksWithSources,
+            hasMore: totalCount > pageOffset + linksWithSources.length,
+            nextOffset: pageOffset + linksWithSources.length,
+          });
+        }
+        return res.json(linksWithSources);
+      }
+
       const links = await linkService.getUserLinks(
         supabase,
         userId,
         workspaceId,
+        usePagination
+          ? {
+              limit: (pageSize as number) + 1,
+              offset: pageOffset,
+            }
+          : undefined,
       );
+      const pageLinks = usePagination
+        ? links.slice(0, pageSize as number)
+        : links;
       await notificationService.maybeCreateLinkExpiryNotifications(
         supabase,
         userId,
-        links,
+        pageLinks,
       );
       const linksWithSources = await attachTrackedSourcesToLinks(
         supabase,
-        links,
+        pageLinks,
       );
+      if (usePagination) {
+        return res.json({
+          items: linksWithSources,
+          hasMore: links.length > (pageSize as number),
+          nextOffset: pageOffset + linksWithSources.length,
+        });
+      }
       return res.json(linksWithSources);
     } catch (e: any) {
       return res.status(500).json({ error: e.message });
@@ -591,11 +657,12 @@ router.get(
 
       const linkIds = links.map((l: any) => l.id);
 
-      const outboundEvents = filterRealOutboundEvents(
-        await fetchOutboundEventsForLinkIds(supabase, linkIds),
+      const outboundEvents = await fetchOutboundEventsForLinkIds(
+        supabase,
+        linkIds,
       );
 
-      return res.json({ clicks: outboundEvents.length });
+      return res.json({ clicks: countDisplayableOutboundClicks(outboundEvents) });
     } catch (e: any) {
       return res.status(500).json({ error: e.message });
     }
@@ -613,13 +680,14 @@ router.get(
 
       console.log("[API] Fetching click count for link:", linkId);
 
-      const outboundEvents = filterRealOutboundEvents(
-        await fetchOutboundEventsForLinkIds(supabase, [linkId]),
-      );
+      const outboundEvents = await fetchOutboundEventsForLinkIds(supabase, [
+        linkId,
+      ]);
 
-      console.log("[API] Click count result:", outboundEvents.length);
+      const clicks = countDisplayableOutboundClicks(outboundEvents);
+      console.log("[API] Click count result:", clicks);
 
-      return res.json({ clicks: outboundEvents.length });
+      return res.json({ clicks });
     } catch (e: any) {
       console.error("[API] Error fetching click count:", e);
       return res.status(500).json({ error: e.message });
@@ -702,11 +770,6 @@ router.post(
       }
 
       await Promise.all([
-        supabase.from("clicks").delete().in("link_id", deletableIds),
-        supabase
-          .from("link_outbound_events")
-          .delete()
-          .in("link_id", deletableIds),
         supabase.from("notification_logs").delete().in("link_id", deletableIds),
       ]);
 

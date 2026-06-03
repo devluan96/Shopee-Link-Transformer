@@ -184,8 +184,14 @@ export function useAuth(): AuthState & AuthActions {
         headers.set("Content-Type", "application/json");
       }
 
+      // Avoid browser/proxy caching for authenticated API reads so refreshed
+      // dashboard stats always come from the latest backend state.
+      headers.set("Cache-Control", "no-cache, no-store, must-revalidate");
+      headers.set("Pragma", "no-cache");
+
       let response = await fetch(input, {
         ...init,
+        cache: init.cache ?? "no-store",
         headers,
       });
 
@@ -198,6 +204,7 @@ export function useAuth(): AuthState & AuthActions {
           headers.set("Authorization", `Bearer ${refreshedToken}`);
           response = await fetch(input, {
             ...init,
+            cache: init.cache ?? "no-store",
             headers,
           });
         }

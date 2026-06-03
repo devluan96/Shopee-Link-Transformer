@@ -331,11 +331,15 @@ export default function App() {
   const {
     links,
     listLoading,
+    listLoadingMore,
     linksDirty,
+    linksHasMore,
     searchTerm,
     setSearchTerm,
     setLinksDirty,
     upsertLink,
+    loadMoreLinks,
+    setLinksSortMode,
     handleDeleteLink,
     handleUpdateLink,
     handleShareLink,
@@ -556,6 +560,8 @@ export default function App() {
     fetchPaymentRequests,
     outputDomains,
     outputDomainsLoading,
+    deepLinkProfiles,
+    deepLinkProfilesLoading,
     handleApproveUser,
     handleUpdateSubscription,
     handleUpdateUserRole,
@@ -563,6 +569,7 @@ export default function App() {
     handleConfirmPaymentRequest,
     handleRejectPaymentRequest,
     updateOutputDomains,
+    updateDeepLinkProfiles,
   } = useAdmin({ user, profile, fetchWithAuth, activeTab });
 
   // Clipboard Hook
@@ -1211,22 +1218,22 @@ export default function App() {
             ))}
 
           {activeTab === "admin" && isAdminRole && (
-          <AdminPanel
-            allUsers={allUsers.filter(
-              (u) => u.id !== user?.id,
-            )}
-            adminLoading={adminLoading}
-            onRefreshUsers={fetchAllUsers}
-            onRefreshPayments={fetchPaymentRequests}
-            onRefreshSecurity={refreshAdminSecurity}
-            onUpdateUserRole={handleUpdateUserRole}
-            paymentRequests={paymentRequests}
-            paymentRequestsLoading={paymentRequestsLoading}
-            adminAccessLogs={adminAccessLogs}
+            <AdminPanel
+              allUsers={allUsers.filter((u) => u.id !== user?.id)}
+              adminLoading={adminLoading}
+              onRefreshUsers={fetchAllUsers}
+              onRefreshPayments={fetchPaymentRequests}
+              onRefreshSecurity={refreshAdminSecurity}
+              onUpdateUserRole={handleUpdateUserRole}
+              paymentRequests={paymentRequests}
+              paymentRequestsLoading={paymentRequestsLoading}
+              adminAccessLogs={adminAccessLogs}
               blockedIps={blockedIps}
               adminSecurityLoading={adminSecurityLoading}
               outputDomains={outputDomains}
               outputDomainsLoading={outputDomainsLoading}
+              deepLinkProfiles={deepLinkProfiles}
+              deepLinkProfilesLoading={deepLinkProfilesLoading}
               onBlockIp={blockIp}
               onUnblockIp={unblockIp}
               onlineUserIds={onlineUserIds}
@@ -1236,6 +1243,7 @@ export default function App() {
               onConfirmPaymentRequest={handleConfirmPaymentRequest}
               onRejectPaymentRequest={handleRejectPaymentRequest}
               onUpdateOutputDomains={updateOutputDomains}
+              onUpdateDeepLinkProfiles={updateDeepLinkProfiles}
               fetchWithAuth={fetchWithAuth}
             />
           )}
@@ -1244,18 +1252,25 @@ export default function App() {
             <LinkList
               links={links}
               listLoading={listLoading}
+              listLoadingMore={listLoadingMore}
               searchTerm={searchTerm}
               setSearchTerm={setSearchTerm}
               workspaces={workspaces}
               currentWorkspaceId={currentWorkspaceId}
               canShareToWorkspace={currentWorkspace?.role === "owner"}
               showChoiceModeActions={isAdminRole}
+              stats={stats}
+              statsUpdatedAt={statsUpdatedAt}
+              hasMoreLinks={linksHasMore}
+              onLoadMoreLinks={loadMoreLinks}
+              onQuickFilterChange={setLinksSortMode}
               copyToClipboard={copyToClipboard}
               copiedId={copiedId || ""}
               onDeleteLink={handleDeleteLink}
               onUpdateLink={handleUpdateLink}
               onShareLink={handleShareLink}
               onDeleteManyLinks={handleDeleteManyLinks}
+              uploadAssetToCloudinary={uploadAssetToCloudinary}
             />
           )}
 

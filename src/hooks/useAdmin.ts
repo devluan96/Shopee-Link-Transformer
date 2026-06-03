@@ -1,6 +1,10 @@
 import { useState, useCallback, useEffect } from "react";
 import { User } from "@supabase/supabase-js";
-import { ManualPaymentRequest, UserProfile } from "@/src/types";
+import {
+  DeepLinkProfiles,
+  ManualPaymentRequest,
+  UserProfile,
+} from "@/src/types";
 import { toast } from "sonner";
 import { DEFAULT_OUTPUT_DOMAINS } from "@/src/lib/appConfig";
 
@@ -22,6 +26,8 @@ export interface AdminState {
   paymentRequestsLoading: boolean;
   outputDomains: string[];
   outputDomainsLoading: boolean;
+  deepLinkProfiles: DeepLinkProfiles;
+  deepLinkProfilesLoading: boolean;
 }
 
 export interface AdminActions {
@@ -41,6 +47,8 @@ export interface AdminActions {
   handleRejectPaymentRequest: (paymentRequestId: string) => Promise<void>;
   fetchOutputDomains: () => Promise<void>;
   updateOutputDomains: (domains: string[]) => Promise<void>;
+  fetchDeepLinkProfiles: () => Promise<void>;
+  updateDeepLinkProfiles: (profiles: DeepLinkProfiles) => Promise<void>;
   setAdminDirty: (v: boolean) => void;
 }
 
@@ -61,6 +69,8 @@ export function useAdmin({
     ...DEFAULT_OUTPUT_DOMAINS,
   ]);
   const [outputDomainsLoading, setOutputDomainsLoading] = useState(false);
+  const [deepLinkProfiles, setDeepLinkProfiles] = useState<DeepLinkProfiles>({});
+  const [deepLinkProfilesLoading, setDeepLinkProfilesLoading] = useState(false);
 
   const isAdminRole =
     profile?.role === "admin";
@@ -311,6 +321,46 @@ export function useAdmin({
     [user, isAdminRole, fetchWithAuth],
   );
 
+  const fetchDeepLinkProfiles = useCallback(async () => {
+    if (!user) return;
+    setDeepLinkProfilesLoading(true);
+    try {
+      const response = await fetchWithAuth("/api/v1/settings/deeplink-profiles");
+      const data = await response.json().catch(() => null);
+      if (!response.ok) {
+        throw new Error(data?.error || "Failed to load deep link profiles");
+      }
+      setDeepLinkProfiles(data?.profiles || {});
+    } catch (e) {
+      console.error(e);
+      toast.error(
+        e instanceof Error ? e.message : "Failed to load deep link profiles",
+      );
+    } finally {
+      setDeepLinkProfilesLoading(false);
+    }
+  }, [user, fetchWithAuth]);
+
+  const updateDeepLinkProfiles = useCallback(
+    async (profiles: DeepLinkProfiles) => {
+      if (!user || !isAdminRole) return;
+      const response = await fetchWithAuth(
+        "/api/v1/admin/settings/deeplink-profiles",
+        {
+          method: "PUT",
+          body: JSON.stringify({ profiles }),
+        },
+      );
+      const data = await response.json().catch(() => null);
+      if (!response.ok) {
+        throw new Error(data?.error || "Failed to update deep link profiles");
+      }
+      setDeepLinkProfiles(data?.profiles || {});
+      toast.success("Updated deep link profiles");
+    },
+    [user, isAdminRole, fetchWithAuth],
+  );
+
   useEffect(() => {
     setAllUsers([]);
     setAdminLoading(false);
@@ -318,13 +368,16 @@ export function useAdmin({
     setPaymentRequestsLoading(false);
     setOutputDomains([...DEFAULT_OUTPUT_DOMAINS]);
     setOutputDomainsLoading(false);
+    setDeepLinkProfiles({});
+    setDeepLinkProfilesLoading(false);
     setAdminDirty(!!user);
   }, [user?.id]);
 
   useEffect(() => {
     if (!user) return;
     void fetchOutputDomains();
-  }, [user?.id, fetchOutputDomains]);
+    void fetchDeepLinkProfiles();
+  }, [user?.id, fetchOutputDomains, fetchDeepLinkProfiles]);
 
   // Auto-fetch admin data
   useEffect(() => {
@@ -336,6 +389,7 @@ export function useAdmin({
     ) {
       fetchAllUsers();
       fetchOutputDomains();
+      fetchDeepLinkProfiles();
       fetchPaymentRequests();
     }
   }, [
@@ -345,6 +399,7 @@ export function useAdmin({
     adminDirty,
     fetchAllUsers,
     fetchOutputDomains,
+    fetchDeepLinkProfiles,
     fetchPaymentRequests,
   ]);
 
@@ -356,6 +411,8 @@ export function useAdmin({
     paymentRequestsLoading,
     outputDomains,
     outputDomainsLoading,
+    deepLinkProfiles,
+    deepLinkProfilesLoading,
     fetchAllUsers,
     fetchPaymentRequests,
     handleApproveUser,
@@ -366,6 +423,8 @@ export function useAdmin({
     handleRejectPaymentRequest,
     fetchOutputDomains,
     updateOutputDomains,
+    fetchDeepLinkProfiles,
+    updateDeepLinkProfiles,
     setAdminDirty,
   };
 }

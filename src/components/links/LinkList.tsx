@@ -1,4 +1,4 @@
-import React, { useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   Search,
   Image as ImageIcon,
@@ -19,8 +19,10 @@ import {
   Sparkles,
   Filter,
   Share2,
+  UploadCloud,
+  Check,
 } from "lucide-react";
-import { ConvertedLink, LinkUpdatePayload, Workspace } from "@/src/types";
+import { ConvertedLink, LinkStats, LinkUpdatePayload, Workspace } from "@/src/types";
 import { formatDistanceToNow } from "date-fns";
 import { enUS, vi as viLocale } from "date-fns/locale";
 import { QRCodeCanvas } from "qrcode.react";
@@ -43,35 +45,54 @@ type QuickFilter = "all" | "choice" | "video" | "tiktok" | "expiring" | "top";
 interface LinkListProps {
   links: ConvertedLink[];
   listLoading: boolean;
+  listLoadingMore?: boolean;
   searchTerm: string;
   setSearchTerm: (v: string) => void;
   workspaces?: Workspace[];
   currentWorkspaceId?: string;
   canShareToWorkspace?: boolean;
   showChoiceModeActions?: boolean;
+  stats?: LinkStats;
+  statsUpdatedAt?: string | null;
+  hasMoreLinks?: boolean;
+  onLoadMoreLinks?: () => Promise<void> | void;
+  onQuickFilterChange?: (mode: "newest" | "top") => void;
   copyToClipboard: (text: string, id: string) => void;
   copiedId: string;
   onDeleteLink: (id: string) => Promise<void>;
   onUpdateLink: (id: string, data: LinkUpdatePayload) => Promise<void>;
   onShareLink?: (id: string, workspaceId: string) => Promise<void>;
   onDeleteManyLinks?: (ids: string[]) => Promise<void>;
+  uploadAssetToCloudinary: (
+    file: Blob | File,
+    resourceType: "image" | "video" | "auto",
+    fileName?: string,
+    onProgress?: (progress: number) => void,
+  ) => Promise<string>;
 }
 
 export const LinkList = ({
   links,
   listLoading,
+  listLoadingMore = false,
   searchTerm,
   setSearchTerm,
   workspaces = [],
   currentWorkspaceId,
   canShareToWorkspace = false,
   showChoiceModeActions = false,
+  stats,
+  statsUpdatedAt,
+  hasMoreLinks = false,
+  onLoadMoreLinks,
+  onQuickFilterChange,
   copyToClipboard,
   copiedId,
   onDeleteLink,
   onUpdateLink,
   onShareLink,
   onDeleteManyLinks,
+  uploadAssetToCloudinary,
 }: LinkListProps) => {
   const { locale, messages, t } = useLocale();
   const content = messages.linkList;
@@ -100,9 +121,14 @@ export const LinkList = ({
     secondaryTargetType: "shopee" as "shopee" | "tiktok",
     redirectDelayMs: 3000,
     expiresAt: "",
+    video: "",
   });
   const [isUpdating, setIsUpdating] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isEditVideoUploading, setIsEditVideoUploading] = useState(false);
+  const [editVideoUploadProgress, setEditVideoUploadProgress] = useState(0);
+  const [editVideoUploadSuccess, setEditVideoUploadSuccess] = useState(false);
+  const editVideoInputRef = useRef<HTMLInputElement | null>(null);
   const [selectedExpirePresetDays, setSelectedExpirePresetDays] = useState<
     number | null
   >(null);
@@ -267,6 +293,7 @@ export const LinkList = ({
       folder: link.folder_name || "",
       tagsText: (link.tags || []).join(", "),
       img: link.custom_image_url || "",
+      video: link.video_url || "",
       original: link.original_url || "",
       secondary: link.secondary_url || "",
       secondaryTargetType: getSecondaryTargetType(link.secondary_url),
@@ -275,6 +302,12 @@ export const LinkList = ({
         ? new Date(link.expires_at).toISOString().slice(0, 16)
         : "",
     });
+    setIsEditVideoUploading(false);
+    setEditVideoUploadProgress(0);
+    setEditVideoUploadSuccess(false);
+    if (editVideoInputRef.current) {
+      editVideoInputRef.current.value = "";
+    }
   };
 
   const startShare = (link: ConvertedLink) => {
@@ -308,6 +341,7 @@ export const LinkList = ({
           .map((tag) => tag.trim())
           .filter(Boolean),
         custom_image_url: editForm.img,
+        video_url: editForm.video || editingLink.video_url || null,
         original_url: editForm.original,
         secondary_url: editForm.secondary,
         secondaryTargetType: editForm.secondaryTargetType,
@@ -323,6 +357,129 @@ export const LinkList = ({
       setSelectedExpirePresetDays(null);
     } finally {
       setIsUpdating(false);
+    }
+  };
+
+  const captureVideoThumbnailBlob = useCallback(
+    async (file: File): Promise<Blob | null> => {
+      return new Promise((resolve) => {
+        const video = document.createElement("video");
+        const objectUrl = URL.createObjectURL(file);
+        video.src = objectUrl;
+        video.muted = true;
+        video.playsInline = true;
+        video.preload = "metadata";
+
+        const cleanup = () => {
+          URL.revokeObjectURL(objectUrl);
+          video.removeAttribute("src");
+          video.load();
+        };
+
+        video.onloadedmetadata = () => {
+          const duration = Number.isFinite(video.duration) ? video.duration : 0;
+          const targetTime =
+            duration > 0 ? Math.min(Math.max(duration * 0.2, 0.2), 2) : 0.2;
+          video.currentTime = targetTime;
+        };
+
+        video.onseeked = () => {
+          const canvas = document.createElement("canvas");
+          canvas.width = video.videoWidth;
+          canvas.height = video.videoHeight;
+          const ctx = canvas.getContext("2d");
+          if (!ctx) {
+            cleanup();
+            resolve(null);
+            return;
+          }
+
+          ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+          canvas.toBlob(
+            (blob) => {
+              cleanup();
+              resolve(blob);
+            },
+            "image/jpeg",
+            0.85,
+          );
+        };
+
+        video.onerror = () => {
+          cleanup();
+          resolve(null);
+        };
+
+        video.load();
+      });
+    },
+    [],
+  );
+
+  const handleEditVideoUpload = async (
+    e: React.ChangeEvent<HTMLInputElement>,
+  ) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith("video/")) {
+      toast.error("Vui lòng chọn file video hợp lệ.");
+      e.target.value = "";
+      return;
+    }
+
+    setIsEditVideoUploading(true);
+    setEditVideoUploadProgress(0);
+    setEditVideoUploadSuccess(false);
+
+    try {
+      const thumbnailBlob = await captureVideoThumbnailBlob(file);
+      const videoUploadPromise = uploadAssetToCloudinary(
+        file,
+        "video",
+        file.name,
+        setEditVideoUploadProgress,
+      );
+      const thumbnailUploadPromise = thumbnailBlob
+        ? uploadAssetToCloudinary(thumbnailBlob, "image", "thumb.jpg")
+        : Promise.resolve<string | null>(null);
+
+      const [videoResult, thumbnailResult] = await Promise.allSettled([
+        videoUploadPromise,
+        thumbnailUploadPromise,
+      ]);
+
+      if (videoResult.status === "rejected") {
+        throw videoResult.reason;
+      }
+
+      const uploadedUrl = videoResult.value;
+      setEditForm((current) => ({
+        ...current,
+        video: uploadedUrl,
+        img:
+          thumbnailResult.status === "fulfilled" && thumbnailResult.value
+            ? thumbnailResult.value
+            : current.img,
+      }));
+
+      if (thumbnailResult.status === "rejected") {
+        toast.error(
+          "Video đã tải lên, nhưng không cắt được ảnh đại diện mới từ video.",
+        );
+      }
+      setEditVideoUploadSuccess(true);
+      setTimeout(() => setEditVideoUploadSuccess(false), 5000);
+    } catch (error: unknown) {
+      toast.error(
+        `Lỗi tải video: ${
+          error instanceof Error ? error.message : "Không xác định"
+        }`,
+      );
+    } finally {
+      setIsEditVideoUploading(false);
+      e.target.value = "";
+      setTimeout(() => setEditVideoUploadProgress(0), 600);
     }
   };
 
@@ -374,7 +531,7 @@ export const LinkList = ({
   };
 
   const normalizedSearchTerm = searchTerm.trim().toLowerCase();
-  const displayedLinks = links.filter((link) => {
+  const filteredLinks = links.filter((link) => {
     const searchableText = [
       link.custom_title,
       link.custom_description,
@@ -416,6 +573,21 @@ export const LinkList = ({
     }
   });
 
+  const displayedLinks = (() => {
+    const nextLinks = [...filteredLinks];
+    if (quickFilter === "top") {
+      return nextLinks.sort((a, b) => {
+        const aClicks = (a.clicks || 0) + (a.tiktok_clicks || 0);
+        const bClicks = (b.clicks || 0) + (b.tiktok_clicks || 0);
+        if (bClicks !== aClicks) return bClicks - aClicks;
+        const aCreated = a.created_at ? new Date(a.created_at).getTime() : 0;
+        const bCreated = b.created_at ? new Date(b.created_at).getTime() : 0;
+        return bCreated - aCreated;
+      });
+    }
+    return nextLinks;
+  })();
+
   const visibleLinkIds = displayedLinks
     .map((link) => link.id ?? link.short_code)
     .filter((id): id is string => !!id);
@@ -432,26 +604,74 @@ export const LinkList = ({
     setSelectedIds(nextSet);
   };
 
-  const totalLinks = links.length;
-  const totalShopeeClicks = links.reduce(
-    (sum, link) => sum + (link.clicks || 0),
-    0,
-  );
-  const totalTiktokClicks = links.reduce(
-    (sum, link) => sum + (link.tiktok_clicks || 0),
-    0,
-  );
-  const totalOutboundClicks = totalShopeeClicks + totalTiktokClicks;
-  const choiceModeCount = links.filter((link) => !!link.secondary_url).length;
-  const expiringSoonCount = links.filter((link) =>
-    isLinkExpiringSoon(link.expires_at),
-  ).length;
-  const averageClicks = totalLinks
-    ? Math.round(totalOutboundClicks / totalLinks)
-    : 0;
+  const hasLoadedStats = !!statsUpdatedAt;
+  const totalLinks = hasLoadedStats ? stats?.totalLinks ?? 0 : 0;
+  const totalShopeeClicks =
+    hasLoadedStats && stats?.totalShopeeClicks !== undefined
+      ? stats.totalShopeeClicks
+      :
+    links.reduce((sum, link) => sum + (link.clicks || 0), 0);
+  const totalTiktokClicks =
+    hasLoadedStats && stats?.totalTiktokClicks !== undefined
+      ? stats.totalTiktokClicks
+      :
+    links.reduce((sum, link) => sum + (link.tiktok_clicks || 0), 0);
+  const totalOutboundClicks =
+    hasLoadedStats && stats?.totalClicks !== undefined
+      ? stats.totalClicks
+      : totalShopeeClicks + totalTiktokClicks;
+  const choiceModeCount =
+    hasLoadedStats && stats?.choiceModeCount !== undefined
+      ? stats.choiceModeCount
+      : links.filter((link) => !!link.secondary_url).length;
+  const expiringSoonCount =
+    hasLoadedStats && stats?.expiringSoonCount !== undefined
+      ? stats.expiringSoonCount
+      :
+    links.filter((link) => isLinkExpiringSoon(link.expires_at)).length;
+  const averageClicks =
+    hasLoadedStats && stats?.averageClicks !== undefined
+      ? stats.averageClicks
+      : totalLinks
+        ? Math.round(totalOutboundClicks / totalLinks)
+        : 0;
   const editUsageHasMatchingOption = localizedUsageOptions.some(
     (option) => option.value === editForm.usage,
   );
+
+  useEffect(() => {
+    if (!onLoadMoreLinks || !hasMoreLinks) return;
+
+    const isNearBottom = () => {
+      if (listLoading || listLoadingMore) return false;
+
+      const doc = document.documentElement;
+      const body = document.body;
+      const scrollTop = window.scrollY ?? doc.scrollTop ?? body.scrollTop ?? 0;
+      const viewportBottom = scrollTop + window.innerHeight;
+      const pageHeight = Math.max(
+        doc.scrollHeight,
+        body?.scrollHeight ?? 0,
+        doc.offsetHeight,
+        body?.offsetHeight ?? 0,
+      );
+
+      return pageHeight - viewportBottom <= 8;
+    };
+
+    const maybeLoadMore = () => {
+      if (!isNearBottom()) return;
+      void onLoadMoreLinks();
+    };
+
+    window.addEventListener("scroll", maybeLoadMore, { passive: true });
+    window.addEventListener("resize", maybeLoadMore);
+
+    return () => {
+      window.removeEventListener("scroll", maybeLoadMore);
+      window.removeEventListener("resize", maybeLoadMore);
+    };
+  }, [hasMoreLinks, listLoading, listLoadingMore, onLoadMoreLinks]);
 
   const confirmDelete = async () => {
     if (!deletingLink?.id) return;
@@ -467,35 +687,35 @@ export const LinkList = ({
   const renderStats = [
     {
       label: content.stats.total,
-      value: totalLinks,
+      value: hasLoadedStats ? totalLinks : "…",
       note: t("linkList.stats.totalNote", { shown: displayedLinks.length }),
       icon: <Sparkles size={15} />,
       tone: "border-orange-200/70 bg-orange-50/80 text-orange-700 dark:border-orange-500/20 dark:bg-orange-500/10 dark:text-orange-200",
     },
     {
       label: content.stats.shopee,
-      value: totalShopeeClicks,
+      value: hasLoadedStats ? totalShopeeClicks : "…",
       note: content.stats.shopeeNote,
       icon: <MousePointer2 size={15} />,
       tone: "border-blue-200/70 bg-blue-50/80 text-blue-700 dark:border-blue-500/20 dark:bg-blue-500/10 dark:text-blue-200",
     },
     {
       label: content.stats.tiktok,
-      value: totalTiktokClicks,
+      value: hasLoadedStats ? totalTiktokClicks : "…",
       note: content.stats.tiktokNote,
       icon: <BarChart3 size={15} />,
       tone: "border-cyan-200/70 bg-cyan-50/80 text-cyan-700 dark:border-cyan-500/20 dark:bg-cyan-500/10 dark:text-cyan-200",
     },
     {
       label: content.stats.choice,
-      value: choiceModeCount,
+      value: hasLoadedStats ? choiceModeCount : "…",
       note: content.stats.choiceNote,
       icon: <ShieldCheck size={15} />,
       tone: "border-amber-200/70 bg-amber-50/80 text-amber-700 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-200",
     },
     {
       label: content.stats.expiring,
-      value: expiringSoonCount,
+      value: hasLoadedStats ? expiringSoonCount : "…",
       note: t("linkList.stats.expiringNote", { count: averageClicks }),
       icon: <Clock3 size={15} />,
       tone: "border-rose-200/70 bg-rose-50/80 text-rose-700 dark:border-rose-500/20 dark:bg-rose-500/10 dark:text-rose-200",
@@ -519,7 +739,7 @@ export const LinkList = ({
               <p className="mt-2 max-w-2xl text-sm font-medium leading-6 text-slate-500 dark:text-slate-400">
                 {t("linkList.hero.description", {
                   shown: displayedLinks.length,
-                  total: links.length,
+                  total: totalLinks,
                 })}
               </p>
             </div>
@@ -581,7 +801,12 @@ export const LinkList = ({
                   <button
                     key={option.value}
                     type="button"
-                    onClick={() => setQuickFilter(option.value)}
+                    onClick={() => {
+                      setQuickFilter(option.value);
+                      onQuickFilterChange?.(
+                        option.value === "top" ? "top" : "newest",
+                      );
+                    }}
                     className={`rounded-full px-3.5 py-2 text-[10px] font-black uppercase tracking-[0.18em] transition-all ${
                       isActive
                         ? "bg-slate-900 text-white shadow-lg shadow-slate-900/15 dark:bg-white dark:text-slate-900"
@@ -660,7 +885,8 @@ export const LinkList = ({
             </p>
           </div>
         ) : (
-          displayedLinks.map((link) => {
+          <>
+            {displayedLinks.map((link) => {
             const linkId = link.id ?? link.short_code;
             const flowBadge = getSecondaryFlowBadge(
               link.original_url,
@@ -857,7 +1083,13 @@ export const LinkList = ({
                 </div>
               </div>
             );
-          })
+            })}
+            {listLoadingMore && (
+              <div className="rounded-[1.75rem] border border-slate-200/70 bg-white/70 px-6 py-8 text-center text-sm font-semibold text-slate-500 dark:border-slate-700 dark:bg-slate-900/40 dark:text-slate-400">
+                Đang tải thêm liên kết...
+              </div>
+            )}
+          </>
         )}
       </div>
 
@@ -908,6 +1140,100 @@ export const LinkList = ({
                   placeholder="https://..."
                   className="w-full rounded-2xl border-2 border-transparent bg-gray-50 px-6 py-4 text-sm font-medium text-gray-900 outline-none transition-all focus:border-orange-500 dark:bg-slate-700 dark:text-slate-100"
                 />
+              </div>
+
+              <div className="space-y-2 lg:col-span-2">
+                <label className="ml-1 text-[10px] font-black uppercase tracking-widest text-gray-400">
+                  {content.editModal.videoField}
+                </label>
+                <input
+                  type="file"
+                  accept="video/*"
+                  ref={editVideoInputRef}
+                  onChange={handleEditVideoUpload}
+                  className="hidden"
+                />
+                <button
+                  type="button"
+                  onClick={() => editVideoInputRef.current?.click()}
+                  className="flex min-h-20 w-full items-center justify-between gap-4 rounded-2xl border-2 border-dashed border-orange-100 bg-orange-50/40 px-5 py-4 text-left transition-all hover:border-orange-300 hover:bg-orange-50/70 dark:border-orange-500/20 dark:bg-orange-500/10 dark:hover:border-orange-400/40"
+                >
+                  <div className="flex items-center gap-3 font-bold text-orange-500">
+                    <div className="relative flex h-10 w-10 items-center justify-center rounded-xl bg-white shadow-sm dark:bg-slate-800">
+                      {isEditVideoUploading ? (
+                        <svg
+                          className="h-10 w-10 -rotate-90"
+                          viewBox="0 0 36 36"
+                          aria-hidden="true"
+                        >
+                          <circle
+                            cx="18"
+                            cy="18"
+                            r="14"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeOpacity="0.15"
+                            strokeWidth="3"
+                          />
+                          <circle
+                            cx="18"
+                            cy="18"
+                            r="14"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="3"
+                            strokeLinecap="round"
+                            strokeDasharray="87.96"
+                            strokeDashoffset={87.96 - (87.96 * editVideoUploadProgress) / 100}
+                          />
+                        </svg>
+                      ) : (
+                        <UploadCloud size={20} />
+                      )}
+                      {isEditVideoUploading && (
+                        <span className="absolute inset-0 flex items-center justify-center text-[9px] font-black text-orange-600">
+                          {editVideoUploadProgress > 0
+                            ? `${editVideoUploadProgress}%`
+                            : "..."}
+                        </span>
+                      )}
+                    </div>
+                    <span className="text-[11px] uppercase tracking-wider sm:text-xs">
+                      {isEditVideoUploading
+                        ? editVideoUploadProgress > 0
+                          ? "Đang tải video lên..."
+                          : "Đang chuẩn bị video..."
+                        : editForm.video
+                          ? "Thay video khác"
+                          : "Tải video mới lên"}
+                    </span>
+                  </div>
+                  {editForm.video && (
+                    <div className="rounded-full bg-green-100 p-1">
+                      <Check className="text-green-600" size={14} />
+                    </div>
+                  )}
+                </button>
+                <p className="px-1 text-[9px] font-medium text-gray-400 dark:text-slate-500">
+                  {content.editModal.videoHelp}
+                </p>
+                {editVideoUploadSuccess && (
+                  <div className="flex items-center gap-2 rounded-xl border border-green-100 bg-green-50 px-4 py-2 text-[10px] font-black uppercase tracking-widest text-green-600">
+                    <ShieldCheck size={14} />
+                    Video đã tải lên thành công!
+                  </div>
+                )}
+                {editForm.video && (
+                  <div className="rounded-3xl border border-slate-200/70 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-900/40">
+                    <video
+                      src={editForm.video}
+                      controls
+                      playsInline
+                      preload="metadata"
+                      className="h-56 w-full rounded-2xl bg-black object-contain"
+                    />
+                  </div>
+                )}
               </div>
 
               <div className="space-y-1">

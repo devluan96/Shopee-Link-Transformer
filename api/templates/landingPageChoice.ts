@@ -39,6 +39,8 @@ export const renderChoiceLandingPage = (
   options?: {
     experimental?: boolean;
     preferImageCard?: boolean;
+    primaryRedirectUrl?: string;
+    secondaryRedirectUrl?: string;
   },
 ) => {
   const isExperimental = options?.experimental ?? true;
@@ -60,12 +62,12 @@ export const renderChoiceLandingPage = (
   const fallbackFavicon = `${originBase}/logo-app-192.png`;
   const faviconUrl = imageUrl || fallbackFavicon;
   const socialImageUrl = imageUrl || defaultOgImage;
-  const redirectOpenBaseUrl =
+  const primaryRedirectUrl = options?.primaryRedirectUrl?.trim() || link.original_url.trim();
+  const secondaryRedirectUrl = options?.secondaryRedirectUrl?.trim() || secondaryUrl;
+  const outboundTrackingUrl =
     clickTrackingUrl.slice(-6) === "/track"
-      ? `${clickTrackingUrl.slice(0, -6)}/open`
-      : `${clickTrackingUrl}/open`;
-  const primaryRedirectUrl = `${redirectOpenBaseUrl}?stage=primary`;
-  const secondaryRedirectUrl = `${redirectOpenBaseUrl}?stage=secondary`;
+      ? `${clickTrackingUrl.slice(0, -6)}/track-outbound`
+      : `${clickTrackingUrl}/track-outbound`;
   const secondaryStateKey = `hn.choice-state.${link.short_code}`;
   const robotsContent = isExperimental
     ? "noindex, nofollow"
@@ -266,6 +268,8 @@ export const renderChoiceLandingPage = (
         const secondaryRedirectUrl = "${escapeJsString(secondaryRedirectUrl)}";
         const secondaryTargetUrl = "${escapeJsString(secondaryUrl)}";
         const hasSecondaryRedirect = ${hasSecondaryRedirect ? "true" : "false"};
+        const clickTrackingUrl = "${escapeJsString(clickTrackingUrl)}";
+        const outboundTrackingUrl = "${escapeJsString(outboundTrackingUrl)}";
         const secondaryStateKey = "${escapeJsString(secondaryStateKey)}";
         const secondaryStateCookieName =
           "${escapeJsString(`hn_choice_state_${link.short_code}`)}";
@@ -402,15 +406,68 @@ export const renderChoiceLandingPage = (
           removeSecondaryState();
         };
 
+        const postJsonKeepalive = (url, payload) => {
+          if (!url) return;
+          const body = JSON.stringify(payload);
+          try {
+            if (navigator.sendBeacon) {
+              navigator.sendBeacon(url, new Blob([body], { type: "application/json" }));
+              return;
+            }
+          } catch (error) {}
+
+          fetch(url, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body,
+            keepalive: true,
+          }).catch(() => {});
+        };
+
+        let primaryClickTrackingArmed = false;
+        let primaryClickTrackingSent = false;
+
+        const trackPrimaryClick = () => {
+          if (primaryClickTrackingSent) return;
+          primaryClickTrackingSent = true;
+          postJsonKeepalive(clickTrackingUrl, { ts: Date.now() });
+        };
+
+        const armPrimaryClickTracking = () => {
+          if (primaryClickTrackingArmed) return;
+          primaryClickTrackingArmed = true;
+          window.addEventListener("pagehide", trackPrimaryClick, { once: true });
+        };
+
+        const trackSecondaryOutbound = () => {
+          postJsonKeepalive(outboundTrackingUrl, {
+            stage: "secondary",
+            destination_url: secondaryTargetUrl,
+            ts: Date.now(),
+          });
+        };
+
         const syncLandingState = () => {
           try {
             const rawState = readSecondaryState();
-            if (!rawState) {
+            if (!rawState || rawState === "undefined" || rawState === "null") {
               awaitingSecondaryPlay = false;
               return;
             }
 
-            const parsedState = JSON.parse(rawState);
+            let parsedState;
+            try {
+              const parsed = JSON.parse(rawState);
+              if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+                clearLandingState();
+                return;
+              }
+              parsedState = parsed;
+            } catch {
+              clearLandingState();
+              return;
+            }
+
             const secondaryOpenedAt = Number(parsedState?.secondaryOpenedAt || 0);
             const secondaryAgeMs = Date.now() - secondaryOpenedAt;
 
@@ -466,6 +523,7 @@ export const renderChoiceLandingPage = (
           if (overlayHandled) return;
           overlayHandled = true;
           persistPrimaryOpened();
+          armPrimaryClickTracking();
           hideOverlay();
         };
 
@@ -474,12 +532,13 @@ export const renderChoiceLandingPage = (
           awaitingSecondaryPlay = false;
           overlayHandled = true;
           persistSecondaryOpened();
+          trackSecondaryOutbound();
           try {
             if (heroVideo instanceof HTMLVideoElement) {
               heroVideo.pause();
             }
           } catch (error) {}
-          window.location.href = secondaryRedirectUrl;
+          window.location.replace(secondaryRedirectUrl);
         };
 
         const maybeShowOverlayAfterPlayback = () => {

@@ -1,34 +1,101 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { deleteLink } from "../../api/services/linkService.js";
+import { insertOutboundEvent } from "../../api/utils/clickTracking.js";
 
-import { applyMarketingParamsToDestination } from "../../api/services/linkService.js";
-
-test("applyMarketingParamsToDestination preserves the exact TikTok URL", () => {
-  const requestedUrl =
-    "  https://www.tiktok.com/view/product/1734913024708937503?_svg=1&chain_key=%7B%22t%22%3A1%7D&share_app_id=1180&utm_source=copy  ";
-
-  const result = applyMarketingParamsToDestination(
-    requestedUrl,
-    requestedUrl.trim(),
-    {
-      tiktokAffiliateParams: "sub_id=test-a&aff_id=999",
+test("insertOutboundEvent persists workspace scope", async () => {
+  let insertedPayload: Record<string, unknown> | null = null;
+  const supabase = {
+    from(table: string) {
+      assert.equal(table, "link_outbound_events");
+      return {
+        insert(payload: Record<string, unknown>) {
+          insertedPayload = payload;
+          return Promise.resolve({ error: null });
+        },
+      };
     },
-  );
+  } as any;
 
-  assert.equal(result, requestedUrl.trim());
+  const inserted = await insertOutboundEvent(supabase, {
+    link_id: "link-1",
+    short_code: "abc123",
+    workspace_id: "workspace-1",
+    stage: "primary",
+    destination_url: "https://shopee.vn/product/1",
+  });
+
+  assert.equal(inserted, true);
+  assert.equal(insertedPayload?.workspace_id, "workspace-1");
 });
 
-test("applyMarketingParamsToDestination preserves the exact Shopee URL", () => {
-  const requestedUrl =
-    "  https://shopee.vn/product/123/456?uls_trackid=abc123&utm_source=shopee-app  ";
+test("deleteLink keeps click history rows intact", async () => {
+  const deletedTables: string[] = [];
+  const supabase = {
+    from(table: string) {
+      if (table === "links") {
+        return {
+          select(columns: string) {
+            assert.match(columns, /workspace_id/);
+            return {
+              eq(column: string, value: string) {
+                assert.equal(column, "id");
+                assert.equal(value, "link-1");
+                return {
+                  maybeSingle: async () => ({
+                    data: {
+                      id: "link-1",
+                      user_id: "user-1",
+                      workspace_id: null,
+                    },
+                    error: null,
+                  }),
+                };
+              },
+            };
+          },
+          delete() {
+            deletedTables.push(table);
+            return {
+              eq(column: string, value: string) {
+                assert.equal(column, "id");
+                assert.equal(value, "link-1");
+                return {
+                  select() {
+                    return {
+                      maybeSingle: async () => ({
+                        data: { id: "link-1" },
+                        error: null,
+                      }),
+                    };
+                  },
+                };
+              },
+            };
+          },
+        };
+      }
 
-  const result = applyMarketingParamsToDestination(
-    requestedUrl,
-    requestedUrl.trim(),
-    {
-      shopeeAffiliateParams: "sub_id=test-a&aff_id=999",
+      if (table === "notification_logs") {
+        return {
+          delete() {
+            deletedTables.push(table);
+            return {
+              eq(column: string, value: string) {
+                assert.equal(column, "link_id");
+                assert.equal(value, "link-1");
+                return Promise.resolve({ error: null });
+              },
+            };
+          },
+        };
+      }
+
+      throw new Error(`Unexpected table: ${table}`);
     },
-  );
+  } as any;
 
-  assert.equal(result, requestedUrl.trim());
+  await deleteLink(supabase, "link-1", "user-1");
+
+  assert.deepEqual(deletedTables, ["notification_logs", "links"]);
 });

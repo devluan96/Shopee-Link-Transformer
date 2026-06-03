@@ -1,7 +1,7 @@
 import { SupabaseClient } from "../config/supabase.js";
 import {
   fetchOutboundEventsForLinkIds,
-  filterRealOutboundEvents,
+  filterDisplayableOutboundEvents,
   isShopeeDestinationUrl,
   isTikTokDestinationUrl,
 } from "../utils/clickTracking.js";
@@ -114,6 +114,7 @@ export const summarizeFocusedAnalytics = (
   filter: AnalyticsFilter = {},
   referenceDate = new Date(),
 ): FocusedAnalyticsSummary => {
+  const displayableEvents = filterDisplayableOutboundEvents(events as any[]);
   const source = filter.source || "all";
   const period = filter.period || "30d";
   const dayCount = getPeriodDayCount(period);
@@ -128,7 +129,7 @@ export const summarizeFocusedAnalytics = (
   let totalTiktokClicks = 0;
   let previousWindowClicks = 0;
 
-  events.forEach((event) => {
+  displayableEvents.forEach((event) => {
     if (!isSourceMatch(event, source) || !event.created_at) {
       return;
     }
@@ -196,6 +197,7 @@ export const summarizeOutboundEvents = (
   events: OutboundEventLike[],
   referenceDate = new Date(),
 ): OutboundEventSummary => {
+  const displayableEvents = filterDisplayableOutboundEvents(events as any[]);
   const today = new Date(referenceDate);
   const yesterday = new Date(referenceDate.getTime() - 24 * 60 * 60 * 1000);
   const todayKey = toVietnamDateKey(today);
@@ -223,7 +225,7 @@ export const summarizeOutboundEvents = (
   let last30DaysTiktokClicks = 0;
   let previousWindowClicks = 0;
 
-  events.forEach((event) => {
+  displayableEvents.forEach((event) => {
     const isShopee = isShopeeDestinationUrl(event.destination_url);
     const isTikTok = isTikTokDestinationUrl(event.destination_url);
     const linkId = event.link_id || undefined;
@@ -339,16 +341,19 @@ export const getUserStats = async (
 ) => {
   const links = await getFilteredLinks(supabase, userId, workspaceId);
   const count = links.length;
-
-  if (!links.length) {
+  if (!count) {
     return {
-      totalLinks: count,
+      totalLinks: 0,
       totalClicks: 0,
+      averageClicks: 0,
+      choiceModeCount: 0,
+      expiringSoonCount: 0,
       todayClicks: 0,
       yesterdayClicks: 0,
       todayShopeeClicks: 0,
       todayTiktokClicks: 0,
       recentClicks: [],
+      recentShopeeClicks: [],
       topLinks: [],
       growthPercentage: 0,
     };
@@ -366,16 +371,34 @@ export const getUserStats = async (
     ]),
   );
 
-  const clicks = filterRealOutboundEvents(
+  const rawEvents = filterDisplayableOutboundEvents(
     await fetchOutboundEventsForLinkIds(supabase, linkIds),
   );
+  const eventShortCodeMap = new Map<string, string>();
+  rawEvents.forEach((event: any) => {
+    if (event.link_id && event.short_code && !eventShortCodeMap.has(event.link_id)) {
+      eventShortCodeMap.set(event.link_id, event.short_code);
+    }
+  });
+
+  const clicks = rawEvents;
   const summary = summarizeOutboundEvents(clicks);
+  const now = new Date();
+  const choiceModeCount = links.filter((link: any) => !!link.secondary_url).length;
+  const expiringSoonCount = links.filter((link: any) => {
+    if (!link.expires_at) return false;
+    const expiresAt = new Date(link.expires_at);
+    if (Number.isNaN(expiresAt.getTime())) return false;
+    if (expiresAt < now) return false;
+    const diffHours = (expiresAt.getTime() - now.getTime()) / (1000 * 60 * 60);
+    return diffHours <= 24;
+  }).length;
 
   const topLinks = Array.from(summary.topLinksAllTime.entries())
     .map(([id, total]) => ({
-      short_code: linkMetaMap.get(id)?.short_code || "",
+      short_code: linkMetaMap.get(id)?.short_code || eventShortCodeMap.get(id) || "",
       slug: linkMetaMap.get(id)?.slug,
-      title: linkMetaMap.get(id)?.title || "",
+      title: linkMetaMap.get(id)?.title || eventShortCodeMap.get(id) || "",
       clicks: total,
     }))
     .sort((a, b) => b.clicks - a.clicks)
@@ -384,8 +407,11 @@ export const getUserStats = async (
   return {
     totalLinks: count,
     totalClicks: summary.totalClicks,
+    averageClicks: count ? Math.round(summary.totalClicks / count) : 0,
     totalShopeeClicks: summary.totalShopeeClicks,
     totalTiktokClicks: summary.totalTiktokClicks,
+    choiceModeCount,
+    expiringSoonCount,
     todayClicks: summary.todayClicks,
     yesterdayClicks: summary.yesterdayClicks,
     todayShopeeClicks: summary.todayShopeeClicks,
@@ -404,7 +430,6 @@ export const getUserAnalytics = async (
   filter: AnalyticsFilter = {},
 ) => {
   const links = await getFilteredLinks(supabase, userId, workspaceId);
-
   if (!links.length) {
     return {
       history: [],
@@ -414,8 +439,8 @@ export const getUserAnalytics = async (
     };
   }
 
-  const linkIds = links.map((l: any) => l.id);
-  const clicks = filterRealOutboundEvents(
+  const linkIds = links.map((link: any) => link.id).filter(Boolean);
+  const clicks = filterDisplayableOutboundEvents(
     await fetchOutboundEventsForLinkIds(supabase, linkIds),
   );
   const summary = summarizeFocusedAnalytics(clicks, filter);
@@ -435,12 +460,19 @@ export const getUserAnalytics = async (
     ]),
   );
 
+  const eventShortCodeMap = new Map<string, string>();
+  clicks.forEach((event: any) => {
+    if (event.link_id && event.short_code && !eventShortCodeMap.has(event.link_id)) {
+      eventShortCodeMap.set(event.link_id, event.short_code);
+    }
+  });
+
   const topLinks = Array.from(summary.topLinkCounts.entries())
     .map(([id, clicks]) => ({
       id,
-      short_code: linkMetaMap.get(id)?.short_code || "",
+      short_code: linkMetaMap.get(id)?.short_code || eventShortCodeMap.get(id) || "",
       slug: linkMetaMap.get(id)?.slug,
-      title: linkMetaMap.get(id)?.title || "Unknown",
+      title: linkMetaMap.get(id)?.title || eventShortCodeMap.get(id) || "Unknown",
       clicks,
     }))
     .sort((a, b) => b.clicks - a.clicks)
