@@ -19,6 +19,8 @@ import {
   Sparkles,
   Filter,
   Share2,
+  UploadCloud,
+  Check,
 } from "lucide-react";
 import { ConvertedLink, LinkStats, LinkUpdatePayload, Workspace } from "@/src/types";
 import { formatDistanceToNow } from "date-fns";
@@ -61,6 +63,12 @@ interface LinkListProps {
   onUpdateLink: (id: string, data: LinkUpdatePayload) => Promise<void>;
   onShareLink?: (id: string, workspaceId: string) => Promise<void>;
   onDeleteManyLinks?: (ids: string[]) => Promise<void>;
+  uploadAssetToCloudinary: (
+    file: Blob | File,
+    resourceType: "image" | "video" | "auto",
+    fileName?: string,
+    onProgress?: (progress: number) => void,
+  ) => Promise<string>;
 }
 
 export const LinkList = ({
@@ -84,6 +92,7 @@ export const LinkList = ({
   onUpdateLink,
   onShareLink,
   onDeleteManyLinks,
+  uploadAssetToCloudinary,
 }: LinkListProps) => {
   const { locale, messages, t } = useLocale();
   const content = messages.linkList;
@@ -116,6 +125,10 @@ export const LinkList = ({
   });
   const [isUpdating, setIsUpdating] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isEditVideoUploading, setIsEditVideoUploading] = useState(false);
+  const [editVideoUploadProgress, setEditVideoUploadProgress] = useState(0);
+  const [editVideoUploadSuccess, setEditVideoUploadSuccess] = useState(false);
+  const editVideoInputRef = useRef<HTMLInputElement | null>(null);
   const [selectedExpirePresetDays, setSelectedExpirePresetDays] = useState<
     number | null
   >(null);
@@ -289,6 +302,12 @@ export const LinkList = ({
         ? new Date(link.expires_at).toISOString().slice(0, 16)
         : "",
     });
+    setIsEditVideoUploading(false);
+    setEditVideoUploadProgress(0);
+    setEditVideoUploadSuccess(false);
+    if (editVideoInputRef.current) {
+      editVideoInputRef.current.value = "";
+    }
   };
 
   const startShare = (link: ConvertedLink) => {
@@ -322,7 +341,7 @@ export const LinkList = ({
           .map((tag) => tag.trim())
           .filter(Boolean),
         custom_image_url: editForm.img,
-        video_url: editForm.video,
+        video_url: editForm.video || editingLink.video_url || null,
         original_url: editForm.original,
         secondary_url: editForm.secondary,
         secondaryTargetType: editForm.secondaryTargetType,
@@ -338,6 +357,46 @@ export const LinkList = ({
       setSelectedExpirePresetDays(null);
     } finally {
       setIsUpdating(false);
+    }
+  };
+
+  const handleEditVideoUpload = async (
+    e: React.ChangeEvent<HTMLInputElement>,
+  ) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith("video/")) {
+      toast.error("Vui lòng chọn file video hợp lệ.");
+      e.target.value = "";
+      return;
+    }
+
+    setIsEditVideoUploading(true);
+    setEditVideoUploadProgress(0);
+    setEditVideoUploadSuccess(false);
+
+    try {
+      const uploadedUrl = await uploadAssetToCloudinary(
+        file,
+        "video",
+        file.name,
+        setEditVideoUploadProgress,
+      );
+
+      setEditForm((current) => ({ ...current, video: uploadedUrl }));
+      setEditVideoUploadSuccess(true);
+      setTimeout(() => setEditVideoUploadSuccess(false), 5000);
+    } catch (error: unknown) {
+      toast.error(
+        `Lỗi tải video: ${
+          error instanceof Error ? error.message : "Không xác định"
+        }`,
+      );
+    } finally {
+      setIsEditVideoUploading(false);
+      e.target.value = "";
+      setTimeout(() => setEditVideoUploadProgress(0), 600);
     }
   };
 
@@ -1000,22 +1059,98 @@ export const LinkList = ({
                 />
               </div>
 
-              <div className="space-y-1 lg:col-span-2">
+              <div className="space-y-2 lg:col-span-2">
                 <label className="ml-1 text-[10px] font-black uppercase tracking-widest text-gray-400">
                   {content.editModal.videoField}
                 </label>
                 <input
-                  type="url"
-                  value={editForm.video}
-                  onChange={(e) =>
-                    setEditForm({ ...editForm, video: e.target.value })
-                  }
-                  placeholder={content.editModal.videoPlaceholder}
-                  className="w-full rounded-2xl border-2 border-transparent bg-gray-50 px-6 py-4 text-sm font-medium text-gray-900 outline-none transition-all focus:border-orange-500 dark:bg-slate-700 dark:text-slate-100"
+                  type="file"
+                  accept="video/*"
+                  ref={editVideoInputRef}
+                  onChange={handleEditVideoUpload}
+                  className="hidden"
                 />
+                <button
+                  type="button"
+                  onClick={() => editVideoInputRef.current?.click()}
+                  className="flex min-h-20 w-full items-center justify-between gap-4 rounded-2xl border-2 border-dashed border-orange-100 bg-orange-50/40 px-5 py-4 text-left transition-all hover:border-orange-300 hover:bg-orange-50/70 dark:border-orange-500/20 dark:bg-orange-500/10 dark:hover:border-orange-400/40"
+                >
+                  <div className="flex items-center gap-3 font-bold text-orange-500">
+                    <div className="relative flex h-10 w-10 items-center justify-center rounded-xl bg-white shadow-sm dark:bg-slate-800">
+                      {isEditVideoUploading ? (
+                        <svg
+                          className="h-10 w-10 -rotate-90"
+                          viewBox="0 0 36 36"
+                          aria-hidden="true"
+                        >
+                          <circle
+                            cx="18"
+                            cy="18"
+                            r="14"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeOpacity="0.15"
+                            strokeWidth="3"
+                          />
+                          <circle
+                            cx="18"
+                            cy="18"
+                            r="14"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="3"
+                            strokeLinecap="round"
+                            strokeDasharray="87.96"
+                            strokeDashoffset={87.96 - (87.96 * editVideoUploadProgress) / 100}
+                          />
+                        </svg>
+                      ) : (
+                        <UploadCloud size={20} />
+                      )}
+                      {isEditVideoUploading && (
+                        <span className="absolute inset-0 flex items-center justify-center text-[9px] font-black text-orange-600">
+                          {editVideoUploadProgress > 0
+                            ? `${editVideoUploadProgress}%`
+                            : "..."}
+                        </span>
+                      )}
+                    </div>
+                    <span className="text-[11px] uppercase tracking-wider sm:text-xs">
+                      {isEditVideoUploading
+                        ? editVideoUploadProgress > 0
+                          ? "Đang tải video lên..."
+                          : "Đang chuẩn bị video..."
+                        : editForm.video
+                          ? "Thay video khác"
+                          : "Tải video mới lên"}
+                    </span>
+                  </div>
+                  {editForm.video && (
+                    <div className="rounded-full bg-green-100 p-1">
+                      <Check className="text-green-600" size={14} />
+                    </div>
+                  )}
+                </button>
                 <p className="px-1 text-[9px] font-medium text-gray-400 dark:text-slate-500">
                   {content.editModal.videoHelp}
                 </p>
+                {editVideoUploadSuccess && (
+                  <div className="flex items-center gap-2 rounded-xl border border-green-100 bg-green-50 px-4 py-2 text-[10px] font-black uppercase tracking-widest text-green-600">
+                    <ShieldCheck size={14} />
+                    Video đã tải lên thành công!
+                  </div>
+                )}
+                {editForm.video && (
+                  <div className="rounded-3xl border border-slate-200/70 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-900/40">
+                    <video
+                      src={editForm.video}
+                      controls
+                      playsInline
+                      preload="metadata"
+                      className="h-56 w-full rounded-2xl bg-black object-contain"
+                    />
+                  </div>
+                )}
               </div>
 
               <div className="space-y-1">

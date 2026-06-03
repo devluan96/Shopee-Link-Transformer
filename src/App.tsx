@@ -1270,6 +1270,7 @@ export default function App() {
               onUpdateLink={handleUpdateLink}
               onShareLink={handleShareLink}
               onDeleteManyLinks={handleDeleteManyLinks}
+              uploadAssetToCloudinary={uploadAssetToCloudinary}
             />
           )}
 
