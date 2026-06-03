@@ -284,6 +284,7 @@ export function SeoCaptureScreen({ screen }: { screen: CaptureScreen }) {
           onDeleteLink={async () => {}}
           onUpdateLink={async () => {}}
           onShareLink={async () => {}}
+          uploadAssetToCloudinary={async () => ""}
         />
       </CaptureFrame>
     );

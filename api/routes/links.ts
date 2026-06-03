@@ -406,38 +406,36 @@ router.get(
 
       const shouldUseTopSort = sortMode === "top";
       if (shouldUseTopSort) {
-        const links = await linkService.getUserLinks(
+        const topLinks = await linkService.getUserLinksByClickCounts(
           supabase,
           userId,
           workspaceId,
+          usePagination
+            ? {
+                limit: pageSize as number,
+                offset: pageOffset,
+              }
+            : undefined,
         );
-        const orderedLinks = [...(await attachTrackedSourcesToLinks(
-          supabase,
-          links,
-        ))].sort((a, b) => {
-          const aClicks = (a.clicks || 0) + (a.tiktok_clicks || 0);
-          const bClicks = (b.clicks || 0) + (b.tiktok_clicks || 0);
-          if (bClicks !== aClicks) return bClicks - aClicks;
-          const aCreated = a.created_at ? new Date(a.created_at).getTime() : 0;
-          const bCreated = b.created_at ? new Date(b.created_at).getTime() : 0;
-          return bCreated - aCreated;
-        });
-        const pageLinks = usePagination
-          ? orderedLinks.slice(pageOffset, pageOffset + (pageSize as number))
-          : orderedLinks;
+        const totalCount = topLinks[0]?.total_count || 0;
+        const pageLinks = topLinks.map(({ total_count, ...link }) => link);
         await notificationService.maybeCreateLinkExpiryNotifications(
           supabase,
           userId,
           pageLinks,
         );
+        const linksWithSources = await attachTrackedSourcesToLinks(
+          supabase,
+          pageLinks,
+        );
         if (usePagination) {
           return res.json({
-            items: pageLinks,
-            hasMore: orderedLinks.length > pageOffset + (pageSize as number),
-            nextOffset: pageOffset + pageLinks.length,
+            items: linksWithSources,
+            hasMore: totalCount > pageOffset + linksWithSources.length,
+            nextOffset: pageOffset + linksWithSources.length,
           });
         }
-        return res.json(pageLinks);
+        return res.json(linksWithSources);
       }
 
       const links = await linkService.getUserLinks(

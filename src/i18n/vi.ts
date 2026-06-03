@@ -1152,6 +1152,10 @@ export const vi = {
       tagsPlaceholder: "facebook, retarget, campaign-a",
       tagsHelp: "Phân tách nhiều nhãn bằng dấu phẩy.",
       thumbnailField: "Đường dẫn ảnh đại diện",
+      videoField: "Đường dẫn video",
+      videoPlaceholder: "https://...",
+      videoHelp:
+        "Tải video mới sẽ tự cắt ảnh đại diện từ video này và thay ảnh cũ. Nếu không đổi video, cứ bỏ qua.",
       expiresField: "Thời hạn liên kết",
       expiresNone: "Không hết hạn",
       expiresDay: "{count} ngày",

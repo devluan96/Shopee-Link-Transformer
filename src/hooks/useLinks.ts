@@ -166,6 +166,13 @@ export function useLinks({
     await fetchLinks({ reset: false });
   }, [fetchLinks, listLoading, listLoadingMore, linksHasMore]);
 
+  useEffect(() => {
+    if (!user || activeTab !== "list") return;
+    linksOffsetRef.current = 0;
+    setLinksHasMore(true);
+    setLinksDirty(true);
+  }, [activeTab, linksSortMode, user?.id]);
+
   const handleDeleteLink = useCallback(
     async (id: string) => {
       try {
