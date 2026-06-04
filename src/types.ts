@@ -206,6 +206,7 @@ export type Tab =
   | "pricing"
   | "create"
   | "list"
+  | "library"
   | "analytics"
   | "team"
   | "admin"
