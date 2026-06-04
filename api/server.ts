@@ -47,6 +47,10 @@ import {
 } from "./services/deepLinkService.js";
 import { renderLinkLandingPage } from "./templates/landingPage.js";
 import { renderChoiceLandingPage } from "./templates/landingPageChoice.js";
+import {
+  getLocalMediaPublicPathPrefix,
+  getLocalMediaStorageDir,
+} from "./services/mediaUploadService.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -1313,6 +1317,10 @@ ${urls.join("\n")}
 });
 
 // H. STATIC FILES & SPA FALLBACK
+app.use(
+  `/${getLocalMediaPublicPathPrefix()}`,
+  express.static(getLocalMediaStorageDir(), { etag: false }),
+);
 app.use(express.static(path.join(__dirname, "../public"), { etag: false }));
 app.use(express.static(path.join(__dirname, "../dist"), { etag: false }));
 

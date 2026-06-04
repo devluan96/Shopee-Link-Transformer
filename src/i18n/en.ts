@@ -119,11 +119,12 @@ export const en = {
     mainMenu: "Main menu",
     dashboard: "Dashboard",
     aiAssistant: "AI assistant",
-    createLinks: "Create links",
-    linkList: "Link list",
-    analytics: "Analytics",
-    team: "Workspace team",
-    installApp: "Install app",
+      createLinks: "Create links",
+      linkList: "Link list",
+      library: "Media library",
+      analytics: "Analytics",
+      team: "Workspace team",
+      installApp: "Install app",
     admin: "Admin",
     adminCenter: "Admin center",
     userManagement: "User management",
@@ -137,21 +138,52 @@ export const en = {
     rolePaid: "Paid member",
     roleFree: "Free member",
   },
-  app: {
-    loading: "Initializing system...",
-    createLocked: {
+    app: {
+      loading: "Initializing system...",
+      createLocked: {
       titleViewer: "This workspace is view only",
       titleUpgrade: "Upgrade account",
       descriptionViewer:
         "Your current workspace is view only, so you cannot create or edit links yet. Switch to another workspace or ask the owner to grant editor access.",
       descriptionUpgrade:
         "Shopee and TikTok link conversion is available for paid accounts. Please contact the administrator to upgrade your plan.",
-      actionViewer: "Open team area",
-      actionUpgrade: "Back to dashboard",
+        actionViewer: "Open team area",
+        actionUpgrade: "Back to dashboard",
+      },
     },
-  },
-  assistant: {
-    badge: "AI assistant",
+    library: {
+      title: "Media library",
+      subtitle:
+        "Browse the files uploaded from your account, copy public URLs, and delete files you no longer need.",
+      banner:
+        "Upload your main videos and images from the Create Link tab. This media library is for browsing, copying URLs, and deleting files.",
+      searchPlaceholder: "Search by file name, path, or MIME type...",
+      refresh: "Refresh",
+      open: "Open",
+      copy: "Copy URL",
+      delete: "Delete",
+      deleting: "Deleting...",
+      emptyTitle: "No media files yet",
+      emptyBody:
+        "Upload an image, video, or audio file first. Files from R2, Cloudinary, or Supabase will appear here automatically.",
+      errorTitle: "Cannot load media library",
+      updated: "Updated {time}",
+      confirmDelete: "Delete {name}?",
+      filters: {
+        all: "All files",
+        images: "Images",
+        videos: "Videos",
+        audio: "Audio",
+      },
+      stats: {
+        files: "Files",
+        images: "Images",
+        videos: "Videos",
+        size: "Total size",
+      },
+    },
+    assistant: {
+      badge: "AI assistant",
     title: "Chat with your campaign copilot",
     widgetTitle: "Need a quick AI hand?",
     description:
@@ -892,7 +924,15 @@ export const en = {
       uploadTitle: "Avatar upload",
       emptyHint: "Choose JPG, PNG, or WebP to replace your avatar.",
       helper:
-        "The system will automatically resize to a maximum of 512px and compress to WebP before upload.",
+        "The system lets you preview and crop the image, then resizes it to 512px and compresses to WebP before upload.",
+      invalidFile: "Please choose an image file.",
+      cropTitle: "Crop your avatar",
+      cropSubtitle: "Drag the image, zoom in or out, and confirm the crop before upload.",
+      cropZoom: "Zoom",
+      cropPreview: "Preview",
+      cropCancel: "Cancel",
+      cropConfirm: "Use image",
+      cropHelp: "Move the image inside the square so the part you want stays centered.",
     },
     statusCard: {
       label: "Status",
@@ -1356,7 +1396,7 @@ export const en = {
       videoPreparing: "Preparing video...",
       videoReplace: "Replace video",
       videoUpload: "Upload video to cloud storage",
-      cloudStorage: "Cloud storage",
+      cloudStorage: "Cloudflare R2",
       videoReplaceWithProvider: "Replace video via {provider}",
       videoUploadWithProvider: "Upload video to {provider}",
       videoDropHelp: "Drag and drop a video here, or click to browse.",

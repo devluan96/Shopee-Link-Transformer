@@ -21,6 +21,8 @@ import { cn } from "@/src/lib/utils";
 import { toast } from "sonner";
 import { QRCodeCanvas } from "qrcode.react";
 import { useLocale } from "@/src/hooks/useLocale";
+import { AvatarCropDialog } from "@/src/components/profile/AvatarCropDialog";
+import type { AvatarUploadProvider, AvatarUploadResult } from "@/src/hooks/useProfile";
 
 interface ProfileSettingsProps {
   profile: UserProfile | null;
@@ -32,7 +34,7 @@ interface ProfileSettingsProps {
   onEnableTwoFactor: (code: string) => Promise<void>;
   onDisableTwoFactor: (code: string) => Promise<void>;
   onUpdate: (data: { full_name: string; avatar_url: string }) => void;
-  onAvatarUpload: (file: File) => Promise<string | null>;
+  onAvatarUpload: (file: File) => Promise<AvatarUploadResult | null>;
 }
 
 export const ProfileSettings = ({
@@ -58,6 +60,13 @@ export const ProfileSettings = ({
     name: string;
     size: number;
   } | null>(null);
+  const [avatarUploadProvider, setAvatarUploadProvider] =
+    React.useState<AvatarUploadProvider | null>(null);
+  const [avatarCropOpen, setAvatarCropOpen] = React.useState(false);
+  const [pendingAvatarFile, setPendingAvatarFile] = React.useState<File | null>(
+    null,
+  );
+  const [pendingAvatarUrl, setPendingAvatarUrl] = React.useState("");
   const [twoFactorCode, setTwoFactorCode] = React.useState("");
   const [twoFactorBusy, setTwoFactorBusy] = React.useState(false);
   const [otpSecondsLeft, setOtpSecondsLeft] = React.useState(() => {
@@ -71,6 +80,14 @@ export const ProfileSettings = ({
     setFullName(profile.full_name || "");
     setAvatarUrl(profile.avatar_url || "");
   }, [profile]);
+
+  React.useEffect(() => {
+    return () => {
+      if (pendingAvatarUrl.startsWith("blob:")) {
+        URL.revokeObjectURL(pendingAvatarUrl);
+      }
+    };
+  }, [pendingAvatarUrl]);
 
   React.useEffect(() => {
     setTwoFactorCode("");
@@ -159,17 +176,21 @@ export const ProfileSettings = ({
     if (!file) return;
 
     setSelectedAvatarMeta({ name: file.name, size: file.size });
-    setUploading(true);
-
-    try {
-      const url = await onAvatarUpload(file);
-      if (url) setAvatarUrl(url);
-    } catch (err) {
-      console.error("ProfileSettings handleFileChange error:", err);
-    } finally {
-      setUploading(false);
+    if (!file.type.startsWith("image/")) {
+      toast.error(content.avatar.invalidFile);
       if (fileInputRef.current) fileInputRef.current.value = "";
+      return;
     }
+
+    if (pendingAvatarUrl.startsWith("blob:")) {
+      URL.revokeObjectURL(pendingAvatarUrl);
+    }
+
+    const objectUrl = URL.createObjectURL(file);
+    setPendingAvatarFile(file);
+    setPendingAvatarUrl(objectUrl);
+    setAvatarCropOpen(true);
+    if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
   const isPremium =
@@ -217,6 +238,65 @@ export const ProfileSettings = ({
     if (!twoFactorSetup?.otpauthUri) return;
     await navigator.clipboard.writeText(twoFactorSetup.otpauthUri);
     toast.success(content.toasts.copiedUri);
+  };
+
+  const handleCloseAvatarCrop = () => {
+    if (uploading) return;
+    setAvatarCropOpen(false);
+    setPendingAvatarFile(null);
+    if (pendingAvatarUrl.startsWith("blob:")) {
+      URL.revokeObjectURL(pendingAvatarUrl);
+    }
+    setPendingAvatarUrl("");
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  const handleConfirmAvatarCrop = async (croppedFile: File) => {
+    setUploading(true);
+    let uploadSucceeded = false;
+    try {
+      const result = await onAvatarUpload(croppedFile);
+      if (!result) {
+        return;
+      }
+
+      setAvatarUrl(result.url);
+      setAvatarUploadProvider(result.provider);
+      setSelectedAvatarMeta({ name: croppedFile.name, size: croppedFile.size });
+      uploadSucceeded = true;
+    } catch (err) {
+      console.error("ProfileSettings handleConfirmAvatarCrop error:", err);
+    } finally {
+      setUploading(false);
+      if (uploadSucceeded) {
+        setAvatarCropOpen(false);
+        setPendingAvatarFile(null);
+        if (pendingAvatarUrl.startsWith("blob:")) {
+          URL.revokeObjectURL(pendingAvatarUrl);
+        }
+        setPendingAvatarUrl("");
+      }
+    }
+  };
+
+  const getAvatarProviderLabel = (provider: AvatarUploadProvider | null) => {
+    if (provider === "r2") return "R2";
+    if (provider === "cloudinary") return "Cloudinary";
+    if (provider === "supabase") return "Supabase";
+    return "";
+  };
+
+  const getAvatarProviderBadgeClass = (provider: AvatarUploadProvider | null) => {
+    if (provider === "r2") {
+      return "bg-sky-100 text-sky-700 dark:bg-sky-500/15 dark:text-sky-200";
+    }
+    if (provider === "cloudinary") {
+      return "bg-fuchsia-100 text-fuchsia-700 dark:bg-fuchsia-500/15 dark:text-fuchsia-200";
+    }
+    if (provider === "supabase") {
+      return "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-200";
+    }
+    return "bg-gray-100 text-gray-500 dark:bg-slate-700 dark:text-slate-300";
   };
 
   return (
@@ -303,16 +383,28 @@ export const ProfileSettings = ({
                 <p className="text-[10px] font-black uppercase tracking-widest text-gray-500 dark:text-slate-400">
                   {content.avatar.uploadTitle}
                 </p>
-                {selectedAvatarMeta ? (
-                  <p className="mt-2 text-xs font-medium text-gray-600 dark:text-slate-300">
-                    {selectedAvatarMeta.name} ·{" "}
-                    {formatFileSize(selectedAvatarMeta.size)}
-                  </p>
-                ) : (
-                  <p className="mt-2 text-xs font-medium text-gray-400 dark:text-slate-500">
-                    {content.avatar.emptyHint}
-                  </p>
-                )}
+                <div className="mt-2 flex flex-wrap items-center gap-2">
+                  {selectedAvatarMeta ? (
+                    <p className="text-xs font-medium text-gray-600 dark:text-slate-300">
+                      {selectedAvatarMeta.name} ·{" "}
+                      {formatFileSize(selectedAvatarMeta.size)}
+                    </p>
+                  ) : (
+                    <p className="text-xs font-medium text-gray-400 dark:text-slate-500">
+                      {content.avatar.emptyHint}
+                    </p>
+                  )}
+                  {avatarUploadProvider && (
+                    <span
+                      className={cn(
+                        "inline-flex items-center rounded-full px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.25em]",
+                        getAvatarProviderBadgeClass(avatarUploadProvider),
+                      )}
+                    >
+                      {getAvatarProviderLabel(avatarUploadProvider)}
+                    </span>
+                  )}
+                </div>
                 <p className="mt-1 text-[11px] font-medium text-gray-400 dark:text-slate-500">
                   {content.avatar.helper}
                 </p>
@@ -735,6 +827,22 @@ export const ProfileSettings = ({
           </div>
         </section>
       </div>
+
+      <AvatarCropDialog
+        open={avatarCropOpen && Boolean(pendingAvatarFile && pendingAvatarUrl)}
+        imageUrl={pendingAvatarUrl}
+        fileName={pendingAvatarFile?.name || "avatar"}
+        title={content.avatar.cropTitle}
+        subtitle={content.avatar.cropSubtitle}
+        zoomLabel={content.avatar.cropZoom}
+        previewLabel={content.avatar.cropPreview}
+        cancelLabel={content.avatar.cropCancel}
+        confirmLabel={content.avatar.cropConfirm}
+        helpText={content.avatar.cropHelp}
+        outputName={`${((pendingAvatarFile?.name || "avatar").replace(/\.[^.]+$/, "") || "avatar")}.webp`}
+        onCancel={handleCloseAvatarCrop}
+        onConfirm={handleConfirmAvatarCrop}
+      />
     </div>
   );
 };

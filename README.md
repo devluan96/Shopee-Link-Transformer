@@ -10,7 +10,9 @@ View your app in AI Studio: https://ai.studio/apps/df09c48c-7a5b-4b5e-bd1b-7c65d
 
 ## Run Locally
 
-**Prerequisites:**  Node.js
+**Prerequisites:**  Node.js 22.x LTS
+If `node -v` still shows `v20.x`, install Node 22 LTS and reopen your terminal before running the app.
+On Windows, download the latest Node.js 22 LTS Windows Installer (`.msi`) from the official [Node.js downloads page](https://nodejs.org/en/download), run the installer, then verify with `node -v` in a new terminal.
 
 
 1. Install dependencies:
