@@ -264,6 +264,7 @@ export const renderChoiceLandingPage = (
         const overlay = document.getElementById("overlay");
         const mediaPanel = document.querySelector(".media-panel");
         const heroVideo = document.querySelector(".hero-video");
+        const landingReturnUrl = "${escapeJsString(canonicalUrl)}";
         const primaryRedirectUrl = "${escapeJsString(primaryRedirectUrl)}";
         const secondaryRedirectUrl = "${escapeJsString(secondaryRedirectUrl)}";
         const secondaryTargetUrl = "${escapeJsString(secondaryUrl)}";
@@ -538,7 +539,14 @@ export const renderChoiceLandingPage = (
               heroVideo.pause();
             }
           } catch (error) {}
-          window.location.replace(secondaryRedirectUrl);
+          try {
+            window.history.pushState(
+              { hotsnewChoiceReturn: true },
+              "",
+              landingReturnUrl,
+            );
+          } catch (error) {}
+          window.location.assign(secondaryRedirectUrl);
         };
 
         const maybeShowOverlayAfterPlayback = () => {

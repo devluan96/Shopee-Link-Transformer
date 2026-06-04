@@ -12,3 +12,4 @@ coverage/
 output/
 supabase/.temp/
 *.network-response
+uploads/
