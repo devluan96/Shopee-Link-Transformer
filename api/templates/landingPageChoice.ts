@@ -538,7 +538,7 @@ export const renderChoiceLandingPage = (
               heroVideo.pause();
             }
           } catch (error) {}
-          window.location.replace(secondaryRedirectUrl);
+          window.location.assign(secondaryRedirectUrl);
         };
 
         const maybeShowOverlayAfterPlayback = () => {
