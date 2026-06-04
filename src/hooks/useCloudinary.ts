@@ -1,8 +1,9 @@
 import { useCallback } from "react";
 import { useState } from "react";
+import { toast } from "sonner";
 
 type ResourceType = "image" | "video" | "auto";
-export type MediaUploadProvider = "cloudinary" | "supabase";
+export type MediaUploadProvider = "r2" | "cloudinary" | "supabase";
 
 interface CloudinaryUploadPlan {
   provider: "cloudinary";
@@ -15,6 +16,15 @@ interface CloudinaryUploadPlan {
   signature: string;
 }
 
+interface R2UploadPlan {
+  provider: "r2";
+  resourceType: ResourceType;
+  uploadUrl: string;
+  bucket: string;
+  publicBaseUrl: string;
+  maxFileSizeBytes: number;
+}
+
 interface SupabaseUploadPlan {
   provider: "supabase";
   resourceType: ResourceType;
@@ -25,6 +35,7 @@ interface SupabaseUploadPlan {
 }
 
 type MediaUploadPlan =
+  | R2UploadPlan
   | CloudinaryUploadPlan
   | SupabaseUploadPlan;
 
@@ -34,6 +45,10 @@ interface UploadPlanResponse {
 }
 
 interface CloudinaryUploadResponse {
+  reused?: boolean;
+  deduped?: boolean;
+  provider?: MediaUploadProvider;
+  url?: string;
   secure_url?: string;
   public_id?: string;
   version?: number | string;
@@ -44,9 +59,27 @@ interface CloudinaryUploadResponse {
 }
 
 interface SupabaseProxyUploadResponse {
+  reused?: boolean;
+  deduped?: boolean;
+  provider?: MediaUploadProvider;
   url?: string;
   error?: string;
   message?: string;
+}
+
+interface R2ProxyUploadResponse {
+  reused?: boolean;
+  deduped?: boolean;
+  provider?: MediaUploadProvider;
+  url?: string;
+  error?: string;
+  message?: string;
+}
+
+interface UploadOutcome {
+  url: string;
+  reused: boolean;
+  provider?: MediaUploadProvider;
 }
 
 interface UseCloudinaryProps {
@@ -75,12 +108,29 @@ const appendUploadFile = (
   formData.append("file", file);
 };
 
-const parseUploadResponse = <T>(responseText: string): T | null => {
-  try {
-    return JSON.parse(responseText || "null") as T;
-  } catch {
-    return null;
+const getReuseToastMessage = (provider?: MediaUploadProvider) => {
+  const lang =
+    typeof document !== "undefined"
+      ? (document.documentElement.lang || navigator.language || "").toLowerCase()
+      : "";
+  const isVi = lang.startsWith("vi");
+  const providerLabel = provider
+    ? provider === "r2"
+      ? "R2"
+      : provider === "cloudinary"
+        ? "Cloudinary"
+        : "Supabase"
+    : null;
+
+  if (isVi) {
+    return providerLabel
+      ? `Đã dùng lại file có sẵn từ ${providerLabel}.`
+      : "Đã dùng lại file có sẵn.";
   }
+
+  return providerLabel
+    ? `Reused existing file from ${providerLabel}.`
+    : "Reused existing file.";
 };
 
 export function useCloudinary({ fetchWithAuth }: UseCloudinaryProps) {
@@ -161,54 +211,54 @@ export function useCloudinary({ fetchWithAuth }: UseCloudinaryProps) {
       file: Blob | File,
       fileName?: string,
       onProgress?: (progress: number) => void,
-    ) => {
+    ): Promise<UploadOutcome> => {
       const uploadFormData = new FormData();
       appendUploadFile(uploadFormData, file, fileName);
-      uploadFormData.append("api_key", plan.apiKey);
+      uploadFormData.append("resourceType", plan.resourceType);
+      uploadFormData.append("cloudName", plan.cloudName);
+      uploadFormData.append(
+        "fileName",
+        fileName || (file instanceof File ? file.name : "upload.bin"),
+      );
+      uploadFormData.append("apiKey", plan.apiKey);
       uploadFormData.append("timestamp", String(plan.timestamp));
       uploadFormData.append("signature", plan.signature);
       uploadFormData.append("folder", plan.folder);
 
-      return await new Promise<string>((resolve, reject) => {
-        const xhr = new XMLHttpRequest();
-        xhr.open("POST", plan.uploadUrl);
-
-        xhr.upload.onprogress = (event) => {
-          if (!onProgress || !event.lengthComputable) return;
-          onProgress(
-            Math.min(100, Math.round((event.loaded / event.total) * 100)),
-          );
-        };
-
-        xhr.onload = () => {
-          const data =
-            parseUploadResponse<CloudinaryUploadResponse>(xhr.responseText) ||
-            {};
-          const uploadedUrl =
-            plan.resourceType === "video"
-              ? buildSafariSafeVideoUrl(plan, data)
-              : data?.secure_url || "";
-
-          if (xhr.status >= 200 && xhr.status < 300 && uploadedUrl) {
-            if (onProgress) onProgress(100);
-            resolve(uploadedUrl);
-            return;
-          }
-
-          reject(
-            new Error(
-              data?.error?.message ||
-                data?.message ||
-                `Cloudinary upload failed (${xhr.status})`,
-            ),
-          );
-        };
-
-        xhr.onerror = () => reject(new Error("Cloudinary upload failed"));
-        xhr.send(uploadFormData);
+      if (onProgress) onProgress(15);
+      const response = await fetchWithAuth(plan.uploadUrl, {
+        method: "POST",
+        body: uploadFormData,
       });
+      const data = (await response.json().catch(() => null)) as
+        | CloudinaryUploadResponse
+        | null;
+
+      const uploadedUrl =
+        data?.url ||
+        (plan.resourceType === "video"
+          ? buildSafariSafeVideoUrl(
+              plan,
+              data || { secure_url: "", public_id: "", version: 0 },
+            )
+          : data?.secure_url || "");
+
+      if (response.ok && uploadedUrl) {
+        if (onProgress) onProgress(100);
+        return {
+          url: uploadedUrl,
+          reused: Boolean(data?.reused || data?.deduped),
+          provider: data?.provider || "cloudinary",
+        };
+      }
+
+      throw new Error(
+        data?.error?.message ||
+          data?.message ||
+          `Cloudinary upload failed (${response.status})`,
+      );
     },
-    [buildSafariSafeVideoUrl],
+    [buildSafariSafeVideoUrl, fetchWithAuth],
   );
 
   const uploadViaSupabaseProxy = useCallback(
@@ -217,7 +267,7 @@ export function useCloudinary({ fetchWithAuth }: UseCloudinaryProps) {
       file: Blob | File,
       fileName?: string,
       onProgress?: (progress: number) => void,
-    ) => {
+    ): Promise<UploadOutcome> => {
       const uploadFormData = new FormData();
       appendUploadFile(uploadFormData, file, fileName);
       uploadFormData.append("resourceType", plan.resourceType);
@@ -234,11 +284,56 @@ export function useCloudinary({ fetchWithAuth }: UseCloudinaryProps) {
       const data = (await response.json()) as SupabaseProxyUploadResponse;
       if (data?.url) {
         if (onProgress) onProgress(100);
-        return data.url;
+        return {
+          url: data.url,
+          reused: Boolean(data.reused || data.deduped),
+          provider: data.provider || "supabase",
+        };
       }
 
       throw new Error(
         data?.error || data?.message || "Supabase upload failed",
+      );
+    },
+    [fetchWithAuth],
+  );
+
+  const uploadViaR2Storage = useCallback(
+    async (
+      plan: R2UploadPlan,
+      file: Blob | File,
+      fileName?: string,
+      onProgress?: (progress: number) => void,
+    ): Promise<UploadOutcome> => {
+      const uploadFormData = new FormData();
+      appendUploadFile(uploadFormData, file, fileName);
+      uploadFormData.append("resourceType", plan.resourceType);
+      uploadFormData.append(
+        "fileName",
+        fileName || (file instanceof File ? file.name : "upload.bin"),
+      );
+      if (onProgress) onProgress(15);
+      const response = await fetchWithAuth(plan.uploadUrl, {
+        method: "POST",
+        body: uploadFormData,
+      });
+      const data = (await response.json().catch(() => null)) as
+        | R2ProxyUploadResponse
+        | null;
+
+      if (response.ok && data?.url) {
+        if (onProgress) onProgress(100);
+        return {
+          url: data.url,
+          reused: Boolean(data.reused || data.deduped),
+          provider: data.provider || "r2",
+        };
+      }
+
+      throw new Error(
+        data?.error ||
+          data?.message ||
+          `R2 upload failed (${response.status})`,
       );
     },
     [fetchWithAuth],
@@ -253,13 +348,23 @@ export function useCloudinary({ fetchWithAuth }: UseCloudinaryProps) {
     ): Promise<string> => {
       const plan = await getMediaUploadPlan(resourceType, file, fileName);
       const errors: string[] = [];
+      const failedProviders = new Set<MediaUploadProvider>();
+      let fallbackWarningShown = false;
 
       for (const provider of plan.providers) {
         try {
-          let uploadedUrl = "";
+          let uploaded: UploadOutcome | null = null;
           switch (provider.provider) {
+            case "r2":
+              uploaded = await uploadViaR2Storage(
+                provider,
+                file,
+                fileName,
+                onProgress,
+              );
+              break;
             case "cloudinary":
-              uploadedUrl = await uploadViaCloudinary(
+              uploaded = await uploadViaCloudinary(
                 provider,
                 file,
                 fileName,
@@ -267,7 +372,7 @@ export function useCloudinary({ fetchWithAuth }: UseCloudinaryProps) {
               );
               break;
             case "supabase":
-              uploadedUrl = await uploadViaSupabaseProxy(
+              uploaded = await uploadViaSupabaseProxy(
                 provider,
                 file,
                 fileName,
@@ -276,26 +381,43 @@ export function useCloudinary({ fetchWithAuth }: UseCloudinaryProps) {
               break;
           }
 
-          if (uploadedUrl) {
+          if (uploaded?.url) {
+            if (
+              !fallbackWarningShown &&
+              provider.provider === "cloudinary" &&
+              failedProviders.has("r2")
+            ) {
+              toast.warning("R2 failed, falling back to Cloudinary backup.");
+              fallbackWarningShown = true;
+            }
+
+            if (uploaded.reused) {
+              toast.success(getReuseToastMessage(uploaded.provider || provider.provider));
+            }
+
             if (provider.resourceType === "video") {
-              setLastVideoUploadProvider(provider.provider);
+              setLastVideoUploadProvider(uploaded.provider || provider.provider);
             } else if (provider.resourceType === "image") {
-              setLastImageUploadProvider(provider.provider);
+              setLastImageUploadProvider(uploaded.provider || provider.provider);
             }
-            try {
-              await markUploadComplete(
-                provider.resourceType,
-                provider.provider,
-              );
-            } catch (completeError) {
-              console.error(
-                "Upload completed but quota finalization failed",
-                completeError,
-              );
+
+            if (!uploaded.reused) {
+              try {
+                await markUploadComplete(
+                  provider.resourceType,
+                  provider.provider,
+                );
+              } catch (completeError) {
+                console.error(
+                  "Upload completed but quota finalization failed",
+                  completeError,
+                );
+              }
             }
-            return uploadedUrl;
+            return uploaded.url;
           }
         } catch (error) {
+          failedProviders.add(provider.provider);
           errors.push(
             formatProviderError(
               provider.provider,
@@ -314,6 +436,7 @@ export function useCloudinary({ fetchWithAuth }: UseCloudinaryProps) {
     [
       getMediaUploadPlan,
       markUploadComplete,
+      uploadViaR2Storage,
       uploadViaCloudinary,
       uploadViaSupabaseProxy,
     ],
