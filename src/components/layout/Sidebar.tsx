@@ -4,7 +4,6 @@ import {
   Building2,
   ChevronDown,
   Download,
-  Image,
   LayoutDashboard,
   List,
   Lock,
@@ -193,13 +192,6 @@ export const Sidebar = ({
             label={t("sidebar.linkList")}
             active={activeTab === "list"}
             onClick={() => handleTabClick("list")}
-            compact={compactDesktop}
-          />
-          <SidebarItem
-            icon={Image}
-            label={t("sidebar.library")}
-            active={activeTab === "library"}
-            onClick={() => handleTabClick("library")}
             compact={compactDesktop}
           />
           <SidebarItem

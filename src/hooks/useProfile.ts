@@ -10,13 +10,6 @@ const AVATAR_MAX_FILE_SIZE = 2 * 1024 * 1024;
 const AVATAR_OUTPUT_TYPE = "image/webp";
 const AVATAR_OUTPUT_QUALITY = 0.82;
 
-export type AvatarUploadProvider = "r2" | "cloudinary" | "supabase";
-
-export interface AvatarUploadResult {
-  url: string;
-  provider: AvatarUploadProvider;
-}
-
 type ProfileFetchResponse = UserProfile | { is_new: true } | null;
 
 const getProfileCopy = (locale: "vi" | "en") => ({
@@ -144,7 +137,7 @@ export interface ProfileActions {
     full_name: string;
     avatar_url: string;
   }) => Promise<void>;
-  handleAvatarUpload: (file: File) => Promise<AvatarUploadResult | null>;
+  handleAvatarUpload: (file: File) => Promise<string | null>;
 }
 
 interface UseProfileProps {
@@ -231,7 +224,7 @@ export function useProfile({
   );
 
   const handleAvatarUpload = useCallback(
-    async (file: File): Promise<AvatarUploadResult | null> => {
+    async (file: File): Promise<string | null> => {
       if (!userId) {
         console.error("Avatar upload failed: no authenticated user found");
         return null;
@@ -263,10 +256,7 @@ export function useProfile({
           throw new Error(data.error || "Server upload failed");
         }
 
-        return {
-          url: data.secure_url,
-          provider: data.provider || "supabase",
-        };
+        return data.secure_url;
       } catch (e: unknown) {
         console.error("Avatar upload proxy error:", e);
         toast.error(
