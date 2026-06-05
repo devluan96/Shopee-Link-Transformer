@@ -47,7 +47,7 @@ const withEnv = (
   }
 };
 
-test("buildMediaUploadPlan routes video uploads to R2 first when cloudinary is disabled", () => {
+test("buildMediaUploadPlan routes video uploads to Supabase when cloudinary is disabled", () => {
   withEnv(
     {
       CLOUDFLARE_ACCOUNT_ID: "demo-account",
@@ -64,15 +64,14 @@ test("buildMediaUploadPlan routes video uploads to R2 first when cloudinary is d
     },
     () => {
       const providers = buildMediaUploadPlan("video", { fileSize: 1024 });
-      assert.deepEqual(
-        providers.map((provider) => provider.provider),
-        ["r2", "supabase"],
-      );
+      assert.deepEqual(providers.map((provider) => provider.provider), [
+        "supabase",
+      ]);
     },
   );
 });
 
-test("buildMediaUploadPlan prefers Cloudinary for video uploads and keeps R2 and Supabase fallback", () => {
+test("buildMediaUploadPlan prefers Cloudinary for video uploads and keeps Supabase fallback", () => {
   withEnv(
     {
       CLOUDFLARE_ACCOUNT_ID: "demo-account",
@@ -98,12 +97,7 @@ test("buildMediaUploadPlan prefers Cloudinary for video uploads and keeps R2 and
             ? `cloudinary:${provider.cloudName}`
             : provider.provider,
         ),
-        [
-          "cloudinary:demo-cloud-1",
-          "cloudinary:demo-cloud-2",
-          "r2",
-          "supabase",
-        ],
+        ["cloudinary:demo-cloud-1", "cloudinary:demo-cloud-2", "supabase"],
       );
     },
   );
@@ -181,7 +175,7 @@ test("buildMediaUploadPlan ignores local in create-link plans", () => {
 
       assert.deepEqual(
         providers.map((provider) => provider.provider),
-        ["cloudinary", "r2", "supabase"],
+        ["cloudinary", "supabase"],
       );
     },
   );
@@ -206,10 +200,10 @@ test("buildMediaUploadPlan uses Cloudinary first for video uploads", () => {
         fileSize: 1024,
       });
 
-      assert.deepEqual(
-        providers.map((provider) => provider.provider),
-        ["cloudinary", "r2", "supabase"],
-      );
+      assert.deepEqual(providers.map((provider) => provider.provider), [
+        "cloudinary",
+        "supabase",
+      ]);
       assert.equal(
         (providers[0] as any).uploadUrl,
         "/api/v1/media/upload-cloudinary",
@@ -289,7 +283,7 @@ test("buildMediaUploadPlan can disable cloudinary backup for image uploads indep
 
       assert.deepEqual(
         providers.map((provider) => provider.provider),
-        ["r2", "supabase"],
+        ["supabase"],
       );
     },
   );

@@ -156,13 +156,12 @@ const getReuseToastMessage = (provider?: MediaUploadProvider) => {
       ? (document.documentElement.lang || navigator.language || "").toLowerCase()
       : "";
   const isVi = lang.startsWith("vi");
-  const providerLabel = provider
-    ? provider === "r2"
-      ? "R2"
-      : provider === "cloudinary"
-        ? "Cloudinary"
-        : "Supabase"
-    : null;
+  const providerLabel =
+    provider === "cloudinary"
+      ? "Cloudinary"
+      : provider === "supabase"
+        ? "Supabase"
+        : null;
 
   if (isVi) {
     return providerLabel
@@ -514,10 +513,10 @@ export function useCloudinary({ fetchWithAuth }: UseCloudinaryProps) {
           if (uploaded?.url) {
             if (
               !fallbackWarningShown &&
-              provider.provider === "r2" &&
+              provider.provider !== "cloudinary" &&
               failedProviders.has("cloudinary")
             ) {
-              toast.warning("Cloudinary failed, falling back to R2 backup.");
+              toast.warning("Cloudinary failed, falling back to Supabase backup.");
               fallbackWarningShown = true;
             }
 

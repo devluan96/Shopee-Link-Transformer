@@ -39,6 +39,7 @@
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.908.0",
+    "@fontsource-variable/geist": "^5.2.9",
     "@google/genai": "^1.29.0",
     "@maxmind/geoip2-node": "^6.3.4",
     "@supabase/supabase-js": "^2.104.0",
