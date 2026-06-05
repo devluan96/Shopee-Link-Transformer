@@ -10,6 +10,8 @@ import * as featureLimitService from "../services/featureLimitService.js";
 import { getPublicBaseUrl } from "../utils/helpers.js";
 import {
   buildMediaUploadPlan,
+  buildR2ManagedObjectPath,
+  buildR2PublicUrl,
   buildLocalMediaUrl,
   computeMediaUploadSha256,
   deleteLocalMediaAsset,
@@ -35,6 +37,7 @@ import {
   updateManagedMediaAssetsTags,
   syncLocalMediaAssetsToDatabase,
   toLocalMediaAssetRecord,
+  createR2PresignedUpload,
   uploadToR2Storage,
   uploadToSupabaseStorage,
   uploadToLocalStorage,
@@ -219,14 +222,18 @@ type R2MediaUploadRouteDeps = {
   getSupabase: typeof getSupabase;
   getFeatureLimitsForProfile: typeof featureLimitService.getFeatureLimitsForProfile;
   getVideoUploadUsageToday: typeof featureLimitService.getVideoUploadUsageToday;
-  uploadToR2Storage: typeof uploadToR2Storage;
+  buildR2ManagedObjectPath: typeof buildR2ManagedObjectPath;
+  createR2PresignedUpload: typeof createR2PresignedUpload;
+  buildR2PublicUrl: typeof buildR2PublicUrl;
 };
 
 const defaultR2MediaUploadRouteDeps: R2MediaUploadRouteDeps = {
   getSupabase,
   getFeatureLimitsForProfile: featureLimitService.getFeatureLimitsForProfile,
   getVideoUploadUsageToday: featureLimitService.getVideoUploadUsageToday,
-  uploadToR2Storage,
+  buildR2ManagedObjectPath,
+  createR2PresignedUpload,
+  buildR2PublicUrl,
 };
 
 type CloudinaryMediaUploadRouteDeps = {
@@ -530,11 +537,6 @@ export const createR2MediaUploadHandler = (
         return res.status(400).json({ error: "Unauthorized" });
       }
 
-      const file = req.file;
-      if (!file) {
-        return res.status(400).json({ error: "No file uploaded" });
-      }
-
       const resourceType = resolveRequestedResourceType(req.body?.resourceType);
       const limits = resolvedDeps.getFeatureLimitsForProfile(
         req.authProfile || undefined,
@@ -560,39 +562,87 @@ export const createR2MediaUploadHandler = (
         }
       }
 
-      const reusable = await findReusableManagedMediaAsset({
-        supabase: resolvedDeps.getSupabase(),
-        userId,
+      const fileName =
+        typeof req.body?.fileName === "string" && req.body.fileName.trim()
+          ? req.body.fileName.trim()
+          : undefined;
+      const fileSizeRaw =
+        typeof req.body?.fileSize === "number"
+          ? req.body.fileSize
+          : Number(req.body?.fileSize || "");
+      const fileSize =
+        Number.isFinite(fileSizeRaw) && fileSizeRaw > 0 ? fileSizeRaw : undefined;
+      const contentType =
+        typeof req.body?.contentType === "string" && req.body.contentType.trim()
+          ? req.body.contentType.trim()
+          : "application/octet-stream";
+      const sha256 =
+        typeof req.body?.sha256 === "string" ? req.body.sha256.trim().toLowerCase() : "";
+
+      if (sha256) {
+        const reusable = await findManagedMediaAssetBySha256(
+          resolvedDeps.getSupabase(),
+          {
+            userId,
+            resourceType:
+              resourceType === "video"
+                ? "video"
+                : resourceType === "audio"
+                  ? "audio"
+                  : "image",
+            sha256,
+          },
+        );
+
+        if (reusable) {
+          return res.json({
+            provider: reusable.provider,
+            url: reusable.url,
+            path: reusable.path,
+            reused: true,
+            deduped: true,
+          });
+        }
+      }
+
+      const bucket = process.env.R2_BUCKET_NAME?.trim() || "";
+      const publicBaseUrl =
+        process.env.R2_PUBLIC_BASE_URL?.trim().replace(/\/+$/, "") || "";
+      if (!bucket || !publicBaseUrl) {
+        return res.status(503).json({
+          error: "Cloudflare R2 bucket or public base URL is not configured.",
+        });
+      }
+
+      const maxFileSizeBytes =
+        Number(process.env.R2_MAX_UPLOAD_BYTES || "") > 0
+          ? Number(process.env.R2_MAX_UPLOAD_BYTES || "")
+          : 100 * 1024 * 1024;
+      if (fileSize !== undefined) {
+        if (fileSize > maxFileSizeBytes) {
+          return res.status(413).json({
+            error: "File too large for Cloudflare R2 direct upload.",
+          });
+        }
+      }
+
+      const objectPath = resolvedDeps.buildR2ManagedObjectPath({
         resourceType:
           resourceType === "video"
             ? "video"
             : resourceType === "audio"
               ? "audio"
               : "image",
-        fileBuffer: file.buffer,
-      });
-
-      if (reusable.asset) {
-        return res.json({
-          provider: reusable.asset.provider,
-          url: reusable.asset.url,
-          path: reusable.asset.path,
-          reused: true,
-          deduped: true,
-        });
-      }
-
-      const result = await resolvedDeps.uploadToR2Storage({
-        resourceType,
         userId,
-        file: {
-          buffer: file.buffer,
-          mimetype: file.mimetype,
-          originalname: file.originalname,
-        },
-        fileName:
-          typeof req.body?.fileName === "string" ? req.body.fileName : undefined,
+        fileName,
+        contentType,
       });
+      const signedUpload = resolvedDeps.createR2PresignedUpload({
+        bucket,
+        objectPath,
+        contentType,
+      });
+      const publicUrl = resolvedDeps.buildR2PublicUrl(objectPath, publicBaseUrl);
 
       const managedResourceType =
         resourceType === "video"
@@ -601,32 +651,15 @@ export const createR2MediaUploadHandler = (
             ? "audio"
             : "image";
 
-      await upsertMediaAssetRecord(resolvedDeps.getSupabase(), {
-        user_id: userId,
-        provider: "r2",
-        resource_type: managedResourceType,
-        object_path: result.path,
-        public_url: result.url,
-        folder_name: resolveLocalFolderName(req.body?.folderName),
-        tags: resolveLocalTags(req.body?.tags ?? req.body?.tagsText),
-        file_name:
-          typeof req.body?.fileName === "string" && req.body.fileName.trim()
-            ? req.body.fileName.trim()
-            : file.originalname || `${resourceType}.bin`,
-        size_bytes: file.size,
-        modified_at: new Date().toISOString(),
-        mime_type: file.mimetype || "application/octet-stream",
-        metadata: {
-          bucket: result.bucket,
-          provider: "r2",
-          ...buildManagedMediaAssetMetadata(reusable.sha256),
-        },
-      });
-
       return res.json({
         provider: "r2",
-        url: result.url,
-        path: result.path,
+        uploadUrl: signedUpload.uploadUrl,
+        headers: signedUpload.headers,
+        bucket,
+        path: objectPath,
+        url: publicUrl,
+        resourceType: managedResourceType,
+        maxFileSizeBytes,
         reused: false,
         deduped: false,
       });
@@ -1455,6 +1488,87 @@ export const createMediaUploadCompleteHandler = (
       }
 
       const resourceType = resolveRequestedResourceType(req.body?.resourceType);
+      const provider =
+        typeof req.body?.provider === "string" ? req.body.provider : "";
+
+      if (provider === "r2") {
+        const objectPath =
+          typeof req.body?.objectPath === "string" && req.body.objectPath.trim()
+            ? req.body.objectPath.trim()
+            : typeof req.body?.path === "string" && req.body.path.trim()
+              ? req.body.path.trim()
+              : "";
+        const publicUrl =
+          typeof req.body?.publicUrl === "string" && req.body.publicUrl.trim()
+            ? req.body.publicUrl.trim()
+            : typeof req.body?.url === "string" && req.body.url.trim()
+              ? req.body.url.trim()
+              : "";
+        if (!objectPath || !publicUrl) {
+          console.warn("[media/upload-complete] Missing R2 upload metadata", {
+            userId,
+            resourceType,
+            provider,
+          });
+          return res.json({
+            success: true,
+            skipped: true,
+            provider: "r2",
+          });
+        }
+
+        const bucket =
+          typeof req.body?.bucket === "string" && req.body.bucket.trim()
+            ? req.body.bucket.trim()
+            : typeof req.body?.bucketName === "string" && req.body.bucketName.trim()
+              ? req.body.bucketName.trim()
+            : process.env.R2_BUCKET_NAME?.trim() || "";
+        const fileName =
+          typeof req.body?.fileName === "string" && req.body.fileName.trim()
+            ? req.body.fileName.trim()
+            : objectPath.split("/").pop() || "upload.bin";
+        const sizeBytesRaw =
+          typeof req.body?.sizeBytes === "number"
+            ? req.body.sizeBytes
+            : Number(req.body?.sizeBytes || req.body?.fileSize || "");
+        const sizeBytes =
+          Number.isFinite(sizeBytesRaw) && sizeBytesRaw > 0
+            ? sizeBytesRaw
+            : 0;
+        const mimeType =
+          typeof req.body?.mimeType === "string" && req.body.mimeType.trim()
+            ? req.body.mimeType.trim()
+            : "application/octet-stream";
+        const sha256 =
+          typeof req.body?.sha256 === "string"
+            ? req.body.sha256.trim().toLowerCase()
+            : "";
+
+        await upsertMediaAssetRecord(resolvedDeps.getSupabase(), {
+          user_id: userId,
+          provider: "r2",
+          resource_type:
+            resourceType === "video"
+              ? "video"
+              : resourceType === "audio"
+                ? "audio"
+                : "image",
+          object_path: objectPath,
+          public_url: publicUrl,
+          folder_name: resolveLocalFolderName(req.body?.folderName),
+          tags: resolveLocalTags(req.body?.tags ?? req.body?.tagsText),
+          file_name: fileName,
+          size_bytes: sizeBytes,
+          modified_at: new Date().toISOString(),
+          mime_type: mimeType,
+          metadata: {
+            bucket,
+            provider: "r2",
+            ...(sha256 ? buildManagedMediaAssetMetadata(sha256) : {}),
+          },
+        });
+      }
+
       if (resourceType === "video") {
         await resolvedDeps.recordFeatureUsage(
           resolvedDeps.getSupabase(),
@@ -1669,7 +1783,6 @@ router.post(
 router.post(
   "/media/upload-r2",
   authenticate,
-  mediaUpload.single("file"),
   createR2MediaUploadHandler(),
 );
 

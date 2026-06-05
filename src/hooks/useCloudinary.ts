@@ -25,6 +25,21 @@ interface R2UploadPlan {
   maxFileSizeBytes: number;
 }
 
+interface R2UploadSignResponse {
+  provider?: MediaUploadProvider;
+  uploadUrl?: string;
+  headers?: Record<string, string>;
+  bucket?: string;
+  path?: string;
+  url?: string;
+  resourceType?: ResourceType;
+  maxFileSizeBytes?: number;
+  reused?: boolean;
+  deduped?: boolean;
+  error?: string;
+  message?: string;
+}
+
 interface SupabaseUploadPlan {
   provider: "supabase";
   resourceType: ResourceType;
@@ -76,6 +91,21 @@ interface R2ProxyUploadResponse {
   message?: string;
 }
 
+interface R2FinalizePayload {
+  resourceType: ResourceType;
+  provider: "r2";
+  objectPath: string;
+  path?: string;
+  publicUrl: string;
+  url?: string;
+  bucket: string;
+  bucketName?: string;
+  fileName?: string;
+  sizeBytes?: number;
+  mimeType?: string;
+  sha256?: string;
+}
+
 interface UploadOutcome {
   url: string;
   reused: boolean;
@@ -106,6 +136,18 @@ const appendUploadFile = (
   }
 
   formData.append("file", file);
+};
+
+const computeBlobSha256 = async (file: Blob | File) => {
+  if (typeof globalThis.crypto?.subtle === "undefined") {
+    return "";
+  }
+
+  const buffer = await file.arrayBuffer();
+  const digest = await globalThis.crypto.subtle.digest("SHA-256", buffer);
+  return Array.from(new Uint8Array(digest))
+    .map((value) => value.toString(16).padStart(2, "0"))
+    .join("");
 };
 
 const getReuseToastMessage = (provider?: MediaUploadProvider) => {
@@ -305,23 +347,34 @@ export function useCloudinary({ fetchWithAuth }: UseCloudinaryProps) {
       fileName?: string,
       onProgress?: (progress: number) => void,
     ): Promise<UploadOutcome> => {
-      const uploadFormData = new FormData();
-      appendUploadFile(uploadFormData, file, fileName);
-      uploadFormData.append("resourceType", plan.resourceType);
-      uploadFormData.append(
-        "fileName",
-        fileName || (file instanceof File ? file.name : "upload.bin"),
-      );
-      if (onProgress) onProgress(15);
+      const sha256 = await computeBlobSha256(file);
+      if (onProgress) onProgress(10);
+
       const response = await fetchWithAuth(plan.uploadUrl, {
         method: "POST",
-        body: uploadFormData,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          resourceType: plan.resourceType,
+          fileName: fileName || (file instanceof File ? file.name : undefined),
+          fileSize:
+            typeof file.size === "number" && Number.isFinite(file.size)
+              ? file.size
+              : undefined,
+          contentType: file.type || undefined,
+          sha256: sha256 || undefined,
+        }),
       });
       const data = (await response.json().catch(() => null)) as
-        | R2ProxyUploadResponse
+        | R2UploadSignResponse
         | null;
 
-      if (response.ok && data?.url) {
+      if (!response.ok) {
+        throw new Error(
+          data?.error || data?.message || `R2 upload failed (${response.status})`,
+        );
+      }
+
+      if (data?.reused && data.url) {
         if (onProgress) onProgress(100);
         return {
           url: data.url,
@@ -330,11 +383,65 @@ export function useCloudinary({ fetchWithAuth }: UseCloudinaryProps) {
         };
       }
 
-      throw new Error(
-        data?.error ||
-          data?.message ||
-          `R2 upload failed (${response.status})`,
-      );
+      if (!data?.uploadUrl || !data.path || !data.url || !data.bucket) {
+        throw new Error("R2 upload plan is incomplete");
+      }
+
+      if (onProgress) onProgress(35);
+      const putHeaders = new Headers(data.headers || {});
+      if (!putHeaders.has("Content-Type")) {
+        putHeaders.set("Content-Type", file.type || "application/octet-stream");
+      }
+
+      const putResponse = await fetch(data.uploadUrl, {
+        method: "PUT",
+        headers: putHeaders,
+        body: file,
+      });
+
+      if (!putResponse.ok) {
+        const errorText = await putResponse.text().catch(() => "");
+        throw new Error(
+          `R2 direct upload failed (${putResponse.status})${errorText ? `: ${errorText}` : ""}`,
+        );
+      }
+
+      if (onProgress) onProgress(80);
+      try {
+        await fetchWithAuth("/api/v1/media/upload-complete", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            resourceType: plan.resourceType,
+            provider: "r2",
+            objectPath: data.path,
+            path: data.path,
+            publicUrl: data.url,
+            url: data.url,
+            bucket: data.bucket,
+            fileName:
+              fileName || (file instanceof File ? file.name : "upload.bin"),
+            sizeBytes:
+              typeof file.size === "number" && Number.isFinite(file.size)
+                ? file.size
+                : undefined,
+            mimeType: file.type || "application/octet-stream",
+            sha256: sha256 || undefined,
+          } satisfies R2FinalizePayload),
+        });
+      } catch (error) {
+        console.error(
+          "R2 upload finalized on storage, but metadata sync failed",
+          error instanceof Error ? error.message : "Cannot finalize R2 upload",
+        );
+      }
+
+      if (onProgress) onProgress(100);
+      return {
+        url: data.url,
+        reused: false,
+        provider: "r2",
+      };
     },
     [fetchWithAuth],
   );
@@ -401,7 +508,7 @@ export function useCloudinary({ fetchWithAuth }: UseCloudinaryProps) {
               setLastImageUploadProvider(uploaded.provider || provider.provider);
             }
 
-            if (!uploaded.reused) {
+            if (!uploaded.reused && provider.provider !== "r2") {
               try {
                 await markUploadComplete(
                   provider.resourceType,

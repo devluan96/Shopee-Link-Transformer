@@ -489,8 +489,55 @@ test("media upload complete records usage only for video uploads", async () => {
   assert.equal(recorded[0]?.metadata.provider, "cloudinary");
 });
 
-test("r2 media upload handler returns a public url", async () => {
+test("media upload complete stores r2 metadata and records video usage", async () => {
   const { supabase, state } = createManagedMediaSupabaseMock();
+  const recorded: Array<{ key: string; metadata: Record<string, unknown> }> = [];
+  const handler = createMediaUploadCompleteHandler({
+    getSupabase: () => supabase as never,
+    recordFeatureUsage: async (_supabase, _userId, key, metadata) => {
+      recorded.push({ key, metadata: (metadata || {}) as Record<string, unknown> });
+    },
+  });
+
+  const res = createMockRes();
+  await handler(
+    {
+      authUser: { id: "user-1" },
+      body: {
+        resourceType: "video",
+        provider: "r2",
+        objectPath: "videos/user-1/demo.mp4",
+        publicUrl: "https://media.example.com/videos/user-1/demo.mp4",
+        bucket: "media",
+        fileName: "demo.mp4",
+        sizeBytes: 2048,
+        mimeType: "video/mp4",
+        sha256: "abc123",
+      },
+    } as any,
+    res as any,
+  );
+
+  assert.equal(res.statusCode, 200);
+  assert.equal(state.upserts.length, 1);
+  assert.equal((state.upserts[0]?.payload as any)?.provider, "r2");
+  assert.equal((state.upserts[0]?.payload as any)?.object_path, "videos/user-1/demo.mp4");
+  assert.equal((state.upserts[0]?.payload as any)?.metadata?.sha256, "abc123");
+  assert.equal(recorded.length, 1);
+  assert.equal(recorded[0]?.key, "video_upload");
+  assert.equal(recorded[0]?.metadata.provider, "r2");
+});
+
+test("r2 media upload handler returns a direct upload plan", async () => {
+  const { supabase, state } = createManagedMediaSupabaseMock();
+  const previousEnv = {
+    R2_BUCKET_NAME: process.env.R2_BUCKET_NAME,
+    R2_PUBLIC_BASE_URL: process.env.R2_PUBLIC_BASE_URL,
+    R2_MAX_UPLOAD_BYTES: process.env.R2_MAX_UPLOAD_BYTES,
+  };
+  process.env.R2_BUCKET_NAME = "media";
+  process.env.R2_PUBLIC_BASE_URL = "https://media.example.com";
+  process.env.R2_MAX_UPLOAD_BYTES = "104857600";
   const handler = createR2MediaUploadHandler({
     getSupabase: () => supabase as never,
     getFeatureLimitsForProfile: () => ({
@@ -501,34 +548,56 @@ test("r2 media upload handler returns a public url", async () => {
       maxTeamMembersPerWorkspace: 20,
     }),
     getVideoUploadUsageToday: async () => 0,
-    uploadToR2Storage: async () => ({
-      provider: "r2",
-      bucket: "media",
-      path: "videos/user-1/demo.mp4",
-      url: "https://media.example.com/videos/user-1/demo.mp4",
+    buildR2ManagedObjectPath: () => "videos/user-1/demo.mp4",
+    createR2PresignedUpload: () => ({
+      uploadUrl: "https://r2.example.com/upload",
+      headers: { "Content-Type": "video/mp4" },
     }),
+    buildR2PublicUrl: () => "https://media.example.com/videos/user-1/demo.mp4",
   });
 
-  const res = createMockRes();
-  await handler(
-    {
-      authUser: { id: "user-1" },
-      authProfile: { plan: "yearly" } as any,
-      body: { resourceType: "video", fileName: "demo.mp4" },
-      file: {
-        buffer: Buffer.from("demo"),
-        originalname: "demo.mp4",
-        mimetype: "video/mp4",
-      },
-    } as any,
-    res as any,
-  );
+  try {
+    const res = createMockRes();
+    await handler(
+      {
+        authUser: { id: "user-1" },
+        authProfile: { plan: "yearly" } as any,
+        body: {
+          resourceType: "video",
+          fileName: "demo.mp4",
+          fileSize: 1024,
+          contentType: "video/mp4",
+        },
+      } as any,
+      res as any,
+    );
 
-  assert.equal(res.statusCode, 200);
-  assert.equal((res.body as any).provider, "r2");
-  assert.equal((res.body as any).url, "https://media.example.com/videos/user-1/demo.mp4");
-  assert.equal(state.assets[0]?.provider, "r2");
-  assert.equal(state.assets[0]?.object_path, "videos/user-1/demo.mp4");
+    assert.equal(res.statusCode, 200);
+    assert.equal((res.body as any).provider, "r2");
+    assert.equal((res.body as any).uploadUrl, "https://r2.example.com/upload");
+    assert.equal((res.body as any).headers?.["Content-Type"], "video/mp4");
+    assert.equal((res.body as any).path, "videos/user-1/demo.mp4");
+    assert.equal((res.body as any).url, "https://media.example.com/videos/user-1/demo.mp4");
+    assert.equal(state.assets.length, 0);
+  } finally {
+    if (previousEnv.R2_BUCKET_NAME === undefined) {
+      delete process.env.R2_BUCKET_NAME;
+    } else {
+      process.env.R2_BUCKET_NAME = previousEnv.R2_BUCKET_NAME;
+    }
+
+    if (previousEnv.R2_PUBLIC_BASE_URL === undefined) {
+      delete process.env.R2_PUBLIC_BASE_URL;
+    } else {
+      process.env.R2_PUBLIC_BASE_URL = previousEnv.R2_PUBLIC_BASE_URL;
+    }
+
+    if (previousEnv.R2_MAX_UPLOAD_BYTES === undefined) {
+      delete process.env.R2_MAX_UPLOAD_BYTES;
+    } else {
+      process.env.R2_MAX_UPLOAD_BYTES = previousEnv.R2_MAX_UPLOAD_BYTES;
+    }
+  }
 });
 
 test("r2 media upload handler reuses an existing uploaded asset by hash", async () => {
@@ -562,9 +631,6 @@ test("r2 media upload handler reuses an existing uploaded asset by hash", async 
       maxTeamMembersPerWorkspace: 20,
     }),
     getVideoUploadUsageToday: async () => 0,
-    uploadToR2Storage: async () => {
-      throw new Error("R2 upload should not be called when asset already exists");
-    },
   });
 
   const res = createMockRes();
@@ -572,11 +638,10 @@ test("r2 media upload handler reuses an existing uploaded asset by hash", async 
     {
       authUser: { id: "user-1" },
       authProfile: { plan: "yearly" } as any,
-      body: { resourceType: "video", fileName: "demo.mp4" },
-      file: {
-        buffer: fileBuffer,
-        originalname: "demo.mp4",
-        mimetype: "video/mp4",
+      body: {
+        resourceType: "video",
+        fileName: "demo.mp4",
+        sha256,
       },
     } as any,
     res as any,
@@ -588,6 +653,7 @@ test("r2 media upload handler reuses an existing uploaded asset by hash", async 
   assert.equal((res.body as any).deduped, true);
   assert.equal((res.body as any).url, "https://media.example.com/videos/user-1/existing.mp4");
   assert.equal(state.assets.length, 1);
+  assert.equal((res.body as any).path, "videos/user-1/existing.mp4");
 });
 
 test("managed avatar upload handler stores avatar metadata on r2", async () => {
