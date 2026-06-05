@@ -47,26 +47,9 @@ import {
 } from "./services/deepLinkService.js";
 import { renderLinkLandingPage } from "./templates/landingPage.js";
 import { renderChoiceLandingPage } from "./templates/landingPageChoice.js";
-import {
-  getLocalMediaPublicPathPrefix,
-  getLocalMediaStorageDir,
-} from "./services/mediaUploadService.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const getApiCorsOrigins = () => {
-  const rawOrigins = process.env.APP_CORS_ALLOWED_ORIGINS || "";
-  const origins = rawOrigins
-    .split(",")
-    .map((origin) => origin.trim())
-    .filter(Boolean);
-
-  if (!origins.length || origins.includes("*")) {
-    return "*";
-  }
-
-  return origins;
-};
 
 const app = express();
 const PUBLIC_MARKETING_PATHS = [
@@ -434,7 +417,7 @@ const renderInspectDebugPage = (title: string, data: Record<string, unknown>) =>
 // A. MIDDLEWARES
 app.use(
   cors({
-    origin: getApiCorsOrigins(),
+    origin: "*",
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization", "Accept"],
   }),
@@ -1330,10 +1313,6 @@ ${urls.join("\n")}
 });
 
 // H. STATIC FILES & SPA FALLBACK
-app.use(
-  `/${getLocalMediaPublicPathPrefix()}`,
-  express.static(getLocalMediaStorageDir(), { etag: false }),
-);
 app.use(express.static(path.join(__dirname, "../public"), { etag: false }));
 app.use(express.static(path.join(__dirname, "../dist"), { etag: false }));
 

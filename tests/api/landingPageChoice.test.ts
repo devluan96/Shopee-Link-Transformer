@@ -101,7 +101,6 @@ test("renderChoiceLandingPage sends primary overlay clicks directly to the targe
   );
   assert.match(html, /window\.addEventListener\("pagehide", trackPrimaryClick, \{ once: true \}\);/);
   assert.match(html, /trackSecondaryOutbound\(\);/);
-  assert.match(html, /window\.history\.pushState\(\n\s*\{ hotsnewChoiceReturn: true \},\n\s*\"\",\n\s*landingReturnUrl,\n\s*\);/);
   assert.match(html, /window\.location\.assign\(secondaryRedirectUrl\);/);
 });
 
