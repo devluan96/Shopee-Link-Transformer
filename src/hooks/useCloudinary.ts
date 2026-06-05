@@ -45,8 +45,24 @@ interface CloudinaryUploadResponse {
 
 interface SupabaseProxyUploadResponse {
   url?: string;
+  path?: string;
+  bucket?: string;
+  provider?: "supabase";
   error?: string;
   message?: string;
+}
+
+interface UploadCompletionPayload {
+  resourceType: ResourceType;
+  provider: MediaUploadPlan["provider"];
+  publicUrl: string;
+  objectPath: string;
+  fileName?: string;
+  sizeBytes?: number;
+  mimeType?: string;
+  folderName?: string;
+  tags?: string[];
+  metadata?: Record<string, unknown>;
 }
 
 interface UseCloudinaryProps {
@@ -136,21 +152,26 @@ export function useCloudinary({ fetchWithAuth }: UseCloudinaryProps) {
   );
 
   const markUploadComplete = useCallback(
-    async (resourceType: ResourceType, provider: MediaUploadPlan["provider"]) => {
-      if (resourceType !== "video") return;
-
+    async (payload: UploadCompletionPayload) => {
+      const { resourceType, provider, ...metadata } = payload;
       const response = await fetchWithAuth("/api/v1/media/upload-complete", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ resourceType, provider }),
+        body: JSON.stringify({
+          resourceType,
+          provider,
+          ...metadata,
+        }),
       });
 
       if (!response.ok) {
         const payload = (await response.json().catch(() => null)) as
           | { error?: string }
           | null;
-        throw new Error(payload?.error || "Cannot finalize video upload");
+        throw new Error(payload?.error || "Cannot finalize upload");
       }
+
+      if (resourceType !== "video") return;
     },
     [fetchWithAuth],
   );
@@ -161,7 +182,11 @@ export function useCloudinary({ fetchWithAuth }: UseCloudinaryProps) {
       file: Blob | File,
       fileName?: string,
       onProgress?: (progress: number) => void,
-    ) => {
+    ): Promise<{
+      uploadedUrl: string;
+      publicId?: string;
+      version?: number | string;
+    }> => {
       const uploadFormData = new FormData();
       appendUploadFile(uploadFormData, file, fileName);
       uploadFormData.append("api_key", plan.apiKey);
@@ -169,7 +194,11 @@ export function useCloudinary({ fetchWithAuth }: UseCloudinaryProps) {
       uploadFormData.append("signature", plan.signature);
       uploadFormData.append("folder", plan.folder);
 
-      return await new Promise<string>((resolve, reject) => {
+      return await new Promise<{
+        uploadedUrl: string;
+        publicId?: string;
+        version?: number | string;
+      }>((resolve, reject) => {
         const xhr = new XMLHttpRequest();
         xhr.open("POST", plan.uploadUrl);
 
@@ -191,7 +220,11 @@ export function useCloudinary({ fetchWithAuth }: UseCloudinaryProps) {
 
           if (xhr.status >= 200 && xhr.status < 300 && uploadedUrl) {
             if (onProgress) onProgress(100);
-            resolve(uploadedUrl);
+            resolve({
+              uploadedUrl,
+              publicId: data.public_id,
+              version: data.version,
+            });
             return;
           }
 
@@ -217,7 +250,12 @@ export function useCloudinary({ fetchWithAuth }: UseCloudinaryProps) {
       file: Blob | File,
       fileName?: string,
       onProgress?: (progress: number) => void,
-    ) => {
+    ): Promise<{
+      uploadedUrl: string;
+      path?: string;
+      bucket?: string;
+      provider?: "supabase";
+    }> => {
       const uploadFormData = new FormData();
       appendUploadFile(uploadFormData, file, fileName);
       uploadFormData.append("resourceType", plan.resourceType);
@@ -234,7 +272,12 @@ export function useCloudinary({ fetchWithAuth }: UseCloudinaryProps) {
       const data = (await response.json()) as SupabaseProxyUploadResponse;
       if (data?.url) {
         if (onProgress) onProgress(100);
-        return data.url;
+        return {
+          uploadedUrl: data.url,
+          path: data.path,
+          bucket: data.bucket,
+          provider: data.provider || "supabase",
+        };
       }
 
       throw new Error(
@@ -250,16 +293,33 @@ export function useCloudinary({ fetchWithAuth }: UseCloudinaryProps) {
       resourceType: ResourceType = "auto",
       fileName?: string,
       onProgress?: (progress: number) => void,
+      options?: { skipLibraryRecord?: boolean },
     ): Promise<string> => {
       const plan = await getMediaUploadPlan(resourceType, file, fileName);
       const errors: string[] = [];
+      const resolvedFileName =
+        fileName || (file instanceof File ? file.name : "upload.bin");
+      const resolvedSizeBytes =
+        typeof file?.size === "number" && Number.isFinite(file.size)
+          ? file.size
+          : undefined;
+      const resolvedMimeType = file?.type || undefined;
 
       for (const provider of plan.providers) {
         try {
-          let uploadedUrl = "";
+          let uploadResult:
+            | {
+                uploadedUrl: string;
+                publicId?: string;
+                version?: number | string;
+                path?: string;
+                bucket?: string;
+                provider?: "supabase";
+              }
+            | null = null;
           switch (provider.provider) {
             case "cloudinary":
-              uploadedUrl = await uploadViaCloudinary(
+              uploadResult = await uploadViaCloudinary(
                 provider,
                 file,
                 fileName,
@@ -267,7 +327,7 @@ export function useCloudinary({ fetchWithAuth }: UseCloudinaryProps) {
               );
               break;
             case "supabase":
-              uploadedUrl = await uploadViaSupabaseProxy(
+              uploadResult = await uploadViaSupabaseProxy(
                 provider,
                 file,
                 fileName,
@@ -276,24 +336,51 @@ export function useCloudinary({ fetchWithAuth }: UseCloudinaryProps) {
               break;
           }
 
-          if (uploadedUrl) {
+          if (uploadResult?.uploadedUrl) {
             if (provider.resourceType === "video") {
               setLastVideoUploadProvider(provider.provider);
             } else if (provider.resourceType === "image") {
               setLastImageUploadProvider(provider.provider);
             }
-            try {
-              await markUploadComplete(
-                provider.resourceType,
-                provider.provider,
-              );
-            } catch (completeError) {
-              console.error(
-                "Upload completed but quota finalization failed",
-                completeError,
-              );
+            if (!options?.skipLibraryRecord) {
+              try {
+                await markUploadComplete({
+                  resourceType: provider.resourceType,
+                  provider: provider.provider,
+                  publicUrl: uploadResult.uploadedUrl,
+                  objectPath:
+                    uploadResult.publicId ||
+                    uploadResult.path ||
+                    resolvedFileName,
+                  fileName: resolvedFileName,
+                  sizeBytes: resolvedSizeBytes,
+                  mimeType: resolvedMimeType,
+                  folderName:
+                    provider.provider === "supabase"
+                      ? provider.folder
+                      : undefined,
+                  metadata: {
+                    ...(uploadResult.publicId
+                      ? { public_id: uploadResult.publicId }
+                      : {}),
+                    ...(uploadResult.version
+                      ? { version: uploadResult.version }
+                      : {}),
+                    ...(uploadResult.bucket
+                      ? { bucket: uploadResult.bucket }
+                      : {}),
+                    provider: provider.provider,
+                    resourceType: provider.resourceType,
+                  },
+                });
+              } catch (completeError) {
+                console.error(
+                  "Upload completed but quota finalization failed",
+                  completeError,
+                );
+              }
             }
-            return uploadedUrl;
+            return uploadResult.uploadedUrl;
           }
         } catch (error) {
           errors.push(

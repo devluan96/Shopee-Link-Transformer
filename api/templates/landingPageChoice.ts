@@ -538,6 +538,13 @@ export const renderChoiceLandingPage = (
               heroVideo.pause();
             }
           } catch (error) {}
+          try {
+            window.history.pushState(
+              { hotsnewChoiceReturn: true },
+              "",
+              canonicalUrl,
+            );
+          } catch (error) {}
           window.location.assign(secondaryRedirectUrl);
         };
 

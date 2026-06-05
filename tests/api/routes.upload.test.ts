@@ -231,3 +231,48 @@ test("media upload complete records usage only for video uploads", async () => {
   assert.equal(recorded[0]?.key, "video_upload");
   assert.equal(recorded[0]?.metadata.provider, "cloudinary");
 });
+
+test("media upload complete persists metadata for non-video uploads", async () => {
+  const upserts: unknown[] = [];
+  const handler = createMediaUploadCompleteHandler({
+    getSupabase: () =>
+      ({
+        from: (table: string) => {
+          assert.equal(table, "media_assets");
+          return {
+            upsert: async (rows: unknown[]) => {
+              upserts.push(...rows);
+              return { data: null, error: null };
+            },
+          };
+        },
+      }) as never,
+    recordFeatureUsage: async () => undefined,
+  });
+
+  const res = createMockRes();
+  await handler(
+    {
+      authUser: { id: "user-1" },
+      body: {
+        resourceType: "image",
+        provider: "cloudinary",
+        publicUrl: "https://res.cloudinary.com/demo/image/upload/v1/sample.jpg",
+        objectPath: "sample",
+        fileName: "sample.jpg",
+        sizeBytes: 2048,
+        mimeType: "image/jpeg",
+        metadata: { public_id: "sample" },
+      },
+    } as any,
+    res as any,
+  );
+
+  assert.equal(res.statusCode, 200);
+  assert.equal(upserts.length, 1);
+  const row = upserts[0] as Record<string, unknown>;
+  assert.equal(row.user_id, "user-1");
+  assert.equal(row.provider, "cloudinary");
+  assert.equal(row.object_path, "sample");
+  assert.equal(row.public_url, "https://res.cloudinary.com/demo/image/upload/v1/sample.jpg");
+});

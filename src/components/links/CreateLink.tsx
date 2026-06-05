@@ -227,10 +227,6 @@ export const CreateLink = ({
   const [isDraggingVideo, setIsDraggingVideo] = React.useState(false);
   const [showQrModal, setShowQrModal] = React.useState(false);
   const [showSecondaryFlow, setShowSecondaryFlow] = React.useState(false);
-  const [showAdvancedSettings, setShowAdvancedSettings] = React.useState(false);
-
-  const [selectedExpirePresetDays, setSelectedExpirePresetDays] =
-    React.useState<number | null>(null);
   const normalizedShortCodePreview = customShortCode
     ? normalizeVietnameseSlug(customShortCode)
     : "";
@@ -288,14 +284,6 @@ export const CreateLink = ({
         return option;
     }
   });
-  const expiryPresets = [
-    { days: 1, label: page.expiry1d },
-    { days: 3, label: page.expiry3d },
-    { days: 7, label: page.expiry7d },
-    { days: 15, label: page.expiry15d },
-    { days: 30, label: page.expiry30d },
-  ];
-
   const clearFieldError = React.useCallback((field: FormField) => {
     setFieldErrors((prev) => {
       if (!prev[field]) return prev;
@@ -366,22 +354,6 @@ export const CreateLink = ({
     setSecondaryTargetType,
     setSecondaryUrl,
   ]);
-
-  React.useEffect(() => {
-    if (!expiresAt) {
-      setSelectedExpirePresetDays(null);
-      return;
-    }
-
-    const expiresMs = new Date(expiresAt).getTime();
-    const diffMs = expiresMs - Date.now();
-    if (!Number.isFinite(expiresMs) || diffMs <= 0) {
-      setSelectedExpirePresetDays(null);
-      return;
-    }
-
-    setSelectedExpirePresetDays(Math.round(diffMs / DAY_IN_MS));
-  }, [expiresAt]);
 
   const isValidShopeeUrl = (value: string) => {
     try {
@@ -501,19 +473,13 @@ export const CreateLink = ({
       const firstErrorField = Object.keys(nextErrors)[0];
       if (
         [
-          "folderName",
-          "tagsText",
           "customImageUrl",
           "videoUrl",
           "secondaryUrl",
-          "redirectDelayMs",
-          "expiresAt",
         ].includes(firstErrorField)
       ) {
         if (firstErrorField === "secondaryUrl") {
           setShowSecondaryFlow(true);
-        } else {
-          setShowAdvancedSettings(true);
         }
       }
       const element = document.querySelector<HTMLElement>(
@@ -1048,207 +1014,6 @@ export const CreateLink = ({
                 </div>
                   )}
                 </>
-              )}
-
-              <button
-                type="button"
-                onClick={() => setShowAdvancedSettings((prev) => !prev)}
-                className="flex w-full items-center justify-between rounded-3xl border border-gray-100 bg-gray-50/80 px-5 py-4 text-left transition-all hover:bg-gray-100 dark:border-slate-700 dark:bg-slate-900/60 dark:hover:bg-slate-900"
-              >
-                <div>
-                  <p className="text-[11px] font-black uppercase tracking-widest text-orange-500">
-                    {page.advancedTitle}
-                  </p>
-                  <p className="mt-1 text-xs font-medium text-gray-500 dark:text-slate-400">
-                    {page.advancedDescription}
-                  </p>
-                </div>
-                <ChevronDown
-                  size={18}
-                  className={cn(
-                    "shrink-0 text-gray-400 transition-transform",
-                    showAdvancedSettings && "rotate-180",
-                  )}
-                />
-              </button>
-
-              {showAdvancedSettings && (
-                <div className="space-y-6">
-                  <div>
-                    <label className="mb-3 flex items-center gap-2 px-1 text-[11px] font-black uppercase tracking-widest text-gray-400">
-                      <Type size={14} className="text-orange-500" />{" "}
-                      {page.usageLabel}
-                    </label>
-                    <select
-                      data-field="usageContext"
-                      value={usageContext}
-                      onChange={(e) => {
-                        setUsageContext(e.target.value);
-                        clearFieldError("usageContext");
-                      }}
-                      className={inputClass(
-                        "usageContext",
-                        "w-full rounded-2xl bg-gray-50 px-6 py-4 font-medium text-gray-900 dark:bg-slate-700 dark:text-slate-100 focus:bg-white dark:focus:bg-slate-700",
-                      )}
-                    >
-                      {localizedUsageOptions.map((option) => (
-                        <option key={option.value} value={option.value}>
-                          {option.label}
-                        </option>
-                      ))}
-                    </select>
-                    {renderFieldError("usageContext")}
-                  </div>
-
-                  <div>
-                    <label className="mb-3 flex items-center gap-2 px-1 text-[11px] font-black uppercase tracking-widest text-gray-400">
-                      <Type size={14} className="text-orange-500" />{" "}
-                      {page.expiryLabel}
-                    </label>
-                    <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setExpiresAt("");
-                          clearFieldError("expiresAt");
-                        }}
-                        className={`rounded-xl px-3 py-3 text-[10px] font-black uppercase tracking-wider transition-all ${
-                          expiresAt === ""
-                            ? "bg-orange-500 text-white shadow-lg shadow-orange-200"
-                            : "bg-gray-50 text-gray-500 hover:bg-gray-100 dark:bg-slate-700 dark:text-slate-300 dark:hover:bg-slate-600"
-                        }`}
-                      >
-                        {page.expiryNever}
-                      </button>
-                      {expiryPresets.map(({ days, label }) => (
-                        <button
-                          key={days}
-                          type="button"
-                          onClick={() => {
-                            const future = new Date();
-                            future.setDate(future.getDate() + days);
-                            setExpiresAt(future.toISOString());
-                            clearFieldError("expiresAt");
-                          }}
-                          className={`rounded-xl px-3 py-3 text-[10px] font-black uppercase tracking-wider transition-all ${
-                            selectedExpirePresetDays === days
-                              ? "bg-orange-500 text-white shadow-lg shadow-orange-200"
-                              : "bg-gray-50 text-gray-500 hover:bg-gray-100 dark:bg-slate-700 dark:text-slate-300 dark:hover:bg-slate-600"
-                          }`}
-                        >
-                          {label}
-                        </button>
-                      ))}
-                    </div>
-                    {renderFieldError("expiresAt")}
-                    <p className="mt-2 px-1 text-[11px] font-medium text-gray-400">
-                      {page.expiryHelp}
-                    </p>
-                  </div>
-
-                  <div className="grid grid-cols-1 gap-6 rounded-[1.75rem] border border-emerald-100 bg-emerald-50/60 p-4 sm:p-5">
-                    <div className="flex items-center justify-between gap-4">
-                      <div>
-                        <p className="mb-1 text-[11px] font-black uppercase tracking-widest text-emerald-700">
-                          {page.abTitle}
-                        </p>
-                        <p className="text-xs font-medium leading-relaxed text-emerald-900/70">
-                          {page.abDescription}
-                        </p>
-                      </div>
-                      <button
-                        type="button"
-                        disabled={!canUseAbTesting}
-                        onClick={() => {
-                          if (!canUseAbTesting) return;
-                          setAbTestEnabled(!abTestEnabled);
-                        }}
-                        className={cn(
-                          "rounded-full px-4 py-2 text-[10px] font-black uppercase tracking-widest transition-all",
-                          !canUseAbTesting &&
-                            "cursor-not-allowed opacity-50 grayscale",
-                          abTestEnabled
-                            ? "bg-emerald-600 text-white"
-                            : "bg-white text-emerald-700",
-                        )}
-                      >
-                        {abTestEnabled ? page.abToggleOn : page.abToggleOff}
-                      </button>
-                    </div>
-
-                    {!canUseAbTesting && (
-                      <p className="text-xs font-bold text-emerald-800/80">
-                        {page.abLocked}
-                      </p>
-                    )}
-
-                    {abTestEnabled && (
-                      <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-                        <input
-                          type="text"
-                          value={abVariantBTitle}
-                          onChange={(e) => setAbVariantBTitle(e.target.value)}
-                          placeholder={page.abVariantBTitlePlaceholder}
-                          className="w-full rounded-2xl bg-white px-6 py-4 font-medium text-gray-900 dark:bg-slate-700 dark:text-slate-100"
-                        />
-                        <input
-                          type="url"
-                          value={abVariantBOriginalUrl}
-                          onChange={(e) =>
-                            setAbVariantBOriginalUrl(e.target.value)
-                          }
-                          placeholder={page.abVariantBUrlPlaceholder}
-                          className="w-full rounded-2xl bg-white px-6 py-4 font-medium text-gray-900 dark:bg-slate-700 dark:text-slate-100"
-                        />
-                        <textarea
-                          value={abVariantBDescription}
-                          onChange={(e) =>
-                            setAbVariantBDescription(e.target.value)
-                          }
-                          placeholder={page.abVariantBDescriptionPlaceholder}
-                          rows={4}
-                          className="w-full rounded-2xl bg-white px-6 py-4 font-medium text-gray-900 dark:bg-slate-700 dark:text-slate-100 md:col-span-2"
-                        />
-                        <input
-                          type="url"
-                          value={abVariantBImageUrl}
-                          onChange={(e) =>
-                            setAbVariantBImageUrl(e.target.value)
-                          }
-                          placeholder={page.abVariantBImagePlaceholder}
-                          className="w-full rounded-2xl bg-white px-6 py-4 font-medium text-gray-900 dark:bg-slate-700 dark:text-slate-100"
-                        />
-                        {!mobileDirectMode && (
-                          <>
-                            <input
-                              type="url"
-                              value={abVariantBVideoUrl}
-                              onChange={(e) =>
-                                setAbVariantBVideoUrl(e.target.value)
-                              }
-                              placeholder={page.abVariantBVideoPlaceholder}
-                              className="w-full rounded-2xl bg-white px-6 py-4 font-medium text-gray-900 dark:bg-slate-700 dark:text-slate-100"
-                            />
-                            <input
-                              type="url"
-                              value={abVariantBSecondaryUrl}
-                              onChange={(e) =>
-                                setAbVariantBSecondaryUrl(e.target.value)
-                              }
-                              placeholder={page.abVariantBSecondaryPlaceholder}
-                              className="w-full rounded-2xl bg-white px-6 py-4 font-medium text-gray-900 dark:bg-slate-700 dark:text-slate-100 md:col-span-2"
-                            />
-                          </>
-                        )}
-                      </div>
-                    )}
-                    {abTestEnabled && mobileDirectMode && (
-                      <p className="text-xs font-bold text-emerald-800/80">
-                        {page.mobileDirectModeAbNote}
-                      </p>
-                    )}
-                  </div>
-                </div>
               )}
 
               <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 lg:items-stretch">

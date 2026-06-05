@@ -47,6 +47,7 @@ export type LinkUpdatePayload = Omit<
   folder_name?: string | null;
   expires_at?: string | null;
   secondaryTargetType?: "shopee" | "tiktok";
+  mobileDirectMode?: boolean;
 };
 
 export type DeepLinkPlatform = "shopee" | "tiktok";
@@ -206,6 +207,7 @@ export type Tab =
   | "pricing"
   | "create"
   | "list"
+  | "library"
   | "analytics"
   | "team"
   | "admin"
