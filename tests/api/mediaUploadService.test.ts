@@ -5,7 +5,9 @@ import os from "node:os";
 import path from "node:path";
 import {
   buildMediaUploadPlan,
+  buildR2ManagedObjectPath,
   buildR2PublicUrl,
+  createR2PresignedUpload,
   createLocalMediaFolderRecord,
   deleteLocalMediaAsset,
   deleteLocalMediaAssetsInFolder,
@@ -45,9 +47,14 @@ const withEnv = (
   }
 };
 
-test("buildMediaUploadPlan skips cloudinary when DISABLE_CLOUDINARY_UPLOAD is enabled", () => {
+test("buildMediaUploadPlan routes video uploads to R2 first when cloudinary is disabled", () => {
   withEnv(
     {
+      CLOUDFLARE_ACCOUNT_ID: "demo-account",
+      R2_ACCESS_KEY_ID: "demo-access",
+      R2_SECRET_ACCESS_KEY: "demo-secret",
+      R2_BUCKET_NAME: "media",
+      R2_PUBLIC_BASE_URL: "https://media.example.com",
       CLOUDINARY_CLOUD_NAME: "demo-cloud",
       CLOUDINARY_API_KEY: "demo-key",
       CLOUDINARY_API_SECRET: "demo-secret",
@@ -56,18 +63,23 @@ test("buildMediaUploadPlan skips cloudinary when DISABLE_CLOUDINARY_UPLOAD is en
       DISABLE_CLOUDINARY_UPLOAD: "true",
     },
     () => {
-    const providers = buildMediaUploadPlan("video", { fileSize: 1024 });
-    assert.deepEqual(
-      providers.map((provider) => provider.provider),
-      ["supabase"],
-    );
+      const providers = buildMediaUploadPlan("video", { fileSize: 1024 });
+      assert.deepEqual(
+        providers.map((provider) => provider.provider),
+        ["r2", "supabase"],
+      );
     },
   );
 });
 
-test("buildMediaUploadPlan prioritizes cloudinary before supabase for video uploads", () => {
+test("buildMediaUploadPlan prefers Cloudinary for video uploads and keeps R2 and Supabase fallback", () => {
   withEnv(
     {
+      CLOUDFLARE_ACCOUNT_ID: "demo-account",
+      R2_ACCESS_KEY_ID: "demo-access",
+      R2_SECRET_ACCESS_KEY: "demo-secret",
+      R2_BUCKET_NAME: "media",
+      R2_PUBLIC_BASE_URL: "https://media.example.com",
       CLOUDINARY_CLOUD_NAME: "demo-cloud-1",
       CLOUDINARY_API_KEY: "demo-key-1",
       CLOUDINARY_API_SECRET: "demo-secret-1",
@@ -86,7 +98,12 @@ test("buildMediaUploadPlan prioritizes cloudinary before supabase for video uplo
             ? `cloudinary:${provider.cloudName}`
             : provider.provider,
         ),
-        ["cloudinary:demo-cloud-1", "cloudinary:demo-cloud-2", "supabase"],
+        [
+          "cloudinary:demo-cloud-1",
+          "cloudinary:demo-cloud-2",
+          "r2",
+          "supabase",
+        ],
       );
     },
   );
@@ -143,6 +160,11 @@ test("buildMediaUploadPlan routes audio uploads to supabase only", () => {
 test("buildMediaUploadPlan ignores local in create-link plans", () => {
   withEnv(
     {
+      CLOUDFLARE_ACCOUNT_ID: "demo-account",
+      R2_ACCESS_KEY_ID: "demo-access",
+      R2_SECRET_ACCESS_KEY: "demo-secret",
+      R2_BUCKET_NAME: "media",
+      R2_PUBLIC_BASE_URL: "https://media.example.com",
       LOCAL_MEDIA_STORAGE_DIR: "uploads/media",
       LOCAL_MEDIA_PUBLIC_PATH: "media",
       MEDIA_UPLOAD_PROVIDER_ORDER: "local,cloudinary,supabase",
@@ -159,13 +181,13 @@ test("buildMediaUploadPlan ignores local in create-link plans", () => {
 
       assert.deepEqual(
         providers.map((provider) => provider.provider),
-        ["cloudinary", "supabase"],
+        ["cloudinary", "r2", "supabase"],
       );
     },
   );
 });
 
-test("buildMediaUploadPlan prioritizes R2 before cloudinary for video uploads", () => {
+test("buildMediaUploadPlan uses Cloudinary first for video uploads", () => {
   withEnv(
     {
       CLOUDFLARE_ACCOUNT_ID: "demo-account",
@@ -186,14 +208,66 @@ test("buildMediaUploadPlan prioritizes R2 before cloudinary for video uploads", 
 
       assert.deepEqual(
         providers.map((provider) => provider.provider),
-        ["r2", "cloudinary", "supabase"],
+        ["cloudinary", "r2", "supabase"],
       );
-      assert.equal((providers[0] as any).uploadUrl, "/api/v1/media/upload-r2");
+      assert.equal(
+        (providers[0] as any).uploadUrl,
+        "/api/v1/media/upload-cloudinary",
+      );
     },
   );
 });
 
-test("buildMediaUploadPlan can disable cloudinary backup independently", () => {
+test("buildR2ManagedObjectPath creates stable media prefixes", () => {
+  const objectPath = buildR2ManagedObjectPath({
+    resourceType: "video",
+    userId: "user-1",
+    fileName: "demo clip.mp4",
+  });
+
+  assert.match(objectPath, /^videos\/user-1\/\d+-[a-f0-9-]{36}-demo_clip\.mp4$/);
+});
+
+test("buildR2ManagedObjectPath infers extensions from content type when needed", () => {
+  const objectPath = buildR2ManagedObjectPath({
+    resourceType: "image",
+    userId: "user-1",
+    fileName: "image.bin",
+    contentType: "image/jpeg",
+  });
+
+  assert.match(objectPath, /^images\/user-1\/\d+-[a-f0-9-]{36}-image\.jpg$/);
+});
+
+test("createR2PresignedUpload returns a signed direct upload url", () => {
+  withEnv(
+    {
+      CLOUDFLARE_ACCOUNT_ID: "demo-account",
+      R2_ACCESS_KEY_ID: "demo-access",
+      R2_SECRET_ACCESS_KEY: "demo-secret",
+    },
+    () => {
+      const result = createR2PresignedUpload({
+        bucket: "media",
+        objectPath: "videos/user-1/demo.mp4",
+        contentType: "video/mp4",
+        now: new Date("2026-06-04T12:00:00.000Z"),
+        expiresInSeconds: 600,
+      });
+
+      assert.match(
+        result.uploadUrl,
+        /^https:\/\/demo-account\.r2\.cloudflarestorage\.com\/media\/videos\/user-1\/demo\.mp4\?/,
+      );
+      assert.equal(result.headers["Content-Type"], "video/mp4");
+      assert.match(result.uploadUrl, /X-Amz-Algorithm=AWS4-HMAC-SHA256/);
+      assert.match(result.uploadUrl, /X-Amz-SignedHeaders=content-type%3Bhost/);
+      assert.match(result.uploadUrl, /X-Amz-Signature=[a-f0-9]{64}$/);
+    },
+  );
+});
+
+test("buildMediaUploadPlan can disable cloudinary backup for image uploads independently", () => {
   withEnv(
     {
       CLOUDFLARE_ACCOUNT_ID: "demo-account",
@@ -208,8 +282,8 @@ test("buildMediaUploadPlan can disable cloudinary backup independently", () => {
       ENABLE_CLOUDINARY_BACKUP: "false",
     },
     () => {
-      const providers = buildMediaUploadPlan("video", {
-        fileName: "demo.mp4",
+      const providers = buildMediaUploadPlan("image", {
+        fileName: "demo.jpg",
         fileSize: 1024,
       });
 
