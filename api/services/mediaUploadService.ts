@@ -226,6 +226,153 @@ const getR2Client = () => {
   return _r2Client;
 };
 
+const getR2EndpointHost = () =>
+  `${getR2AccountId()}.r2.cloudflarestorage.com`;
+
+const encodeR2Path = (value: string) =>
+  value
+    .split("/")
+    .map((segment) => encodeURIComponent(segment))
+    .join("/");
+
+const toR2AmzDate = (date: Date) => {
+  const year = date.getUTCFullYear();
+  const month = String(date.getUTCMonth() + 1).padStart(2, "0");
+  const day = String(date.getUTCDate()).padStart(2, "0");
+  const hours = String(date.getUTCHours()).padStart(2, "0");
+  const minutes = String(date.getUTCMinutes()).padStart(2, "0");
+  const seconds = String(date.getUTCSeconds()).padStart(2, "0");
+
+  return `${year}${month}${day}T${hours}${minutes}${seconds}Z`;
+};
+
+const createR2SigningKey = (secretAccessKey: string, dateStamp: string) => {
+  const kDate = crypto
+    .createHmac("sha256", `AWS4${secretAccessKey}`)
+    .update(dateStamp)
+    .digest();
+  const kRegion = crypto
+    .createHmac("sha256", kDate)
+    .update("auto")
+    .digest();
+  const kService = crypto
+    .createHmac("sha256", kRegion)
+    .update("s3")
+    .digest();
+
+  return crypto.createHmac("sha256", kService).update("aws4_request").digest();
+};
+
+const buildCanonicalQueryString = (
+  params: Record<string, string | number>,
+) =>
+  Object.entries(params)
+    .map(([key, value]) => [encodeURIComponent(key), encodeURIComponent(String(value))] as const)
+    .sort(([leftKey, leftValue], [rightKey, rightValue]) =>
+      leftKey === rightKey
+        ? leftValue.localeCompare(rightValue)
+        : leftKey.localeCompare(rightKey),
+    )
+    .map(([key, value]) => `${key}=${value}`)
+    .join("&");
+
+export const buildR2ManagedObjectPath = (payload: {
+  resourceType: Exclude<MediaUploadResourceType, "auto">;
+  userId: string;
+  fileName?: string;
+  contentType?: string;
+}) => {
+  const folder =
+    payload.resourceType === "video"
+      ? "videos"
+      : payload.resourceType === "audio"
+        ? "audio"
+        : "images";
+  const sourceName = payload.fileName || `${payload.resourceType}.bin`;
+  const safeName = sanitizeFileName(sourceName);
+  const currentExt = path.extname(safeName).toLowerCase();
+  const inferredExt = inferFileExtensionFromContentType(payload.contentType);
+  const baseName =
+    currentExt && currentExt !== ".bin"
+      ? safeName.slice(0, -currentExt.length)
+      : safeName.replace(/\.bin$/i, "");
+  const finalName =
+    inferredExt && (currentExt === "" || currentExt === ".bin")
+      ? `${baseName || payload.resourceType}${inferredExt}`
+      : safeName;
+
+  return [folder, payload.userId, `${Date.now()}-${crypto.randomUUID()}-${finalName}`]
+    .filter(Boolean)
+    .join("/");
+};
+
+export const createR2PresignedUpload = (payload: {
+  bucket: string;
+  objectPath: string;
+  contentType?: string;
+  expiresInSeconds?: number;
+  now?: Date;
+}) => {
+  const accountId = getR2AccountId();
+  const accessKeyId = getR2AccessKeyId();
+  const secretAccessKey = getR2SecretAccessKey();
+
+  if (!accountId || !accessKeyId || !secretAccessKey) {
+    throw new Error("Cloudflare R2 is not configured.");
+  }
+
+  const bucket = payload.bucket.trim();
+  if (!bucket) {
+    throw new Error("Cloudflare R2 bucket is not configured.");
+  }
+
+  const host = getR2EndpointHost();
+  const now = payload.now || new Date();
+  const amzDate = toR2AmzDate(now);
+  const dateStamp = amzDate.slice(0, 8);
+  const credentialScope = `${dateStamp}/auto/s3/aws4_request`;
+  const contentType = (payload.contentType || "application/octet-stream").trim();
+  const canonicalPath = `/${encodeURIComponent(bucket)}/${encodeR2Path(payload.objectPath)}`;
+  const canonicalQueryString = buildCanonicalQueryString({
+    "X-Amz-Algorithm": "AWS4-HMAC-SHA256",
+    "X-Amz-Credential": `${accessKeyId}/${credentialScope}`,
+    "X-Amz-Date": amzDate,
+    "X-Amz-Expires": payload.expiresInSeconds || 900,
+    "X-Amz-SignedHeaders": "content-type;host",
+  });
+  const canonicalRequest = [
+    "PUT",
+    canonicalPath,
+    canonicalQueryString,
+    `content-type:${contentType}\n` + `host:${host}\n`,
+    "content-type;host",
+    "UNSIGNED-PAYLOAD",
+  ].join("\n");
+  const canonicalRequestHash = crypto
+    .createHash("sha256")
+    .update(canonicalRequest)
+    .digest("hex");
+  const stringToSign = [
+    "AWS4-HMAC-SHA256",
+    amzDate,
+    credentialScope,
+    canonicalRequestHash,
+  ].join("\n");
+  const signingKey = createR2SigningKey(secretAccessKey, dateStamp);
+  const signature = crypto
+    .createHmac("sha256", signingKey)
+    .update(stringToSign)
+    .digest("hex");
+  const uploadUrl = `https://${host}${canonicalPath}?${canonicalQueryString}&X-Amz-Signature=${signature}`;
+
+  return {
+    uploadUrl,
+    headers: {
+      "Content-Type": contentType,
+    },
+  };
+};
+
 const getConfiguredCloudinaryAccounts = () =>
   CLOUDINARY_ACCOUNT_SUFFIXES.map((suffix) => {
     const cloudName = process.env[`CLOUDINARY_CLOUD_NAME${suffix}`]?.trim();
@@ -287,11 +434,13 @@ const normalizeProviderOrder = (
     return ["r2", "supabase"];
   }
 
+  if (resourceType === "video") {
+    return isR2StorageEnabled() ? ["r2"] : [];
+  }
+
   const rawOrder = process.env.MEDIA_UPLOAD_PROVIDER_ORDER;
   const baseOrder =
-    resourceType === "video"
-      ? DEFAULT_PROVIDER_ORDER_FOR_VIDEO
-      : DEFAULT_PROVIDER_ORDER;
+    DEFAULT_PROVIDER_ORDER;
 
   if (!rawOrder?.trim()) {
     return baseOrder.filter(
@@ -608,6 +757,38 @@ const sanitizeFileName = (value?: string | null) => {
   return normalized || "upload.bin";
 };
 
+const inferFileExtensionFromContentType = (contentType?: string) => {
+  switch ((contentType || "").trim().toLowerCase()) {
+    case "image/jpeg":
+    case "image/jpg":
+      return ".jpg";
+    case "image/png":
+      return ".png";
+    case "image/webp":
+      return ".webp";
+    case "image/gif":
+      return ".gif";
+    case "video/mp4":
+      return ".mp4";
+    case "video/quicktime":
+      return ".mov";
+    case "video/webm":
+      return ".webm";
+    case "audio/mpeg":
+      return ".mp3";
+    case "audio/wav":
+      return ".wav";
+    case "audio/aac":
+      return ".aac";
+    case "audio/mp4":
+      return ".m4a";
+    case "audio/ogg":
+      return ".ogg";
+    default:
+      return "";
+  }
+};
+
 export const normalizeFolderName = (value?: string | null) => {
   const trimmed = value?.trim() || "";
   const normalized = trimmed
@@ -870,14 +1051,18 @@ export const uploadToR2Storage = async (
         : "images";
   const sourceName =
     payload.fileName || payload.file.originalname || `${payload.resourceType}.bin`;
-  const safeName = sanitizeFileName(sourceName);
-  const objectPath = [
-    folder,
-    payload.userId,
-    `${Date.now()}-${crypto.randomUUID()}-${safeName}`,
-  ]
-    .filter(Boolean)
-    .join("/");
+  const effectiveResourceType =
+    payload.resourceType === "video"
+      ? "video"
+      : payload.resourceType === "audio"
+        ? "audio"
+        : "image";
+  const objectPath = buildR2ManagedObjectPath({
+    resourceType: effectiveResourceType,
+    userId: payload.userId,
+    fileName: sourceName,
+    contentType: payload.file.mimetype,
+  });
 
   const client = deps.client || getR2Client();
   const result = await client.send(
