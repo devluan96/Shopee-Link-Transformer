@@ -147,15 +147,12 @@ type ManagedMediaAssetRow = LocalMediaAssetRow & {
 };
 
 const DEFAULT_PROVIDER_ORDER: MediaUploadProvider[] = [
-  "r2",
   "cloudinary",
   "supabase",
 ];
 
-// Video currently prefers Cloudinary first so the public URL is mobile-friendly.
 const DEFAULT_PROVIDER_ORDER_FOR_VIDEO: MediaUploadProvider[] = [
   "cloudinary",
-  "r2",
   "supabase",
 ];
 
@@ -455,7 +452,7 @@ const normalizeProviderOrder = (
     .map((value) => value.trim().toLowerCase())
     .filter(
       (value): value is MediaUploadProvider =>
-        value === "r2" || value === "cloudinary" || value === "supabase",
+        value === "cloudinary" || value === "supabase",
     )
     .filter((value) => {
       if (seen.has(value)) return false;
@@ -950,10 +947,9 @@ export const buildMediaUploadPlan = (
     resourceType,
     fileMeta,
   );
-  const r2Plan = getR2Plan(effectiveResourceType, fileMeta);
   const supabasePlan = getSupabasePlan(effectiveResourceType, fileMeta);
   const plansByProvider: Record<MediaUploadProvider, MediaUploadPlan[]> = {
-    r2: r2Plan ? [r2Plan] : [],
+    r2: [],
     cloudinary: getCloudinaryPlans(effectiveResourceType),
     supabase: supabasePlan ? [supabasePlan] : [],
   };

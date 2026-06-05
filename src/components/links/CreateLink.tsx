@@ -253,11 +253,11 @@ export const CreateLink = ({
   ) => {
     switch (provider) {
       case "r2":
-        return isVietnamese ? "R2 (ưu tiên)" : "R2 (primary)";
+        return "R2";
       case "cloudinary":
-        return isVietnamese ? "Cloudinary (dự phòng)" : "Cloudinary (backup)";
+        return "Cloudinary";
       case "supabase":
-        return isVietnamese ? "Supabase (dự phòng)" : "Supabase (fallback)";
+        return "Supabase";
       default:
         return content.page.cloudStorage;
     }
