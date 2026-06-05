@@ -152,9 +152,10 @@ const DEFAULT_PROVIDER_ORDER: MediaUploadProvider[] = [
   "supabase",
 ];
 
+// Video currently prefers Cloudinary first so the public URL is mobile-friendly.
 const DEFAULT_PROVIDER_ORDER_FOR_VIDEO: MediaUploadProvider[] = [
-  "r2",
   "cloudinary",
+  "r2",
   "supabase",
 ];
 
@@ -435,7 +436,7 @@ const normalizeProviderOrder = (
   }
 
   if (resourceType === "video") {
-    return isR2StorageEnabled() ? ["r2"] : [];
+    return DEFAULT_PROVIDER_ORDER_FOR_VIDEO;
   }
 
   const rawOrder = process.env.MEDIA_UPLOAD_PROVIDER_ORDER;

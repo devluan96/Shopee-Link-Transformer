@@ -47,7 +47,7 @@ const withEnv = (
   }
 };
 
-test("buildMediaUploadPlan routes video uploads to R2 only when cloudinary is disabled", () => {
+test("buildMediaUploadPlan routes video uploads to R2 first when cloudinary is disabled", () => {
   withEnv(
     {
       CLOUDFLARE_ACCOUNT_ID: "demo-account",
@@ -66,13 +66,13 @@ test("buildMediaUploadPlan routes video uploads to R2 only when cloudinary is di
       const providers = buildMediaUploadPlan("video", { fileSize: 1024 });
       assert.deepEqual(
         providers.map((provider) => provider.provider),
-        ["r2"],
+        ["r2", "supabase"],
       );
     },
   );
 });
 
-test("buildMediaUploadPlan keeps video uploads on R2 only", () => {
+test("buildMediaUploadPlan prefers Cloudinary for video uploads and keeps R2 and Supabase fallback", () => {
   withEnv(
     {
       CLOUDFLARE_ACCOUNT_ID: "demo-account",
@@ -92,7 +92,19 @@ test("buildMediaUploadPlan keeps video uploads on R2 only", () => {
     },
     () => {
       const providers = buildMediaUploadPlan("video", { fileSize: 1024 });
-      assert.deepEqual(providers.map((provider) => provider.provider), ["r2"]);
+      assert.deepEqual(
+        providers.map((provider) =>
+          provider.provider === "cloudinary"
+            ? `cloudinary:${provider.cloudName}`
+            : provider.provider,
+        ),
+        [
+          "cloudinary:demo-cloud-1",
+          "cloudinary:demo-cloud-2",
+          "r2",
+          "supabase",
+        ],
+      );
     },
   );
 });
@@ -169,13 +181,13 @@ test("buildMediaUploadPlan ignores local in create-link plans", () => {
 
       assert.deepEqual(
         providers.map((provider) => provider.provider),
-        ["r2"],
+        ["cloudinary", "r2", "supabase"],
       );
     },
   );
 });
 
-test("buildMediaUploadPlan uses R2 only for video uploads", () => {
+test("buildMediaUploadPlan uses Cloudinary first for video uploads", () => {
   withEnv(
     {
       CLOUDFLARE_ACCOUNT_ID: "demo-account",
@@ -196,9 +208,12 @@ test("buildMediaUploadPlan uses R2 only for video uploads", () => {
 
       assert.deepEqual(
         providers.map((provider) => provider.provider),
-        ["r2"],
+        ["cloudinary", "r2", "supabase"],
       );
-      assert.equal((providers[0] as any).uploadUrl, "/api/v1/media/upload-r2");
+      assert.equal(
+        (providers[0] as any).uploadUrl,
+        "/api/v1/media/upload-cloudinary",
+      );
     },
   );
 });
@@ -252,7 +267,7 @@ test("createR2PresignedUpload returns a signed direct upload url", () => {
   );
 });
 
-test("buildMediaUploadPlan can disable cloudinary backup independently", () => {
+test("buildMediaUploadPlan can disable cloudinary backup for image uploads independently", () => {
   withEnv(
     {
       CLOUDFLARE_ACCOUNT_ID: "demo-account",
@@ -267,14 +282,14 @@ test("buildMediaUploadPlan can disable cloudinary backup independently", () => {
       ENABLE_CLOUDINARY_BACKUP: "false",
     },
     () => {
-      const providers = buildMediaUploadPlan("video", {
-        fileName: "demo.mp4",
+      const providers = buildMediaUploadPlan("image", {
+        fileName: "demo.jpg",
         fileSize: 1024,
       });
 
       assert.deepEqual(
         providers.map((provider) => provider.provider),
-        ["r2"],
+        ["r2", "supabase"],
       );
     },
   );

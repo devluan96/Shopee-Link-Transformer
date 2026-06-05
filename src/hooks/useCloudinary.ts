@@ -407,32 +407,55 @@ export function useCloudinary({ fetchWithAuth }: UseCloudinaryProps) {
       }
 
       if (onProgress) onProgress(80);
-      try {
-        await fetchWithAuth("/api/v1/media/upload-complete", {
+      const finalizeBody = JSON.stringify({
+        resourceType: plan.resourceType,
+        provider: "r2",
+        objectPath: data.path,
+        path: data.path,
+        publicUrl: data.url,
+        url: data.url,
+        bucket: data.bucket,
+        fileName: fileName || (file instanceof File ? file.name : "upload.bin"),
+        sizeBytes:
+          typeof file.size === "number" && Number.isFinite(file.size)
+            ? file.size
+            : undefined,
+        mimeType: file.type || "application/octet-stream",
+        sha256: sha256 || undefined,
+      } satisfies R2FinalizePayload);
+
+      const finalizeUpload = async () => {
+        const response = await fetchWithAuth("/api/v1/media/upload-complete", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            resourceType: plan.resourceType,
-            provider: "r2",
-            objectPath: data.path,
-            path: data.path,
-            publicUrl: data.url,
-            url: data.url,
-            bucket: data.bucket,
-            fileName:
-              fileName || (file instanceof File ? file.name : "upload.bin"),
-            sizeBytes:
-              typeof file.size === "number" && Number.isFinite(file.size)
-                ? file.size
-                : undefined,
-            mimeType: file.type || "application/octet-stream",
-            sha256: sha256 || undefined,
-          } satisfies R2FinalizePayload),
+          body: finalizeBody,
         });
-      } catch (error) {
+        const payload = await response.json().catch(() => null);
+        return { response, payload };
+      };
+
+      let finalizeResult = await finalizeUpload();
+      if (
+        !finalizeResult.response.ok ||
+        (finalizeResult.payload &&
+          typeof finalizeResult.payload === "object" &&
+          "skipped" in finalizeResult.payload &&
+          Boolean((finalizeResult.payload as { skipped?: boolean }).skipped))
+      ) {
+        await new Promise((resolve) => setTimeout(resolve, 250));
+        finalizeResult = await finalizeUpload();
+      }
+
+      if (
+        !finalizeResult.response.ok ||
+        (finalizeResult.payload &&
+          typeof finalizeResult.payload === "object" &&
+          "skipped" in finalizeResult.payload &&
+          Boolean((finalizeResult.payload as { skipped?: boolean }).skipped))
+      ) {
         console.error(
           "R2 upload finalized on storage, but metadata sync failed",
-          error instanceof Error ? error.message : "Cannot finalize R2 upload",
+          finalizeResult.payload || finalizeResult.response.statusText,
         );
       }
 
@@ -491,10 +514,10 @@ export function useCloudinary({ fetchWithAuth }: UseCloudinaryProps) {
           if (uploaded?.url) {
             if (
               !fallbackWarningShown &&
-              provider.provider === "cloudinary" &&
-              failedProviders.has("r2")
+              provider.provider === "r2" &&
+              failedProviders.has("cloudinary")
             ) {
-              toast.warning("R2 failed, falling back to Cloudinary backup.");
+              toast.warning("Cloudinary failed, falling back to R2 backup.");
               fallbackWarningShown = true;
             }
 
