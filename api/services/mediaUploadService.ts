@@ -6,6 +6,8 @@ import type { SupabaseClient } from "../config/supabase.js";
 export type MediaUploadResourceType = "image" | "video" | "audio" | "auto";
 export type MediaUploadProvider = "cloudinary" | "supabase";
 
+export const MEDIA_ASSET_FINGERPRINT_METADATA_KEY = "sha256";
+
 export interface CloudinaryUploadPlan {
   provider: "cloudinary";
   resourceType: MediaUploadResourceType;
@@ -199,6 +201,11 @@ const sanitizeFileName = (value?: string | null) => {
   const trimmed = value?.trim() || "";
   const normalized = trimmed.replace(/[^a-zA-Z0-9._-]+/g, "_");
   return normalized || "upload.bin";
+};
+
+export const normalizeFolderName = (value?: string | null) => {
+  const trimmed = value?.trim();
+  return trimmed ? trimmed.slice(0, 120) : null;
 };
 
 const getCloudinaryPlans = (
