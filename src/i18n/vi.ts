@@ -113,19 +113,18 @@ export const vi = {
     submit: "Xác minh và vào ứng dụng",
     signOut: "Đăng xuất",
   },
-    sidebar: {
-      logoAlt: "Biểu tượng HotsNew Click",
-      close: "Đóng thanh điều hướng",
-      currentWorkspace: "Không gian hiện tại",
-      mainMenu: "Menu chính",
-      dashboard: "Bảng điều khiển",
-      aiAssistant: "Trợ lý AI",
-      createLinks: "Tạo liên kết",
-      linkList: "Danh sách liên kết",
-      library: "Thư viện media",
-      analytics: "Phân tích dữ liệu",
-      team: "Nhóm làm việc",
-      installApp: "Cài ứng dụng",
+  sidebar: {
+    logoAlt: "Biểu tượng HotsNew Click",
+    close: "Đóng thanh điều hướng",
+    currentWorkspace: "Không gian hiện tại",
+    mainMenu: "Menu chính",
+    dashboard: "Bảng điều khiển",
+    aiAssistant: "Trợ lý AI",
+    createLinks: "Tạo liên kết",
+    linkList: "Danh sách liên kết",
+    analytics: "Phân tích dữ liệu",
+    team: "Nhóm làm việc",
+    installApp: "Cài ứng dụng",
     admin: "Quản trị viên",
     userManagement: "Quản lý người dùng",
     contactAdmin: "Liên hệ Zalo quản trị",
@@ -138,52 +137,21 @@ export const vi = {
     rolePaid: "Thành viên trả phí",
     roleFree: "Thành viên miễn phí",
   },
-    app: {
-      loading: "Đang khởi tạo hệ thống...",
-      createLocked: {
+  app: {
+    loading: "Đang khởi tạo hệ thống...",
+    createLocked: {
       titleViewer: "Không gian này chỉ cho xem",
       titleUpgrade: "Nâng cấp tài khoản",
       descriptionViewer:
         "Không gian hiện tại của bạn đang ở quyền chỉ xem nên chưa thể tạo hoặc chỉnh sửa liên kết. Hãy chuyển sang không gian khác hoặc nhờ chủ sở hữu nâng quyền biên tập.",
       descriptionUpgrade:
         "Tính năng chuyển đổi link Shopee và TikTok dành cho tài khoản trả phí. Vui lòng liên hệ quản trị viên để nâng cấp gói.",
-        actionViewer: "Mở khu vực nhóm",
-        actionUpgrade: "Quay lại bảng điều khiển",
-      },
+      actionViewer: "Mở khu vực nhóm",
+      actionUpgrade: "Quay lại bảng điều khiển",
     },
-    library: {
-      title: "Thư viện media",
-      subtitle:
-        "Xem lại tất cả file đã tải lên từ tài khoản của bạn, sao chép URL công khai và xóa những file không còn cần thiết.",
-      banner:
-        "Video và ảnh chính được upload từ tab Tạo liên kết. Thư viện này chỉ dùng để xem, sao chép URL và xóa file.",
-      searchPlaceholder: "Tìm theo tên file, đường dẫn, loại file hoặc MIME type...",
-      refresh: "Làm mới",
-      open: "Mở",
-      copy: "Sao chép URL",
-      delete: "Xóa",
-      deleting: "Đang xóa...",
-      emptyTitle: "Chưa có file media nào",
-      emptyBody:
-        "Hãy tải lên ảnh, video hoặc audio trước. File từ R2, Cloudinary hoặc Supabase sẽ tự động hiển thị tại đây.",
-      errorTitle: "Không thể tải thư viện media",
-      updated: "Cập nhật {time}",
-      confirmDelete: "Xóa {name}?",
-      filters: {
-        all: "Tất cả",
-        images: "Ảnh",
-        videos: "Video",
-        audio: "Audio",
-      },
-      stats: {
-        files: "File",
-        images: "Ảnh",
-        videos: "Video",
-        size: "Tổng dung lượng",
-      },
-    },
-    assistant: {
-      badge: "Trợ lý AI",
+  },
+  assistant: {
+    badge: "Trợ lý AI",
     title: "Chat với trợ lý chiến dịch",
     widgetTitle: "Cần hỏi AI nhanh?",
     description:
@@ -933,15 +901,7 @@ export const vi = {
       uploadTitle: "Tải ảnh đại diện",
       emptyHint: "Chọn JPG, PNG hoặc WebP để thay avatar.",
       helper:
-        "Hệ thống cho phép bạn xem trước, crop ảnh, rồi resize về tối đa 512px và nén WebP trước khi tải lên.",
-      invalidFile: "Vui lòng chọn một file ảnh.",
-      cropTitle: "Cắt ảnh đại diện",
-      cropSubtitle: "Kéo ảnh, zoom lên hoặc xuống, rồi xác nhận phần crop trước khi tải lên.",
-      cropZoom: "Zoom",
-      cropPreview: "Xem trước",
-      cropCancel: "Hủy",
-      cropConfirm: "Dùng ảnh này",
-      cropHelp: "Di chuyển ảnh trong khung vuông để phần bạn muốn luôn nằm ở giữa.",
+        "Hệ thống sẽ tự resize về tối đa 512px và nén WebP trước khi tải lên.",
     },
     statusCard: {
       label: "Trạng thái",
@@ -1379,7 +1339,7 @@ export const vi = {
       videoPreparing: "Đang chuẩn bị video...",
       videoReplace: "Thay đổi video",
       videoUpload: "Tải video lên cloud storage",
-      cloudStorage: "Cloudflare R2",
+      cloudStorage: "Cloud storage",
       videoReplaceWithProvider: "Thay video qua {provider}",
       videoUploadWithProvider: "Tải video lên {provider}",
       videoDropHelp: "Kéo thả video vào đây, hoặc bấm để chọn file.",

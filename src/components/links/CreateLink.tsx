@@ -108,7 +108,7 @@ interface CreateLinkProps {
   uploadingVideo: boolean;
   videoUploadProgress: number;
   videoUploadSuccess: boolean;
-  videoUploadProvider?: "r2" | "cloudinary" | "supabase" | null;
+  videoUploadProvider?: "cloudinary" | "supabase" | null;
   videoInputRef: RefObject<HTMLInputElement | null>;
   handleVideoUpload: (e: ChangeEvent<HTMLInputElement>) => void;
   handleVideoFileUpload: (file: File) => Promise<void>;
@@ -116,7 +116,7 @@ interface CreateLinkProps {
   uploadingThumbnail: boolean;
   thumbnailUploadProgress: number;
   thumbnailUploadSuccess: boolean;
-  thumbnailUploadProvider?: "r2" | "cloudinary" | "supabase" | null;
+  thumbnailUploadProvider?: "cloudinary" | "supabase" | null;
   handleThumbnailUpload: (e: ChangeEvent<HTMLInputElement>) => Promise<void>;
   handleThumbnailFileUpload: (file: File) => Promise<void>;
   handleConvert: (e: FormEvent) => void;
@@ -211,7 +211,7 @@ export const CreateLink = ({
   onOpenGuide,
   onCloseGuide,
 }: CreateLinkProps) => {
-  const { messages, t, isVietnamese } = useLocale();
+  const { messages, t } = useLocale();
   const content = messages.createLink;
   const page = content.page;
   const defaultDomainLabel = DEFAULT_OUTPUT_DOMAIN;
@@ -248,16 +248,12 @@ export const CreateLink = ({
           fallbackToLegacy: false,
         });
   const uploadProgressOffset = 87.96 - (87.96 * videoUploadProgress) / 100;
-  const getProviderLabel = (
-    provider?: "r2" | "cloudinary" | "supabase" | null,
-  ) => {
+  const getProviderLabel = (provider?: "cloudinary" | "supabase" | null) => {
     switch (provider) {
-      case "r2":
-        return isVietnamese ? "R2 (ưu tiên)" : "R2 (primary)";
       case "cloudinary":
-        return isVietnamese ? "Cloudinary (dự phòng)" : "Cloudinary (backup)";
+        return "Cloudinary";
       case "supabase":
-        return isVietnamese ? "Supabase (dự phòng)" : "Supabase (fallback)";
+        return "Supabase";
       default:
         return content.page.cloudStorage;
     }

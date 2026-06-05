@@ -6,20 +6,7 @@
   "author": "HotsNew Click",
   "main": "electron/main.cjs",
   "type": "module",
-  "engines": {
-    "node": ">=22.0.0 <23"
-  },
   "scripts": {
-    "predev": "node ./scripts/check-node-version.cjs",
-    "prebuild": "node ./scripts/check-node-version.cjs",
-    "pretest": "node ./scripts/check-node-version.cjs",
-    "prelint:ts": "node ./scripts/check-node-version.cjs",
-    "predesktop:dev": "node ./scripts/check-node-version.cjs",
-    "predesktop:build": "node ./scripts/check-node-version.cjs",
-    "predesktop:publish:r2": "node ./scripts/check-node-version.cjs",
-    "predesktop:publish": "node ./scripts/check-node-version.cjs",
-    "prebackfill:media-sha256": "node ./scripts/check-node-version.cjs",
-    "presync:link-media": "node ./scripts/check-node-version.cjs",
     "dev": "concurrently \"npm run dev:api\" \"npm run dev:client\"",
     "dev:api": "tsx api/server.ts",
     "dev:client": "vite --port 5173",
@@ -33,12 +20,9 @@
     "lint:ts": "node ./scripts/run-tsc.cjs",
     "lint:eslint": "eslint --config .eslintrc.cjs . --ext .ts,.tsx",
     "lint": "node ./scripts/run-tsc.cjs",
-    "test": "node ./scripts/run-tests.cjs",
-    "backfill:media-sha256": "tsx scripts/backfill-media-sha256.ts",
-    "sync:link-media": "tsx scripts/sync-link-media-assets.ts"
+    "test": "node ./scripts/run-tests.cjs"
   },
   "dependencies": {
-    "@aws-sdk/client-s3": "^3.908.0",
     "@google/genai": "^1.29.0",
     "@maxmind/geoip2-node": "^6.3.4",
     "@supabase/supabase-js": "^2.104.0",
@@ -69,6 +53,7 @@
     "zod": "^4.3.6"
   },
   "devDependencies": {
+    "@aws-sdk/client-s3": "^3.908.0",
     "@eslint/js": "^9.1.0",
     "@types/cors": "^2.8.19",
     "@types/express": "^4.17.21",
