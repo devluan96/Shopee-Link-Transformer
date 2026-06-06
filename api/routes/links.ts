@@ -509,10 +509,7 @@ router.patch(
         "ab_variant_b_original_url",
         "ab_variant_b_secondary_url",
         "redirect_delay_ms",
-        "usage_context",
-        "expires_at",
-        "folder_name",
-        "tags",
+        "mobileDirectMode",
       ];
 
       const updates: any = {};

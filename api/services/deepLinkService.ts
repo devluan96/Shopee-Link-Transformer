@@ -10,6 +10,7 @@ export type DeepLinkDeviceTarget = {
 };
 
 export type DeepLinkProfiles = Partial<Record<DeepLinkPlatform, DeepLinkDeviceTarget>>;
+type DeepLinkDevicePlatform = "ios" | "android" | "desktop";
 
 const APP_SETTINGS_KEY = "link_deeplink_profiles";
 const MAX_TEMPLATE_LENGTH = 2048;
@@ -90,15 +91,32 @@ const inferDestinationPlatform = (value?: string | null): DeepLinkPlatform | nul
 };
 
 const isMobileUserAgent = (userAgent?: string | null) => {
-  const normalized = (userAgent || "").toLowerCase();
-  return /(iphone|ipad|ipod|android)/i.test(normalized);
+  return inferDevicePlatform(userAgent) !== "desktop";
 };
 
 const inferDevicePlatform = (userAgent?: string | null) => {
   const normalized = (userAgent || "").toLowerCase();
-  if (/(iphone|ipad|ipod)/i.test(normalized)) return "ios" as const;
-  if (/android/i.test(normalized)) return "android" as const;
-  return "desktop" as const;
+  if (/(iphone|ipad|ipod)/i.test(normalized)) return "ios";
+  if (/macintosh/.test(normalized) && /mobile/.test(normalized)) return "ios";
+  if (/android/i.test(normalized)) return "android";
+  return "desktop";
+};
+
+const getTemplateForDevice = (
+  profile: DeepLinkDeviceTarget | undefined,
+  devicePlatform: DeepLinkDevicePlatform,
+) => {
+  if (!profile?.enabled) return null;
+
+  if (devicePlatform === "ios") {
+    return profile.ios || profile.desktop || null;
+  }
+
+  if (devicePlatform === "android") {
+    return profile.android || profile.desktop || null;
+  }
+
+  return profile.desktop || null;
 };
 
 export const isMobileDeepLinkDestination = (destinationUrl: string) => {
@@ -116,7 +134,10 @@ export const shouldBypassLandingForMobileDeepLink = (
   const profile = profiles?.[platform];
   if (!profile?.enabled) return false;
 
-  return inferDevicePlatform(userAgent) !== "desktop";
+  const devicePlatform = inferDevicePlatform(userAgent);
+  if (devicePlatform === "desktop") return false;
+
+  return Boolean(getTemplateForDevice(profile, devicePlatform));
 };
 
 export const applyDeepLinkTemplate = (
@@ -143,11 +164,7 @@ export const resolveDeepLinkUrl = (
   if (!profile?.enabled) return destinationUrl;
 
   const devicePlatform = inferDevicePlatform(userAgent);
-  if (devicePlatform !== "desktop") {
-    return destinationUrl;
-  }
-
-  const template = profile.desktop;
+  const template = getTemplateForDevice(profile, devicePlatform);
 
   if (!template) return destinationUrl;
 

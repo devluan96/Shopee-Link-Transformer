@@ -18,7 +18,7 @@ test("applyDeepLinkTemplate replaces url placeholders", () => {
   );
 });
 
-test("resolveDeepLinkUrl keeps mobile users on the original destination", () => {
+test("resolveDeepLinkUrl uses the device-specific deep link template when available", () => {
   const profiles = {
     shopee: {
       enabled: true,
@@ -28,6 +28,8 @@ test("resolveDeepLinkUrl keeps mobile users on the original destination", () => 
     },
     tiktok: {
       enabled: true,
+      ios: "tiktok://ios?url={{encodedUrl}}",
+      android: "intent://android?tiktok={url}",
       desktop: "https://desktop.example/redirect?url={{encodedUrl}}",
     },
   };
@@ -38,7 +40,7 @@ test("resolveDeepLinkUrl keeps mobile users on the original destination", () => 
       "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)",
       profiles,
     ),
-    "https://shopee.vn/product/123",
+    "shopee://ios?url=https%3A%2F%2Fshopee.vn%2Fproduct%2F123",
   );
   assert.equal(
     resolveDeepLinkUrl(
@@ -46,7 +48,15 @@ test("resolveDeepLinkUrl keeps mobile users on the original destination", () => 
       "Mozilla/5.0 (Linux; Android 14; Pixel 8)",
       profiles,
     ),
-    "https://shopee.vn/product/123",
+    "intent://android?url=https://shopee.vn/product/123",
+  );
+  assert.equal(
+    resolveDeepLinkUrl(
+      "https://www.tiktok.com/@demo/video/123",
+      "Mozilla/5.0 (iPad; CPU OS 17_0 like Mac OS X)",
+      profiles,
+    ),
+    "tiktok://ios?url=https%3A%2F%2Fwww.tiktok.com%2F%40demo%2Fvideo%2F123",
   );
   assert.equal(
     resolveDeepLinkUrl(
@@ -63,7 +73,7 @@ test("resolveDeepLinkUrl keeps mobile users on the original destination", () => 
       "Mozilla/5.0 (Linux; Android 14; Pixel 8)",
       profiles,
     ),
-    "https://s.shopee.vn/2qRr9Jvpsc",
+    "intent://android?url=https://s.shopee.vn/2qRr9Jvpsc",
   );
 });
 
@@ -89,11 +99,11 @@ test("shouldBypassLandingForMobileDeepLink bypasses landing only for enabled mob
   const profiles = {
     shopee: {
       enabled: true,
-      desktop: "{{url}}",
+      ios: "shopee://ios?url={{encodedUrl}}",
     },
     tiktok: {
       enabled: true,
-      desktop: "{{url}}",
+      android: "intent://android?tiktok={url}",
     },
   };
 
@@ -109,6 +119,14 @@ test("shouldBypassLandingForMobileDeepLink bypasses landing only for enabled mob
     shouldBypassLandingForMobileDeepLink(
       "https://www.tiktok.com/@demo/video/123",
       "Mozilla/5.0 (Linux; Android 14; Pixel 8)",
+      profiles,
+    ),
+    true,
+  );
+  assert.equal(
+    shouldBypassLandingForMobileDeepLink(
+      "https://shopee.vn/product/123",
+      "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_0) Mobile/15E148",
       profiles,
     ),
     true,
