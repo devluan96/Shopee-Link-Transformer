@@ -568,6 +568,8 @@ export default function App() {
     outputDomainsLoading,
     deepLinkProfiles,
     deepLinkProfilesLoading,
+    videoUploadProviderPreference,
+    videoUploadProviderPreferenceLoading,
     handleApproveUser,
     handleUpdateSubscription,
     handleUpdateUserRole,
@@ -576,6 +578,7 @@ export default function App() {
     handleRejectPaymentRequest,
     updateOutputDomains,
     updateDeepLinkProfiles,
+    updateVideoUploadProviderPreference,
   } = useAdmin({ user, profile, fetchWithAuth, activeTab });
 
   // Clipboard Hook
@@ -1242,6 +1245,10 @@ export default function App() {
               outputDomainsLoading={outputDomainsLoading}
               deepLinkProfiles={deepLinkProfiles}
               deepLinkProfilesLoading={deepLinkProfilesLoading}
+              videoUploadProviderPreference={videoUploadProviderPreference}
+              videoUploadProviderPreferenceLoading={
+                videoUploadProviderPreferenceLoading
+              }
               onBlockIp={blockIp}
               onUnblockIp={unblockIp}
               onlineUserIds={onlineUserIds}
@@ -1252,6 +1259,9 @@ export default function App() {
               onRejectPaymentRequest={handleRejectPaymentRequest}
               onUpdateOutputDomains={updateOutputDomains}
               onUpdateDeepLinkProfiles={updateDeepLinkProfiles}
+              onUpdateVideoUploadProviderPreference={
+                updateVideoUploadProviderPreference
+              }
               fetchWithAuth={fetchWithAuth}
             />
           )}

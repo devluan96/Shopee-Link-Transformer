@@ -4,6 +4,7 @@ import {
   DeepLinkProfiles,
   ManualPaymentRequest,
   UserProfile,
+  VideoUploadProviderPreference,
 } from "@/src/types";
 import { toast } from "sonner";
 import { DEFAULT_OUTPUT_DOMAINS } from "@/src/lib/appConfig";
@@ -28,6 +29,8 @@ export interface AdminState {
   outputDomainsLoading: boolean;
   deepLinkProfiles: DeepLinkProfiles;
   deepLinkProfilesLoading: boolean;
+  videoUploadProviderPreference: VideoUploadProviderPreference;
+  videoUploadProviderPreferenceLoading: boolean;
 }
 
 export interface AdminActions {
@@ -49,6 +52,10 @@ export interface AdminActions {
   updateOutputDomains: (domains: string[]) => Promise<void>;
   fetchDeepLinkProfiles: () => Promise<void>;
   updateDeepLinkProfiles: (profiles: DeepLinkProfiles) => Promise<void>;
+  fetchVideoUploadProviderPreference: () => Promise<void>;
+  updateVideoUploadProviderPreference: (
+    provider: VideoUploadProviderPreference,
+  ) => Promise<void>;
   setAdminDirty: (v: boolean) => void;
 }
 
@@ -71,6 +78,10 @@ export function useAdmin({
   const [outputDomainsLoading, setOutputDomainsLoading] = useState(false);
   const [deepLinkProfiles, setDeepLinkProfiles] = useState<DeepLinkProfiles>({});
   const [deepLinkProfilesLoading, setDeepLinkProfilesLoading] = useState(false);
+  const [videoUploadProviderPreference, setVideoUploadProviderPreference] =
+    useState<VideoUploadProviderPreference>("cloudinary");
+  const [videoUploadProviderPreferenceLoading, setVideoUploadProviderPreferenceLoading] =
+    useState(false);
 
   const isAdminRole =
     profile?.role === "admin";
@@ -341,6 +352,60 @@ export function useAdmin({
     }
   }, [user, fetchWithAuth]);
 
+  const fetchVideoUploadProviderPreference = useCallback(async () => {
+    if (!user) return;
+    setVideoUploadProviderPreferenceLoading(true);
+    try {
+      const response = await fetchWithAuth(
+        "/api/v1/settings/video-upload-provider",
+      );
+      const data = await response.json().catch(() => null);
+      if (!response.ok) {
+        throw new Error(data?.error || "Failed to load video upload provider");
+      }
+      setVideoUploadProviderPreference(
+        data?.provider === "r2" ||
+          data?.provider === "supabase" ||
+          data?.provider === "cloudinary"
+          ? data.provider
+          : "cloudinary",
+      );
+    } catch (e) {
+      console.error(e);
+      toast.error(
+        e instanceof Error ? e.message : "Failed to load video upload provider",
+      );
+    } finally {
+      setVideoUploadProviderPreferenceLoading(false);
+    }
+  }, [user, fetchWithAuth]);
+
+  const updateVideoUploadProviderPreference = useCallback(
+    async (provider: VideoUploadProviderPreference) => {
+      if (!user || !isAdminRole) return;
+      const response = await fetchWithAuth(
+        "/api/v1/admin/settings/video-upload-provider",
+        {
+          method: "PUT",
+          body: JSON.stringify({ provider }),
+        },
+      );
+      const data = await response.json().catch(() => null);
+      if (!response.ok) {
+        throw new Error(data?.error || "Failed to update video upload provider");
+      }
+      setVideoUploadProviderPreference(
+        data?.provider === "r2" ||
+          data?.provider === "supabase" ||
+          data?.provider === "cloudinary"
+          ? data.provider
+          : provider,
+      );
+      toast.success("Updated video upload provider");
+    },
+    [user, isAdminRole, fetchWithAuth],
+  );
+
   const updateDeepLinkProfiles = useCallback(
     async (profiles: DeepLinkProfiles) => {
       if (!user || !isAdminRole) return;
@@ -377,7 +442,13 @@ export function useAdmin({
     if (!user) return;
     void fetchOutputDomains();
     void fetchDeepLinkProfiles();
-  }, [user?.id, fetchOutputDomains, fetchDeepLinkProfiles]);
+    void fetchVideoUploadProviderPreference();
+  }, [
+    user?.id,
+    fetchOutputDomains,
+    fetchDeepLinkProfiles,
+    fetchVideoUploadProviderPreference,
+  ]);
 
   // Auto-fetch admin data
   useEffect(() => {
@@ -390,6 +461,7 @@ export function useAdmin({
       fetchAllUsers();
       fetchOutputDomains();
       fetchDeepLinkProfiles();
+      fetchVideoUploadProviderPreference();
       fetchPaymentRequests();
     }
   }, [
@@ -400,6 +472,7 @@ export function useAdmin({
     fetchAllUsers,
     fetchOutputDomains,
     fetchDeepLinkProfiles,
+    fetchVideoUploadProviderPreference,
     fetchPaymentRequests,
   ]);
 
@@ -413,6 +486,8 @@ export function useAdmin({
     outputDomainsLoading,
     deepLinkProfiles,
     deepLinkProfilesLoading,
+    videoUploadProviderPreference,
+    videoUploadProviderPreferenceLoading,
     fetchAllUsers,
     fetchPaymentRequests,
     handleApproveUser,
@@ -425,6 +500,8 @@ export function useAdmin({
     updateOutputDomains,
     fetchDeepLinkProfiles,
     updateDeepLinkProfiles,
+    fetchVideoUploadProviderPreference,
+    updateVideoUploadProviderPreference,
     setAdminDirty,
   };
 }

@@ -52,6 +52,11 @@ export type LinkUpdatePayload = Omit<
 
 export type DeepLinkPlatform = "shopee" | "tiktok";
 
+export type VideoUploadProviderPreference =
+  | "cloudinary"
+  | "r2"
+  | "supabase";
+
 export interface DeepLinkDeviceTarget {
   enabled?: boolean;
   ios?: string;

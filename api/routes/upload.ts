@@ -7,11 +7,16 @@ import { upload } from "../config/multer.js";
 import { CLOUDINARY_UPLOAD_FOLDER } from "../config/constants.js";
 import { AuthenticatedRequest } from "../types/index.js";
 import * as featureLimitService from "../services/featureLimitService.js";
+import * as appSettingsService from "../services/appSettingsService.js";
 import {
   buildMediaUploadPlan,
+  computeBufferSha256,
+  deleteFromR2Storage,
+  findReusableMediaAssetByFingerprint,
   getSupabaseMediaMaxUploadBytes,
   isCloudinaryUploadDisabled,
   normalizeFolderName,
+  uploadToR2Storage,
   uploadToSupabaseStorage,
 } from "../services/mediaUploadService.js";
 
@@ -124,6 +129,8 @@ type MediaUploadPlanRouteDeps = {
   getVideoUploadUsageToday: typeof featureLimitService.getVideoUploadUsageToday;
   recordFeatureUsage: typeof featureLimitService.recordFeatureUsage;
   buildMediaUploadPlan: typeof buildMediaUploadPlan;
+  getVideoUploadProviderPreference: typeof appSettingsService.getVideoUploadProviderPreference;
+  findReusableMediaAssetByFingerprint: typeof findReusableMediaAssetByFingerprint;
   uploadToSupabaseStorage: typeof uploadToSupabaseStorage;
 };
 
@@ -133,6 +140,9 @@ const defaultMediaUploadPlanRouteDeps: MediaUploadPlanRouteDeps = {
   getVideoUploadUsageToday: featureLimitService.getVideoUploadUsageToday,
   recordFeatureUsage: featureLimitService.recordFeatureUsage,
   buildMediaUploadPlan,
+  getVideoUploadProviderPreference:
+    appSettingsService.getVideoUploadProviderPreference,
+  findReusableMediaAssetByFingerprint,
   uploadToSupabaseStorage,
 };
 
@@ -267,6 +277,13 @@ const deleteMediaAssetFromProvider = async (
     return;
   }
 
+  if (asset.provider === "r2") {
+    if (!asset.object_path) return;
+
+    await deleteFromR2Storage(asset.object_path);
+    return;
+  }
+
   if (asset.provider === "supabase") {
     const bucketAndPath = extractSupabaseBucketAndPath(asset);
     if (!bucketAndPath) return;
@@ -343,6 +360,12 @@ export const createMediaUploadPlanHandler = (
         typeof req.body?.fileSize === "number"
           ? req.body.fileSize
           : Number(req.body?.fileSize || "");
+      const videoUploadProviderPreference =
+        resourceType === "video"
+          ? await resolvedDeps.getVideoUploadProviderPreference(
+              resolvedDeps.getSupabase(),
+            )
+          : null;
       const providers = resolvedDeps.buildMediaUploadPlan(resourceType, {
         fileName:
           typeof req.body?.fileName === "string" ? req.body.fileName : undefined,
@@ -351,6 +374,8 @@ export const createMediaUploadPlanHandler = (
           typeof req.body?.contentType === "string"
             ? req.body.contentType
             : undefined,
+      }, {
+        videoUploadProviderPreference,
       });
 
       if (!providers.length) {
@@ -381,7 +406,9 @@ export const createMediaUploadCompleteHandler = (
 
       const resourceType = resolveRequestedResourceType(req.body?.resourceType);
       const provider =
-        req.body?.provider === "cloudinary" || req.body?.provider === "supabase"
+        req.body?.provider === "cloudinary" ||
+        req.body?.provider === "supabase" ||
+        req.body?.provider === "r2"
           ? req.body.provider
           : "";
 
@@ -440,6 +467,66 @@ export const createMediaUploadCompleteHandler = (
       }
 
       return res.json({ success: true });
+    } catch (e: any) {
+      return res.status(500).json({ error: e.message });
+    }
+  };
+};
+
+type MediaReuseCheckRouteDeps = {
+  getSupabase: typeof getSupabase;
+  findReusableMediaAssetByFingerprint: typeof findReusableMediaAssetByFingerprint;
+};
+
+const defaultMediaReuseCheckRouteDeps: MediaReuseCheckRouteDeps = {
+  getSupabase,
+  findReusableMediaAssetByFingerprint,
+};
+
+export const createMediaReuseCheckHandler = (
+  deps: Partial<MediaReuseCheckRouteDeps> = {},
+) => {
+  const resolvedDeps = { ...defaultMediaReuseCheckRouteDeps, ...deps };
+
+  return async (req: AuthenticatedRequest, res: any) => {
+    try {
+      const userId = req.authUser?.id;
+      if (!userId) {
+        return res.status(400).json({ error: "Unauthorized" });
+      }
+
+      const resourceType =
+        req.body?.resourceType === "video"
+          ? "video"
+          : req.body?.resourceType === "audio"
+            ? "audio"
+            : "image";
+      const fingerprint =
+        typeof req.body?.fingerprint === "string"
+          ? req.body.fingerprint.trim()
+          : "";
+
+      if (!fingerprint) {
+        return res.status(400).json({ error: "Missing file fingerprint." });
+      }
+
+      const asset = await resolvedDeps.findReusableMediaAssetByFingerprint(
+        resolvedDeps.getSupabase(),
+        {
+          userId,
+          resourceType,
+          fingerprint,
+        },
+      );
+
+      if (!asset) {
+        return res.json({ reused: false });
+      }
+
+      return res.json({
+        reused: true,
+        asset,
+      });
     } catch (e: any) {
       return res.status(500).json({ error: e.message });
     }
@@ -658,6 +745,12 @@ router.post(
   createMediaUploadCompleteHandler(),
 );
 
+router.post(
+  "/media/reuse-check",
+  authenticate,
+  createMediaReuseCheckHandler(),
+);
+
 router.get(
   "/media/library",
   authenticate,
@@ -718,6 +811,7 @@ router.post(
         fileName:
           typeof req.body?.fileName === "string" ? req.body.fileName : undefined,
       });
+      const fileFingerprint = computeBufferSha256(file.buffer);
 
       await persistMediaAssetRecord(getSupabase(), {
         userId,
@@ -746,6 +840,96 @@ router.post(
           bucket: result.bucket,
           provider: result.provider,
           source: "supabase-upload",
+          sha256: fileFingerprint,
+        },
+      });
+
+      return res.json(result);
+    } catch (e: any) {
+      return res.status(500).json({ error: e.message });
+    }
+  },
+);
+
+router.post(
+  "/media/upload-r2",
+  authenticate,
+  mediaUpload.single("file"),
+  async (req: AuthenticatedRequest, res) => {
+    try {
+      const userId = req.authUser?.id;
+      if (!userId) {
+        return res.status(400).json({ error: "Unauthorized" });
+      }
+
+      const file = req.file;
+      if (!file) {
+        return res.status(400).json({ error: "No file uploaded" });
+      }
+
+      const resourceType = resolveRequestedResourceType(req.body?.resourceType);
+      const normalizedResourceType =
+        resourceType === "video"
+          ? "video"
+          : resourceType === "audio"
+            ? "audio"
+            : "image";
+      const limits = featureLimitService.getFeatureLimitsForProfile(
+        req.authProfile || undefined,
+      );
+
+      if (resourceType === "video") {
+        if (limits.dailyVideoUploads === 0) {
+          return res.status(403).json({
+            error: "GÃ³i hiá»‡n táº¡i chÆ°a há»— trá»£ upload video.",
+          });
+        }
+
+        if (limits.dailyVideoUploads !== null) {
+          const usedToday = await featureLimitService.getVideoUploadUsageToday(
+            getSupabase(),
+            userId,
+          );
+          if (usedToday >= limits.dailyVideoUploads) {
+            return res.status(429).json({
+              error: `Báº¡n Ä‘Ã£ dÃ¹ng háº¿t ${limits.dailyVideoUploads} lÆ°á»£t upload video hÃ´m nay.`,
+            });
+          }
+        }
+      }
+
+      const result = await uploadToR2Storage({
+        resourceType: normalizedResourceType,
+        userId,
+        file,
+        fileName:
+          typeof req.body?.fileName === "string" ? req.body.fileName : undefined,
+      });
+      const fileFingerprint = computeBufferSha256(file.buffer);
+
+      await persistMediaAssetRecord(getSupabase(), {
+        userId,
+        provider: "r2",
+        resourceType: normalizedResourceType,
+        objectPath: result.path,
+        publicUrl: result.url,
+        fileName:
+          typeof req.body?.fileName === "string"
+            ? req.body.fileName
+            : file.originalname,
+        sizeBytes: file.size,
+        mimeType: file.mimetype,
+        folderName:
+          resourceType === "video"
+            ? "videos"
+            : resourceType === "audio"
+              ? "audio"
+              : "images",
+        metadata: {
+          bucket: result.bucket,
+          provider: result.provider,
+          source: "r2-upload",
+          sha256: fileFingerprint,
         },
       });
 

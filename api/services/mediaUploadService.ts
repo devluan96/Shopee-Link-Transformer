@@ -2,9 +2,18 @@ import crypto from "crypto";
 import { cloudinary } from "../config/cloudinary.js";
 import { CLOUDINARY_UPLOAD_FOLDER } from "../config/constants.js";
 import type { SupabaseClient } from "../config/supabase.js";
+import {
+  DeleteObjectCommand,
+  PutObjectCommand,
+  S3Client,
+} from "@aws-sdk/client-s3";
+import {
+  getVideoUploadProviderOrder,
+  type VideoUploadProviderPreference,
+} from "./appSettingsService.js";
 
 export type MediaUploadResourceType = "image" | "video" | "audio" | "auto";
-export type MediaUploadProvider = "cloudinary" | "supabase";
+export type MediaUploadProvider = "cloudinary" | "r2" | "supabase";
 
 export const MEDIA_ASSET_FINGERPRINT_METADATA_KEY = "sha256";
 
@@ -19,6 +28,15 @@ export interface CloudinaryUploadPlan {
   signature: string;
 }
 
+export interface R2UploadPlan {
+  provider: "r2";
+  resourceType: MediaUploadResourceType;
+  uploadUrl: string;
+  bucket: string;
+  folder: string;
+  publicBaseUrl: string;
+}
+
 export interface SupabaseUploadPlan {
   provider: "supabase";
   resourceType: MediaUploadResourceType;
@@ -29,6 +47,7 @@ export interface SupabaseUploadPlan {
 }
 
 export type MediaUploadPlan =
+  | R2UploadPlan
   | CloudinaryUploadPlan
   | SupabaseUploadPlan;
 
@@ -43,6 +62,27 @@ type SupabaseUploadResult = {
   bucket: string;
   path: string;
   url: string;
+};
+
+type R2UploadResult = {
+  provider: "r2";
+  bucket: string;
+  path: string;
+  url: string;
+};
+
+export type ReusableMediaAsset = {
+  path: string;
+  url: string;
+  provider: Exclude<MediaUploadProvider, "local">;
+  resourceType: Exclude<MediaUploadResourceType, "auto">;
+  folderName: string;
+  tags: string[];
+  fileName: string;
+  sizeBytes: number;
+  modifiedAt: string;
+  mimeType: string;
+  metadata: Record<string, unknown>;
 };
 
 const DEFAULT_PROVIDER_ORDER: MediaUploadProvider[] = [
@@ -119,9 +159,14 @@ const inferMediaUploadResourceType = (
 
 const normalizeProviderOrder = (
   resourceType: Exclude<MediaUploadResourceType, "auto">,
+  videoUploadProviderPreference?: VideoUploadProviderPreference | null,
 ): MediaUploadProvider[] => {
   if (resourceType === "audio") {
     return ["supabase"];
+  }
+
+  if (resourceType === "video" && videoUploadProviderPreference) {
+    return getVideoUploadProviderOrder(videoUploadProviderPreference);
   }
 
   const rawOrder = process.env.MEDIA_UPLOAD_PROVIDER_ORDER;
@@ -140,7 +185,7 @@ const normalizeProviderOrder = (
     .map((value) => value.trim().toLowerCase())
     .filter(
       (value): value is MediaUploadProvider =>
-        value === "cloudinary" || value === "supabase",
+        value === "cloudinary" || value === "r2" || value === "supabase",
     )
     .filter((value) => {
       if (seen.has(value)) return false;
@@ -188,6 +233,133 @@ const getSupabaseUploadFolder = (resourceType: MediaUploadResourceType) => {
   if (resourceType === "video") return "videos";
   if (resourceType === "audio") return "audio";
   return "images";
+};
+
+const getR2UploadFolder = (resourceType: MediaUploadResourceType) => {
+  const configured = process.env.R2_UPLOAD_FOLDER?.trim();
+  if (configured) {
+    return configured.replace(/^\/+|\/+$/g, "");
+  }
+
+  if (resourceType === "video") return "videos";
+  if (resourceType === "audio") return "audio";
+  return "images";
+};
+
+const getR2Config = () => {
+  const accountId = process.env.CLOUDFLARE_ACCOUNT_ID?.trim();
+  const accessKeyId = process.env.R2_ACCESS_KEY_ID?.trim();
+  const secretAccessKey = process.env.R2_SECRET_ACCESS_KEY?.trim();
+  const bucket = process.env.R2_BUCKET_NAME?.trim();
+  const publicBaseUrl = process.env.R2_PUBLIC_BASE_URL?.trim().replace(/\/+$/, "");
+
+  return {
+    accountId,
+    accessKeyId,
+    secretAccessKey,
+    bucket,
+    publicBaseUrl,
+  };
+};
+
+export const computeBufferSha256 = (buffer: Buffer) =>
+  crypto.createHash("sha256").update(buffer).digest("hex");
+
+const getR2Client = () => {
+  const config = getR2Config();
+
+  if (
+    !config.accountId ||
+    !config.accessKeyId ||
+    !config.secretAccessKey ||
+    !config.bucket
+  ) {
+    return null;
+  }
+
+  return {
+    client: new S3Client({
+      region: "auto",
+      endpoint: `https://${config.accountId}.r2.cloudflarestorage.com`,
+      credentials: {
+        accessKeyId: config.accessKeyId,
+        secretAccessKey: config.secretAccessKey,
+      },
+    }),
+    bucket: config.bucket,
+    publicBaseUrl: config.publicBaseUrl || null,
+  };
+};
+
+export const findReusableMediaAssetByFingerprint = async (
+  supabase: SupabaseClient,
+  input: {
+    userId: string;
+    resourceType: Exclude<MediaUploadResourceType, "auto">;
+    fingerprint: string;
+  },
+): Promise<ReusableMediaAsset | null> => {
+  const trimmedFingerprint = input.fingerprint.trim();
+  if (!trimmedFingerprint) {
+    return null;
+  }
+
+  const { data, error } = await supabase
+    .from("media_assets")
+    .select(
+      "object_path, public_url, provider, resource_type, folder_name, tags, file_name, size_bytes, modified_at, mime_type, metadata, created_at, updated_at",
+    )
+    .eq("user_id", input.userId)
+    .eq("resource_type", input.resourceType)
+    .in("provider", ["cloudinary", "r2", "supabase"])
+    .filter(
+      `metadata->>${MEDIA_ASSET_FINGERPRINT_METADATA_KEY}`,
+      "eq",
+      trimmedFingerprint,
+    )
+    .order("modified_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error || !data) {
+    return null;
+  }
+
+  const normalizedResourceType =
+    data.resource_type === "video" || data.resource_type === "audio"
+      ? data.resource_type
+      : "image";
+  const provider =
+    data.provider === "cloudinary" ||
+    data.provider === "r2" ||
+    data.provider === "supabase"
+      ? data.provider
+      : null;
+
+  if (!provider) {
+    return null;
+  }
+
+  return {
+    path: data.object_path || "",
+    url: data.public_url || "",
+    provider,
+    resourceType: normalizedResourceType,
+    folderName: normalizeFolderName(data.folder_name || "root") || "root",
+    tags: Array.isArray(data.tags)
+      ? data.tags.map((tag) => String(tag).trim()).filter(Boolean)
+      : [],
+    fileName: data.file_name || data.object_path?.split("/").pop() || "upload.bin",
+    sizeBytes:
+      Number.isFinite(Number(data.size_bytes)) && Number(data.size_bytes) >= 0
+        ? Number(data.size_bytes)
+        : 0,
+    modifiedAt:
+      new Date(data.modified_at || data.updated_at || data.created_at || Date.now()).toISOString(),
+    mimeType: data.mime_type || "",
+    metadata:
+      data.metadata && typeof data.metadata === "object" ? data.metadata : {},
+  };
 };
 
 export const getSupabaseMediaMaxUploadBytes = () => {
@@ -289,21 +461,52 @@ const getSupabasePlan = (
   };
 };
 
+const getR2Plan = (
+  resourceType: MediaUploadResourceType,
+): R2UploadPlan | null => {
+  if (resourceType === "audio") {
+    return null;
+  }
+
+  const config = getR2Client();
+  if (!config) {
+    return null;
+  }
+
+  return {
+    provider: "r2",
+    resourceType,
+    uploadUrl: "/api/v1/media/upload-r2",
+    bucket: config.bucket,
+    folder: getR2UploadFolder(resourceType),
+    publicBaseUrl: config.publicBaseUrl,
+  };
+};
+
 export const buildMediaUploadPlan = (
   resourceType: MediaUploadResourceType,
   fileMeta?: MediaUploadFileMeta,
+  options?: {
+    videoUploadProviderPreference?: VideoUploadProviderPreference | null;
+  },
 ): MediaUploadPlan[] => {
   const effectiveResourceType = inferMediaUploadResourceType(
     resourceType,
     fileMeta,
   );
+  const r2Plan = getR2Plan(effectiveResourceType);
+  const r2Plans = r2Plan ? [r2Plan] : [];
   const supabasePlan = getSupabasePlan(effectiveResourceType, fileMeta);
   const plansByProvider: Record<MediaUploadProvider, MediaUploadPlan[]> = {
     cloudinary: getCloudinaryPlans(effectiveResourceType),
+    r2: r2Plans,
     supabase: supabasePlan ? [supabasePlan] : [],
   };
 
-  return normalizeProviderOrder(effectiveResourceType)
+  return normalizeProviderOrder(
+    effectiveResourceType,
+    options?.videoUploadProviderPreference || null,
+  )
     .flatMap((provider) => plansByProvider[provider]);
 };
 
@@ -361,4 +564,67 @@ export const uploadToSupabaseStorage = async (
     path: objectPath,
     url: publicUrl,
   };
+};
+
+export const uploadToR2Storage = async (
+  payload: {
+    resourceType: Exclude<MediaUploadResourceType, "auto">;
+    userId: string;
+    file: {
+      buffer: Buffer;
+      mimetype?: string;
+      originalname?: string;
+    };
+    fileName?: string;
+  },
+): Promise<R2UploadResult> => {
+  const config = getR2Client();
+  if (!config) {
+    throw new Error("R2 upload is not configured.");
+  }
+  if (!config.publicBaseUrl) {
+    throw new Error("R2 public base URL is not configured.");
+  }
+
+  const sourceName =
+    payload.fileName || payload.file.originalname || `${payload.resourceType}.bin`;
+  const safeName = sanitizeFileName(sourceName);
+  const objectPath = [
+    getR2UploadFolder(payload.resourceType),
+    payload.userId,
+    `${Date.now()}-${crypto.randomUUID()}-${safeName}`,
+  ]
+    .filter(Boolean)
+    .join("/");
+
+  await config.client.send(
+    new PutObjectCommand({
+      Bucket: config.bucket,
+      Key: objectPath,
+      Body: payload.file.buffer,
+      ContentType: payload.file.mimetype || undefined,
+      CacheControl: "31536000",
+    }),
+  );
+
+  return {
+    provider: "r2",
+    bucket: config.bucket,
+    path: objectPath,
+    url: `${config.publicBaseUrl}/${objectPath}`,
+  };
+};
+
+export const deleteFromR2Storage = async (objectPath: string) => {
+  const config = getR2Client();
+  if (!config) {
+    return;
+  }
+
+  await config.client.send(
+    new DeleteObjectCommand({
+      Bucket: config.bucket,
+      Key: objectPath,
+    }),
+  );
 };
