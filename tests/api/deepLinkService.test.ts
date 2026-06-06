@@ -4,6 +4,7 @@ import {
   applyDeepLinkTemplate,
   resolveDeepLinkUrl,
   shouldBypassLandingForMobileDeepLink,
+  shouldBypassPublicLandingForMobileDeepLink,
 } from "../../api/services/deepLinkService.js";
 
 test("applyDeepLinkTemplate replaces url placeholders", () => {
@@ -170,6 +171,34 @@ test("resolveDeepLinkUrl does not reuse desktop templates on mobile devices", ()
       "https://shopee.vn/product/123",
       "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)",
       profiles,
+    ),
+    false,
+  );
+});
+
+test("shouldBypassPublicLandingForMobileDeepLink skips preview requests and allows mobile direct opens", () => {
+  const profiles = {
+    shopee: {
+      enabled: true,
+      ios: "shopee://ios?url={{encodedUrl}}",
+    },
+  };
+
+  assert.equal(
+    shouldBypassPublicLandingForMobileDeepLink(
+      "https://shopee.vn/product/123",
+      "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)",
+      profiles,
+      false,
+    ),
+    true,
+  );
+  assert.equal(
+    shouldBypassPublicLandingForMobileDeepLink(
+      "https://shopee.vn/product/123",
+      "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)",
+      profiles,
+      true,
     ),
     false,
   );

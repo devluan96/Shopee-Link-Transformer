@@ -44,6 +44,7 @@ import {
   getLinkDeepLinkProfiles,
   resolveDeepLinkUrl,
   shouldBypassLandingForMobileDeepLink,
+  shouldBypassPublicLandingForMobileDeepLink,
 } from "./services/deepLinkService.js";
 import { renderLinkLandingPage } from "./templates/landingPage.js";
 import { renderChoiceLandingPage } from "./templates/landingPageChoice.js";
@@ -1005,6 +1006,13 @@ const handlePublicShortLinkRequest = async (
           deepLinkProfiles,
         )
       : "";
+    const shouldBypassMobileLanding =
+      shouldBypassPublicLandingForMobileDeepLink(
+        effectiveLink.original_url,
+        userAgentString,
+        deepLinkProfiles,
+        isPreviewRequest,
+      );
 
     const publicBaseUrl =
       getPublicBaseUrl(req) || `${req.protocol}://${req.get("host")}`;
@@ -1025,6 +1033,7 @@ const handlePublicShortLinkRequest = async (
         abVariant,
         hasVideoLanding,
         shouldRenderPreviewPage,
+        shouldBypassMobileLanding,
         shouldBypassLandingForMobileDeepLink: shouldBypassLandingForMobileDeepLink(
           effectiveLink.original_url,
           userAgentString,
@@ -1046,14 +1055,7 @@ const handlePublicShortLinkRequest = async (
       return res.json(inspectData);
     }
 
-    if (
-      !hasVideoLanding &&
-      shouldBypassLandingForMobileDeepLink(
-        effectiveLink.original_url,
-        userAgentString,
-        deepLinkProfiles,
-      )
-    ) {
+    if (shouldBypassMobileLanding) {
       await trackDirectPublicOpen(
         supabase,
         req,
@@ -1069,7 +1071,7 @@ const handlePublicShortLinkRequest = async (
       );
     }
 
-    if (shouldRenderPreviewPage) {
+    if (shouldRenderPreviewPage && !shouldBypassMobileLanding) {
       return res
         .status(200)
         .type("html")

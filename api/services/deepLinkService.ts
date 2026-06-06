@@ -140,6 +140,20 @@ export const shouldBypassLandingForMobileDeepLink = (
   return Boolean(getTemplateForDevice(profile, devicePlatform));
 };
 
+export const shouldBypassPublicLandingForMobileDeepLink = (
+  destinationUrl: string,
+  userAgent?: string | null,
+  profiles?: DeepLinkProfiles | null,
+  isPreviewRequest = false,
+) => {
+  if (isPreviewRequest) return false;
+  return shouldBypassLandingForMobileDeepLink(
+    destinationUrl,
+    userAgent,
+    profiles,
+  );
+};
+
 export const applyDeepLinkTemplate = (
   template: string,
   destinationUrl: string,
