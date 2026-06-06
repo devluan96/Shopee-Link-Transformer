@@ -109,11 +109,11 @@ const getTemplateForDevice = (
   if (!profile?.enabled) return null;
 
   if (devicePlatform === "ios") {
-    return profile.ios || profile.desktop || null;
+    return profile.ios || null;
   }
 
   if (devicePlatform === "android") {
-    return profile.android || profile.desktop || null;
+    return profile.android || null;
   }
 
   return profile.desktop || null;
@@ -138,6 +138,20 @@ export const shouldBypassLandingForMobileDeepLink = (
   if (devicePlatform === "desktop") return false;
 
   return Boolean(getTemplateForDevice(profile, devicePlatform));
+};
+
+export const shouldBypassPublicLandingForMobileDeepLink = (
+  destinationUrl: string,
+  userAgent?: string | null,
+  profiles?: DeepLinkProfiles | null,
+  isPreviewRequest = false,
+) => {
+  if (isPreviewRequest) return false;
+  return shouldBypassLandingForMobileDeepLink(
+    destinationUrl,
+    userAgent,
+    profiles,
+  );
 };
 
 export const applyDeepLinkTemplate = (
