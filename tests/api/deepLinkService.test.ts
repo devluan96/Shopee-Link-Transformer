@@ -148,3 +148,29 @@ test("shouldBypassLandingForMobileDeepLink bypasses landing only for enabled mob
     false,
   );
 });
+
+test("resolveDeepLinkUrl does not reuse desktop templates on mobile devices", () => {
+  const profiles = {
+    shopee: {
+      enabled: true,
+      desktop: "intent://open?url={{encodedUrl}}",
+    },
+  };
+
+  assert.equal(
+    resolveDeepLinkUrl(
+      "https://shopee.vn/product/123",
+      "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)",
+      profiles,
+    ),
+    "https://shopee.vn/product/123",
+  );
+  assert.equal(
+    shouldBypassLandingForMobileDeepLink(
+      "https://shopee.vn/product/123",
+      "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)",
+      profiles,
+    ),
+    false,
+  );
+});

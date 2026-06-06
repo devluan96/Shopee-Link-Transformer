@@ -109,11 +109,11 @@ const getTemplateForDevice = (
   if (!profile?.enabled) return null;
 
   if (devicePlatform === "ios") {
-    return profile.ios || profile.desktop || null;
+    return profile.ios || null;
   }
 
   if (devicePlatform === "android") {
-    return profile.android || profile.desktop || null;
+    return profile.android || null;
   }
 
   return profile.desktop || null;
