@@ -217,6 +217,28 @@ const trackDirectPublicOpen = async (
   }
 };
 
+const scheduleDirectPublicOpenTracking = (
+  supabase: ReturnType<typeof getSupabase>,
+  req: Request,
+  link: PublicLinkRecord,
+  effectiveLink: PublicLinkRecord,
+  userAgent: string,
+  abVariant: "a" | "b",
+) => {
+  setImmediate(() => {
+    void trackDirectPublicOpen(
+      supabase,
+      req,
+      link,
+      effectiveLink,
+      userAgent,
+      abVariant,
+    ).catch((trackError) => {
+      console.error("Direct public open tracking failed:", trackError);
+    });
+  });
+};
+
 const fetchEffectiveTrackedLink = async (supabase: ReturnType<typeof getSupabase>, req: Request, linkId: string) => {
   const userAgent = req.headers["user-agent"] || "";
   const { data: link, error: linkError } = await supabase
@@ -1056,7 +1078,12 @@ const handlePublicShortLinkRequest = async (
     }
 
     if (shouldBypassMobileLanding) {
-      await trackDirectPublicOpen(
+      const redirectResponse = sendPrimaryRedirectResponse(
+        res,
+        primaryRedirectUrl,
+        effectiveLink.custom_title?.trim() || "HotsNew Click",
+      );
+      scheduleDirectPublicOpenTracking(
         supabase,
         req,
         link,
@@ -1064,11 +1091,7 @@ const handlePublicShortLinkRequest = async (
         userAgentString,
         abVariant,
       );
-      return sendPrimaryRedirectResponse(
-        res,
-        primaryRedirectUrl,
-        effectiveLink.custom_title?.trim() || "HotsNew Click",
-      );
+      return redirectResponse;
     }
 
     if (shouldRenderPreviewPage && !shouldBypassMobileLanding) {
@@ -1098,7 +1121,12 @@ const handlePublicShortLinkRequest = async (
       );
     }
 
-    await trackDirectPublicOpen(
+    const redirectResponse = sendPrimaryRedirectResponse(
+      res,
+      primaryRedirectUrl,
+      effectiveLink.custom_title?.trim() || "HotsNew Click",
+    );
+    scheduleDirectPublicOpenTracking(
       supabase,
       req,
       link,
@@ -1106,12 +1134,7 @@ const handlePublicShortLinkRequest = async (
       typeof userAgent === "string" ? userAgent : "",
       abVariant,
     );
-
-    return sendPrimaryRedirectResponse(
-      res,
-      primaryRedirectUrl,
-      effectiveLink.custom_title?.trim() || "HotsNew Click",
-    );
+    return redirectResponse;
   } catch (e: any) {
     console.error("[REDIRECT ERROR]", {
       shortCode,
