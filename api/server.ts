@@ -553,7 +553,7 @@ const sendPrimaryRedirectResponse = (
       .send(renderDeepLinkLaunchPage(redirectUrl, title));
   }
 
-  return res.redirect(redirectUrl);
+  return res.status(302).setHeader("Location", redirectUrl).end();
 };
 
 // A. MIDDLEWARES
