@@ -5,6 +5,7 @@ import {
   Check,
   CheckCircle2,
   CreditCard,
+  AlertTriangle,
   ExternalLink,
   Eye,
   Filter,
@@ -57,6 +58,14 @@ const mergeDeepLinkProfiles = (profiles: DeepLinkProfiles) => ({
     ...profiles.tiktok,
   },
 });
+
+const isHttpUrl = (value?: string | null) =>
+  /^https?:\/\//i.test((value || "").trim());
+
+const isCustomSchemeUrl = (value?: string | null) =>
+  /^(intent|shopee|tiktok|fb|fb-messenger|line|market):/i.test(
+    (value || "").trim(),
+  );
 
 interface UserLink {
   id: string;
@@ -671,6 +680,51 @@ export const AdminPanel = ({
     });
   };
 
+  const getDeepLinkWarnings = (
+    platform: keyof DeepLinkProfiles,
+    target: DeepLinkProfiles[keyof DeepLinkProfiles] | undefined,
+  ) => {
+    const platformLabel =
+      platform === "shopee"
+        ? content.deepLinks.shopee
+        : content.deepLinks.tiktok;
+    const warnings: string[] = [];
+    const iosValue = target?.ios?.trim() || "";
+    const desktopValue = target?.desktop?.trim() || "";
+
+    if (!iosValue) {
+      warnings.push(
+        locale === "vi"
+          ? `Thiếu URL iOS cho ${platformLabel}. iPhone sẽ không có đường mở app đúng.`
+          : `Missing iOS URL for ${platformLabel}. iPhone will not have a valid app-open path.`,
+      );
+    } else if (!isHttpUrl(iosValue)) {
+      warnings.push(
+        locale === "vi"
+          ? `URL iOS của ${platformLabel} nên là HTTPS universal link, không phải custom scheme.`
+          : `The iOS URL for ${platformLabel} should be an HTTPS universal link, not a custom scheme.`,
+      );
+    }
+
+    if (!iosValue && desktopValue && isCustomSchemeUrl(desktopValue)) {
+      warnings.push(
+        locale === "vi"
+          ? `Desktop fallback của ${platformLabel} đang là custom scheme (${desktopValue}). iPhone không thể dùng giá trị này.`
+          : `The desktop fallback for ${platformLabel} is a custom scheme (${desktopValue}). iPhone cannot use it.`,
+      );
+    }
+
+    if (iosValue && isCustomSchemeUrl(iosValue)) {
+      warnings.push(
+        locale === "vi"
+          ? `URL iOS của ${platformLabel} đang là custom scheme. Nếu app không mở trên iPhone, hãy đổi sang HTTPS universal link.`
+          : `The iOS URL for ${platformLabel} is a custom scheme. If the app does not open on iPhone, switch to an HTTPS universal link.`,
+      );
+    }
+
+    return warnings;
+  };
+
   const handleSaveVideoUploadProvider = () => {
     setConfirmAction({
       title:
@@ -1103,6 +1157,24 @@ export const AdminPanel = ({
                   <div className="mt-4 space-y-3">
                     <input
                       type="text"
+                      value={target?.ios || ""}
+                      onChange={(e) =>
+                        updateDeepLinkTarget(platform, "ios", e.target.value)
+                      }
+                      placeholder={content.deepLinks.iosPlaceholder}
+                      className="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm font-medium text-gray-900 placeholder:text-gray-400 focus:border-emerald-500 focus:outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+                    />
+                    <input
+                      type="text"
+                      value={target?.android || ""}
+                      onChange={(e) =>
+                        updateDeepLinkTarget(platform, "android", e.target.value)
+                      }
+                      placeholder={content.deepLinks.androidPlaceholder}
+                      className="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm font-medium text-gray-900 placeholder:text-gray-400 focus:border-emerald-500 focus:outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+                    />
+                    <input
+                      type="text"
                       value={target?.desktop || ""}
                       onChange={(e) =>
                         updateDeepLinkTarget(platform, "desktop", e.target.value)
@@ -1111,6 +1183,25 @@ export const AdminPanel = ({
                       className="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm font-medium text-gray-900 placeholder:text-gray-400 focus:border-emerald-500 focus:outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
                     />
                   </div>
+
+                  {enabled && getDeepLinkWarnings(platform, target).length > 0 && (
+                    <div className="mt-4 space-y-2 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-xs leading-5 text-amber-900 dark:border-amber-900/40 dark:bg-amber-950/20 dark:text-amber-100">
+                      <div className="flex items-center gap-2 font-black uppercase tracking-widest">
+                        <AlertTriangle size={14} />
+                        <span>
+                          {locale === "vi" ? "Cảnh báo cấu hình" : "Config warning"}
+                        </span>
+                      </div>
+                      <ul className="space-y-1.5">
+                        {getDeepLinkWarnings(platform, target).map((warning) => (
+                          <li key={warning} className="flex gap-2">
+                            <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-amber-500" />
+                            <span>{warning}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
 
                   <p className="mt-3 text-xs leading-5 text-gray-500 dark:text-slate-400">
                     {content.deepLinks.templateHelp}
