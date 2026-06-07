@@ -104,21 +104,36 @@ const inferDevicePlatform = (userAgent?: string | null) => {
 
 const isHttpUrl = (value?: string | null) => /^https?:\/\//i.test((value || "").trim());
 
-const getTemplateForDevice = (
+const resolveTemplateForDevice = (
   profile: DeepLinkDeviceTarget | undefined,
   devicePlatform: DeepLinkDevicePlatform,
+  destinationUrl: string,
 ) => {
   if (!profile?.enabled) return null;
 
-  if (devicePlatform === "ios") {
-    return profile.ios || (isHttpUrl(profile.desktop) ? profile.desktop : null);
+  const candidateTemplates =
+    devicePlatform === "ios"
+      ? [profile.ios, profile.desktop]
+      : devicePlatform === "android"
+        ? [profile.android, profile.desktop]
+        : [profile.desktop];
+
+  for (const template of candidateTemplates) {
+    if (!template) continue;
+
+    try {
+      const resolvedUrl = applyDeepLinkTemplate(template, destinationUrl);
+      if (devicePlatform === "ios" && !isHttpUrl(resolvedUrl)) {
+        continue;
+      }
+
+      return resolvedUrl;
+    } catch {
+      continue;
+    }
   }
 
-  if (devicePlatform === "android") {
-    return profile.android || profile.desktop || null;
-  }
-
-  return profile.desktop || null;
+  return null;
 };
 
 export const isMobileDeepLinkDestination = (destinationUrl: string) => {
@@ -139,7 +154,9 @@ export const shouldBypassLandingForMobileDeepLink = (
   const devicePlatform = inferDevicePlatform(userAgent);
   if (devicePlatform === "desktop") return false;
 
-  return Boolean(getTemplateForDevice(profile, devicePlatform));
+  return Boolean(
+    resolveTemplateForDevice(profile, devicePlatform, destinationUrl),
+  );
 };
 
 export const shouldBypassPublicLandingForMobileDeepLink = (
@@ -180,15 +197,10 @@ export const resolveDeepLinkUrl = (
   if (!profile?.enabled) return destinationUrl;
 
   const devicePlatform = inferDevicePlatform(userAgent);
-  const template = getTemplateForDevice(profile, devicePlatform);
-
-  if (!template) return destinationUrl;
-
-  try {
-    return applyDeepLinkTemplate(template, destinationUrl);
-  } catch {
-    return destinationUrl;
-  }
+  return (
+    resolveTemplateForDevice(profile, devicePlatform, destinationUrl) ||
+    destinationUrl
+  );
 };
 
 export const shouldUseDeepLinkSplash = (

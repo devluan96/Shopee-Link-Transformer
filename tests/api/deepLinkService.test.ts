@@ -41,7 +41,7 @@ test("resolveDeepLinkUrl uses the device-specific deep link template when availa
       "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)",
       profiles,
     ),
-    "shopee://ios?url=https%3A%2F%2Fshopee.vn%2Fproduct%2F123",
+    "https://fallback.example/redirect?url=https://shopee.vn/product/123",
   );
   assert.equal(
     resolveDeepLinkUrl(
@@ -57,7 +57,7 @@ test("resolveDeepLinkUrl uses the device-specific deep link template when availa
       "Mozilla/5.0 (iPad; CPU OS 17_0 like Mac OS X)",
       profiles,
     ),
-    "tiktok://ios?url=https%3A%2F%2Fwww.tiktok.com%2F%40demo%2Fvideo%2F123",
+    "https://desktop.example/redirect?url=https%3A%2F%2Fwww.tiktok.com%2F%40demo%2Fvideo%2F123",
   );
   assert.equal(
     resolveDeepLinkUrl(
@@ -100,7 +100,7 @@ test("shouldBypassLandingForMobileDeepLink bypasses landing only for enabled mob
   const profiles = {
     shopee: {
       enabled: true,
-      ios: "shopee://ios?url={{encodedUrl}}",
+      desktop: "{{url}}",
     },
     tiktok: {
       enabled: true,
@@ -202,11 +202,37 @@ test("resolveDeepLinkUrl allows iOS to fall back to desktop https universal link
   );
 });
 
+test("resolveDeepLinkUrl allows iOS to fall back to a rendered desktop template when it resolves to HTTPS", () => {
+  const profiles = {
+    shopee: {
+      enabled: true,
+      desktop: "{{url}}",
+    },
+  };
+
+  assert.equal(
+    resolveDeepLinkUrl(
+      "https://s.shopee.vn/70HVE1d0qK",
+      "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)",
+      profiles,
+    ),
+    "https://s.shopee.vn/70HVE1d0qK",
+  );
+  assert.equal(
+    shouldBypassLandingForMobileDeepLink(
+      "https://s.shopee.vn/70HVE1d0qK",
+      "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)",
+      profiles,
+    ),
+    true,
+  );
+});
+
 test("shouldBypassPublicLandingForMobileDeepLink skips preview requests and allows mobile direct opens", () => {
   const profiles = {
     shopee: {
       enabled: true,
-      ios: "shopee://ios?url={{encodedUrl}}",
+      desktop: "{{url}}",
     },
   };
 
