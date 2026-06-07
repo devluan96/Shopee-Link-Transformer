@@ -102,6 +102,8 @@ const inferDevicePlatform = (userAgent?: string | null) => {
   return "desktop";
 };
 
+const isHttpUrl = (value?: string | null) => /^https?:\/\//i.test((value || "").trim());
+
 const getTemplateForDevice = (
   profile: DeepLinkDeviceTarget | undefined,
   devicePlatform: DeepLinkDevicePlatform,
@@ -109,11 +111,11 @@ const getTemplateForDevice = (
   if (!profile?.enabled) return null;
 
   if (devicePlatform === "ios") {
-    return profile.ios || null;
+    return profile.ios || (isHttpUrl(profile.desktop) ? profile.desktop : null);
   }
 
   if (devicePlatform === "android") {
-    return profile.android || null;
+    return profile.android || profile.desktop || null;
   }
 
   return profile.desktop || null;

@@ -176,6 +176,32 @@ test("resolveDeepLinkUrl does not reuse desktop templates on mobile devices", ()
   );
 });
 
+test("resolveDeepLinkUrl allows iOS to fall back to desktop https universal links", () => {
+  const profiles = {
+    shopee: {
+      enabled: true,
+      desktop: "https://shopee.vn/product/123?utm_source=test",
+    },
+  };
+
+  assert.equal(
+    resolveDeepLinkUrl(
+      "https://shopee.vn/product/123",
+      "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)",
+      profiles,
+    ),
+    "https://shopee.vn/product/123?utm_source=test",
+  );
+  assert.equal(
+    shouldBypassLandingForMobileDeepLink(
+      "https://shopee.vn/product/123",
+      "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)",
+      profiles,
+    ),
+    true,
+  );
+});
+
 test("shouldBypassPublicLandingForMobileDeepLink skips preview requests and allows mobile direct opens", () => {
   const profiles = {
     shopee: {
