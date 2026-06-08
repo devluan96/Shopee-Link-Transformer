@@ -1033,6 +1033,7 @@ const handlePublicShortLinkRequest = async (
         effectiveLink.original_url,
         userAgentString,
         deepLinkProfiles,
+        hasVideoLanding,
         isPreviewRequest,
       );
 
