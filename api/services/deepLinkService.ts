@@ -179,9 +179,10 @@ export const shouldBypassPublicLandingForMobileDeepLink = (
   destinationUrl: string,
   userAgent?: string | null,
   profiles?: DeepLinkProfiles | null,
+  hasVideoLanding = false,
   isPreviewRequest = false,
 ) => {
-  if (isPreviewRequest) return false;
+  if (hasVideoLanding || isPreviewRequest) return false;
   return shouldBypassLandingForMobileDeepLink(
     destinationUrl,
     userAgent,

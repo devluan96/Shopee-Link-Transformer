@@ -260,6 +260,7 @@ test("shouldBypassPublicLandingForMobileDeepLink skips preview requests and allo
       "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)",
       profiles,
       false,
+      false,
     ),
     true,
   );
@@ -268,7 +269,28 @@ test("shouldBypassPublicLandingForMobileDeepLink skips preview requests and allo
       "https://shopee.vn/product/123",
       "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)",
       profiles,
+      false,
       true,
+    ),
+    false,
+  );
+});
+
+test("shouldBypassPublicLandingForMobileDeepLink keeps video landing pages on mobile unless direct mode is active", () => {
+  const profiles = {
+    shopee: {
+      enabled: true,
+      desktop: "{{url}}",
+    },
+  };
+
+  assert.equal(
+    shouldBypassPublicLandingForMobileDeepLink(
+      "https://shopee.vn/product/123",
+      "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)",
+      profiles,
+      true,
+      false,
     ),
     false,
   );
