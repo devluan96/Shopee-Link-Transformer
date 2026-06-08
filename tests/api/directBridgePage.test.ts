@@ -33,6 +33,22 @@ test("renderDirectBridgePage exposes TikTok app link metadata and redirects to t
   );
   assert.match(
     html,
+    /<meta property="al:android:package" content="com\.ss\.android\.ugc\.trill" \/>/,
+  );
+  assert.match(
+    html,
+    /<meta property="al:android:app_name" content="TikTok" \/>/,
+  );
+  assert.match(
+    html,
+    /<meta property="al:ios:app_name" content="TikTok" \/>/,
+  );
+  assert.match(
+    html,
+    /<meta property="al:ios:app_store_id" content="1235601864" \/>/,
+  );
+  assert.match(
+    html,
     /href="https:\/\/www\.tiktok\.com\/view\/product\/1731062681949079816"/,
   );
   assert.match(html, /window\.location\.replace\(targetUrl\);/);
@@ -55,4 +71,5 @@ test("renderDirectBridgePage keeps non-TikTok targets on HTTPS app links", () =>
     html,
     /<meta property="al:android:url" content="https:\/\/s\.shopee\.vn\/70HVE1d0qK" \/>/,
   );
+  assert.doesNotMatch(html, /al:android:package/);
 });

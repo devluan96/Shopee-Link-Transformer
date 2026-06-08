@@ -40,6 +40,10 @@ const buildAppLinkOverride = (destinationUrl: string) => {
   return buildTikTokAppScheme(destinationUrl);
 };
 
+const TIKTOK_ANDROID_PACKAGE = "com.ss.android.ugc.trill";
+const TIKTOK_APP_NAME = "TikTok";
+const TIKTOK_APP_STORE_ID = "1235601864";
+
 export const renderDirectBridgePage = (
   link: PublicLinkRecord,
   canonicalUrl: string,
@@ -63,6 +67,14 @@ export const renderDirectBridgePage = (
   const appLinkOverrideUrl = buildAppLinkOverride(primaryRedirectUrl);
   const socialImageUrl = imageUrl || defaultOgImage;
   const faviconUrl = imageUrl || fallbackFavicon;
+  const isTikTokTarget = Boolean(appLinkOverrideUrl);
+  const tiktokAppMeta = isTikTokTarget
+    ? `
+    <meta property="al:android:package" content="${TIKTOK_ANDROID_PACKAGE}" />
+    <meta property="al:android:app_name" content="${TIKTOK_APP_NAME}" />
+    <meta property="al:ios:app_name" content="${TIKTOK_APP_NAME}" />
+    <meta property="al:ios:app_store_id" content="${TIKTOK_APP_STORE_ID}" />`
+    : "";
 
   return `<!DOCTYPE html>
 <html lang="vi">
@@ -77,6 +89,7 @@ export const renderDirectBridgePage = (
     <link rel="apple-touch-icon" href="${escapeHtml(faviconUrl)}" />
     <link rel="canonical" href="${escapeHtml(canonicalUrl)}" />
     ${buildAppLinkMetaTags(canonicalUrl, primaryRedirectUrl, appLinkOverrideUrl)}
+    ${tiktokAppMeta}
     <meta property="og:locale" content="vi_VN" />
     <meta property="og:type" content="website" />
     <meta property="og:title" content="${escapeHtml(title)}" />
