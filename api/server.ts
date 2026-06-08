@@ -48,6 +48,7 @@ import {
 } from "./services/deepLinkService.js";
 import { renderLinkLandingPage } from "./templates/landingPage.js";
 import { renderChoiceLandingPage } from "./templates/landingPageChoice.js";
+import { renderDirectBridgePage } from "./templates/directBridgePage.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -70,10 +71,7 @@ const PUBLIC_MARKETING_PATHS = [
 ] as const;
 
 // Thêm hàm bổ trợ kiểm tra In-App Browser Facebook / Zalo ở đầu file
-const isBlockedInAppBrowser = (userAgent?: string | null) => {
-  const ua = (userAgent || "").toLowerCase();
-  return ua.includes("fban") || ua.includes("fbav") || ua.includes("zalo");
-};
+const isBlockedInAppBrowser = (_userAgent?: string | null) => false;
 
 const parseCookieHeader = (cookieHeader?: string) => {
   const cookieMap = new Map<string, string>();
@@ -1129,11 +1127,20 @@ const handlePublicShortLinkRequest = async (
     }
 
     if (shouldBypassMobileLanding) {
-      const redirectResponse = sendPrimaryRedirectResponse(
-        res,
-        primaryRedirectUrl,
-        effectiveLink.custom_title?.trim() || "HotsNew Click",
-      );
+      const redirectResponse = /^https?:\/\//i.test(primaryRedirectUrl)
+        ? res
+            .status(200)
+            .type("html")
+            .send(
+              renderDirectBridgePage(effectiveLink, canonicalUrl, {
+                primaryRedirectUrl,
+              }),
+            )
+        : sendPrimaryRedirectResponse(
+            res,
+            primaryRedirectUrl,
+            effectiveLink.custom_title?.trim() || "HotsNew Click",
+          );
       scheduleDirectPublicOpenTracking(
         supabase,
         req,
