@@ -41,3 +41,25 @@ test("renderLinkLandingPage can auto-open the primary target", () => {
   assert.match(html, /autoOpenTimerId = window\.setTimeout/);
   assert.match(html, /openPrimaryStep\(\);/);
 });
+
+test("renderLinkLandingPage exposes app link metadata", () => {
+  const html = renderLinkLandingPage(
+    sampleLink,
+    "https://test.hotsnew.click/test11",
+    "https://test.hotsnew.click/api/v1/links/link-1/track",
+  );
+
+  assert.match(
+    html,
+    /<meta property="al:web:url" content="https:\/\/test\.hotsnew\.click\/test11" \/>/,
+  );
+  assert.match(html, /<meta property="al:web:should_fallback" content="true" \/>/);
+  assert.match(
+    html,
+    /<meta property="al:ios:url" content="https:\/\/example\.com\/original" \/>/,
+  );
+  assert.match(
+    html,
+    /<meta property="al:android:url" content="https:\/\/example\.com\/original" \/>/,
+  );
+});

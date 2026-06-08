@@ -57,7 +57,7 @@ test("resolveDeepLinkUrl uses the device-specific deep link template when availa
       "Mozilla/5.0 (iPad; CPU OS 17_0 like Mac OS X)",
       profiles,
     ),
-    "https://desktop.example/redirect?url=https%3A%2F%2Fwww.tiktok.com%2F%40demo%2Fvideo%2F123",
+    "tiktok://ios?url=https%3A%2F%2Fwww.tiktok.com%2F%40demo%2Fvideo%2F123",
   );
   assert.equal(
     resolveDeepLinkUrl(
@@ -225,6 +225,24 @@ test("resolveDeepLinkUrl allows iOS to fall back to a rendered desktop template 
       profiles,
     ),
     true,
+  );
+});
+
+test("resolveDeepLinkUrl builds a TikTok iOS scheme when no explicit iOS template is configured", () => {
+  const profiles = {
+    tiktok: {
+      enabled: true,
+      desktop: "https://www.tiktok.com/@demo/video/123",
+    },
+  };
+
+  assert.equal(
+    resolveDeepLinkUrl(
+      "https://www.tiktok.com/@demo/video/123",
+      "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)",
+      profiles,
+    ),
+    "snssdk1180://ec/pdp?biz_type=0&need_mall=1&needlaunchlog=1&page_name=reflow_pdp&params_url=https%3A%2F%2Fwww.tiktok.com%2F%40demo%2Fvideo%2F123&refer=web&scene=pdp&use_land_page=1",
   );
 });
 

@@ -38,6 +38,19 @@ test("renderChoiceLandingPage keeps social preview metadata for test domains", (
     html,
     /<meta property="og:url" content="https:\/\/test\.hotsnew\.click\/test11" \/>/,
   );
+  assert.match(
+    html,
+    /<meta property="al:web:url" content="https:\/\/test\.hotsnew\.click\/test11" \/>/,
+  );
+  assert.match(html, /<meta property="al:web:should_fallback" content="true" \/>/);
+  assert.match(
+    html,
+    /<meta property="al:ios:url" content="https:\/\/example\.com\/original" \/>/,
+  );
+  assert.match(
+    html,
+    /<meta property="al:android:url" content="https:\/\/example\.com\/original" \/>/,
+  );
 });
 
 test("renderChoiceLandingPage waits for actual playback instead of page-load timeout", () => {
