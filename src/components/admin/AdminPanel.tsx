@@ -5,6 +5,7 @@ import {
   Check,
   CheckCircle2,
   CreditCard,
+  AlertTriangle,
   ExternalLink,
   Eye,
   Filter,
@@ -20,6 +21,7 @@ import {
   Users as UsersIcon,
   X,
   XCircle,
+  Zap,
 } from "lucide-react";
 import { buildPrettyLinkPath } from "@/src/lib/linkPaths";
 import { cn } from "@/src/lib/utils";
@@ -29,6 +31,7 @@ import {
   BlockedIpEntry,
   DeepLinkProfiles,
   ManualPaymentRequest,
+  VideoUploadProviderPreference,
   UserProfile,
 } from "@/src/types";
 import { useLocale } from "@/src/hooks/useLocale";
@@ -55,6 +58,14 @@ const mergeDeepLinkProfiles = (profiles: DeepLinkProfiles) => ({
     ...profiles.tiktok,
   },
 });
+
+const isHttpUrl = (value?: string | null) =>
+  /^https?:\/\//i.test((value || "").trim());
+
+const isCustomSchemeUrl = (value?: string | null) =>
+  /^(intent|shopee|tiktok|fb|fb-messenger|line|market):/i.test(
+    (value || "").trim(),
+  );
 
 interface UserLink {
   id: string;
@@ -89,6 +100,8 @@ interface AdminPanelProps {
   outputDomainsLoading: boolean;
   deepLinkProfiles: DeepLinkProfiles;
   deepLinkProfilesLoading: boolean;
+  videoUploadProviderPreference: VideoUploadProviderPreference;
+  videoUploadProviderPreferenceLoading: boolean;
   onBlockIp: (payload: {
     ipAddress: string;
     reason?: string;
@@ -114,6 +127,9 @@ interface AdminPanelProps {
     init?: RequestInit,
   ) => Promise<Response>;
   onUpdateDeepLinkProfiles: (profiles: DeepLinkProfiles) => Promise<void>;
+  onUpdateVideoUploadProviderPreference: (
+    provider: VideoUploadProviderPreference,
+  ) => Promise<void>;
 }
 
 export const AdminPanel = ({
@@ -128,6 +144,8 @@ export const AdminPanel = ({
   outputDomainsLoading,
   deepLinkProfiles,
   deepLinkProfilesLoading,
+  videoUploadProviderPreference,
+  videoUploadProviderPreferenceLoading,
   onBlockIp,
   onUnblockIp,
   onUpdateOutputDomains,
@@ -143,6 +161,7 @@ export const AdminPanel = ({
   onRejectPaymentRequest,
   fetchWithAuth,
   onUpdateDeepLinkProfiles,
+  onUpdateVideoUploadProviderPreference,
 }: AdminPanelProps) => {
   const { locale, messages, t } = useLocale();
   const dateLocale = locale === "vi" ? "vi-VN" : "en-US";
@@ -242,6 +261,12 @@ export const AdminPanel = ({
     mergeDeepLinkProfiles(deepLinkProfiles),
   );
   const [savingDeepLinks, setSavingDeepLinks] = React.useState(false);
+  const [videoUploadProviderDraft, setVideoUploadProviderDraft] =
+    React.useState<VideoUploadProviderPreference>(
+      videoUploadProviderPreference,
+    );
+  const [savingVideoUploadProvider, setSavingVideoUploadProvider] =
+    React.useState(false);
   const [selectedUserRoleDraft, setSelectedUserRoleDraft] =
     React.useState<AdminRole>("user");
   const [selectedUserPlanDraft, setSelectedUserPlanDraft] = React.useState<
@@ -258,6 +283,10 @@ export const AdminPanel = ({
   React.useEffect(() => {
     setDeepLinkDraft(mergeDeepLinkProfiles(deepLinkProfiles));
   }, [deepLinkProfiles]);
+
+  React.useEffect(() => {
+    setVideoUploadProviderDraft(videoUploadProviderPreference);
+  }, [videoUploadProviderPreference]);
 
   React.useEffect(() => {
     if (!selectedUser) return;
@@ -651,6 +680,77 @@ export const AdminPanel = ({
     });
   };
 
+  const getDeepLinkWarnings = (
+    platform: keyof DeepLinkProfiles,
+    target: DeepLinkProfiles[keyof DeepLinkProfiles] | undefined,
+  ) => {
+    const platformLabel =
+      platform === "shopee"
+        ? content.deepLinks.shopee
+        : content.deepLinks.tiktok;
+    const warnings: string[] = [];
+    const iosValue = target?.ios?.trim() || "";
+    const desktopValue = target?.desktop?.trim() || "";
+    const isTikTokPlatform = platform === "tiktok";
+
+    if (!isTikTokPlatform && !iosValue) {
+      warnings.push(
+        locale === "vi"
+          ? `Thiếu URL iOS cho ${platformLabel}. iPhone sẽ không có đường mở app đúng.`
+          : `Missing iOS URL for ${platformLabel}. iPhone will not have a valid app-open path.`,
+      );
+    } else if (!isTikTokPlatform && !isHttpUrl(iosValue)) {
+      warnings.push(
+        locale === "vi"
+          ? `URL iOS của ${platformLabel} nên là HTTPS universal link, không phải custom scheme.`
+          : `The iOS URL for ${platformLabel} should be an HTTPS universal link, not a custom scheme.`,
+      );
+    }
+
+    if (!iosValue && desktopValue && isCustomSchemeUrl(desktopValue)) {
+      warnings.push(
+        locale === "vi"
+          ? `Desktop fallback của ${platformLabel} đang là custom scheme (${desktopValue}). iPhone không thể dùng giá trị này.`
+          : `The desktop fallback for ${platformLabel} is a custom scheme (${desktopValue}). iPhone cannot use it.`,
+      );
+    }
+
+    if (!isTikTokPlatform && iosValue && isCustomSchemeUrl(iosValue)) {
+      warnings.push(
+        locale === "vi"
+          ? `URL iOS của ${platformLabel} đang là custom scheme. Nếu app không mở trên iPhone, hãy đổi sang HTTPS universal link.`
+          : `The iOS URL for ${platformLabel} is a custom scheme. If the app does not open on iPhone, switch to an HTTPS universal link.`,
+      );
+    }
+
+    return warnings;
+  };
+
+  const handleSaveVideoUploadProvider = () => {
+    setConfirmAction({
+      title:
+        locale === "vi"
+          ? "Lưu cấu hình upload video?"
+          : "Save video upload provider?",
+      description:
+        locale === "vi"
+          ? "Cấu hình này quyết định provider chính khi tải video lên. Hệ thống vẫn sẽ fallback sang provider còn lại nếu cần."
+          : "This decides the primary upload provider for video. The system will still fall back to the other providers when needed.",
+      confirmLabel: locale === "vi" ? "Lưu" : "Save",
+      tone: "warning",
+      onConfirm: async () => {
+        setSavingVideoUploadProvider(true);
+        try {
+          await onUpdateVideoUploadProviderPreference(
+            videoUploadProviderDraft,
+          );
+        } finally {
+          setSavingVideoUploadProvider(false);
+        }
+      },
+    });
+  };
+
   const getStatusLabel = (status?: string) =>
     status === "approved" ? content.statuses.approved : content.statuses.pending;
 
@@ -871,6 +971,69 @@ export const AdminPanel = ({
       >
         <section className="rounded-[2.5rem] border border-gray-100 bg-white p-8 shadow-sm dark:border-slate-700 dark:bg-slate-800 xl:col-span-2">
           <div className="mb-6 flex items-center gap-3">
+            <Zap size={20} className="text-orange-500" />
+            <div>
+              <h3 className="text-xl font-black text-gray-900 dark:text-slate-100">
+                {locale === "vi"
+                  ? "Luồng upload video"
+                  : "Video upload flow"}
+              </h3>
+              <p className="text-sm font-medium text-gray-500 dark:text-slate-400">
+                {locale === "vi"
+                  ? "Chọn provider chính cho video. Hệ thống sẽ thử các provider còn lại nếu provider đầu tiên lỗi."
+                  : "Choose the primary provider for video uploads. The system will fall back to the others if needed."}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-3 md:flex-row md:items-end">
+            <div className="flex-1">
+              <label className="mb-2 block text-xs font-black uppercase tracking-widest text-gray-500 dark:text-slate-400">
+                {locale === "vi" ? "Provider ưu tiên" : "Preferred provider"}
+              </label>
+              <select
+                value={videoUploadProviderDraft}
+                onChange={(e) =>
+                  setVideoUploadProviderDraft(
+                    e.target.value as VideoUploadProviderPreference,
+                  )
+                }
+                className="w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 py-4 text-sm font-bold text-gray-900 focus:border-orange-500 focus:outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+              >
+                <option value="cloudinary">
+                  {locale === "vi" ? "Cloudinary" : "Cloudinary"}
+                </option>
+                <option value="r2">
+                  {locale === "vi" ? "Cloudflare R2" : "Cloudflare R2"}
+                </option>
+                <option value="supabase">
+                  {locale === "vi" ? "Supabase" : "Supabase"}
+                </option>
+              </select>
+            </div>
+
+            <button
+              type="button"
+              onClick={handleSaveVideoUploadProvider}
+              disabled={
+                savingVideoUploadProvider ||
+                videoUploadProviderPreferenceLoading
+              }
+              className="rounded-2xl bg-orange-600 px-6 py-4 text-xs font-black uppercase tracking-widest text-white shadow-lg shadow-orange-200 disabled:opacity-60"
+            >
+              {savingVideoUploadProvider
+                ? locale === "vi"
+                  ? "Đang lưu..."
+                  : "Saving..."
+                : locale === "vi"
+                  ? "Lưu cấu hình"
+                  : "Save setting"}
+            </button>
+          </div>
+        </section>
+
+        <section className="rounded-[2.5rem] border border-gray-100 bg-white p-8 shadow-sm dark:border-slate-700 dark:bg-slate-800 xl:col-span-2">
+          <div className="mb-6 flex items-center gap-3">
             <Globe className="text-sky-500" size={20} />
             <div>
               <h3 className="text-xl font-black text-gray-900 dark:text-slate-100">
@@ -995,6 +1158,24 @@ export const AdminPanel = ({
                   <div className="mt-4 space-y-3">
                     <input
                       type="text"
+                      value={target?.ios || ""}
+                      onChange={(e) =>
+                        updateDeepLinkTarget(platform, "ios", e.target.value)
+                      }
+                      placeholder={content.deepLinks.iosPlaceholder}
+                      className="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm font-medium text-gray-900 placeholder:text-gray-400 focus:border-emerald-500 focus:outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+                    />
+                    <input
+                      type="text"
+                      value={target?.android || ""}
+                      onChange={(e) =>
+                        updateDeepLinkTarget(platform, "android", e.target.value)
+                      }
+                      placeholder={content.deepLinks.androidPlaceholder}
+                      className="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm font-medium text-gray-900 placeholder:text-gray-400 focus:border-emerald-500 focus:outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+                    />
+                    <input
+                      type="text"
                       value={target?.desktop || ""}
                       onChange={(e) =>
                         updateDeepLinkTarget(platform, "desktop", e.target.value)
@@ -1003,6 +1184,25 @@ export const AdminPanel = ({
                       className="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm font-medium text-gray-900 placeholder:text-gray-400 focus:border-emerald-500 focus:outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
                     />
                   </div>
+
+                  {enabled && getDeepLinkWarnings(platform, target).length > 0 && (
+                    <div className="mt-4 space-y-2 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-xs leading-5 text-amber-900 dark:border-amber-900/40 dark:bg-amber-950/20 dark:text-amber-100">
+                      <div className="flex items-center gap-2 font-black uppercase tracking-widest">
+                        <AlertTriangle size={14} />
+                        <span>
+                          {locale === "vi" ? "Cảnh báo cấu hình" : "Config warning"}
+                        </span>
+                      </div>
+                      <ul className="space-y-1.5">
+                        {getDeepLinkWarnings(platform, target).map((warning) => (
+                          <li key={warning} className="flex gap-2">
+                            <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-amber-500" />
+                            <span>{warning}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
 
                   <p className="mt-3 text-xs leading-5 text-gray-500 dark:text-slate-400">
                     {content.deepLinks.templateHelp}

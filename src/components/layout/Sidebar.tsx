@@ -4,6 +4,7 @@ import {
   Building2,
   ChevronDown,
   Download,
+  FileImage,
   LayoutDashboard,
   List,
   Lock,
@@ -192,6 +193,13 @@ export const Sidebar = ({
             label={t("sidebar.linkList")}
             active={activeTab === "list"}
             onClick={() => handleTabClick("list")}
+            compact={compactDesktop}
+          />
+          <SidebarItem
+            icon={FileImage}
+            label={locale === "vi" ? "Thư viện media" : "Media library"}
+            active={activeTab === "library"}
+            onClick={() => handleTabClick("library")}
             compact={compactDesktop}
           />
           <SidebarItem

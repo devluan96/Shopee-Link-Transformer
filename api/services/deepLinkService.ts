@@ -10,6 +10,7 @@ export type DeepLinkDeviceTarget = {
 };
 
 export type DeepLinkProfiles = Partial<Record<DeepLinkPlatform, DeepLinkDeviceTarget>>;
+type DeepLinkDevicePlatform = "ios" | "android" | "desktop";
 
 const APP_SETTINGS_KEY = "link_deeplink_profiles";
 const MAX_TEMPLATE_LENGTH = 2048;
@@ -90,15 +91,65 @@ const inferDestinationPlatform = (value?: string | null): DeepLinkPlatform | nul
 };
 
 const isMobileUserAgent = (userAgent?: string | null) => {
-  const normalized = (userAgent || "").toLowerCase();
-  return /(iphone|ipad|ipod|android)/i.test(normalized);
+  return inferDevicePlatform(userAgent) !== "desktop";
 };
 
 const inferDevicePlatform = (userAgent?: string | null) => {
   const normalized = (userAgent || "").toLowerCase();
-  if (/(iphone|ipad|ipod)/i.test(normalized)) return "ios" as const;
-  if (/android/i.test(normalized)) return "android" as const;
-  return "desktop" as const;
+  if (/(iphone|ipad|ipod)/i.test(normalized)) return "ios";
+  if (/macintosh/.test(normalized) && /mobile/.test(normalized)) return "ios";
+  if (/android/i.test(normalized)) return "android";
+  return "desktop";
+};
+
+const isHttpUrl = (value?: string | null) => /^https?:\/\//i.test((value || "").trim());
+const isCustomSchemeUrl = (value?: string | null) =>
+  /^[a-z][a-z0-9+.-]*:\/\//i.test((value || "").trim());
+
+const buildTikTokIosScheme = (destinationUrl: string) => {
+  const encodedDestinationUrl = encodeURIComponent(destinationUrl);
+  return `snssdk1180://ec/pdp?biz_type=0&need_mall=1&needlaunchlog=1&page_name=reflow_pdp&params_url=${encodedDestinationUrl}&refer=web&scene=pdp&use_land_page=1`;
+};
+
+const resolveTemplateForDevice = (
+  platform: DeepLinkPlatform,
+  profile: DeepLinkDeviceTarget | undefined,
+  devicePlatform: DeepLinkDevicePlatform,
+  destinationUrl: string,
+) => {
+  if (!profile?.enabled) return null;
+
+  const candidateTemplates =
+    devicePlatform === "ios"
+      ? platform === "tiktok"
+        ? [buildTikTokIosScheme(destinationUrl), profile.ios, profile.desktop]
+        : [profile.ios, profile.desktop]
+      : devicePlatform === "android"
+        ? [profile.android, profile.desktop]
+        : [profile.desktop];
+
+  for (const template of candidateTemplates) {
+    if (!template) continue;
+
+    try {
+      const resolvedUrl = applyDeepLinkTemplate(template, destinationUrl);
+      if (devicePlatform === "ios") {
+        if (platform === "tiktok" && isCustomSchemeUrl(resolvedUrl)) {
+          return resolvedUrl;
+        }
+
+        if (!isHttpUrl(resolvedUrl)) {
+          continue;
+        }
+      }
+
+      return resolvedUrl;
+    } catch {
+      continue;
+    }
+  }
+
+  return null;
 };
 
 export const isMobileDeepLinkDestination = (destinationUrl: string) => {
@@ -116,7 +167,26 @@ export const shouldBypassLandingForMobileDeepLink = (
   const profile = profiles?.[platform];
   if (!profile?.enabled) return false;
 
-  return inferDevicePlatform(userAgent) !== "desktop";
+  const devicePlatform = inferDevicePlatform(userAgent);
+  if (devicePlatform === "desktop") return false;
+
+  return Boolean(
+    resolveTemplateForDevice(platform, profile, devicePlatform, destinationUrl),
+  );
+};
+
+export const shouldBypassPublicLandingForMobileDeepLink = (
+  destinationUrl: string,
+  userAgent?: string | null,
+  profiles?: DeepLinkProfiles | null,
+  isPreviewRequest = false,
+) => {
+  if (isPreviewRequest) return false;
+  return shouldBypassLandingForMobileDeepLink(
+    destinationUrl,
+    userAgent,
+    profiles,
+  );
 };
 
 export const applyDeepLinkTemplate = (
@@ -143,19 +213,10 @@ export const resolveDeepLinkUrl = (
   if (!profile?.enabled) return destinationUrl;
 
   const devicePlatform = inferDevicePlatform(userAgent);
-  if (devicePlatform !== "desktop") {
-    return destinationUrl;
-  }
-
-  const template = profile.desktop;
-
-  if (!template) return destinationUrl;
-
-  try {
-    return applyDeepLinkTemplate(template, destinationUrl);
-  } catch {
-    return destinationUrl;
-  }
+  return (
+    resolveTemplateForDevice(platform, profile, devicePlatform, destinationUrl) ||
+    destinationUrl
+  );
 };
 
 export const shouldUseDeepLinkSplash = (

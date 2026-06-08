@@ -582,9 +582,12 @@ export const updateLink = async (
     ab_variant_b_original_url: string;
     ab_variant_b_secondary_url: string;
     secondaryTargetType: "shopee" | "tiktok";
+    mobileDirectMode: boolean;
   }>;
   const requestedSecondaryTargetType = normalizedData.secondaryTargetType;
   delete normalizedData.secondaryTargetType;
+  const mobileDirectMode = !!normalizedData.mobileDirectMode;
+  delete normalizedData.mobileDirectMode;
 
   if ("folder_name" in normalizedData) {
     normalizedData.folder_name = normalizeFolderName(
@@ -625,8 +628,16 @@ export const updateLink = async (
     normalizedData.video_url = normalizedData.video_url?.trim() || null;
   }
 
+  if (mobileDirectMode) {
+    normalizedData.video_url = null;
+    normalizedData.secondary_url = null;
+    normalizedData.ab_variant_b_video_url = null;
+    normalizedData.ab_variant_b_secondary_url = null;
+  }
+
   const shouldNormalizeChoiceFlow =
     requestedSecondaryTargetType !== undefined ||
+    mobileDirectMode ||
     "original_url" in normalizedData ||
     "secondary_url" in normalizedData ||
     "video_url" in normalizedData;
@@ -669,7 +680,7 @@ export const updateLink = async (
         ? requestedSecondaryUrl.trim()
         : "";
 
-    if (!trimmedSecondaryUrl) {
+    if (!trimmedSecondaryUrl || mobileDirectMode) {
       normalizedData.secondary_url = null;
     } else {
       const effectiveVideoUrl =

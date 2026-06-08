@@ -4,6 +4,7 @@ import {
   applyDeepLinkTemplate,
   resolveDeepLinkUrl,
   shouldBypassLandingForMobileDeepLink,
+  shouldBypassPublicLandingForMobileDeepLink,
 } from "../../api/services/deepLinkService.js";
 
 test("applyDeepLinkTemplate replaces url placeholders", () => {
@@ -18,7 +19,7 @@ test("applyDeepLinkTemplate replaces url placeholders", () => {
   );
 });
 
-test("resolveDeepLinkUrl keeps mobile users on the original destination", () => {
+test("resolveDeepLinkUrl uses the device-specific deep link template when available", () => {
   const profiles = {
     shopee: {
       enabled: true,
@@ -28,6 +29,8 @@ test("resolveDeepLinkUrl keeps mobile users on the original destination", () => 
     },
     tiktok: {
       enabled: true,
+      ios: "tiktok://ios?url={{encodedUrl}}",
+      android: "intent://android?tiktok={url}",
       desktop: "https://desktop.example/redirect?url={{encodedUrl}}",
     },
   };
@@ -38,7 +41,7 @@ test("resolveDeepLinkUrl keeps mobile users on the original destination", () => 
       "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)",
       profiles,
     ),
-    "https://shopee.vn/product/123",
+    "https://fallback.example/redirect?url=https://shopee.vn/product/123",
   );
   assert.equal(
     resolveDeepLinkUrl(
@@ -46,7 +49,15 @@ test("resolveDeepLinkUrl keeps mobile users on the original destination", () => 
       "Mozilla/5.0 (Linux; Android 14; Pixel 8)",
       profiles,
     ),
-    "https://shopee.vn/product/123",
+    "intent://android?url=https://shopee.vn/product/123",
+  );
+  assert.equal(
+    resolveDeepLinkUrl(
+      "https://www.tiktok.com/@demo/video/123",
+      "Mozilla/5.0 (iPad; CPU OS 17_0 like Mac OS X)",
+      profiles,
+    ),
+    "snssdk1180://ec/pdp?biz_type=0&need_mall=1&needlaunchlog=1&page_name=reflow_pdp&params_url=https%3A%2F%2Fwww.tiktok.com%2F%40demo%2Fvideo%2F123&refer=web&scene=pdp&use_land_page=1",
   );
   assert.equal(
     resolveDeepLinkUrl(
@@ -63,7 +74,7 @@ test("resolveDeepLinkUrl keeps mobile users on the original destination", () => 
       "Mozilla/5.0 (Linux; Android 14; Pixel 8)",
       profiles,
     ),
-    "https://s.shopee.vn/2qRr9Jvpsc",
+    "intent://android?url=https://s.shopee.vn/2qRr9Jvpsc",
   );
 });
 
@@ -93,7 +104,7 @@ test("shouldBypassLandingForMobileDeepLink bypasses landing only for enabled mob
     },
     tiktok: {
       enabled: true,
-      desktop: "{{url}}",
+      android: "intent://android?tiktok={url}",
     },
   };
 
@@ -115,6 +126,14 @@ test("shouldBypassLandingForMobileDeepLink bypasses landing only for enabled mob
   );
   assert.equal(
     shouldBypassLandingForMobileDeepLink(
+      "https://shopee.vn/product/123",
+      "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_0) Mobile/15E148",
+      profiles,
+    ),
+    true,
+  );
+  assert.equal(
+    shouldBypassLandingForMobileDeepLink(
       "https://example.com/article/1",
       "Mozilla/5.0 (Linux; Android 14; Pixel 8)",
       profiles,
@@ -126,6 +145,130 @@ test("shouldBypassLandingForMobileDeepLink bypasses landing only for enabled mob
       "https://shopee.vn/product/123",
       "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
       profiles,
+    ),
+    false,
+  );
+});
+
+test("resolveDeepLinkUrl does not reuse desktop templates on mobile devices", () => {
+  const profiles = {
+    shopee: {
+      enabled: true,
+      desktop: "intent://open?url={{encodedUrl}}",
+    },
+  };
+
+  assert.equal(
+    resolveDeepLinkUrl(
+      "https://shopee.vn/product/123",
+      "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)",
+      profiles,
+    ),
+    "https://shopee.vn/product/123",
+  );
+  assert.equal(
+    shouldBypassLandingForMobileDeepLink(
+      "https://shopee.vn/product/123",
+      "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)",
+      profiles,
+    ),
+    false,
+  );
+});
+
+test("resolveDeepLinkUrl allows iOS to fall back to desktop https universal links", () => {
+  const profiles = {
+    shopee: {
+      enabled: true,
+      desktop: "https://shopee.vn/product/123?utm_source=test",
+    },
+  };
+
+  assert.equal(
+    resolveDeepLinkUrl(
+      "https://shopee.vn/product/123",
+      "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)",
+      profiles,
+    ),
+    "https://shopee.vn/product/123?utm_source=test",
+  );
+  assert.equal(
+    shouldBypassLandingForMobileDeepLink(
+      "https://shopee.vn/product/123",
+      "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)",
+      profiles,
+    ),
+    true,
+  );
+});
+
+test("resolveDeepLinkUrl allows iOS to fall back to a rendered desktop template when it resolves to HTTPS", () => {
+  const profiles = {
+    shopee: {
+      enabled: true,
+      desktop: "{{url}}",
+    },
+  };
+
+  assert.equal(
+    resolveDeepLinkUrl(
+      "https://s.shopee.vn/70HVE1d0qK",
+      "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)",
+      profiles,
+    ),
+    "https://s.shopee.vn/70HVE1d0qK",
+  );
+  assert.equal(
+    shouldBypassLandingForMobileDeepLink(
+      "https://s.shopee.vn/70HVE1d0qK",
+      "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)",
+      profiles,
+    ),
+    true,
+  );
+});
+
+test("resolveDeepLinkUrl builds a TikTok iOS scheme when no explicit iOS template is configured", () => {
+  const profiles = {
+    tiktok: {
+      enabled: true,
+      desktop: "https://www.tiktok.com/@demo/video/123",
+    },
+  };
+
+  assert.equal(
+    resolveDeepLinkUrl(
+      "https://www.tiktok.com/@demo/video/123",
+      "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)",
+      profiles,
+    ),
+    "snssdk1180://ec/pdp?biz_type=0&need_mall=1&needlaunchlog=1&page_name=reflow_pdp&params_url=https%3A%2F%2Fwww.tiktok.com%2F%40demo%2Fvideo%2F123&refer=web&scene=pdp&use_land_page=1",
+  );
+});
+
+test("shouldBypassPublicLandingForMobileDeepLink skips preview requests and allows mobile direct opens", () => {
+  const profiles = {
+    shopee: {
+      enabled: true,
+      desktop: "{{url}}",
+    },
+  };
+
+  assert.equal(
+    shouldBypassPublicLandingForMobileDeepLink(
+      "https://shopee.vn/product/123",
+      "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)",
+      profiles,
+      false,
+    ),
+    true,
+  );
+  assert.equal(
+    shouldBypassPublicLandingForMobileDeepLink(
+      "https://shopee.vn/product/123",
+      "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)",
+      profiles,
+      true,
     ),
     false,
   );

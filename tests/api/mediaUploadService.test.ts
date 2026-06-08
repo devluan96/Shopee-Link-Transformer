@@ -72,6 +72,39 @@ test("buildMediaUploadPlan prioritizes cloudinary before supabase for video uplo
   );
 });
 
+test("buildMediaUploadPlan prioritizes r2 when video upload preference is r2", () => {
+  withEnv(
+    {
+      CLOUDFLARE_ACCOUNT_ID: "acct-123",
+      R2_ACCESS_KEY_ID: "r2-key",
+      R2_SECRET_ACCESS_KEY: "r2-secret",
+      R2_BUCKET_NAME: "media",
+      R2_PUBLIC_BASE_URL: "https://media.example.com",
+      CLOUDINARY_CLOUD_NAME: "demo-cloud-1",
+      CLOUDINARY_API_KEY: "demo-key-1",
+      CLOUDINARY_API_SECRET: "demo-secret-1",
+      SUPABASE_UPLOAD_BUCKET: "media",
+      MEDIA_UPLOAD_PROVIDER_ORDER: "cloudinary,supabase",
+      DISABLE_CLOUDINARY_UPLOAD: "false",
+    },
+    () => {
+      const providers = buildMediaUploadPlan(
+        "video",
+        { fileSize: 1024 },
+        { videoUploadProviderPreference: "r2" },
+      );
+      assert.deepEqual(
+        providers.map((provider) =>
+          provider.provider === "cloudinary"
+            ? `cloudinary:${provider.cloudName}`
+            : provider.provider,
+        ),
+        ["r2", "cloudinary:demo-cloud-1", "supabase"],
+      );
+    },
+  );
+});
+
 test("buildMediaUploadPlan keeps cloudinary first for image uploads", () => {
   withEnv(
     {

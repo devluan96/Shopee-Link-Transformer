@@ -26,10 +26,7 @@ import { ConvertedLink, LinkStats, LinkUpdatePayload, Workspace } from "@/src/ty
 import { formatDistanceToNow } from "date-fns";
 import { enUS, vi as viLocale } from "date-fns/locale";
 import { QRCodeCanvas } from "qrcode.react";
-import {
-  LINK_USAGE_OPTIONS_WITH_PLACEHOLDER,
-  normalizeUsageContext,
-} from "@/src/lib/linkUsage";
+import { normalizeUsageContext } from "@/src/lib/linkUsage";
 import { useLocale } from "@/src/hooks/useLocale";
 import { buildPrettyLinkUrl } from "@/src/lib/linkPaths";
 import { toast } from "sonner";
@@ -68,6 +65,7 @@ interface LinkListProps {
     resourceType: "image" | "video" | "auto",
     fileName?: string,
     onProgress?: (progress: number) => void,
+    options?: { skipLibraryRecord?: boolean },
   ) => Promise<string>;
 }
 
@@ -112,16 +110,13 @@ export const LinkList = ({
     shortCode: "",
     title: "",
     desc: "",
-    usage: "",
-    folder: "",
-    tagsText: "",
     img: "",
     original: "",
     secondary: "",
     secondaryTargetType: "shopee" as "shopee" | "tiktok",
     redirectDelayMs: 3000,
-    expiresAt: "",
     video: "",
+    mobileDirectMode: false,
   });
   const [isUpdating, setIsUpdating] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -129,9 +124,6 @@ export const LinkList = ({
   const [editVideoUploadProgress, setEditVideoUploadProgress] = useState(0);
   const [editVideoUploadSuccess, setEditVideoUploadSuccess] = useState(false);
   const editVideoInputRef = useRef<HTMLInputElement | null>(null);
-  const [selectedExpirePresetDays, setSelectedExpirePresetDays] = useState<
-    number | null
-  >(null);
   const qrCanvasRef = useRef<React.ElementRef<"canvas"> | null>(null);
   const writableTargetWorkspaces = workspaces.filter(
     (workspace) =>
@@ -153,32 +145,10 @@ export const LinkList = ({
     { value: "top", label: content.filters.top },
   ];
 
-  const localizedUsageOptions = LINK_USAGE_OPTIONS_WITH_PLACEHOLDER.map(
-    (option) => {
-      switch (option.value) {
-        case "":
-          return { ...option, label: content.filters.usagePlaceholder };
-        case "Bai viet Facebook":
-        case "Bài viết Facebook":
-          return { ...option, label: content.filters.usageFacebookPost };
-        case "Reel Facebook":
-          return { ...option, label: content.filters.usageFacebookReel };
-        case "Bio TikTok":
-          return { ...option, label: content.filters.usageTikTokBio };
-        case "Video TikTok":
-          return { ...option, label: content.filters.usageTikTokVideo };
-        case "Zalo OA":
-          return { ...option, label: content.filters.usageZalo };
-        case "Nhom seeding":
-        case "Nhóm seeding":
-          return { ...option, label: content.filters.usageSeeding };
-        case "Livestream":
-          return { ...option, label: content.filters.usageLivestream };
-        default:
-          return option;
-      }
-    },
-  );
+  const localizedUsageOptions: Array<{
+    value: string;
+    label: string;
+  }> = [];
 
   const getLocalizedUsageLabel = (value?: string | null) => {
     if (!value) return null;
@@ -273,34 +243,20 @@ export const LinkList = ({
 
   const startEdit = (link: ConvertedLink) => {
     setEditingLink(link);
-    if (link.expires_at) {
-      const expiresMs = new Date(link.expires_at).getTime();
-      const diffMs = expiresMs - Date.now();
-      setSelectedExpirePresetDays(
-        Number.isFinite(expiresMs) && diffMs > 0
-          ? Math.round(diffMs / DAY_IN_MS)
-          : null,
-      );
-    } else {
-      setSelectedExpirePresetDays(null);
-    }
 
     setEditForm({
       shortCode: link.short_code || "",
       title: link.custom_title || "",
       desc: link.custom_description || "",
-      usage: normalizeUsageContext(link.usage_context),
-      folder: link.folder_name || "",
-      tagsText: (link.tags || []).join(", "),
       img: link.custom_image_url || "",
       video: link.video_url || "",
       original: link.original_url || "",
       secondary: link.secondary_url || "",
       secondaryTargetType: getSecondaryTargetType(link.secondary_url),
       redirectDelayMs: link.redirect_delay_ms || 3000,
-      expiresAt: link.expires_at
-        ? new Date(link.expires_at).toISOString().slice(0, 16)
-        : "",
+      mobileDirectMode:
+        (!link.video_url && !!link.custom_image_url && !link.secondary_url) ||
+        false,
     });
     setIsEditVideoUploading(false);
     setEditVideoUploadProgress(0);
@@ -334,27 +290,19 @@ export const LinkList = ({
           normalizeVietnameseSlug(editForm.shortCode) || editingLink.short_code,
         custom_title: editForm.title,
         custom_description: editForm.desc,
-        usage_context: normalizeUsageContext(editForm.usage),
-        folder_name: editForm.folder.trim() || null,
-        tags: editForm.tagsText
-          .split(",")
-          .map((tag) => tag.trim())
-          .filter(Boolean),
         custom_image_url: editForm.img,
-        video_url: editForm.video || editingLink.video_url || null,
+        video_url: editForm.mobileDirectMode
+          ? null
+          : editForm.video || editingLink.video_url || null,
         original_url: editForm.original,
-        secondary_url: editForm.secondary,
+        secondary_url: editForm.mobileDirectMode ? null : editForm.secondary,
         secondaryTargetType: editForm.secondaryTargetType,
         redirect_delay_ms: editForm.redirectDelayMs,
+        mobileDirectMode: editForm.mobileDirectMode,
       };
-
-      updates.expires_at = editForm.expiresAt
-        ? new Date(editForm.expiresAt).toISOString()
-        : null;
 
       await onUpdateLink(editingLink.id, updates);
       setEditingLink(null);
-      setSelectedExpirePresetDays(null);
     } finally {
       setIsUpdating(false);
     }
@@ -439,9 +387,16 @@ export const LinkList = ({
         "video",
         file.name,
         setEditVideoUploadProgress,
+        { skipLibraryRecord: false },
       );
       const thumbnailUploadPromise = thumbnailBlob
-        ? uploadAssetToCloudinary(thumbnailBlob, "image", "thumb.jpg")
+        ? uploadAssetToCloudinary(
+            thumbnailBlob,
+            "image",
+            "thumb.jpg",
+            undefined,
+            { skipLibraryRecord: true },
+          )
         : Promise.resolve<string | null>(null);
 
       const [videoResult, thumbnailResult] = await Promise.allSettled([
@@ -635,10 +590,6 @@ export const LinkList = ({
       : totalLinks
         ? Math.round(totalOutboundClicks / totalLinks)
         : 0;
-  const editUsageHasMatchingOption = localizedUsageOptions.some(
-    (option) => option.value === editForm.usage,
-  );
-
   useEffect(() => {
     if (!onLoadMoreLinks || !hasMoreLinks) return;
 
@@ -1142,7 +1093,69 @@ export const LinkList = ({
                 />
               </div>
 
-              <div className="space-y-2 lg:col-span-2">
+              <button
+                type="button"
+                onClick={() =>
+                  setEditForm((current) => {
+                    const nextMobileDirectMode = !current.mobileDirectMode;
+                    return {
+                      ...current,
+                      mobileDirectMode: nextMobileDirectMode,
+                      video: nextMobileDirectMode ? "" : current.video,
+                      secondary: nextMobileDirectMode ? "" : current.secondary,
+                      secondaryTargetType: nextMobileDirectMode
+                        ? "shopee"
+                        : current.secondaryTargetType,
+                    };
+                  })
+                }
+                className={`lg:col-span-2 flex w-full items-center justify-between rounded-3xl border px-5 py-4 text-left transition-all ${
+                  editForm.mobileDirectMode
+                    ? "border-fuchsia-300 bg-fuchsia-50/80 dark:border-fuchsia-500/30 dark:bg-fuchsia-500/10"
+                    : "border-gray-100 bg-gray-50/80 hover:bg-gray-100 dark:border-slate-700 dark:bg-slate-900/60 dark:hover:bg-slate-900"
+                }`}
+              >
+                <div>
+                  <p
+                    className={`text-[11px] font-black uppercase tracking-widest ${
+                      editForm.mobileDirectMode
+                        ? "text-fuchsia-700 dark:text-fuchsia-200"
+                        : "text-gray-500 dark:text-slate-300"
+                    }`}
+                  >
+                    {t("createLink.page.mobileDirectModeTitle")}
+                  </p>
+                  <p
+                    className={`mt-1 text-xs font-medium ${
+                      editForm.mobileDirectMode
+                        ? "text-fuchsia-900/75 dark:text-fuchsia-100/80"
+                        : "text-gray-500 dark:text-slate-400"
+                    }`}
+                  >
+                    {t("createLink.page.mobileDirectModeDescription")}
+                  </p>
+                </div>
+                <span
+                  className={`rounded-full px-3 py-1 text-[11px] font-black uppercase tracking-wider ${
+                    editForm.mobileDirectMode
+                      ? "bg-fuchsia-100 text-fuchsia-700 dark:bg-fuchsia-500/20 dark:text-fuchsia-100"
+                      : "bg-slate-100 text-slate-500 dark:bg-slate-700 dark:text-slate-300"
+                  }`}
+                >
+                  {editForm.mobileDirectMode
+                    ? t("createLink.page.mobileDirectModeEnabled")
+                    : t("createLink.page.mobileDirectModeDisabled")}
+                </span>
+              </button>
+
+              {editForm.mobileDirectMode && (
+                <div className="lg:col-span-2 rounded-[1.35rem] border border-fuchsia-100 bg-fuchsia-50/70 p-4 text-sm font-medium text-fuchsia-900 dark:border-fuchsia-500/20 dark:bg-fuchsia-500/10 dark:text-fuchsia-100">
+                  {t("createLink.page.mobileDirectModeNote")}
+                </div>
+              )}
+
+              {!editForm.mobileDirectMode && (
+                <div className="space-y-2 lg:col-span-2">
                 <label className="ml-1 text-[10px] font-black uppercase tracking-widest text-gray-400">
                   {content.editModal.videoField}
                 </label>
@@ -1224,7 +1237,7 @@ export const LinkList = ({
                   </div>
                 )}
                 {editForm.video && (
-                  <div className="rounded-3xl border border-slate-200/70 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-900/40">
+                  <div className="space-y-3 rounded-3xl border border-slate-200/70 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-900/40">
                     <video
                       src={editForm.video}
                       controls
@@ -1232,9 +1245,20 @@ export const LinkList = ({
                       preload="metadata"
                       className="h-56 w-full rounded-2xl bg-black object-contain"
                     />
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setEditForm((current) => ({ ...current, video: "" }))
+                      }
+                      className="inline-flex items-center justify-center gap-2 rounded-2xl border border-red-200/70 bg-red-50 px-4 py-2 text-[10px] font-black uppercase tracking-widest text-red-700 transition-all hover:bg-red-100 dark:border-red-500/20 dark:bg-red-500/10 dark:text-red-200 dark:hover:bg-red-500/20"
+                    >
+                      <Trash2 size={14} />
+                      {locale === "vi" ? "Xóa video" : "Remove video"}
+                    </button>
                   </div>
                 )}
               </div>
+              )}
 
               <div className="space-y-1">
                 <label className="ml-1 text-[10px] font-black uppercase tracking-widest text-gray-400">
@@ -1330,110 +1354,6 @@ export const LinkList = ({
                 />
               </div>
 
-              <div className="space-y-1">
-                <label className="ml-1 text-[10px] font-black uppercase tracking-widest text-gray-400">
-                  {content.editModal.usageField}
-                </label>
-                <select
-                  value={editForm.usage}
-                  onChange={(e) =>
-                    setEditForm({ ...editForm, usage: e.target.value })
-                  }
-                  className="w-full rounded-2xl border-2 border-transparent bg-gray-50 px-6 py-4 text-sm font-medium text-gray-900 outline-none transition-all focus:border-orange-500 dark:bg-slate-700 dark:text-slate-100"
-                >
-                  {!editUsageHasMatchingOption && editForm.usage && (
-                    <option value={editForm.usage}>{editForm.usage}</option>
-                  )}
-                  {localizedUsageOptions.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="space-y-1">
-                <label className="ml-1 text-[10px] font-black uppercase tracking-widest text-gray-400">
-                  {content.editModal.folderField}
-                </label>
-                <input
-                  type="text"
-                  value={editForm.folder}
-                  onChange={(e) =>
-                    setEditForm({ ...editForm, folder: e.target.value })
-                  }
-                  placeholder={content.editModal.folderPlaceholder}
-                  className="w-full rounded-2xl border-2 border-transparent bg-gray-50 px-6 py-4 text-sm font-medium text-gray-900 outline-none transition-all focus:border-orange-500 dark:bg-slate-700 dark:text-slate-100"
-                />
-              </div>
-
-              <div className="space-y-1">
-                <label className="ml-1 text-[10px] font-black uppercase tracking-widest text-gray-400">
-                  {content.editModal.tagsField}
-                </label>
-                <input
-                  type="text"
-                  value={editForm.tagsText}
-                  onChange={(e) =>
-                    setEditForm({ ...editForm, tagsText: e.target.value })
-                  }
-                  placeholder={content.editModal.tagsPlaceholder}
-                  className="w-full rounded-2xl border-2 border-transparent bg-gray-50 px-6 py-4 text-sm font-medium text-gray-900 outline-none transition-all focus:border-orange-500 dark:bg-slate-700 dark:text-slate-100"
-                />
-                <p className="px-1 text-[9px] font-medium text-gray-400 dark:text-slate-500">
-                  {content.editModal.tagsHelp}
-                </p>
-              </div>
-
-              <div className="space-y-2">
-                <label className="ml-1 text-[10px] font-black uppercase tracking-widest text-gray-400">
-                  {content.editModal.expiresField}
-                </label>
-                <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setEditForm({ ...editForm, expiresAt: "" });
-                      setSelectedExpirePresetDays(null);
-                    }}
-                    className={`rounded-xl px-2 py-2 text-[9px] font-black uppercase tracking-wider transition-all ${
-                      editForm.expiresAt === ""
-                        ? "bg-orange-500 text-white"
-                        : "bg-gray-50 text-gray-500 hover:bg-gray-100 dark:bg-slate-700 dark:text-slate-300 dark:hover:bg-slate-600"
-                    }`}
-                  >
-                    {content.editModal.expiresNone}
-                  </button>
-                  {[1, 3, 7, 15, 30].map((days) => {
-                    const isSelected = selectedExpirePresetDays === days;
-                    return (
-                      <button
-                        key={days}
-                        type="button"
-                        onClick={() => {
-                          const future = new Date();
-                          future.setDate(future.getDate() + days);
-                          setEditForm({
-                            ...editForm,
-                            expiresAt: future.toISOString(),
-                          });
-                          setSelectedExpirePresetDays(days);
-                        }}
-                        className={`rounded-xl px-2 py-2 text-[9px] font-black uppercase tracking-wider transition-all ${
-                          isSelected
-                            ? "bg-orange-500 text-white"
-                            : "bg-gray-50 text-gray-500 hover:bg-gray-100 dark:bg-slate-700 dark:text-slate-300 dark:hover:bg-slate-600"
-                        }`}
-                      >
-                        {t("linkList.editModal.expiresDay", { count: days })}
-                      </button>
-                    );
-                  })}
-                </div>
-                <p className="px-1 text-[9px] font-medium text-gray-400 dark:text-slate-500">
-                  {content.editModal.expiresHelp}
-                </p>
-              </div>
             </div>
 
             <div className="flex gap-4 border-t border-gray-100 bg-gray-50 p-6 md:p-8 dark:border-slate-700 dark:bg-slate-700">
@@ -1686,3 +1606,4 @@ export const LinkList = ({
     </div>
   );
 };
+

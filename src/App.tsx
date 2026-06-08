@@ -53,6 +53,7 @@ const PERSISTED_TABS: Tab[] = [
   "pricing",
   "create",
   "list",
+  "library",
   "analytics",
   "team",
   "admin",
@@ -142,6 +143,11 @@ const CreateLink = lazyWithChunkRetry(() =>
 );
 const LinkList = lazyWithChunkRetry(() =>
   import("./components/links/LinkList").then((m) => ({ default: m.LinkList })),
+);
+const MediaLibrary = lazyWithChunkRetry(() =>
+  import("./components/library/MediaLibrary").then((m) => ({
+    default: m.MediaLibrary,
+  })),
 );
 const ProfileSettings = lazyWithChunkRetry(() =>
   import("./components/profile/ProfileSettings").then((m) => ({
@@ -562,6 +568,8 @@ export default function App() {
     outputDomainsLoading,
     deepLinkProfiles,
     deepLinkProfilesLoading,
+    videoUploadProviderPreference,
+    videoUploadProviderPreferenceLoading,
     handleApproveUser,
     handleUpdateSubscription,
     handleUpdateUserRole,
@@ -570,6 +578,7 @@ export default function App() {
     handleRejectPaymentRequest,
     updateOutputDomains,
     updateDeepLinkProfiles,
+    updateVideoUploadProviderPreference,
   } = useAdmin({ user, profile, fetchWithAuth, activeTab });
 
   // Clipboard Hook
@@ -711,6 +720,7 @@ export default function App() {
       "install",
       "pricing",
       "list",
+      "library",
       "analytics",
       "team",
       "profile",
@@ -810,6 +820,7 @@ export default function App() {
       pricing: "pricing",
       create: "create",
       list: "list",
+      library: "library",
       analytics: "analytics",
       team: "team",
       profile: "profile",
@@ -1234,6 +1245,10 @@ export default function App() {
               outputDomainsLoading={outputDomainsLoading}
               deepLinkProfiles={deepLinkProfiles}
               deepLinkProfilesLoading={deepLinkProfilesLoading}
+              videoUploadProviderPreference={videoUploadProviderPreference}
+              videoUploadProviderPreferenceLoading={
+                videoUploadProviderPreferenceLoading
+              }
               onBlockIp={blockIp}
               onUnblockIp={unblockIp}
               onlineUserIds={onlineUserIds}
@@ -1244,6 +1259,9 @@ export default function App() {
               onRejectPaymentRequest={handleRejectPaymentRequest}
               onUpdateOutputDomains={updateOutputDomains}
               onUpdateDeepLinkProfiles={updateDeepLinkProfiles}
+              onUpdateVideoUploadProviderPreference={
+                updateVideoUploadProviderPreference
+              }
               fetchWithAuth={fetchWithAuth}
             />
           )}
@@ -1271,6 +1289,14 @@ export default function App() {
               onShareLink={handleShareLink}
               onDeleteManyLinks={handleDeleteManyLinks}
               uploadAssetToCloudinary={uploadAssetToCloudinary}
+            />
+          )}
+
+          {activeTab === "library" && (
+            <MediaLibrary
+              fetchWithAuth={fetchWithAuth}
+              links={links}
+              currentWorkspaceId={currentWorkspaceId}
             />
           )}
 

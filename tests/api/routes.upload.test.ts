@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   createMediaUploadCompleteHandler,
+  createMediaReuseCheckHandler,
   createMediaUploadPlanHandler,
   createSignUploadHandler,
 } from "../../api/routes/upload.js";
@@ -175,6 +176,7 @@ test("media upload plan returns configured fallback providers in order", async (
       maxTeamMembersPerWorkspace: 20,
     }),
     getVideoUploadUsageToday: async () => 0,
+    getVideoUploadProviderPreference: async () => "cloudinary",
     buildMediaUploadPlan: () =>
       [
         { provider: "cloudinary", uploadUrl: "https://cloudinary.test" },
@@ -195,6 +197,46 @@ test("media upload plan returns configured fallback providers in order", async (
   assert.deepEqual(
     (res.body as any).providers.map((provider: any) => provider.provider),
     ["cloudinary", "supabase"],
+  );
+});
+
+test("media upload plan uses video upload provider preference for videos", async () => {
+  let receivedPreference: unknown = null;
+  const handler = createMediaUploadPlanHandler({
+    getSupabase: () => ({}) as never,
+    getFeatureLimitsForProfile: () => ({
+      plan: "yearly" as const,
+      canUseAbTesting: true,
+      dailyVideoUploads: 20,
+      maxTeamWorkspaces: 5,
+      maxTeamMembersPerWorkspace: 20,
+    }),
+    getVideoUploadUsageToday: async () => 0,
+    getVideoUploadProviderPreference: async () => "r2",
+    buildMediaUploadPlan: (_resourceType, _fileMeta, options) => {
+      receivedPreference = options?.videoUploadProviderPreference || null;
+      return [
+        { provider: "r2", uploadUrl: "/api/v1/media/upload-r2" },
+        { provider: "cloudinary", uploadUrl: "https://cloudinary.test" },
+        { provider: "supabase", uploadUrl: "/api/v1/media/upload-supabase" },
+      ] as any;
+    },
+  });
+
+  const res = createMockRes();
+  await handler(
+    {
+      authUser: { id: "user-1" },
+      body: { resourceType: "video", fileSize: 1024 },
+    } as any,
+    res as any,
+  );
+
+  assert.equal(res.statusCode, 200);
+  assert.equal(receivedPreference, "r2");
+  assert.deepEqual(
+    (res.body as any).providers.map((provider: any) => provider.provider),
+    ["r2", "cloudinary", "supabase"],
   );
 });
 
@@ -230,4 +272,105 @@ test("media upload complete records usage only for video uploads", async () => {
   assert.equal(recorded.length, 1);
   assert.equal(recorded[0]?.key, "video_upload");
   assert.equal(recorded[0]?.metadata.provider, "cloudinary");
+});
+
+test("media upload complete persists metadata for non-video uploads", async () => {
+  const upserts: unknown[] = [];
+  const handler = createMediaUploadCompleteHandler({
+    getSupabase: () =>
+      ({
+        from: (table: string) => {
+          assert.equal(table, "media_assets");
+          return {
+            upsert: async (rows: unknown[]) => {
+              upserts.push(...rows);
+              return { data: null, error: null };
+            },
+          };
+        },
+      }) as never,
+    recordFeatureUsage: async () => undefined,
+  });
+
+  const res = createMockRes();
+  await handler(
+    {
+      authUser: { id: "user-1" },
+      body: {
+        resourceType: "image",
+        provider: "cloudinary",
+        publicUrl: "https://res.cloudinary.com/demo/image/upload/v1/sample.jpg",
+        objectPath: "sample",
+        fileName: "sample.jpg",
+        sizeBytes: 2048,
+        mimeType: "image/jpeg",
+        metadata: { public_id: "sample" },
+      },
+    } as any,
+    res as any,
+  );
+
+  assert.equal(res.statusCode, 200);
+  assert.equal(upserts.length, 1);
+  const row = upserts[0] as Record<string, unknown>;
+  assert.equal(row.user_id, "user-1");
+  assert.equal(row.provider, "cloudinary");
+  assert.equal(row.object_path, "sample");
+  assert.equal(row.public_url, "https://res.cloudinary.com/demo/image/upload/v1/sample.jpg");
+});
+
+test("media reuse check returns a reusable asset when fingerprint matches", async () => {
+  const handler = createMediaReuseCheckHandler({
+    getSupabase: () =>
+      ({
+        from: () => ({
+          select: () => ({
+            eq: () => ({
+              eq: () => ({
+                in: () => ({
+                  filter: () => ({
+                    order: () => ({
+                      limit: () => ({
+                        maybeSingle: async () => ({
+                          data: {
+                            object_path: "videos/user-1/sample.mp4",
+                            public_url: "https://cdn.example.com/sample.mp4",
+                            provider: "r2",
+                            resource_type: "video",
+                            folder_name: "videos",
+                            tags: ["demo"],
+                            file_name: "sample.mp4",
+                            size_bytes: 1234,
+                            modified_at: "2026-06-06T00:00:00.000Z",
+                            mime_type: "video/mp4",
+                            metadata: { sha256: "abc123" },
+                            created_at: "2026-06-06T00:00:00.000Z",
+                            updated_at: "2026-06-06T00:00:00.000Z",
+                          },
+                          error: null,
+                        }),
+                      }),
+                    }),
+                  }),
+                }),
+              }),
+            }),
+          }),
+        }),
+      }) as never,
+  });
+
+  const res = createMockRes();
+  await handler(
+    {
+      authUser: { id: "user-1" },
+      body: { resourceType: "video", fingerprint: "abc123" },
+    } as any,
+    res as any,
+  );
+
+  assert.equal(res.statusCode, 200);
+  assert.equal((res.body as any).reused, true);
+  assert.equal((res.body as any).asset.provider, "r2");
+  assert.equal((res.body as any).asset.url, "https://cdn.example.com/sample.mp4");
 });

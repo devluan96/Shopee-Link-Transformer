@@ -8,6 +8,7 @@ interface UseVideoUploadProps {
     resourceType: "image" | "video" | "auto",
     fileName?: string,
     onProgress?: (progress: number) => void,
+    options?: { skipLibraryRecord?: boolean },
   ) => Promise<string>;
 }
 
@@ -88,6 +89,8 @@ export function useVideoUpload({
                   blob,
                   "image",
                   "thumb.jpg",
+                  undefined,
+                  { skipLibraryRecord: true },
                 );
                 cleanup();
                 resolve(data);
@@ -142,6 +145,7 @@ export function useVideoUpload({
           "video",
           file.name,
           setVideoUploadProgress,
+          { skipLibraryRecord: false },
         );
 
         if (secureUrl) {

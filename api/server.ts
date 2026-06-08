@@ -44,6 +44,7 @@ import {
   getLinkDeepLinkProfiles,
   resolveDeepLinkUrl,
   shouldBypassLandingForMobileDeepLink,
+  shouldBypassPublicLandingForMobileDeepLink,
 } from "./services/deepLinkService.js";
 import { renderLinkLandingPage } from "./templates/landingPage.js";
 import { renderChoiceLandingPage } from "./templates/landingPageChoice.js";
@@ -216,6 +217,28 @@ const trackDirectPublicOpen = async (
   }
 };
 
+const scheduleDirectPublicOpenTracking = (
+  supabase: ReturnType<typeof getSupabase>,
+  req: Request,
+  link: PublicLinkRecord,
+  effectiveLink: PublicLinkRecord,
+  userAgent: string,
+  abVariant: "a" | "b",
+) => {
+  setImmediate(() => {
+    void trackDirectPublicOpen(
+      supabase,
+      req,
+      link,
+      effectiveLink,
+      userAgent,
+      abVariant,
+    ).catch((trackError) => {
+      console.error("Direct public open tracking failed:", trackError);
+    });
+  });
+};
+
 const fetchEffectiveTrackedLink = async (supabase: ReturnType<typeof getSupabase>, req: Request, linkId: string) => {
   const userAgent = req.headers["user-agent"] || "";
   const { data: link, error: linkError } = await supabase
@@ -357,6 +380,8 @@ const shouldReturnInspectHtmlResponse = (req: Request) => {
   return inspectValue === "html" || inspectValue === "page";
 };
 
+const isHttpUrl = (value: string) => /^https?:\/\//i.test(value.trim());
+
 const renderInspectDebugPage = (title: string, data: Record<string, unknown>) => {
   const json = JSON.stringify(data, null, 2);
   return `<!doctype html>
@@ -412,6 +437,123 @@ const renderInspectDebugPage = (title: string, data: Record<string, unknown>) =>
     </div>
   </body>
 </html>`;
+};
+
+const renderDeepLinkLaunchPage = (
+  destinationUrl: string,
+  title: string,
+) => {
+  const escapedDestinationUrl = escapeHtml(destinationUrl);
+  const launchScriptUrl = JSON.stringify(destinationUrl);
+  const safeTitle = escapeHtml(title || "HotsNew Click");
+  return `<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex, nofollow" />
+    <title>${safeTitle}</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #020617;
+        --panel: rgba(15, 23, 42, 0.96);
+        --border: rgba(148, 163, 184, 0.18);
+        --text: #f8fafc;
+        --muted: rgba(226, 232, 240, 0.72);
+        --accent: linear-gradient(135deg, #22d3ee, #3b82f6);
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: grid;
+        place-items: center;
+        padding: 1rem;
+        font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+        background:
+          radial-gradient(circle at 18% 12%, rgba(34, 211, 238, 0.18), transparent 24%),
+          radial-gradient(circle at 78% 18%, rgba(59, 130, 246, 0.22), transparent 22%),
+          linear-gradient(135deg, #020617 0%, #0f172a 56%, #111827 100%);
+        color: var(--text);
+      }
+      .card {
+        width: min(92vw, 32rem);
+        padding: 1.5rem;
+        border-radius: 1.25rem;
+        border: 1px solid var(--border);
+        background: var(--panel);
+        box-shadow: 0 1.5rem 4rem rgba(0, 0, 0, 0.4);
+        text-align: center;
+      }
+      .title {
+        margin: 0 0 0.75rem;
+        font-size: 1.15rem;
+        line-height: 1.35;
+      }
+      .desc {
+        margin: 0;
+        font-size: 0.92rem;
+        line-height: 1.55;
+        color: var(--muted);
+      }
+      .button {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        margin-top: 1rem;
+        padding: 0.8rem 1.2rem;
+        border-radius: 999px;
+        border: 0;
+        text-decoration: none;
+        color: white;
+        background: var(--accent);
+        font-weight: 800;
+        letter-spacing: 0.01em;
+      }
+      .hint {
+        margin-top: 0.85rem;
+        font-size: 0.78rem;
+        color: rgba(226, 232, 240, 0.55);
+      }
+    </style>
+  </head>
+  <body>
+    <main class="card">
+      <h1 class="title">Đang mở ứng dụng</h1>
+      <p class="desc">
+        Nếu ứng dụng không tự mở, bấm nút bên dưới để chuyển tiếp thủ công.
+      </p>
+      <a class="button" href="${escapedDestinationUrl}">Mở ứng dụng</a>
+      <div class="hint">Bắt đầu chuyển ngay...</div>
+    </main>
+    <script>
+      (() => {
+        const launchUrl = ${launchScriptUrl};
+        try {
+          window.location.replace(launchUrl);
+        } catch (error) {
+          window.location.href = launchUrl;
+        }
+      })();
+    </script>
+  </body>
+</html>`;
+};
+
+const sendPrimaryRedirectResponse = (
+  res: Response,
+  redirectUrl: string,
+  title: string,
+) => {
+  if (!isHttpUrl(redirectUrl)) {
+    return res
+      .status(200)
+      .type("html")
+      .send(renderDeepLinkLaunchPage(redirectUrl, title));
+  }
+
+  return res.status(302).setHeader("Location", redirectUrl).end();
 };
 
 // A. MIDDLEWARES
@@ -722,11 +864,19 @@ app.get("/s-choice/:shortCode", async (req, res) => {
         userAgentString,
         "a",
       );
-      return res.redirect(primaryRedirectUrl);
+      return sendPrimaryRedirectResponse(
+        res,
+        primaryRedirectUrl,
+        effectiveLink.custom_title?.trim() || "HotsNew Click",
+      );
     }
 
     if (!effectiveLink.video_url?.trim()) {
-      return res.redirect(primaryRedirectUrl);
+      return sendPrimaryRedirectResponse(
+        res,
+        primaryRedirectUrl,
+        effectiveLink.custom_title?.trim() || "HotsNew Click",
+      );
     }
 
     return res
@@ -878,6 +1028,13 @@ const handlePublicShortLinkRequest = async (
           deepLinkProfiles,
         )
       : "";
+    const shouldBypassMobileLanding =
+      shouldBypassPublicLandingForMobileDeepLink(
+        effectiveLink.original_url,
+        userAgentString,
+        deepLinkProfiles,
+        isPreviewRequest,
+      );
 
     const publicBaseUrl =
       getPublicBaseUrl(req) || `${req.protocol}://${req.get("host")}`;
@@ -898,6 +1055,7 @@ const handlePublicShortLinkRequest = async (
         abVariant,
         hasVideoLanding,
         shouldRenderPreviewPage,
+        shouldBypassMobileLanding,
         shouldBypassLandingForMobileDeepLink: shouldBypassLandingForMobileDeepLink(
           effectiveLink.original_url,
           userAgentString,
@@ -919,15 +1077,13 @@ const handlePublicShortLinkRequest = async (
       return res.json(inspectData);
     }
 
-    if (
-      !hasVideoLanding &&
-      shouldBypassLandingForMobileDeepLink(
-        effectiveLink.original_url,
-        userAgentString,
-        deepLinkProfiles,
-      )
-    ) {
-      await trackDirectPublicOpen(
+    if (shouldBypassMobileLanding) {
+      const redirectResponse = sendPrimaryRedirectResponse(
+        res,
+        primaryRedirectUrl,
+        effectiveLink.custom_title?.trim() || "HotsNew Click",
+      );
+      scheduleDirectPublicOpenTracking(
         supabase,
         req,
         link,
@@ -935,10 +1091,10 @@ const handlePublicShortLinkRequest = async (
         userAgentString,
         abVariant,
       );
-      return res.redirect(primaryRedirectUrl);
+      return redirectResponse;
     }
 
-    if (shouldRenderPreviewPage) {
+    if (shouldRenderPreviewPage && !shouldBypassMobileLanding) {
       return res
         .status(200)
         .type("html")
@@ -958,10 +1114,19 @@ const handlePublicShortLinkRequest = async (
     }
 
     if (shouldIgnoreTrackingRequest(req)) {
-      return res.redirect(primaryRedirectUrl);
+      return sendPrimaryRedirectResponse(
+        res,
+        primaryRedirectUrl,
+        effectiveLink.custom_title?.trim() || "HotsNew Click",
+      );
     }
 
-    await trackDirectPublicOpen(
+    const redirectResponse = sendPrimaryRedirectResponse(
+      res,
+      primaryRedirectUrl,
+      effectiveLink.custom_title?.trim() || "HotsNew Click",
+    );
+    scheduleDirectPublicOpenTracking(
       supabase,
       req,
       link,
@@ -969,8 +1134,7 @@ const handlePublicShortLinkRequest = async (
       typeof userAgent === "string" ? userAgent : "",
       abVariant,
     );
-
-    return res.redirect(primaryRedirectUrl);
+    return redirectResponse;
   } catch (e: any) {
     console.error("[REDIRECT ERROR]", {
       shortCode,

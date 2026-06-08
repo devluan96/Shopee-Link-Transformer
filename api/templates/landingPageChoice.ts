@@ -1,6 +1,7 @@
 ﻿import { PublicLinkRecord } from "../types/index.js";
 
 import { buildPublicVideoUrl } from "../utils/mediaUrl.js";
+import { buildAppLinkMetaTags } from "./appLinks.js";
 
 const PRIMARY_RETURN_WINDOW_MS = 5 * 60 * 1000;
 
@@ -104,6 +105,7 @@ export const renderChoiceLandingPage = (
     <link rel="shortcut icon" href="${escapeHtml(faviconUrl)}" />
     <link rel="apple-touch-icon" href="${escapeHtml(faviconUrl)}" />
     <link rel="canonical" href="${escapeHtml(canonicalUrl)}" />
+    ${buildAppLinkMetaTags(canonicalUrl, primaryRedirectUrl)}
     <meta property="og:locale" content="vi_VN" />
     <meta property="og:type" content="${ogType}" />
     <meta property="og:title" content="${escapeHtml(title)}" />
@@ -537,6 +539,13 @@ export const renderChoiceLandingPage = (
             if (heroVideo instanceof HTMLVideoElement) {
               heroVideo.pause();
             }
+          } catch (error) {}
+          try {
+            window.history.pushState(
+              { hotsnewChoiceReturn: true },
+              "",
+              canonicalUrl,
+            );
           } catch (error) {}
           window.location.assign(secondaryRedirectUrl);
         };

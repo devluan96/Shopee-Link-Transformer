@@ -146,6 +146,95 @@ const normalizeMediaUrlForGrouping = (value: string) => {
   }
 };
 
+const inferProviderFromUrl = (value: string): MediaAsset["provider"] => {
+  try {
+    const parsed = new URL(value, "http://localhost");
+    if (parsed.hostname.includes("cloudinary.com")) {
+      return "cloudinary";
+    }
+    if (parsed.pathname.includes("/storage/v1/object/public/")) {
+      return "supabase";
+    }
+  } catch {}
+
+  return value.includes("cloudinary.com") ? "cloudinary" : "supabase";
+};
+
+const inferResourceTypeFromField = (
+  field:
+    | "custom_image_url"
+    | "video_url"
+    | "ab_variant_b_image_url"
+    | "ab_variant_b_video_url",
+): MediaAsset["resourceType"] =>
+  field.toLowerCase().includes("video") ? "video" : "image";
+
+const getFileNameFromUrl = (value: string) => {
+  try {
+    const parsed = new URL(value, "http://localhost");
+    const lastSegment = parsed.pathname.split("/").filter(Boolean).pop();
+    if (lastSegment) {
+      return decodeURIComponent(lastSegment);
+    }
+  } catch {}
+
+  const fallback = value.split("?")[0].split("#")[0].split("/").pop();
+  return fallback || "upload.bin";
+};
+
+const buildDerivedAssetsFromLinks = (
+  sourceLinks: ConvertedLink[],
+): MediaAsset[] => {
+  const derived: MediaAsset[] = [];
+
+  for (const link of sourceLinks) {
+    const linkIdentity = getLinkIdentityKey(link) || link.short_code || link.slug || "";
+    const baseMetadata = {
+      link_id: link.id || undefined,
+      link_short_code: link.short_code || undefined,
+      link_slug: link.slug || undefined,
+      source: "link-fallback",
+    } as Record<string, unknown>;
+
+    const mediaEntries: Array<
+      [
+        | "custom_image_url"
+        | "video_url"
+        | "ab_variant_b_image_url"
+        | "ab_variant_b_video_url",
+        string | undefined,
+      ]
+    > = [
+      ["custom_image_url", link.custom_image_url],
+      ["video_url", link.video_url],
+      ["ab_variant_b_image_url", link.ab_variant_b_image_url],
+      ["ab_variant_b_video_url", link.ab_variant_b_video_url],
+    ];
+
+    for (const [field, value] of mediaEntries) {
+      const url = value?.trim();
+      if (!url) continue;
+
+      const resourceType = inferResourceTypeFromField(field);
+      derived.push({
+        path: normalizeMediaUrlForGrouping(url) || `${linkIdentity}:${field}`,
+        url,
+        provider: inferProviderFromUrl(url),
+        resourceType,
+        folderName: normalizeFolderName(link.folder_name || "root"),
+        tags: Array.isArray(link.tags) ? [...link.tags] : [],
+        fileName: getFileNameFromUrl(url),
+        sizeBytes: 0,
+        modifiedAt: link.created_at,
+        mimeType: resourceType === "video" ? "video/mp4" : "image/jpeg",
+        metadata: baseMetadata,
+      });
+    }
+  }
+
+  return derived;
+};
+
 const formatMediaUpdatedAt = (value: string, isVi: boolean) => {
   const modifiedAt = new Date(value);
   if (Number.isNaN(modifiedAt.getTime())) {
@@ -191,6 +280,60 @@ export function MediaLibrary({
 }: MediaLibraryProps) {
   const { locale, t } = useLocale();
   const isVi = locale === "vi";
+  const libraryText = React.useMemo(
+    () =>
+      isVi
+        ? {
+            title: "Thư viện media",
+            searchPlaceholder: "Tìm theo tên file, đường dẫn, loại file hoặc MIME type...",
+            refresh: "Làm mới",
+            errorTitle: "Không thể tải thư viện media",
+            emptyTitle: "Chưa có file media nào",
+            emptyBody:
+              "Hãy tải lên ảnh, video hoặc audio trước. File từ R2, Cloudinary hoặc Supabase sẽ tự động hiển thị tại đây.",
+            copy: "Sao chép URL",
+            deleting: "Đang xóa...",
+            delete: "Xóa",
+            filters: {
+              all: "Tất cả",
+              images: "Ảnh",
+              videos: "Video",
+              audio: "Audio",
+            },
+            stats: {
+              files: "File",
+              images: "Ảnh",
+              videos: "Video",
+              size: "Tổng dung lượng",
+            },
+          }
+        : {
+            title: "Media library",
+            searchPlaceholder:
+              "Search by file name, path, file type or MIME type...",
+            refresh: "Refresh",
+            errorTitle: "Unable to load media library",
+            emptyTitle: "No media files yet",
+            emptyBody:
+              "Upload an image, video, or audio file first. Files from R2, Cloudinary, or Supabase will appear here automatically.",
+            copy: "Copy URL",
+            deleting: "Deleting...",
+            delete: "Delete",
+            filters: {
+              all: "All",
+              images: "Images",
+              videos: "Videos",
+              audio: "Audio",
+            },
+            stats: {
+              files: "Files",
+              images: "Images",
+              videos: "Videos",
+              size: "Total size",
+            },
+          },
+    [isVi],
+  );
   const [assets, setAssets] = React.useState<MediaAsset[]>([]);
   const [libraryLinks, setLibraryLinks] = React.useState<ConvertedLink[]>(links);
   const [loading, setLoading] = React.useState(true);
@@ -209,7 +352,7 @@ export function MediaLibrary({
   const [confirmBusy, setConfirmBusy] = React.useState(false);
   const [bulkDeleting, setBulkDeleting] = React.useState(false);
   const [linksLoading, setLinksLoading] = React.useState(true);
-  const [visibleGroupCount, setVisibleGroupCount] = React.useState(
+  const [visibleAssetCount, setVisibleAssetCount] = React.useState(
     LINK_GROUP_BATCH_SIZE,
   );
   const [hasUserScrolled, setHasUserScrolled] = React.useState(false);
@@ -220,6 +363,7 @@ export function MediaLibrary({
       setError(null);
       setRefreshing(true);
       setBrokenAssetPaths([]);
+      const fallbackAssets = buildDerivedAssetsFromLinks(libraryLinks);
 
       try {
         const response = await fetchWithAuth(
@@ -237,14 +381,28 @@ export function MediaLibrary({
         }
 
         if (!response.ok) {
-          const fallbackMessage =
-            response.status === 404
-              ? "Media library endpoint is not available on the current server."
-              : "Unable to load media library";
+          if (response.status === 404) {
+            setAssets(fallbackAssets);
+            setError(null);
+            return;
+          }
+
+          const fallbackMessage = "Unable to load media library";
           throw new Error(payload?.error || fallbackMessage);
         }
 
-        setAssets((payload?.assets || []).map((asset) => normalizeMediaAsset(asset)));
+        const nextAssets = (payload?.assets || []).map((asset) =>
+          normalizeMediaAsset(asset),
+        );
+        if (!nextAssets.length) {
+          if (fallbackAssets.length > 0) {
+            setAssets(fallbackAssets);
+          } else {
+            setAssets(nextAssets);
+          }
+        } else {
+          setAssets(nextAssets);
+        }
       } catch (loadError) {
         const message =
           loadError instanceof Error ? loadError.message : "Unknown error";
@@ -255,7 +413,7 @@ export function MediaLibrary({
         setRefreshing(false);
       }
     },
-    [fetchWithAuth, resourceType],
+    [fetchWithAuth, libraryLinks, resourceType],
   );
 
   React.useEffect(() => {
@@ -421,7 +579,11 @@ export function MediaLibrary({
       const response = await fetchWithAuth("/api/v1/media/library", {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ path: asset.path, provider: asset.provider }),
+        body: JSON.stringify({
+          path: asset.path,
+          provider: asset.provider,
+          url: asset.url,
+        }),
       });
 
       const payload = (await response.json().catch(() => null)) as
@@ -459,7 +621,11 @@ export function MediaLibrary({
         const response = await fetchWithAuth("/api/v1/media/library", {
           method: "DELETE",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ path: asset.path, provider: asset.provider }),
+          body: JSON.stringify({
+            path: asset.path,
+            provider: asset.provider,
+            url: asset.url,
+          }),
         });
 
         const payload = (await response.json().catch(() => null)) as
@@ -492,10 +658,10 @@ export function MediaLibrary({
   };
 
   const filterTabs: Array<{ value: MediaResourceType; label: string }> = [
-    { value: "all", label: t("library.filters.all") },
-    { value: "image", label: t("library.filters.images") },
-    { value: "video", label: t("library.filters.videos") },
-    { value: "audio", label: t("library.filters.audio") },
+    { value: "all", label: libraryText.filters.all },
+    { value: "image", label: libraryText.filters.images },
+    { value: "video", label: libraryText.filters.videos },
+    { value: "audio", label: libraryText.filters.audio },
   ];
   const recentLibraryLinks = React.useMemo(
     () => libraryLinks.filter((link) => isWithinRecentLinkWindow(link.created_at)),
@@ -505,6 +671,10 @@ export function MediaLibrary({
     () => new Set(recentLibraryLinks.map(getLinkIdentityKey).filter(Boolean)),
     [recentLibraryLinks],
   );
+  const derivedAssetsFromLinks = React.useMemo(
+    () => buildDerivedAssetsFromLinks(recentLibraryLinks),
+    [recentLibraryLinks],
+  );
   const brokenAssetPathSet = React.useMemo(
     () => new Set(brokenAssetPaths),
     [brokenAssetPaths],
@@ -512,7 +682,7 @@ export function MediaLibrary({
 
   const isRenderableMediaAsset = React.useCallback(
     (asset: MediaAsset) =>
-      asset.sizeBytes > 0 && !brokenAssetPathSet.has(asset.path),
+      Boolean(asset.url.trim()) && !brokenAssetPathSet.has(asset.path),
     [brokenAssetPathSet],
   );
 
@@ -523,6 +693,11 @@ export function MediaLibrary({
       current.filter((path) => !brokenAssetPathSet.has(path)),
     );
   }, [brokenAssetPathSet, brokenAssetPaths.length]);
+
+  const renderedAssets = React.useMemo(
+    () => filteredAssets.filter(isRenderableMediaAsset),
+    [filteredAssets, isRenderableMediaAsset],
+  );
 
   const linkedGroups = React.useMemo(() => {
     const mediaUrlToLinks = new Map<string, ConvertedLink[]>();
@@ -637,51 +812,33 @@ export function MediaLibrary({
 
     return { groups, ungrouped };
   }, [filteredAssets, isVi, libraryLinks, recentLibraryLinkKeys]);
-  const renderedGroups = React.useMemo(
-    () =>
-      linkedGroups.groups
-        .map((group) => ({
-          ...group,
-          assets: group.assets.filter(isRenderableMediaAsset),
-        }))
-        .filter((group) => group.assets.length > 0),
-    [isRenderableMediaAsset, linkedGroups.groups],
-  );
+  React.useEffect(() => {
+    setVisibleAssetCount(
+      Math.min(LINK_GROUP_BATCH_SIZE, renderedAssets.length || LINK_GROUP_BATCH_SIZE),
+    );
+  }, [query, renderedAssets.length, resourceType]);
 
   React.useEffect(() => {
-    setVisibleGroupCount(
-      Math.min(LINK_GROUP_BATCH_SIZE, renderedGroups.length || LINK_GROUP_BATCH_SIZE),
-    );
-  }, [query, renderedGroups.length, resourceType]);
+    if (loading || refreshing || error) return;
+    if (assets.length > 0) return;
+    if (!derivedAssetsFromLinks.length) return;
 
-  const visibleGroups = React.useMemo(
-    () => renderedGroups.slice(0, visibleGroupCount),
-    [renderedGroups, visibleGroupCount],
-  );
-
-  const imageOnlyGroups = React.useMemo(
-    () =>
-      visibleGroups.filter((group) =>
-        group.assets.every((asset) => asset.resourceType === "image"),
-      ),
-    [visibleGroups],
-  );
-
-  const mixedMediaGroups = React.useMemo(
-    () => visibleGroups.filter((group) => !imageOnlyGroups.includes(group)),
-    [imageOnlyGroups, visibleGroups],
-  );
+    setAssets(derivedAssetsFromLinks);
+  }, [assets.length, derivedAssetsFromLinks, error, loading, refreshing]);
 
   const visibleAssets = React.useMemo(
-    () => renderedGroups.flatMap((group) => group.assets),
-    [renderedGroups],
+    () => renderedAssets.slice(0, visibleAssetCount),
+    [renderedAssets, visibleAssetCount],
   );
-  const isInitialLibraryLoading = loading || linksLoading;
-  const loadMoreGroups = React.useCallback(() => {
-    setVisibleGroupCount((current) =>
-      Math.min(current + LINK_GROUP_BATCH_SIZE, renderedGroups.length),
+  const isInitialLibraryLoading =
+    loading ||
+    linksLoading ||
+    (!error && assets.length === 0 && derivedAssetsFromLinks.length > 0);
+  const loadMoreAssets = React.useCallback(() => {
+    setVisibleAssetCount((current) =>
+      Math.min(current + LINK_GROUP_BATCH_SIZE, renderedAssets.length),
     );
-  }, [renderedGroups.length]);
+  }, [renderedAssets.length]);
 
   React.useEffect(() => {
     const handleScroll = () => {
@@ -708,7 +865,7 @@ export function MediaLibrary({
 
   React.useEffect(() => {
     if (!hasUserScrolled) return;
-    if (visibleGroupCount >= renderedGroups.length) return;
+    if (visibleAssetCount >= renderedAssets.length) return;
 
     const trigger = loadMoreTriggerRef.current;
     if (!trigger) return;
@@ -718,7 +875,7 @@ export function MediaLibrary({
       (entries) => {
         const entry = entries[0];
         if (!entry?.isIntersecting || cancelled) return;
-        loadMoreGroups();
+        loadMoreAssets();
       },
       {
         root: null,
@@ -733,21 +890,41 @@ export function MediaLibrary({
       cancelled = true;
       observer.disconnect();
     };
-  }, [hasUserScrolled, loadMoreGroups, renderedGroups.length, visibleGroupCount]);
+  }, [hasUserScrolled, loadMoreAssets, renderedAssets.length, visibleAssetCount]);
 
   const totalBytes = React.useMemo(
-    () => visibleAssets.reduce((sum, asset) => sum + asset.sizeBytes, 0),
-    [visibleAssets],
+    () => renderedAssets.reduce((sum, asset) => sum + asset.sizeBytes, 0),
+    [renderedAssets],
   );
 
   const counts = React.useMemo(
     () => ({
-      image: visibleAssets.filter((asset) => asset.resourceType === "image").length,
-      video: visibleAssets.filter((asset) => asset.resourceType === "video").length,
-      audio: visibleAssets.filter((asset) => asset.resourceType === "audio").length,
+      image: renderedAssets.filter((asset) => asset.resourceType === "image").length,
+      video: renderedAssets.filter((asset) => asset.resourceType === "video").length,
+      audio: renderedAssets.filter((asset) => asset.resourceType === "audio").length,
     }),
-    [visibleAssets],
+    [renderedAssets],
   );
+
+  const renderCheckbox = (asset: MediaAsset) => {
+    const isSelected = selectedPaths.includes(asset.path);
+    return (
+      <button
+        type="button"
+        aria-label={isSelected ? "Bỏ chọn media" : "Chọn media"}
+        aria-pressed={isSelected}
+        onClick={() => toggleSelection(asset.path)}
+        className={[
+          "absolute left-3 top-3 z-10 inline-flex h-8 w-8 items-center justify-center rounded-full border backdrop-blur-md transition",
+          isSelected
+            ? "border-orange-500 bg-orange-500 text-white shadow-lg shadow-orange-500/25"
+            : "border-gray-300/80 bg-slate-900/60 text-white hover:border-orange-400 hover:bg-slate-900/80",
+        ].join(" ")}
+      >
+        {isSelected ? <CheckSquare size={18} className="text-white" /> : <Square size={18} />}
+      </button>
+    );
+  };
 
   const renderMediaCard = (asset: MediaAsset) => {
     const Icon = getTypeIcon(asset.resourceType);
@@ -760,6 +937,7 @@ export function MediaLibrary({
           "w-full",
         ].join(" ")}
       >
+        {renderCheckbox(asset)}
         <div className="relative aspect-[16/9] bg-gray-100 dark:bg-slate-800">
           {asset.resourceType === "image" ? (
             <img
@@ -784,7 +962,7 @@ export function MediaLibrary({
             </div>
           )}
 
-          <div className="absolute left-3 top-3 inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.16em] backdrop-blur-md">
+          <div className="absolute left-14 top-3 inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.16em] backdrop-blur-md">
             <Icon size={12} />
             {asset.resourceType}
           </div>
@@ -804,7 +982,7 @@ export function MediaLibrary({
             <span
               className={`shrink-0 rounded-full border px-2 py-1 text-[9px] font-black uppercase tracking-[0.16em] ${accentClass}`}
             >
-              {formatBytes(asset.sizeBytes)}
+              {asset.sizeBytes > 0 ? formatBytes(asset.sizeBytes) : "—"}
             </span>
           </div>
 
@@ -814,7 +992,7 @@ export function MediaLibrary({
               className="inline-flex items-center justify-center gap-2 rounded-2xl border border-gray-200 bg-gray-50 px-2.5 py-1.5 text-[9px] font-black uppercase tracking-[0.18em] text-gray-600 transition-all hover:bg-gray-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
             >
               <Copy size={13} />
-              {t("library.copy")}
+                {libraryText.copy}
             </button>
             <button
               type="button"
@@ -824,24 +1002,13 @@ export function MediaLibrary({
             >
               <Trash2 size={13} />
               {deletingPath === asset.path
-                ? t("library.deleting")
-                : t("library.delete")}
+                ? libraryText.deleting
+                : libraryText.delete}
             </button>
           </div>
         </div>
       </article>
     );
-  };
-
-  const groupSelectionSummary = (groupAssets: MediaAsset[]) => {
-    const selectedInGroup = groupAssets.filter((asset) =>
-      selectedPaths.includes(asset.path),
-    ).length;
-    const groupFullySelected =
-      groupAssets.length > 0 && selectedInGroup === groupAssets.length;
-    const groupHasSelection = selectedInGroup > 0;
-
-    return { selectedInGroup, groupFullySelected, groupHasSelection };
   };
 
   return (
@@ -853,10 +1020,10 @@ export function MediaLibrary({
             <div>
               <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-orange-200 bg-orange-50 px-3 py-1 text-[10px] font-black uppercase tracking-[0.18em] text-orange-700 dark:border-orange-500/20 dark:bg-orange-500/10 dark:text-orange-200">
                 <UploadCloud size={12} />
-                {t("sidebar.library")}
+                {isVi ? "Thư viện media" : "Media library"}
               </div>
               <h2 className="text-3xl font-black tracking-tight text-gray-900 dark:text-white sm:text-4xl">
-                {t("library.title")}
+                {libraryText.title}
               </h2>
               <p className="mt-2 max-w-2xl text-sm leading-6 text-gray-500 dark:text-slate-400">
                 {isVi
@@ -868,7 +1035,7 @@ export function MediaLibrary({
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
               <div className="rounded-3xl border border-gray-100 bg-gray-50 px-4 py-3 dark:border-slate-700 dark:bg-slate-900/70">
                 <div className="text-[10px] font-black uppercase tracking-[0.18em] text-gray-400">
-                  {t("library.stats.files")}
+                  {libraryText.stats.files}
                 </div>
                 <div className="mt-1 text-xl font-black text-gray-900 dark:text-white">
                   {filteredAssets.length}
@@ -876,7 +1043,7 @@ export function MediaLibrary({
               </div>
               <div className="rounded-3xl border border-gray-100 bg-gray-50 px-4 py-3 dark:border-slate-700 dark:bg-slate-900/70">
                 <div className="text-[10px] font-black uppercase tracking-[0.18em] text-gray-400">
-                  {t("library.stats.images")}
+                  {libraryText.stats.images}
                 </div>
                 <div className="mt-1 text-xl font-black text-gray-900 dark:text-white">
                   {counts.image}
@@ -884,7 +1051,7 @@ export function MediaLibrary({
               </div>
               <div className="rounded-3xl border border-gray-100 bg-gray-50 px-4 py-3 dark:border-slate-700 dark:bg-slate-900/70">
                 <div className="text-[10px] font-black uppercase tracking-[0.18em] text-gray-400">
-                  {t("library.stats.videos")}
+                  {libraryText.stats.videos}
                 </div>
                 <div className="mt-1 text-xl font-black text-gray-900 dark:text-white">
                   {counts.video}
@@ -892,7 +1059,7 @@ export function MediaLibrary({
               </div>
               <div className="rounded-3xl border border-gray-100 bg-gray-50 px-4 py-3 dark:border-slate-700 dark:bg-slate-900/70">
                 <div className="text-[10px] font-black uppercase tracking-[0.18em] text-gray-400">
-                  {t("library.stats.size")}
+                  {libraryText.stats.size}
                 </div>
                 <div className="mt-1 text-xl font-black text-gray-900 dark:text-white">
                   {formatBytes(totalBytes)}
@@ -910,7 +1077,7 @@ export function MediaLibrary({
               <input
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
-                placeholder={t("library.searchPlaceholder")}
+                placeholder={libraryText.searchPlaceholder}
                 className="w-full rounded-2xl border border-gray-200 bg-white py-4 pl-11 pr-4 text-sm font-medium text-gray-900 outline-none transition-all focus:border-orange-400 focus:ring-4 focus:ring-orange-500/10 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
               />
             </div>
@@ -942,7 +1109,7 @@ export function MediaLibrary({
               disabled={refreshing}
             >
               <RefreshCw size={14} className={refreshing ? "animate-spin" : ""} />
-              {t("library.refresh")}
+              {libraryText.refresh}
             </button>
           </div>
 
@@ -975,250 +1142,43 @@ export function MediaLibrary({
 
           <div className="mt-6">
             {isInitialLibraryLoading ? (
-              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                {Array.from({ length: 6 }).map((_, index) => (
-                  <div
-                    key={index}
-                    className="h-72 animate-pulse rounded-[2rem] border border-gray-100 bg-gray-50 dark:border-slate-700 dark:bg-slate-900/80"
-                  />
-                ))}
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                  {Array.from({ length: 6 }).map((_, index) => (
+                    <div
+                      key={index}
+                      className="h-72 animate-pulse rounded-[2rem] border border-gray-100 bg-gray-50 dark:border-slate-700 dark:bg-slate-900/80"
+                    />
+                  ))}
               </div>
             ) : error ? (
               <div className="rounded-[2rem] border border-red-200 bg-red-50 p-6 text-red-700 dark:border-red-500/20 dark:bg-red-500/10 dark:text-red-200">
                 <div className="flex items-center gap-2 font-black">
                   <AlertTriangle size={18} />
-                  {t("library.errorTitle")}
+                  {libraryText.errorTitle}
                 </div>
                 <p className="mt-2 text-sm font-medium leading-6">{error}</p>
               </div>
-            ) : visibleAssets.length === 0 ? (
+            ) : renderedAssets.length === 0 ? (
               <div className="rounded-[2rem] border border-dashed border-gray-200 bg-gray-50/70 p-10 text-center dark:border-slate-700 dark:bg-slate-900/50">
                 <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-3xl bg-white text-gray-400 shadow-sm dark:bg-slate-800">
                   <FileText size={28} />
                 </div>
                 <h3 className="mt-5 text-xl font-black tracking-tight text-gray-900 dark:text-white">
-                  {t("library.emptyTitle")}
+                  {libraryText.emptyTitle}
                 </h3>
                 <p className="mx-auto mt-3 max-w-xl text-sm leading-6 text-gray-500 dark:text-slate-400">
-                  {t("library.emptyBody")}
+                  {libraryText.emptyBody}
                 </p>
               </div>
             ) : (
               <div className="space-y-6">
-                {mixedMediaGroups.length > 0 ? (
-                  <div className="grid gap-4 xl:grid-cols-2">
-                    {mixedMediaGroups.map((group) => {
-                      const linkCount = group.links.length;
-                      const {
-                        selectedInGroup,
-                        groupFullySelected,
-                        groupHasSelection,
-                      } = groupSelectionSummary(group.assets);
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                  {visibleAssets.map((asset) => renderMediaCard(asset))}
+                </div>
 
-                      return (
-                        <section
-                          key={group.key}
-                          className={[
-                            "w-full rounded-[1.6rem] border p-3 shadow-[0_10px_24px_rgba(15,23,42,0.04)] transition-colors",
-                            groupHasSelection
-                              ? "border-orange-200 bg-orange-50/30 dark:border-orange-500/20 dark:bg-orange-500/5"
-                              : "border-gray-100 bg-white/80 dark:border-slate-700 dark:bg-slate-900/70",
-                          ].join(" ")}
-                        >
-                          <div className="flex flex-col gap-2.5">
-                            <div className="flex items-start gap-2.5">
-                              <button
-                                type="button"
-                                aria-label={
-                                  groupFullySelected
-                                    ? isVi
-                                      ? "Bỏ chọn nhóm"
-                                      : "Clear group selection"
-                                    : isVi
-                                      ? "Chọn toàn bộ nhóm"
-                                      : "Select whole group"
-                                }
-                                aria-pressed={groupHasSelection}
-                                onClick={() => toggleGroupSelection(group.assets)}
-                                className={[
-                                  "mt-0.5 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border transition",
-                                  groupFullySelected
-                                    ? "border-orange-500 bg-orange-500 text-white shadow-lg shadow-orange-500/25"
-                                    : groupHasSelection
-                                      ? "border-orange-300 bg-orange-100 text-orange-700"
-                                      : "border-gray-200 bg-white text-gray-500 hover:text-gray-900 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300",
-                                ].join(" ")}
-                              >
-                                {groupFullySelected ? (
-                                  <CheckSquare size={18} className="text-white" />
-                                ) : (
-                                  <Square size={18} />
-                                )}
-                              </button>
-
-                              <div className="min-w-0 flex-1">
-                                <div className="flex flex-wrap items-center gap-1.5">
-                                  <h3
-                                    title={group.title}
-                                    className="truncate text-[11px] font-black uppercase tracking-[0.14em] text-gray-900 dark:text-white"
-                                  >
-                                    {group.title}
-                                  </h3>
-                                  <span className="rounded-full border border-orange-200 bg-orange-50 px-2 py-0.5 text-[9px] font-black uppercase tracking-[0.16em] text-orange-700 dark:border-orange-500/20 dark:bg-orange-500/10 dark:text-orange-200">
-                                    {linkCount} link
-                                  </span>
-                                  <span className="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[9px] font-black uppercase tracking-[0.16em] text-slate-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">
-                                    {selectedInGroup}/{group.assets.length}
-                                  </span>
-                                </div>
-                                {groupHasSelection ? (
-                                  <div className="mt-2 flex w-fit flex-wrap items-center gap-2 rounded-[1rem] border border-orange-200 bg-orange-50/70 px-2.5 py-1.5 text-[10px] font-semibold text-orange-800 dark:border-orange-500/20 dark:bg-orange-500/10 dark:text-orange-100">
-                                    <span>
-                                      {isVi
-                                        ? `Đang chọn ${selectedInGroup}/${group.assets.length} file trong link này`
-                                        : `Selected ${selectedInGroup}/${group.assets.length} files in this link`}
-                                    </span>
-                                    <button
-                                      type="button"
-                                      onClick={() =>
-                                        toggleGroupSelection(group.assets)
-                                      }
-                                      className="ml-auto rounded-full border border-orange-300 bg-white px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.18em] text-orange-700 transition hover:bg-orange-100 dark:border-orange-400/20 dark:bg-slate-900 dark:text-orange-100 dark:hover:bg-slate-800"
-                                    >
-                                      {groupFullySelected
-                                        ? isVi
-                                          ? "Bỏ chọn link"
-                                          : "Clear link"
-                                        : isVi
-                                          ? "Chọn cả link"
-                                          : "Select link"}
-                                    </button>
-                                  </div>
-                                ) : null}
-                              </div>
-                            </div>
-
-                            <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                              {group.assets.map((asset) =>
-                                renderMediaCard(asset),
-                              )}
-                            </div>
-                          </div>
-                        </section>
-                      );
-                    })}
-                  </div>
-                ) : null}
-
-                {imageOnlyGroups.length > 0 ? (
-                  <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                    {imageOnlyGroups.map((group) => {
-                      const linkCount = group.links.length;
-                      const {
-                        selectedInGroup,
-                        groupFullySelected,
-                        groupHasSelection,
-                      } = groupSelectionSummary(group.assets);
-
-                      return (
-                        <section
-                          key={group.key}
-                          className={[
-                            "w-full rounded-[1.6rem] border p-3 shadow-[0_10px_24px_rgba(15,23,42,0.04)] transition-colors",
-                            groupHasSelection
-                              ? "border-orange-200 bg-orange-50/30 dark:border-orange-500/20 dark:bg-orange-500/5"
-                              : "border-gray-100 bg-white/80 dark:border-slate-700 dark:bg-slate-900/70",
-                          ].join(" ")}
-                        >
-                          <div className="flex flex-col gap-2.5">
-                            <div className="flex items-start gap-2.5">
-                              <button
-                                type="button"
-                                aria-label={
-                                  groupFullySelected
-                                    ? isVi
-                                      ? "Bỏ chọn nhóm"
-                                      : "Clear group selection"
-                                    : isVi
-                                      ? "Chọn toàn bộ nhóm"
-                                      : "Select whole group"
-                                }
-                                aria-pressed={groupHasSelection}
-                                onClick={() => toggleGroupSelection(group.assets)}
-                                className={[
-                                  "mt-0.5 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border transition",
-                                  groupFullySelected
-                                    ? "border-orange-500 bg-orange-500 text-white shadow-lg shadow-orange-500/25"
-                                    : groupHasSelection
-                                      ? "border-orange-300 bg-orange-100 text-orange-700"
-                                      : "border-gray-200 bg-white text-gray-500 hover:text-gray-900 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300",
-                                ].join(" ")}
-                              >
-                                {groupFullySelected ? (
-                                  <CheckSquare size={18} className="text-white" />
-                                ) : (
-                                  <Square size={18} />
-                                )}
-                              </button>
-
-                              <div className="min-w-0 flex-1">
-                                <div className="flex flex-wrap items-center gap-1.5">
-                                  <h3
-                                    title={group.title}
-                                    className="truncate text-[11px] font-black uppercase tracking-[0.14em] text-gray-900 dark:text-white"
-                                  >
-                                    {group.title}
-                                  </h3>
-                                  <span className="rounded-full border border-orange-200 bg-orange-50 px-2 py-0.5 text-[9px] font-black uppercase tracking-[0.16em] text-orange-700 dark:border-orange-500/20 dark:bg-orange-500/10 dark:text-orange-200">
-                                    {linkCount} link
-                                  </span>
-                                  <span className="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[9px] font-black uppercase tracking-[0.16em] text-slate-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">
-                                    {selectedInGroup}/{group.assets.length}
-                                  </span>
-                                </div>
-                                {groupHasSelection ? (
-                                  <div className="mt-2 flex w-fit flex-wrap items-center gap-2 rounded-[1rem] border border-orange-200 bg-orange-50/70 px-2.5 py-1.5 text-[10px] font-semibold text-orange-800 dark:border-orange-500/20 dark:bg-orange-500/10 dark:text-orange-100">
-                                    <span>
-                                      {isVi
-                                        ? `Đang chọn ${selectedInGroup}/${group.assets.length} file trong link này`
-                                        : `Selected ${selectedInGroup}/${group.assets.length} files in this link`}
-                                    </span>
-                                    <button
-                                      type="button"
-                                      onClick={() =>
-                                        toggleGroupSelection(group.assets)
-                                      }
-                                      className="ml-auto rounded-full border border-orange-300 bg-white px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.18em] text-orange-700 transition hover:bg-orange-100 dark:border-orange-400/20 dark:bg-slate-900 dark:text-orange-100 dark:hover:bg-slate-800"
-                                    >
-                                      {groupFullySelected
-                                        ? isVi
-                                          ? "Bỏ chọn link"
-                                          : "Clear link"
-                                        : isVi
-                                          ? "Chọn cả link"
-                                          : "Select link"}
-                                    </button>
-                                  </div>
-                                ) : null}
-                              </div>
-                            </div>
-
-                            <div className="mt-3 grid gap-3 grid-cols-1">
-                              {group.assets.map((asset) =>
-                                renderMediaCard(asset),
-                              )}
-                            </div>
-                          </div>
-                        </section>
-                      );
-                    })}
-                  </div>
-                ) : null}
-
-                {visibleGroupCount < renderedGroups.length ? (
+                {visibleAssetCount < renderedAssets.length ? (
                   <div ref={loadMoreTriggerRef} className="h-1 w-full" />
                 ) : null}
-
               </div>
             )}
           </div>
