@@ -115,15 +115,7 @@ const inferDevicePlatform = (userAgent?: string | null) => {
   return "desktop";
 };
 
-const isHttpUrl = (value?: string | null) =>
-  /^https?:\/\//i.test((value || "").trim());
-const isCustomSchemeUrl = (value?: string | null) =>
-  /^[a-z][a-z0-9+.-]*:\/\//i.test((value || "").trim());
-
-const buildTikTokIosScheme = (destinationUrl: string) => {
-  const encodedDestinationUrl = encodeURIComponent(destinationUrl);
-  return `snssdk1180://ec/pdp?biz_type=0&need_mall=1&needlaunchlog=1&page_name=reflow_pdp&params_url=${encodedDestinationUrl}&refer=web&scene=pdp&use_land_page=1`;
-};
+const isHttpUrl = (value?: string | null) => /^https?:\/\//i.test((value || "").trim());
 
 const resolveTemplateForDevice = (
   platform: DeepLinkPlatform,
@@ -135,9 +127,7 @@ const resolveTemplateForDevice = (
 
   const candidateTemplates =
     devicePlatform === "ios"
-      ? platform === "tiktok"
-        ? [buildTikTokIosScheme(destinationUrl), profile.ios, profile.desktop]
-        : [profile.ios, profile.desktop]
+      ? [profile.ios, profile.desktop]
       : devicePlatform === "android"
         ? [profile.android, profile.desktop]
         : [profile.desktop];
@@ -148,10 +138,6 @@ const resolveTemplateForDevice = (
     try {
       const resolvedUrl = applyDeepLinkTemplate(template, destinationUrl);
       if (devicePlatform === "ios") {
-        if (platform === "tiktok" && isCustomSchemeUrl(resolvedUrl)) {
-          return resolvedUrl;
-        }
-
         if (!isHttpUrl(resolvedUrl)) {
           continue;
         }
