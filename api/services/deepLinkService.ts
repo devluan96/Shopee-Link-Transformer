@@ -122,7 +122,7 @@ const resolveTemplateForDevice = (
   const candidateTemplates =
     devicePlatform === "ios"
       ? platform === "tiktok"
-        ? [profile.ios, buildTikTokIosScheme(destinationUrl), profile.desktop]
+        ? [buildTikTokIosScheme(destinationUrl), profile.ios, profile.desktop]
         : [profile.ios, profile.desktop]
       : devicePlatform === "android"
         ? [profile.android, profile.desktop]
