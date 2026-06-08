@@ -1,6 +1,7 @@
 import { PublicLinkRecord } from "../types/index.js";
 import { buildPublicVideoUrl } from "../utils/mediaUrl.js";
 import { normalizeRedirectDelayMs } from "../utils/normalizers.js";
+import { buildAppLinkMetaTags } from "./appLinks.js";
 
 const capitalizeFirstCharacter = (value: string) => {
   const trimmed = value.trim();
@@ -106,6 +107,7 @@ export const renderLinkLandingPage = (
     <link rel="shortcut icon" href="${escapeHtml(faviconUrl)}" />
     <link rel="apple-touch-icon" href="${escapeHtml(faviconUrl)}" />
     <link rel="canonical" href="${escapeHtml(canonicalUrl)}" />
+    ${buildAppLinkMetaTags(canonicalUrl, primaryTargetUrl)}
     <meta property="og:locale" content="vi_VN" />
     <meta property="og:type" content="website" />
     <meta property="og:title" content="${escapeHtml(title)}" />

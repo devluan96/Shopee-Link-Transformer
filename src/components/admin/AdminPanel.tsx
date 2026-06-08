@@ -691,14 +691,15 @@ export const AdminPanel = ({
     const warnings: string[] = [];
     const iosValue = target?.ios?.trim() || "";
     const desktopValue = target?.desktop?.trim() || "";
+    const isTikTokPlatform = platform === "tiktok";
 
-    if (!iosValue) {
+    if (!isTikTokPlatform && !iosValue) {
       warnings.push(
         locale === "vi"
           ? `Thiếu URL iOS cho ${platformLabel}. iPhone sẽ không có đường mở app đúng.`
           : `Missing iOS URL for ${platformLabel}. iPhone will not have a valid app-open path.`,
       );
-    } else if (!isHttpUrl(iosValue)) {
+    } else if (!isTikTokPlatform && !isHttpUrl(iosValue)) {
       warnings.push(
         locale === "vi"
           ? `URL iOS của ${platformLabel} nên là HTTPS universal link, không phải custom scheme.`
@@ -714,7 +715,7 @@ export const AdminPanel = ({
       );
     }
 
-    if (iosValue && isCustomSchemeUrl(iosValue)) {
+    if (!isTikTokPlatform && iosValue && isCustomSchemeUrl(iosValue)) {
       warnings.push(
         locale === "vi"
           ? `URL iOS của ${platformLabel} đang là custom scheme. Nếu app không mở trên iPhone, hãy đổi sang HTTPS universal link.`
