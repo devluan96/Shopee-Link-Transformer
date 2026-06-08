@@ -9,7 +9,14 @@ export type DeepLinkDeviceTarget = {
   desktop?: string;
 };
 
-export type DeepLinkProfiles = Partial<Record<DeepLinkPlatform, DeepLinkDeviceTarget>>;
+export const isBlockedInAppBrowser = (userAgent?: string | null) => {
+  const ua = (userAgent || "").toLowerCase();
+  return ua.includes("fban") || ua.includes("fbav") || ua.includes("zalo");
+};
+
+export type DeepLinkProfiles = Partial<
+  Record<DeepLinkPlatform, DeepLinkDeviceTarget>
+>;
 type DeepLinkDevicePlatform = "ios" | "android" | "desktop";
 
 const APP_SETTINGS_KEY = "link_deeplink_profiles";
@@ -21,7 +28,9 @@ const normalizeTemplate = (value?: string | null) => {
   return trimmed.slice(0, MAX_TEMPLATE_LENGTH);
 };
 
-const normalizeTarget = (value?: Partial<DeepLinkDeviceTarget> | null): DeepLinkDeviceTarget => {
+const normalizeTarget = (
+  value?: Partial<DeepLinkDeviceTarget> | null,
+): DeepLinkDeviceTarget => {
   const ios = normalizeTemplate(value?.ios);
   const android = normalizeTemplate(value?.android);
   const desktop = normalizeTemplate(value?.desktop);
@@ -36,7 +45,9 @@ const normalizeTarget = (value?: Partial<DeepLinkDeviceTarget> | null): DeepLink
 };
 
 export const normalizeDeepLinkProfiles = (
-  value?: Partial<Record<DeepLinkPlatform, Partial<DeepLinkDeviceTarget>>> | null,
+  value?: Partial<
+    Record<DeepLinkPlatform, Partial<DeepLinkDeviceTarget>>
+  > | null,
 ): DeepLinkProfiles => {
   if (!value || typeof value !== "object") return {};
 
@@ -78,7 +89,9 @@ export const updateLinkDeepLinkProfiles = async (
   return normalizedProfiles;
 };
 
-const inferDestinationPlatform = (value?: string | null): DeepLinkPlatform | null => {
+const inferDestinationPlatform = (
+  value?: string | null,
+): DeepLinkPlatform | null => {
   if (!value) return null;
   try {
     const hostname = new URL(value).hostname.trim().toLowerCase();
@@ -102,7 +115,8 @@ const inferDevicePlatform = (userAgent?: string | null) => {
   return "desktop";
 };
 
-const isHttpUrl = (value?: string | null) => /^https?:\/\//i.test((value || "").trim());
+const isHttpUrl = (value?: string | null) =>
+  /^https?:\/\//i.test((value || "").trim());
 const isCustomSchemeUrl = (value?: string | null) =>
   /^[a-z][a-z0-9+.-]*:\/\//i.test((value || "").trim());
 
@@ -179,9 +193,10 @@ export const shouldBypassPublicLandingForMobileDeepLink = (
   destinationUrl: string,
   userAgent?: string | null,
   profiles?: DeepLinkProfiles | null,
+  hasVideoLanding = false,
   isPreviewRequest = false,
 ) => {
-  if (isPreviewRequest) return false;
+  if (hasVideoLanding || isPreviewRequest) return false;
   return shouldBypassLandingForMobileDeepLink(
     destinationUrl,
     userAgent,
@@ -214,8 +229,12 @@ export const resolveDeepLinkUrl = (
 
   const devicePlatform = inferDevicePlatform(userAgent);
   return (
-    resolveTemplateForDevice(platform, profile, devicePlatform, destinationUrl) ||
-    destinationUrl
+    resolveTemplateForDevice(
+      platform,
+      profile,
+      devicePlatform,
+      destinationUrl,
+    ) || destinationUrl
   );
 };
 

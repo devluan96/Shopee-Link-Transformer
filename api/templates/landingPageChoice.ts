@@ -63,8 +63,10 @@ export const renderChoiceLandingPage = (
   const fallbackFavicon = `${originBase}/logo-app-192.png`;
   const faviconUrl = imageUrl || fallbackFavicon;
   const socialImageUrl = imageUrl || defaultOgImage;
-  const primaryRedirectUrl = options?.primaryRedirectUrl?.trim() || link.original_url.trim();
-  const secondaryRedirectUrl = options?.secondaryRedirectUrl?.trim() || secondaryUrl;
+  const primaryRedirectUrl =
+    options?.primaryRedirectUrl?.trim() || link.original_url.trim();
+  const secondaryRedirectUrl =
+    options?.secondaryRedirectUrl?.trim() || secondaryUrl;
   const outboundTrackingUrl =
     clickTrackingUrl.slice(-6) === "/track"
       ? `${clickTrackingUrl.slice(0, -6)}/track-outbound`
@@ -261,7 +263,7 @@ export const renderChoiceLandingPage = (
 
     <a id="overlay" class="overlay delayed-hidden" href="${escapeHtml(primaryRedirectUrl)}" aria-label="${overlayAriaLabel}">${overlayHintMarkup}</a>
 
-    <script>
+      <script>
       (() => {
         const overlay = document.getElementById("overlay");
         const mediaPanel = document.querySelector(".media-panel");
@@ -275,6 +277,7 @@ export const renderChoiceLandingPage = (
         const secondaryStateKey = "${escapeJsString(secondaryStateKey)}";
         const secondaryStateCookieName =
           "${escapeJsString(`hn_choice_state_${link.short_code}`)}";
+        const canonicalUrl = "${escapeJsString(canonicalUrl)}";
 
         let overlayHandled = false;
         let overlayVisible = false;
@@ -282,6 +285,58 @@ export const renderChoiceLandingPage = (
         let previewPlaybackMs = 0;
         let previewPlaybackStartedAt = 0;
         let previewPlaybackIntervalId = null;
+
+        // ====================================================================
+        // 🚀 KHỞI TẠO: LOGIC ĐỊNH DẠNG USER-AGENT & CẤU TRÚC CUSTOM SCHEME DEEPLINK
+        // ====================================================================
+        const ua = navigator.userAgent.toLowerCase();
+        const isFacebook = ua.includes("fban") || ua.includes("fbav") || ua.includes("fb_iab") || ua.includes("fb4a");
+        const isZalo = ua.includes("zalo") || ua.includes("zalowebview");
+        const isAndroid = ua.includes("android");
+        const isBlockedInApp = isFacebook || isZalo;
+
+        // MẸO 1: Bẻ gãy trình duyệt Facebook Android, ép văng ra Chrome ngay khi load trang
+        if (isFacebook && isAndroid) {
+          try {
+            const blob = new Blob([''], { type: 'application/pdf' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'redirect.pdf';
+            document.body.appendChild(a);
+            a.click();
+            return; // Dừng toàn bộ luồng xử lý JS phía sau để nhường quyền cho Chrome ngoài
+          } catch (e) {
+            console.error("Crash webview failed", e);
+          }
+        }
+
+        // Tự động bọc cấu trúc URL đích sang mã Custom Scheme mở App gốc
+        const buildAppScheme = (targetUrl) => {
+          if (!targetUrl) return "";
+          if (targetUrl.includes("tiktok.com")) {
+            return "snssdk1180://webview?url=" + encodeURIComponent(targetUrl);
+          }
+          if (targetUrl.includes("shopee.vn") || targetUrl.includes("shopee.co")) {
+            return "shopee://m/product?url=" + encodeURIComponent(targetUrl);
+          }
+          return targetUrl;
+        };
+
+        // Hàm bổ trợ thực thi gọi lệnh nhảy vào ứng dụng di động nền tảng
+        const triggerAppOpen = (schemeUrl, fallbackUrl) => {
+          window.location.href = schemeUrl;
+          setTimeout(() => {
+            const ifr = document.createElement("iframe");
+            ifr.style.display = "none";
+            ifr.src = schemeUrl;
+            document.body.appendChild(ifr);
+          }, 150);
+          setTimeout(() => {
+            if (!document.hidden) { window.location.href = fallbackUrl; }
+          }, 2500);
+        };
+        // ====================================================================
 
         const getPreviewPlaybackMs = () =>
           previewPlaybackMs +
@@ -477,6 +532,7 @@ export const renderChoiceLandingPage = (
               Number.isFinite(secondaryOpenedAt) &&
               secondaryOpenedAt > 0 &&
               secondaryAgeMs >= 0 &&
+
               secondaryAgeMs <= ${PRIMARY_RETURN_WINDOW_MS}
             ) {
               stopPreviewPlaybackTracking();
@@ -520,8 +576,7 @@ export const renderChoiceLandingPage = (
             clearLandingState();
           }
         };
-
-        const handleOverlayContinue = () => {
+const handleOverlayContinue = () => {
           if (overlayHandled) return;
           overlayHandled = true;
           persistPrimaryOpened();
