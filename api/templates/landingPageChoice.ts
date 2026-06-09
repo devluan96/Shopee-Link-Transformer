@@ -295,20 +295,20 @@ export const renderChoiceLandingPage = (
         const isAndroid = ua.includes("android");
         const isBlockedInApp = isFacebook || isZalo;
 
-        // MẸO 1: Bẻ gãy trình duyệt Facebook Android, ép văng ra Chrome ngay khi load trang
+        // THAY THẾ đoạn "MẸO 1" bằng:
         if (isFacebook && isAndroid) {
-          try {
-            const blob = new Blob([''], { type: 'application/pdf' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = 'redirect.pdf';
-            document.body.appendChild(a);
-            a.click();
-            return; // Dừng toàn bộ luồng xử lý JS phía sau để nhường quyền cho Chrome ngoài
-          } catch (e) {
-            console.error("Crash webview failed", e);
-          }
+          // Dùng intent URL thay vì blob trick — reliable hơn
+          const intentUrl =
+            "intent://" +
+            primaryRedirectUrl.replace(/^https?:\/\//, "") +
+            "#Intent;scheme=https;package=com.ss.android.ugc.trill;" +
+            "S.browser_fallback_url=" + encodeURIComponent(primaryRedirectUrl) + ";end";
+          window.location.href = intentUrl;
+          // KHÔNG return — để fallback chạy nếu intent fail
+          setTimeout(() => {
+            window.location.replace(primaryRedirectUrl);
+          }, 2000);
+          return; // OK return ở đây vì đã có fallback qua setTimeout
         }
 
         // Thay hàm buildAppScheme hiện tại

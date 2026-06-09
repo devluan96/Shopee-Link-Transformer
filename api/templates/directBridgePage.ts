@@ -46,7 +46,6 @@ const buildTikTokAppScheme = (destinationUrl: string): string => {
     // Video
     const videoMatch = path.match(/\/video\/(\d+)/);
     if (videoMatch) {
-      // Thử snssdk1233 trước, iOS fallback về universal link
       return `snssdk1233://aweme/detail/?aweme_id=${videoMatch[1]}`;
     }
 
@@ -56,14 +55,27 @@ const buildTikTokAppScheme = (destinationUrl: string): string => {
       return `snssdk1233://user/profile/?uniqueId=${profileMatch[1]}`;
     }
 
-    // TikTok Shop — snssdk1180 đúng hơn cho shop
-    if (path.includes("/view/") || url.hostname.includes("shop")) {
+    // TikTok Shop — dùng đủ params như boclink
+    if (path.includes("/view/product/") || url.hostname.includes("shop")) {
+      const productMatch = path.match(/\/view\/product\/(\d+)/);
+      const productId = productMatch?.[1] || "";
       const encodedUrl = encodeURIComponent(destinationUrl);
-      return `snssdk1180://ec/pdp?params_url=${encodedUrl}&refer=web`;
+
+      return (
+        `snssdk1180://ec/pdp` +
+        `?biz_type=0` +
+        `&need_mall=1` +
+        `&needlaunchlog=1` +
+        `&page_name=reflow_pdp` +
+        `&params_url=${encodedUrl}` +
+        `&refer=web` +
+        `&is_commerce=1` +
+        (productId
+          ? `&requestParams=${encodeURIComponent(JSON.stringify({ product_id: [productId] }))}`
+          : "")
+      );
     }
 
-    // Fallback: KHÔNG dùng snssdk1233:// rỗng
-    // Trả về https:// để iOS Universal Link tự xử lý
     return destinationUrl;
   } catch {
     return destinationUrl;
@@ -78,7 +90,7 @@ const buildAppLinkOverride = (destinationUrl: string) => {
 const TIKTOK_ANDROID_PACKAGE = "com.ss.android.ugc.trill";
 const TIKTOK_APP_NAME = "TikTok";
 const TIKTOK_APP_STORE_ID = "1235601864";
-const FACEBOOK_APP_ID = "1862952583919182";
+const FACEBOOK_APP_ID = "1609970790226254";
 
 export const renderDirectBridgePage = (
   link: PublicLinkRecord,
@@ -178,14 +190,17 @@ export const renderDirectBridgePage = (
               webUrl.replace(/^https?:\/\//, "") +
               "#Intent;scheme=https;package=com.ss.android.ugc.trill;end";
             window.location.href = intentUrl;
+            // KHÔNG return — để fallback chạy nếu intent fail
+            setTimeout(() => {
+              window.location.replace(primaryRedirectUrl);
+            }, 2000);
             return;
           }
 
-          if (isIOS) {
-            // Universal link — iOS sẽ tự nhận và mở TikTok app
-            // không cần scheme, không hiện popup
-            window.location.replace(webUrl);
-            return;
+          // Facebook/Zalo iOS → KHÔNG làm gì cả
+          // Meta tag al:ios:url đã được Facebook đọc trước khi trang load
+          if (isInAppBrowser && /iphone|ipad|ipod/i.test(ua)) {
+            return; // để yên, Facebook tự xử lý qua App Links
           }
         }
 
