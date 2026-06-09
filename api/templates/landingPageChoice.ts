@@ -304,11 +304,10 @@ export const renderChoiceLandingPage = (
             "#Intent;scheme=https;package=com.ss.android.ugc.trill;" +
             "S.browser_fallback_url=" + encodeURIComponent(primaryRedirectUrl) + ";end";
           window.location.href = intentUrl;
-          // KHÔNG return — để fallback chạy nếu intent fail
           setTimeout(() => {
             window.location.replace(primaryRedirectUrl);
           }, 2000);
-          return; // OK return ở đây vì đã có fallback qua setTimeout
+          return;
         }
 
         // Thay hàm buildAppScheme hiện tại
@@ -328,8 +327,9 @@ export const renderChoiceLandingPage = (
               return "snssdk1233://browser/open?url=" + encodeURIComponent(targetUrl);
             }
 
-            if (targetUrl.includes("shopee.vn") || targetUrl.includes("shopee.co")) {
-              return "shopee://m/product?url=" + encodeURIComponent(targetUrl);
+            if (targetUrl.includes("shopee.vn") || targetUrl.includes("shope.ee")) {
+              // Short link → để Universal Link tự xử lý, không dùng scheme
+              return targetUrl;
             }
           } catch(e) {}
           return targetUrl;
@@ -352,6 +352,20 @@ export const renderChoiceLandingPage = (
               "#Intent;scheme=https;package=com.ss.android.ugc.trill;S.browser_fallback_url=" +
               encodeURIComponent(fallbackUrl) + ";end";
             window.location.href = intentUrl;
+            return;
+          }
+
+          // THÊM: Facebook/Zalo iOS → _blank trick
+          const isIOS = /iphone|ipad|ipod/i.test(ua);
+          if (isInApp && isIOS) {
+            const a = document.createElement("a");
+            a.href = fallbackUrl;
+            a.target = "_blank";
+            a.rel = "noopener noreferrer";
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            setTimeout(() => window.location.replace(fallbackUrl), 1500);
             return;
           }
 
