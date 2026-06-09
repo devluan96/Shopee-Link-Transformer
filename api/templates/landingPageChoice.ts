@@ -311,30 +311,58 @@ export const renderChoiceLandingPage = (
           }
         }
 
-        // Tự động bọc cấu trúc URL đích sang mã Custom Scheme mở App gốc
+        // Thay hàm buildAppScheme hiện tại
         const buildAppScheme = (targetUrl) => {
           if (!targetUrl) return "";
-          if (targetUrl.includes("tiktok.com")) {
-            return "snssdk1180://webview?url=" + encodeURIComponent(targetUrl);
-          }
-          if (targetUrl.includes("shopee.vn") || targetUrl.includes("shopee.co")) {
-            return "shopee://m/product?url=" + encodeURIComponent(targetUrl);
-          }
+          try {
+            const url = new URL(targetUrl);
+            const path = url.pathname;
+
+            if (targetUrl.includes("tiktok.com")) {
+              const videoMatch = path.match(/\/video\/(\d+)/);
+              if (videoMatch) return "snssdk1233://aweme/detail/?aweme_id=" + videoMatch[1];
+
+              const profileMatch = path.match(/\/@([\w.]+)\/?$/);
+              if (profileMatch) return "snssdk1233://user/profile/?uniqueId=" + profileMatch[1];
+
+              return "snssdk1233://browser/open?url=" + encodeURIComponent(targetUrl);
+            }
+
+            if (targetUrl.includes("shopee.vn") || targetUrl.includes("shopee.co")) {
+              return "shopee://m/product?url=" + encodeURIComponent(targetUrl);
+            }
+          } catch(e) {}
           return targetUrl;
         };
 
-        // Hàm bổ trợ thực thi gọi lệnh nhảy vào ứng dụng di động nền tảng
+
+        // Và thay triggerAppOpen:
         const triggerAppOpen = (schemeUrl, fallbackUrl) => {
+          const ua = navigator.userAgent || "";
+          const isAndroid = /android/i.test(ua);
+          const isFacebook = /FBAN|FBAV|FB_IAB|FBIOS|FB4A/i.test(ua);
+          const isZalo = /ZaloApp|zalo/i.test(ua);
+          const isInApp = isFacebook || isZalo;
+
+          if (isInApp && isAndroid) {
+            // Thoát Facebook browser qua Intent URL
+            const intentUrl =
+              "intent://" +
+              fallbackUrl.replace(/^https?:\/\//, "") +
+              "#Intent;scheme=https;package=com.ss.android.ugc.trill;S.browser_fallback_url=" +
+              encodeURIComponent(fallbackUrl) + ";end";
+            window.location.href = intentUrl;
+            return;
+          }
+
+          // Trình duyệt thường
+          let didLeave = false;
+          window.addEventListener("blur", () => { didLeave = true; }, { once: true });
+          setTimeout(() => {
+            if (!didLeave && !document.hidden) window.location.href = fallbackUrl;
+          }, 1800);
+
           window.location.href = schemeUrl;
-          setTimeout(() => {
-            const ifr = document.createElement("iframe");
-            ifr.style.display = "none";
-            ifr.src = schemeUrl;
-            document.body.appendChild(ifr);
-          }, 150);
-          setTimeout(() => {
-            if (!document.hidden) { window.location.href = fallbackUrl; }
-          }, 2500);
         };
         // ====================================================================
 

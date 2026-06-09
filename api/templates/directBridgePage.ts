@@ -39,29 +39,35 @@ const isTikTokHostname = (destinationUrl: string) => {
 };
 
 const buildTikTokAppScheme = (destinationUrl: string): string => {
-  const url = new URL(destinationUrl);
-  const path = url.pathname;
+  try {
+    const url = new URL(destinationUrl);
+    const path = url.pathname;
 
-  // TikTok Shop product page
-  if (path.includes("/view/") || url.hostname.includes("shop")) {
-    const encodedUrl = encodeURIComponent(destinationUrl);
-    return `snssdk1180://ec/pdp?biz_type=0&need_mall=1&page_name=reflow_pdp&params_url=${encodedUrl}&refer=web&scene=pdp`;
+    // Video
+    const videoMatch = path.match(/\/video\/(\d+)/);
+    if (videoMatch) {
+      // Thử snssdk1233 trước, iOS fallback về universal link
+      return `snssdk1233://aweme/detail/?aweme_id=${videoMatch[1]}`;
+    }
+
+    // Profile
+    const profileMatch = path.match(/\/@([\w.]+)/);
+    if (profileMatch) {
+      return `snssdk1233://user/profile/?uniqueId=${profileMatch[1]}`;
+    }
+
+    // TikTok Shop — snssdk1180 đúng hơn cho shop
+    if (path.includes("/view/") || url.hostname.includes("shop")) {
+      const encodedUrl = encodeURIComponent(destinationUrl);
+      return `snssdk1180://ec/pdp?params_url=${encodedUrl}&refer=web`;
+    }
+
+    // Fallback: KHÔNG dùng snssdk1233:// rỗng
+    // Trả về https:// để iOS Universal Link tự xử lý
+    return destinationUrl;
+  } catch {
+    return destinationUrl;
   }
-
-  // Video page: /video/123456
-  if (path.match(/\/video\/(\d+)/)) {
-    const videoId = path.match(/\/video\/(\d+)/)![1];
-    return `snssdk1233://aweme/detail/?aweme_id=${videoId}`;
-  }
-
-  // Profile page: /@username
-  if (path.match(/\/@[\w.]+/)) {
-    const username = path.match(/\/@([\w.]+)/)![1];
-    return `snssdk1233://user/profile/?uniqueId=${username}`;
-  }
-
-  // Fallback: universal scheme
-  return `snssdk1233://`;
 };
 
 const buildAppLinkOverride = (destinationUrl: string) => {
