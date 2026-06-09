@@ -29,10 +29,24 @@ const capitalizeFirstCharacter = (value: string) => {
   return `${firstCharacter}${trimmed.slice(1)}`;
 };
 
-const isTikTokHostname = (destinationUrl: string) => {
+const isTikTokHostname = (url: string) => {
   try {
-    const hostname = new URL(destinationUrl).hostname.trim().toLowerCase();
-    return hostname === "tiktok.com" || hostname.endsWith(".tiktok.com");
+    const h = new URL(url).hostname.toLowerCase();
+    return h === "tiktok.com" || h.endsWith(".tiktok.com");
+  } catch {
+    return false;
+  }
+};
+
+const isShopeeHostname = (url: string) => {
+  try {
+    const h = new URL(url).hostname.toLowerCase();
+    return (
+      h === "shopee.vn" ||
+      h.endsWith(".shopee.vn") ||
+      h === "shope.ee" ||
+      h.endsWith(".shope.ee")
+    );
   } catch {
     return false;
   }
@@ -43,33 +57,24 @@ const buildTikTokAppScheme = (destinationUrl: string): string => {
     const url = new URL(destinationUrl);
     const path = url.pathname;
 
-    // Video
     const videoMatch = path.match(/\/video\/(\d+)/);
     if (videoMatch) {
       return `snssdk1233://aweme/detail/?aweme_id=${videoMatch[1]}`;
     }
 
-    // Profile
     const profileMatch = path.match(/\/@([\w.]+)/);
     if (profileMatch) {
       return `snssdk1233://user/profile/?uniqueId=${profileMatch[1]}`;
     }
 
-    // TikTok Shop — dùng đủ params như boclink
     if (path.includes("/view/product/") || url.hostname.includes("shop")) {
       const productMatch = path.match(/\/view\/product\/(\d+)/);
       const productId = productMatch?.[1] || "";
       const encodedUrl = encodeURIComponent(destinationUrl);
-
       return (
         `snssdk1180://ec/pdp` +
-        `?biz_type=0` +
-        `&need_mall=1` +
-        `&needlaunchlog=1` +
-        `&page_name=reflow_pdp` +
-        `&params_url=${encodedUrl}` +
-        `&refer=web` +
-        `&is_commerce=1` +
+        `?biz_type=0&need_mall=1&needlaunchlog=1&page_name=reflow_pdp` +
+        `&params_url=${encodedUrl}&refer=web&is_commerce=1` +
         (productId
           ? `&requestParams=${encodeURIComponent(JSON.stringify({ product_id: [productId] }))}`
           : "")
@@ -82,14 +87,31 @@ const buildTikTokAppScheme = (destinationUrl: string): string => {
   }
 };
 
-const buildAppLinkOverride = (destinationUrl: string) => {
-  if (!isTikTokHostname(destinationUrl)) return null;
-  return buildTikTokAppScheme(destinationUrl);
+const buildShopeeAppScheme = (destinationUrl: string): string => {
+  // Shopee app nhận universal link thẳng
+  // scheme: shopee:// không stable, dùng deep link qua itms-apps cho iOS
+  // Cách đáng tin nhất: trả về URL gốc, để Universal Link iOS tự xử lý
+  return destinationUrl;
+};
+
+const buildAppLinkOverride = (destinationUrl: string): string | null => {
+  if (isTikTokHostname(destinationUrl)) {
+    return buildTikTokAppScheme(destinationUrl);
+  }
+  if (isShopeeHostname(destinationUrl)) {
+    return buildShopeeAppScheme(destinationUrl);
+  }
+  return null;
 };
 
 const TIKTOK_ANDROID_PACKAGE = "com.ss.android.ugc.trill";
 const TIKTOK_APP_NAME = "TikTok";
 const TIKTOK_APP_STORE_ID = "1235601864";
+
+const SHOPEE_ANDROID_PACKAGE = "com.shopee.vn";
+const SHOPEE_APP_NAME = "Shopee";
+const SHOPEE_APP_STORE_ID = "959841449";
+
 const FACEBOOK_APP_ID = "1609970790226254";
 
 export const renderDirectBridgePage = (
@@ -116,6 +138,24 @@ export const renderDirectBridgePage = (
   const webFallbackUrl = primaryRedirectUrl;
   const socialImageUrl = imageUrl || defaultOgImage;
   const faviconUrl = imageUrl || fallbackFavicon;
+  const isTikTok = isTikTokHostname(primaryRedirectUrl);
+  const isShopee = isShopeeHostname(primaryRedirectUrl);
+
+  const appMeta = isTikTok
+    ? {
+        androidPackage: TIKTOK_ANDROID_PACKAGE,
+        androidAppName: TIKTOK_APP_NAME,
+        iosAppName: TIKTOK_APP_NAME,
+        iosAppStoreId: TIKTOK_APP_STORE_ID,
+      }
+    : isShopee
+      ? {
+          androidPackage: SHOPEE_ANDROID_PACKAGE,
+          androidAppName: SHOPEE_APP_NAME,
+          iosAppName: SHOPEE_APP_NAME,
+          iosAppStoreId: SHOPEE_APP_STORE_ID,
+        }
+      : undefined;
 
   return `<!DOCTYPE html>
 <html lang="vi">
@@ -134,14 +174,7 @@ export const renderDirectBridgePage = (
       canonicalUrl,
       webFallbackUrl,
       appLinkOverrideUrl,
-      appLinkOverrideUrl
-        ? {
-            androidPackage: TIKTOK_ANDROID_PACKAGE,
-            androidAppName: TIKTOK_APP_NAME,
-            iosAppName: TIKTOK_APP_NAME,
-            iosAppStoreId: TIKTOK_APP_STORE_ID,
-          }
-        : undefined,
+      appLinkOverrideUrl ? appMeta : undefined,
     )}
     <meta property="og:locale" content="vi_VN" />
     <meta property="og:type" content="website" />
@@ -180,29 +213,32 @@ export const renderDirectBridgePage = (
         // Trong Facebook in-app browser: dùng intent URL (Android)
         // hoặc universal link để bypass popup
         if (isInAppBrowser) {
-          const isAndroid = /android/i.test(ua);
-          const isIOS     = /iphone|ipad|ipod/i.test(ua);
+        const isAndroid = /android/i.test(ua);
+        const isIOS     = /iphone|ipad|ipod/i.test(ua);
 
-          if (isAndroid) {
-            // Intent URL sẽ mở app trực tiếp, bỏ qua popup Facebook
-            const intentUrl =
-              "intent://" +
-              webUrl.replace(/^https?:\/\//, "") +
-              "#Intent;scheme=https;package=com.ss.android.ugc.trill;end";
-            window.location.href = intentUrl;
-            // KHÔNG return — để fallback chạy nếu intent fail
-            setTimeout(() => {
-              window.location.replace(primaryRedirectUrl);
-            }, 2000);
-            return;
-          }
-
-          // Facebook/Zalo iOS → KHÔNG làm gì cả
-          // Meta tag al:ios:url đã được Facebook đọc trước khi trang load
-          if (isInAppBrowser && /iphone|ipad|ipod/i.test(ua)) {
-            return; // để yên, Facebook tự xử lý qua App Links
-          }
+        if (isIOS) {
+          const a = document.createElement("a");
+          a.href = webUrl;
+          a.target = "_blank";
+          a.rel = "noopener noreferrer";
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          setTimeout(() => window.location.replace(webUrl), 1500);
+          return;
         }
+
+        if (isAndroid) {
+          const intentUrl =
+            "intent://" +
+            webUrl.replace(/^https?:\/\//, "") +
+            "#Intent;scheme=https;package=com.ss.android.ugc.trill;" +
+            "S.browser_fallback_url=" + encodeURIComponent(webUrl) + ";end";
+          window.location.href = intentUrl;
+          setTimeout(() => window.location.replace(webUrl), 2000);
+          return;
+        }
+      }
 
         // Trình duyệt thông thường: thử app scheme trước, fallback web
         const timer = setTimeout(() => {
