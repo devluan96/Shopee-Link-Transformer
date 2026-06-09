@@ -35,19 +35,6 @@ export const buildAppLinkMetaTags = (
   ];
 
   if (hasAndroidUrl || hasIosUrl) {
-    if (hasIosUrl) {
-      tags.push(`<meta property="al:ios:url" content="${escapeHtml(iosUrl)}" />`);
-      if (options?.iosAppName?.trim()) {
-        tags.push(
-          `<meta property="al:ios:app_name" content="${escapeHtml(options.iosAppName.trim())}" />`,
-        );
-      }
-      if (options?.iosAppStoreId?.trim()) {
-        tags.push(
-          `<meta property="al:ios:app_store_id" content="${escapeHtml(options.iosAppStoreId.trim())}" />`,
-        );
-      }
-    }
     if (hasAndroidUrl) {
       tags.push(`<meta property="al:android:url" content="${escapeHtml(androidUrl)}" />`);
       if (options?.androidPackage?.trim()) {
@@ -58,6 +45,19 @@ export const buildAppLinkMetaTags = (
       if (options?.androidAppName?.trim()) {
         tags.push(
           `<meta property="al:android:app_name" content="${escapeHtml(options.androidAppName.trim())}" />`,
+        );
+      }
+    }
+    if (hasIosUrl) {
+      tags.push(`<meta property="al:ios:url" content="${escapeHtml(iosUrl)}" />`);
+      if (options?.iosAppName?.trim()) {
+        tags.push(
+          `<meta property="al:ios:app_name" content="${escapeHtml(options.iosAppName.trim())}" />`,
+        );
+      }
+      if (options?.iosAppStoreId?.trim()) {
+        tags.push(
+          `<meta property="al:ios:app_store_id" content="${escapeHtml(options.iosAppStoreId.trim())}" />`,
         );
       }
     }

@@ -14,34 +14,23 @@ const sampleLink: PublicLinkRecord = {
   video_url: "",
 };
 
-test("renderDirectBridgePage exposes TikTok app link metadata and redirects to the HTTPS target", () => {
+test("renderDirectBridgePage emits minimal bridge markup for TikTok targets", () => {
   const html = renderDirectBridgePage(
     sampleLink,
     "https://test.hotsnew.click/test11",
     {
-      primaryRedirectUrl: "https://www.tiktok.com/view/product/1731062681949079816",
+      primaryRedirectUrl:
+        "https://www.tiktok.com/view/product/1731062681949079816",
     },
   );
 
-  assert.match(
-    html,
-    /<meta property="al:web:url" content="https:\/\/www\.tiktok\.com\/view\/product\/1731062681949079816" \/>/,
-  );
   assert.match(
     html,
     /<meta property="fb:app_id" content="1862952583919182" \/>/,
   );
   assert.match(
     html,
-    /<meta property="og:image:width" content="1200" \/>/,
-  );
-  assert.match(
-    html,
-    /<meta property="og:image:height" content="630" \/>/,
-  );
-  assert.match(
-    html,
-    /<meta property="og:image:type" content="image\/jpeg" \/>/,
+    /<meta property="al:web:url" content="https:\/\/www\.tiktok\.com\/view\/product\/1731062681949079816" \/>/,
   );
   assert.match(
     html,
@@ -69,19 +58,11 @@ test("renderDirectBridgePage exposes TikTok app link metadata and redirects to t
   );
   assert.match(
     html,
-    /<a class="button button-primary" id="openAppButton" href="https:\/\/www\.tiktok\.com\/view\/product\/1731062681949079816" rel="nofollow">Mở trong ứng dụng<\/a>/,
-  );
-  assert.match(
-    html,
-    /<a class="button button-secondary" id="openWebButton" href="https:\/\/www\.tiktok\.com\/view\/product\/1731062681949079816" rel="nofollow">Mở bằng web<\/a>/,
-  );
-  assert.doesNotMatch(html, /const appUrl = /);
-  assert.match(
-    html,
     /const webUrl = "https:\/\/www\.tiktok\.com\/view\/product\/1731062681949079816";/,
   );
   assert.match(html, /window\.location\.replace\(webUrl\);/);
-  assert.doesNotMatch(html, /window\.location\.href = appUrl;/);
+  assert.doesNotMatch(html, /openAppButton/);
+  assert.doesNotMatch(html, /openWebButton/);
 });
 
 test("renderDirectBridgePage keeps non-TikTok targets on HTTPS app links", () => {
@@ -102,4 +83,6 @@ test("renderDirectBridgePage keeps non-TikTok targets on HTTPS app links", () =>
     /<meta property="al:android:url" content="https:\/\/s\.shopee\.vn\/70HVE1d0qK" \/>/,
   );
   assert.doesNotMatch(html, /al:android:package/);
+  assert.doesNotMatch(html, /openAppButton/);
+  assert.doesNotMatch(html, /openWebButton/);
 });

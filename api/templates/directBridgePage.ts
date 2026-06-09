@@ -91,7 +91,7 @@ export const renderDirectBridgePage = (
     <link rel="apple-touch-icon" href="${escapeHtml(faviconUrl)}" />
     <link rel="canonical" href="${escapeHtml(canonicalUrl)}" />
     <meta property="fb:app_id" content="${FACEBOOK_APP_ID}" />
-    ${buildAppLinkMetaTags(canonicalUrl, primaryRedirectUrl, appLinkOverrideUrl, appLinkOverrideUrl ? {
+    ${buildAppLinkMetaTags(canonicalUrl, webFallbackUrl, appLinkOverrideUrl, appLinkOverrideUrl ? {
       androidPackage: TIKTOK_ANDROID_PACKAGE,
       androidAppName: TIKTOK_APP_NAME,
       iosAppName: TIKTOK_APP_NAME,
@@ -112,137 +112,11 @@ export const renderDirectBridgePage = (
     <meta name="twitter:title" content="${escapeHtml(title)}" />
     <meta name="twitter:description" content="${escapeHtml(description)}" />
     <meta name="twitter:image" content="${escapeHtml(socialImageUrl)}" />
-    <style>
-      :root {
-        color-scheme: dark;
-        --bg: #050b16;
-        --panel: rgba(8, 16, 30, 0.78);
-        --border: rgba(255, 255, 255, 0.12);
-        --text: #f8fafc;
-        --muted: rgba(226, 232, 240, 0.78);
-        --accent: #fb7185;
-      }
-      * { box-sizing: border-box; }
-      body {
-        margin: 0;
-        min-height: 100vh;
-        font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
-        color: var(--text);
-        background:
-          radial-gradient(circle at 16% 18%, rgba(34, 211, 238, 0.24), transparent 22%),
-          radial-gradient(circle at 82% 20%, rgba(251, 113, 133, 0.22), transparent 24%),
-          linear-gradient(135deg, #020617 0%, #050b16 45%, #0f172a 100%);
-        overflow: hidden;
-      }
-      .shell {
-        min-height: 100vh;
-        display: grid;
-        place-items: center;
-        padding: 1rem;
-      }
-      .card {
-        width: min(30rem, 94vw);
-        border: 1px solid var(--border);
-        border-radius: 1.5rem;
-        background: var(--panel);
-        backdrop-filter: blur(20px) saturate(130%);
-        box-shadow: 0 1.25rem 3rem rgba(0, 0, 0, 0.28);
-        padding: 1.35rem;
-      }
-      .eyebrow {
-        font-size: 0.7rem;
-        font-weight: 900;
-        letter-spacing: 0.18em;
-        text-transform: uppercase;
-        color: rgba(226, 232, 240, 0.72);
-      }
-      .title {
-        margin: 0.55rem 0 0;
-        font-size: 1.35rem;
-        line-height: 1.35;
-      }
-      .desc {
-        margin: 0.7rem 0 0;
-        color: var(--muted);
-        font-size: 0.95rem;
-        line-height: 1.6;
-      }
-      .actions {
-        display: grid;
-        gap: 0.75rem;
-        margin-top: 1.15rem;
-      }
-      .button {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        width: 100%;
-        min-height: 3rem;
-        padding: 0.9rem 1.1rem;
-        border-radius: 999px;
-        text-decoration: none;
-        font-size: 0.86rem;
-        font-weight: 900;
-        letter-spacing: 0.06em;
-        text-transform: uppercase;
-        border: 0;
-      }
-      .button-primary {
-        color: #fff;
-        background: linear-gradient(135deg, rgba(251, 113, 133, 0.98), rgba(249, 115, 22, 0.98));
-        box-shadow: 0 1rem 2rem rgba(249, 115, 22, 0.22);
-      }
-      .button-secondary {
-        color: rgba(226, 232, 240, 0.92);
-        background: rgba(30, 41, 59, 0.95);
-        border: 1px solid rgba(255, 255, 255, 0.12);
-      }
-      .hint {
-        margin-top: 0.9rem;
-        color: rgba(226, 232, 240, 0.6);
-        font-size: 0.8rem;
-        line-height: 1.5;
-        text-align: center;
-      }
-      .spinner {
-        width: 2.5rem;
-        height: 2.5rem;
-        border-radius: 999px;
-        border: 3px solid rgba(255,255,255,0.15);
-        border-top-color: rgba(251, 113, 133, 0.95);
-        animation: spin 0.9s linear infinite;
-        margin-bottom: 1rem;
-      }
-      @keyframes spin {
-        to { transform: rotate(360deg); }
-      }
-    </style>
   </head>
   <body>
-    <main class="shell">
-      <section class="card" aria-label="Bridge page">
-        <div class="spinner" aria-hidden="true"></div>
-        <div class="eyebrow">Đang mở ứng dụng</div>
-        <h1 class="title">${escapeHtml(title)}</h1>
-        <p class="desc">${escapeHtml(description)}</p>
-        <div class="actions">
-          <a class="button button-primary" id="openAppButton" href="${escapeHtml(webFallbackUrl)}" rel="nofollow">Mở trong ứng dụng</a>
-          <a class="button button-secondary" id="openWebButton" href="${escapeHtml(webFallbackUrl)}" rel="nofollow">Mở bằng web</a>
-        </div>
-        <div class="hint">Nếu ứng dụng chưa tự mở, bạn vẫn có thể dùng nút bên trên để tiếp tục.</div>
-      </section>
-    </main>
     <script>
       (() => {
         const webUrl = "${escapeJsString(webFallbackUrl)}";
-        const openButton = document.getElementById("openAppButton");
-        const webButton = document.getElementById("openWebButton");
-        if (openButton) {
-          openButton.setAttribute("href", webUrl);
-        }
-        if (webButton) {
-          webButton.setAttribute("href", webUrl);
-        }
         window.location.replace(webUrl);
       })();
     </script>
