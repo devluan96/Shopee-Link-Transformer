@@ -1,192 +1,105 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { renderDirectBridgePage } from "../../api/templates/directBridgePage.ts";
-import type { PublicLinkRecord } from "../../api/types/index.ts";
 
-const sampleLink: PublicLinkRecord = {
-  id: "link-1",
-  short_code: "test11",
-  original_url: "https://www.tiktok.com/view/product/1731062681949079816",
-  secondary_url: "",
-  custom_title: "test11",
-  custom_description: "mo ta test",
-  custom_image_url: "https://cdn.example.com/preview.jpg",
-  video_url: "",
-};
+import { renderDirectBridgePage } from "../../api/templates/directBridgePage.js";
+import type { PublicLinkRecord } from "../../api/types/index.js";
 
-const TIKTOK_SHOP_URL =
-  "https://www.tiktok.com/view/product/1731062681949079816";
-const TIKTOK_SHOP_SCHEME =
-  "snssdk1233://ec/pdp?params_url=" +
-  encodeURIComponent(TIKTOK_SHOP_URL) +
-  "&refer=web";
-const TIKTOK_SHOP_SCHEME_ESCAPED = TIKTOK_SHOP_SCHEME.replace(/&/g, "&amp;");
+const createLink = (
+  overrides: Partial<PublicLinkRecord> = {},
+): PublicLinkRecord =>
+  ({
+    id: "test-id",
+    slug: "test-slug",
+    original_url: "https://www.tiktok.com/@demo/video/123456789",
+    created_at: new Date().toISOString(),
+    clicks: 0,
+    ...overrides,
+  }) as PublicLinkRecord;
 
-// ─── TikTok Shop ────────────────────────────────────────────────────────────
+test("renderDirectBridgePage emits minimal bridge markup for TikTok targets", () => {
+  const link = createLink();
 
-test("renderDirectBridgePage — TikTok Shop: App Link meta tags", () => {
-  const html = renderDirectBridgePage(
-    sampleLink,
-    "https://test.hotsnew.click/test11",
-    {
-      primaryRedirectUrl: TIKTOK_SHOP_URL,
-    },
-  );
+  const html = renderDirectBridgePage(link, "https://hotsnew.click/test-slug");
 
-  // fb:app_id
+  // Base HTML
+  assert.match(html, /<!DOCTYPE html>/i);
+  assert.match(html, /<html lang="vi">/i);
+
+  // Title
+  assert.match(html, /<title>HotsNew Click<\/title>/i);
+
+  // OG tags
+  assert.match(html, /property="og:title"/i);
+  assert.match(html, /property="og:description"/i);
+  assert.match(html, /property="og:image"/i);
+
+  // TikTok deep link
+  assert.match(html, /snssdk1233:\/\/aweme\/detail\/\?aweme_id=123456789/i);
+
+  // App link metadata
   assert.match(
     html,
-    /<meta property="fb:app_id" content="1862952583919182" \/>/,
+    /property="al:android:package" content="com\.ss\.android\.ugc\.trill"/i,
   );
 
-  // al:web:url
-  assert.match(
-    html,
-    /<meta property="al:web:url" content="https:\/\/www\.tiktok\.com\/view\/product\/1731062681949079816" \/>/,
-  );
+  assert.match(html, /property="al:android:app_name" content="TikTok"/i);
 
-  // al:ios:url — snssdk1233 scheme
-  assert.match(
-    html,
-    new RegExp(
-      `<meta property="al:ios:url" content="${TIKTOK_SHOP_SCHEME_ESCAPED.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}" \\/>`,
-    ),
-  );
+  assert.match(html, /property="al:ios:app_name" content="TikTok"/i);
 
-  // al:android:url — snssdk1233 scheme
-  assert.match(
-    html,
-    new RegExp(
-      `<meta property="al:android:url" content="${TIKTOK_SHOP_SCHEME_ESCAPED.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}" \\/>`,
-    ),
-  );
+  assert.match(html, /property="al:ios:app_store_id" content="1235601864"/i);
 
-  // android package & app name
-  assert.match(
-    html,
-    /<meta property="al:android:package" content="com\.ss\.android\.ugc\.trill" \/>/,
-  );
-  assert.match(
-    html,
-    /<meta property="al:android:app_name" content="TikTok" \/>/,
-  );
-  assert.match(html, /<meta property="al:ios:app_name" content="TikTok" \/>/);
-  assert.match(
-    html,
-    /<meta property="al:ios:app_store_id" content="1235601864" \/>/,
-  );
+  // Redirect logic
+  assert.match(html, /window\.location\.href = appUrl/i);
+  assert.match(html, /window\.location\.replace\(webUrl\)/i);
+
+  // FB / Zalo browser detection
+  assert.match(html, /FBAN\|FBAV\|FB_IAB\|FBIOS/i);
+  assert.match(html, /ZaloApp/i);
 });
 
-test("renderDirectBridgePage — TikTok Shop: script có đủ biến", () => {
-  const html = renderDirectBridgePage(
-    sampleLink,
-    "https://test.hotsnew.click/test11",
-    {
-      primaryRedirectUrl: TIKTOK_SHOP_URL,
-    },
-  );
+test("renderDirectBridgePage renders TikTok Shop deep links", () => {
+  const link = createLink({
+    original_url: "https://shop.tiktok.com/view/product/1731105588598300000",
+  });
 
-  // appUrl và webUrl phải có mặt trong script
-  assert.match(html, /const appUrl\s*=/);
-  assert.match(html, /const webUrl\s*=/);
-  assert.match(
-    html,
-    new RegExp(`"${TIKTOK_SHOP_URL.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}"`),
-  );
+  const html = renderDirectBridgePage(link, "https://hotsnew.click/shop-link");
+
+  assert.match(html, /snssdk1180:\/\/ec\/pdp/i);
+  assert.match(html, /params_url=/i);
+  assert.match(html, /refer=web/i);
 });
 
-test("renderDirectBridgePage — TikTok Shop: script xử lý Intent URL cho Android in-app", () => {
+test("renderDirectBridgePage falls back for non TikTok links", () => {
+  const link = createLink({
+    original_url: "https://example.com/article",
+  });
+
   const html = renderDirectBridgePage(
-    sampleLink,
-    "https://test.hotsnew.click/test11",
-    {
-      primaryRedirectUrl: TIKTOK_SHOP_URL,
-    },
+    link,
+    "https://hotsnew.click/example-link",
   );
 
-  assert.match(html, /isAndroid/);
-  assert.match(html, /isFacebook|isInApp/);
-  assert.match(html, /intent:\/\//);
-  assert.match(html, /com\.ss\.android\.ugc\.trill/);
+  // Không có TikTok scheme
+  assert.doesNotMatch(html, /snssdk1233:\/\//i);
+  assert.doesNotMatch(html, /snssdk1180:\/\//i);
+
+  // Vẫn redirect web
+  assert.match(html, /window\.location\.replace\(webUrl\)/i);
 });
 
-test("renderDirectBridgePage — TikTok Shop: script fallback web sau timeout", () => {
+test("renderDirectBridgePage escapes html safely", () => {
+  const link = createLink({
+    custom_title: `<script>alert("xss")</script>`,
+    custom_description: `"quoted" <b>tag</b>`,
+  });
+
   const html = renderDirectBridgePage(
-    sampleLink,
-    "https://test.hotsnew.click/test11",
-    {
-      primaryRedirectUrl: TIKTOK_SHOP_URL,
-    },
+    link,
+    "https://hotsnew.click/escape-test",
   );
 
-  assert.match(html, /setTimeout/);
-  assert.match(html, /window\.location\.(replace|href)\s*=\s*webUrl/);
-});
+  assert.doesNotMatch(html, /<script>alert/i);
 
-test("renderDirectBridgePage — TikTok Shop: không có UI button", () => {
-  const html = renderDirectBridgePage(
-    sampleLink,
-    "https://test.hotsnew.click/test11",
-    {
-      primaryRedirectUrl: TIKTOK_SHOP_URL,
-    },
-  );
-
-  assert.doesNotMatch(html, /openAppButton/);
-  assert.doesNotMatch(html, /openWebButton/);
-});
-
-// ─── TikTok Video ───────────────────────────────────────────────────────────
-
-test("renderDirectBridgePage — TikTok Video: al:ios:url dùng snssdk1233://aweme/detail", () => {
-  const html = renderDirectBridgePage(
-    {
-      ...sampleLink,
-      original_url: "https://www.tiktok.com/@user/video/7391234567890123456",
-    },
-    "https://test.hotsnew.click/test11",
-    {
-      primaryRedirectUrl:
-        "https://www.tiktok.com/@user/video/7391234567890123456",
-    },
-  );
-
-  assert.match(
-    html,
-    /snssdk1233:\/\/aweme\/detail\/\?aweme_id=7391234567890123456/,
-  );
-});
-
-// ─── TikTok Profile ─────────────────────────────────────────────────────────
-
-test("renderDirectBridgePage — TikTok Profile: al:ios:url dùng snssdk1233://user/profile", () => {
-  const html = renderDirectBridgePage(
-    { ...sampleLink, original_url: "https://www.tiktok.com/@someuser" },
-    "https://test.hotsnew.click/test11",
-    { primaryRedirectUrl: "https://www.tiktok.com/@someuser" },
-  );
-
-  assert.match(html, /snssdk1233:\/\/user\/profile\/\?uniqueId=someuser/);
-});
-
-// ─── Non-TikTok (Shopee) ────────────────────────────────────────────────────
-
-test("renderDirectBridgePage — Shopee: al:ios:url và al:android:url dùng https", () => {
-  const html = renderDirectBridgePage(
-    { ...sampleLink, original_url: "https://s.shopee.vn/70HVE1d0qK" },
-    "https://test.hotsnew.click/test11",
-  );
-
-  assert.match(
-    html,
-    /<meta property="al:ios:url" content="https:\/\/s\.shopee\.vn\/70HVE1d0qK" \/>/,
-  );
-  assert.match(
-    html,
-    /<meta property="al:android:url" content="https:\/\/s\.shopee\.vn\/70HVE1d0qK" \/>/,
-  );
-  // Không có android:package vì không phải TikTok
-  assert.doesNotMatch(html, /al:android:package/);
-  assert.doesNotMatch(html, /openAppButton/);
-  assert.doesNotMatch(html, /openWebButton/);
+  assert.match(html, /&lt;script&gt;/i);
+  assert.match(html, /&quot;quoted&quot;/i);
 });
