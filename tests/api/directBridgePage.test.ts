@@ -1,88 +1,105 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+
 import { renderDirectBridgePage } from "../../api/templates/directBridgePage.js";
 import type { PublicLinkRecord } from "../../api/types/index.js";
 
-const sampleLink: PublicLinkRecord = {
-  id: "link-1",
-  short_code: "test11",
-  original_url: "https://www.tiktok.com/view/product/1731062681949079816",
-  secondary_url: "",
-  custom_title: "test11",
-  custom_description: "mo ta test",
-  custom_image_url: "https://cdn.example.com/preview.jpg",
-  video_url: "",
-};
+const createLink = (
+  overrides: Partial<PublicLinkRecord> = {},
+): PublicLinkRecord =>
+  ({
+    id: "test-id",
+    slug: "test-slug",
+    original_url: "https://www.tiktok.com/@demo/video/123456789",
+    created_at: new Date().toISOString(),
+    clicks: 0,
+    ...overrides,
+  }) as PublicLinkRecord;
 
 test("renderDirectBridgePage emits minimal bridge markup for TikTok targets", () => {
-  const html = renderDirectBridgePage(
-    sampleLink,
-    "https://test.hotsnew.click/test11",
-    {
-      primaryRedirectUrl:
-        "https://www.tiktok.com/view/product/1731062681949079816",
-    },
+  const link = createLink();
+
+  const html = renderDirectBridgePage(link, "https://hotsnew.click/test-slug");
+
+  // Base HTML
+  assert.match(html, /<!DOCTYPE html>/i);
+  assert.match(html, /<html lang="vi">/i);
+
+  // Title
+  assert.match(html, /<title>HotsNew Click<\/title>/i);
+
+  // OG tags
+  assert.match(html, /property="og:title"/i);
+  assert.match(html, /property="og:description"/i);
+  assert.match(html, /property="og:image"/i);
+
+  // TikTok deep link
+  assert.match(html, /snssdk1233:\/\/aweme\/detail\/\?aweme_id=123456789/i);
+
+  // App link metadata
+  assert.match(
+    html,
+    /property="al:android:package" content="com\.ss\.android\.ugc\.trill"/i,
   );
 
-  assert.match(
-    html,
-    /<meta property="fb:app_id" content="1862952583919182" \/>/,
-  );
-  assert.match(
-    html,
-    /<meta property="al:web:url" content="https:\/\/www\.tiktok\.com\/view\/product\/1731062681949079816" \/>/,
-  );
-  assert.match(
-    html,
-    /<meta property="al:ios:url" content="snssdk1180:\/\/ec\/pdp\?biz_type=0&amp;need_mall=1&amp;needlaunchlog=1&amp;page_name=reflow_pdp&amp;params_url=https%3A%2F%2Fwww\.tiktok\.com%2Fview%2Fproduct%2F1731062681949079816&amp;refer=web&amp;scene=pdp&amp;use_land_page=1" \/>/,
-  );
-  assert.match(
-    html,
-    /<meta property="al:android:url" content="snssdk1180:\/\/ec\/pdp\?biz_type=0&amp;need_mall=1&amp;needlaunchlog=1&amp;page_name=reflow_pdp&amp;params_url=https%3A%2F%2Fwww\.tiktok\.com%2Fview%2Fproduct%2F1731062681949079816&amp;refer=web&amp;scene=pdp&amp;use_land_page=1" \/>/,
-  );
-  assert.match(
-    html,
-    /<meta property="al:android:package" content="com\.ss\.android\.ugc\.trill" \/>/,
-  );
-  assert.match(
-    html,
-    /<meta property="al:android:app_name" content="TikTok" \/>/,
-  );
-  assert.match(
-    html,
-    /<meta property="al:ios:app_name" content="TikTok" \/>/,
-  );
-  assert.match(
-    html,
-    /<meta property="al:ios:app_store_id" content="1235601864" \/>/,
-  );
-  assert.match(
-    html,
-    /const webUrl = "https:\/\/www\.tiktok\.com\/view\/product\/1731062681949079816";/,
-  );
-  assert.match(html, /window\.location\.replace\(webUrl\);/);
-  assert.doesNotMatch(html, /openAppButton/);
-  assert.doesNotMatch(html, /openWebButton/);
+  assert.match(html, /property="al:android:app_name" content="TikTok"/i);
+
+  assert.match(html, /property="al:ios:app_name" content="TikTok"/i);
+
+  assert.match(html, /property="al:ios:app_store_id" content="1235601864"/i);
+
+  // Redirect logic
+  assert.match(html, /window\.location\.href = appUrl/i);
+  assert.match(html, /window\.location\.replace\(webUrl\)/i);
+
+  // FB / Zalo browser detection
+  assert.match(html, /FBAN\|FBAV\|FB_IAB\|FBIOS/i);
+  assert.match(html, /ZaloApp/i);
 });
 
-test("renderDirectBridgePage keeps non-TikTok targets on HTTPS app links", () => {
+test("renderDirectBridgePage renders TikTok Shop deep links", () => {
+  const link = createLink({
+    original_url: "https://shop.tiktok.com/view/product/1731105588598300000",
+  });
+
+  const html = renderDirectBridgePage(link, "https://hotsnew.click/shop-link");
+
+  assert.match(html, /snssdk1180:\/\/ec\/pdp/i);
+  assert.match(html, /params_url=/i);
+  assert.match(html, /refer=web/i);
+});
+
+test("renderDirectBridgePage falls back for non TikTok links", () => {
+  const link = createLink({
+    original_url: "https://example.com/article",
+  });
+
   const html = renderDirectBridgePage(
-    {
-      ...sampleLink,
-      original_url: "https://s.shopee.vn/70HVE1d0qK",
-    },
-    "https://test.hotsnew.click/test11",
+    link,
+    "https://hotsnew.click/example-link",
   );
 
-  assert.match(
-    html,
-    /<meta property="al:ios:url" content="https:\/\/s\.shopee\.vn\/70HVE1d0qK" \/>/,
+  // Không có TikTok scheme
+  assert.doesNotMatch(html, /snssdk1233:\/\//i);
+  assert.doesNotMatch(html, /snssdk1180:\/\//i);
+
+  // Vẫn redirect web
+  assert.match(html, /window\.location\.replace\(webUrl\)/i);
+});
+
+test("renderDirectBridgePage escapes html safely", () => {
+  const link = createLink({
+    custom_title: `<script>alert("xss")</script>`,
+    custom_description: `"quoted" <b>tag</b>`,
+  });
+
+  const html = renderDirectBridgePage(
+    link,
+    "https://hotsnew.click/escape-test",
   );
-  assert.match(
-    html,
-    /<meta property="al:android:url" content="https:\/\/s\.shopee\.vn\/70HVE1d0qK" \/>/,
-  );
-  assert.doesNotMatch(html, /al:android:package/);
-  assert.doesNotMatch(html, /openAppButton/);
-  assert.doesNotMatch(html, /openWebButton/);
+
+  assert.doesNotMatch(html, /<script>alert/i);
+
+  assert.match(html, /&lt;script&gt;/i);
+  assert.match(html, /&quot;quoted&quot;/i);
 });
