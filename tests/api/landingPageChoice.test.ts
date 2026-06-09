@@ -40,7 +40,7 @@ test("renderChoiceLandingPage keeps social preview metadata for test domains", (
   );
   assert.match(
     html,
-    /<meta property="al:web:url" content="https:\/\/test\.hotsnew\.click\/test11" \/>/,
+    /<meta property="al:web:url" content="https:\/\/example\.com\/original" \/>/,
   );
   assert.match(html, /<meta property="al:web:should_fallback" content="true" \/>/);
   assert.match(

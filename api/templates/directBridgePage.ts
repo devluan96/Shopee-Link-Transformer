@@ -29,20 +29,29 @@ const capitalizeFirstCharacter = (value: string) => {
   return `${firstCharacter}${trimmed.slice(1)}`;
 };
 
+const isTikTokHostname = (destinationUrl: string) => {
+  try {
+    const hostname = new URL(destinationUrl).hostname.trim().toLowerCase();
+    return hostname === "tiktok.com" || hostname.endsWith(".tiktok.com");
+  } catch {
+    return false;
+  }
+};
+
 const buildTikTokAppScheme = (destinationUrl: string) => {
   const encodedUrl = encodeURIComponent(destinationUrl);
   return `snssdk1180://ec/pdp?biz_type=0&need_mall=1&needlaunchlog=1&page_name=reflow_pdp&params_url=${encodedUrl}&refer=web&scene=pdp&use_land_page=1`;
 };
 
 const buildAppLinkOverride = (destinationUrl: string) => {
-  const normalized = destinationUrl.trim().toLowerCase();
-  if (!normalized.includes("tiktok.com")) return null;
+  if (!isTikTokHostname(destinationUrl)) return null;
   return buildTikTokAppScheme(destinationUrl);
 };
 
 const TIKTOK_ANDROID_PACKAGE = "com.ss.android.ugc.trill";
 const TIKTOK_APP_NAME = "TikTok";
 const TIKTOK_APP_STORE_ID = "1235601864";
+const FACEBOOK_APP_ID = "1862952583919182";
 
 export const renderDirectBridgePage = (
   link: PublicLinkRecord,
@@ -65,16 +74,9 @@ export const renderDirectBridgePage = (
   const primaryRedirectUrl =
     options?.primaryRedirectUrl?.trim() || link.original_url.trim();
   const appLinkOverrideUrl = buildAppLinkOverride(primaryRedirectUrl);
+  const webFallbackUrl = primaryRedirectUrl;
   const socialImageUrl = imageUrl || defaultOgImage;
   const faviconUrl = imageUrl || fallbackFavicon;
-  const isTikTokTarget = Boolean(appLinkOverrideUrl);
-  const tiktokAppMeta = isTikTokTarget
-    ? `
-    <meta property="al:android:package" content="${TIKTOK_ANDROID_PACKAGE}" />
-    <meta property="al:android:app_name" content="${TIKTOK_APP_NAME}" />
-    <meta property="al:ios:app_name" content="${TIKTOK_APP_NAME}" />
-    <meta property="al:ios:app_store_id" content="${TIKTOK_APP_STORE_ID}" />`
-    : "";
 
   return `<!DOCTYPE html>
 <html lang="vi">
@@ -88,8 +90,13 @@ export const renderDirectBridgePage = (
     <link rel="shortcut icon" href="${escapeHtml(faviconUrl)}" />
     <link rel="apple-touch-icon" href="${escapeHtml(faviconUrl)}" />
     <link rel="canonical" href="${escapeHtml(canonicalUrl)}" />
-    ${buildAppLinkMetaTags(canonicalUrl, primaryRedirectUrl, appLinkOverrideUrl)}
-    ${tiktokAppMeta}
+    <meta property="fb:app_id" content="${FACEBOOK_APP_ID}" />
+    ${buildAppLinkMetaTags(canonicalUrl, primaryRedirectUrl, appLinkOverrideUrl, appLinkOverrideUrl ? {
+      androidPackage: TIKTOK_ANDROID_PACKAGE,
+      androidAppName: TIKTOK_APP_NAME,
+      iosAppName: TIKTOK_APP_NAME,
+      iosAppStoreId: TIKTOK_APP_STORE_ID,
+    } : undefined)}
     <meta property="og:locale" content="vi_VN" />
     <meta property="og:type" content="website" />
     <meta property="og:title" content="${escapeHtml(title)}" />
@@ -98,6 +105,9 @@ export const renderDirectBridgePage = (
     <meta property="og:site_name" content="HotsNew Click" />
     <meta property="og:image" content="${escapeHtml(socialImageUrl)}" />
     <meta property="og:image:secure_url" content="${escapeHtml(socialImageUrl)}" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:type" content="image/jpeg" />
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="${escapeHtml(title)}" />
     <meta name="twitter:description" content="${escapeHtml(description)}" />
@@ -216,25 +226,24 @@ export const renderDirectBridgePage = (
         <h1 class="title">${escapeHtml(title)}</h1>
         <p class="desc">${escapeHtml(description)}</p>
         <div class="actions">
-          <a class="button button-primary" id="openAppButton" href="${escapeHtml(primaryRedirectUrl)}">Mở trong ứng dụng</a>
-          <a class="button button-secondary" href="${escapeHtml(primaryRedirectUrl)}" rel="nofollow">Mở bằng web</a>
+          <a class="button button-primary" id="openAppButton" href="${escapeHtml(webFallbackUrl)}" rel="nofollow">Mở trong ứng dụng</a>
+          <a class="button button-secondary" id="openWebButton" href="${escapeHtml(webFallbackUrl)}" rel="nofollow">Mở bằng web</a>
         </div>
         <div class="hint">Nếu ứng dụng chưa tự mở, bạn vẫn có thể dùng nút bên trên để tiếp tục.</div>
       </section>
     </main>
     <script>
       (() => {
-        const targetUrl = "${escapeJsString(primaryRedirectUrl)}";
+        const webUrl = "${escapeJsString(webFallbackUrl)}";
         const openButton = document.getElementById("openAppButton");
+        const webButton = document.getElementById("openWebButton");
         if (openButton) {
-          openButton.setAttribute("href", targetUrl);
+          openButton.setAttribute("href", webUrl);
         }
-
-        try {
-          window.location.replace(targetUrl);
-        } catch (error) {
-          window.location.href = targetUrl;
+        if (webButton) {
+          webButton.setAttribute("href", webUrl);
         }
+        window.location.replace(webUrl);
       })();
     </script>
   </body>

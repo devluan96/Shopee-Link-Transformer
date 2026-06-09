@@ -51,7 +51,7 @@ test("renderLinkLandingPage exposes app link metadata", () => {
 
   assert.match(
     html,
-    /<meta property="al:web:url" content="https:\/\/test\.hotsnew\.click\/test11" \/>/,
+    /<meta property="al:web:url" content="https:\/\/example\.com\/original" \/>/,
   );
   assert.match(html, /<meta property="al:web:should_fallback" content="true" \/>/);
   assert.match(
