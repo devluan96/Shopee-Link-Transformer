@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { renderDirectBridgePage } from "../../api/templates/directBridgePage.js";
-import type { PublicLinkRecord } from "../../api/types/index.js";
+import { renderDirectBridgePage } from "../../api/templates/directBridgePage.ts";
+import type { PublicLinkRecord } from "../../api/types/index.ts";
 
 const sampleLink: PublicLinkRecord = {
   id: "link-1",
