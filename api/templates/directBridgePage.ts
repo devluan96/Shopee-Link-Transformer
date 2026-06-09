@@ -38,9 +38,30 @@ const isTikTokHostname = (destinationUrl: string) => {
   }
 };
 
-const buildTikTokAppScheme = (destinationUrl: string) => {
-  const encodedUrl = encodeURIComponent(destinationUrl);
-  return `snssdk1180://ec/pdp?biz_type=0&need_mall=1&needlaunchlog=1&page_name=reflow_pdp&params_url=${encodedUrl}&refer=web&scene=pdp&use_land_page=1`;
+const buildTikTokAppScheme = (destinationUrl: string): string => {
+  const url = new URL(destinationUrl);
+  const path = url.pathname;
+
+  // TikTok Shop product page
+  if (path.includes("/view/") || url.hostname.includes("shop")) {
+    const encodedUrl = encodeURIComponent(destinationUrl);
+    return `snssdk1180://ec/pdp?biz_type=0&need_mall=1&page_name=reflow_pdp&params_url=${encodedUrl}&refer=web&scene=pdp`;
+  }
+
+  // Video page: /video/123456
+  if (path.match(/\/video\/(\d+)/)) {
+    const videoId = path.match(/\/video\/(\d+)/)![1];
+    return `snssdk1233://aweme/detail/?aweme_id=${videoId}`;
+  }
+
+  // Profile page: /@username
+  if (path.match(/\/@[\w.]+/)) {
+    const username = path.match(/\/@([\w.]+)/)![1];
+    return `snssdk1233://user/profile/?uniqueId=${username}`;
+  }
+
+  // Fallback: universal scheme
+  return `snssdk1233://`;
 };
 
 const buildAppLinkOverride = (destinationUrl: string) => {
@@ -91,12 +112,19 @@ export const renderDirectBridgePage = (
     <link rel="apple-touch-icon" href="${escapeHtml(faviconUrl)}" />
     <link rel="canonical" href="${escapeHtml(canonicalUrl)}" />
     <meta property="fb:app_id" content="${FACEBOOK_APP_ID}" />
-    ${buildAppLinkMetaTags(canonicalUrl, webFallbackUrl, appLinkOverrideUrl, appLinkOverrideUrl ? {
-      androidPackage: TIKTOK_ANDROID_PACKAGE,
-      androidAppName: TIKTOK_APP_NAME,
-      iosAppName: TIKTOK_APP_NAME,
-      iosAppStoreId: TIKTOK_APP_STORE_ID,
-    } : undefined)}
+    ${buildAppLinkMetaTags(
+      canonicalUrl,
+      webFallbackUrl,
+      appLinkOverrideUrl,
+      appLinkOverrideUrl
+        ? {
+            androidPackage: TIKTOK_ANDROID_PACKAGE,
+            androidAppName: TIKTOK_APP_NAME,
+            iosAppName: TIKTOK_APP_NAME,
+            iosAppStoreId: TIKTOK_APP_STORE_ID,
+          }
+        : undefined,
+    )}
     <meta property="og:locale" content="vi_VN" />
     <meta property="og:type" content="website" />
     <meta property="og:title" content="${escapeHtml(title)}" />
@@ -113,11 +141,58 @@ export const renderDirectBridgePage = (
     <meta name="twitter:description" content="${escapeHtml(description)}" />
     <meta name="twitter:image" content="${escapeHtml(socialImageUrl)}" />
   </head>
-  <body>
+    <body>
     <script>
       (() => {
-        const webUrl = "${escapeJsString(webFallbackUrl)}";
-        window.location.replace(webUrl);
+        const appUrl   = "${escapeJsString(appLinkOverrideUrl || "")}";
+        const webUrl   = "${escapeJsString(webFallbackUrl)}";
+        const ua       = navigator.userAgent || "";
+
+        // Detect Facebook / Zalo in-app browser
+        const isFbBrowser  = /FBAN|FBAV|FB_IAB|FBIOS/i.test(ua);
+        const isZalo       = /ZaloApp/i.test(ua);
+        const isInAppBrowser = isFbBrowser || isZalo;
+
+        // Không có app scheme → redirect web thẳng
+        if (!appUrl) {
+          window.location.replace(webUrl);
+          return;
+        }
+
+        // Trong Facebook in-app browser: dùng intent URL (Android)
+        // hoặc universal link để bypass popup
+        if (isInAppBrowser) {
+          const isAndroid = /android/i.test(ua);
+          const isIOS     = /iphone|ipad|ipod/i.test(ua);
+
+          if (isAndroid) {
+            // Intent URL sẽ mở app trực tiếp, bỏ qua popup Facebook
+            const intentUrl =
+              "intent://" +
+              webUrl.replace(/^https?:\/\//, "") +
+              "#Intent;scheme=https;package=com.ss.android.ugc.trill;end";
+            window.location.href = intentUrl;
+            return;
+          }
+
+          if (isIOS) {
+            // Universal link — iOS sẽ tự nhận và mở TikTok app
+            // không cần scheme, không hiện popup
+            window.location.replace(webUrl);
+            return;
+          }
+        }
+
+        // Trình duyệt thông thường: thử app scheme trước, fallback web
+        const timer = setTimeout(() => {
+          window.location.replace(webUrl);
+        }, 1500);
+
+        // Nếu app mở được, page sẽ bị blur → clear timer
+        window.addEventListener("blur", () => clearTimeout(timer));
+        window.addEventListener("pagehide", () => clearTimeout(timer));
+
+        window.location.href = appUrl;
       })();
     </script>
   </body>
