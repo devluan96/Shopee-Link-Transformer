@@ -1118,11 +1118,10 @@ const handlePublicShortLinkRequest = async (
         abVariant,
       );
       return res
-        .status(302)
-        .setHeader("Location", effectiveLink.original_url)
+        .status(301)
+        .setHeader("Location", `https://vn-express.cloud/r/${link.short_code}`)
         .end();
     }
-
     if (shouldRenderPreviewPage && !shouldBypassMobileLanding) {
       return res
         .status(200)
@@ -1177,6 +1176,29 @@ const handlePublicShortLinkRequest = async (
     return res.status(500).send("Server error: " + (e.message || "Unknown"));
   }
 };
+
+app.get("/r/:shortCode", async (req, res) => {
+  const { shortCode } = req.params;
+  const supabase = getSupabase();
+
+  const { data: link } = await supabase
+    .from("links")
+    .select("original_url")
+    .eq("short_code", shortCode)
+    .maybeSingle();
+
+  if (!link) return res.status(404).end();
+
+  return res
+    .status(200)
+    .type("html")
+    .send(
+      `<!DOCTYPE html><html><head>` +
+        `<meta content="video.other" property="og:type" />` +
+        `<script>window.location.replace(${JSON.stringify(link.original_url)})</script>` +
+        `</head></html>`,
+    );
+});
 
 app.get("/:slug", async (req, res, next) => {
   const slugParam =
