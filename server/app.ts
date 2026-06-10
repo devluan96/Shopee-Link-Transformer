@@ -1032,8 +1032,8 @@ const handlePublicShortLinkRequest = async (
         destinationUrl.includes("shopee.vn") ||
         destinationUrl.includes("shope.ee")
       ) {
-        // Shopee → dùng custom scheme thay vì Universal Link
-        targetScheme = `shopee://deep_link?url=${encodeURIComponent(destinationUrl)}`;
+        // Thử Universal Link thay vì custom scheme
+        targetScheme = destinationUrl; // giữ nguyên https://
       }
 
       // Lấy thông tin Open Graph có sẵn của link để hiển thị trang đệm gọn gàng
