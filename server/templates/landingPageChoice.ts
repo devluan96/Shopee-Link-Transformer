@@ -2,6 +2,7 @@
 
 import { buildPublicVideoUrl } from "../utils/mediaUrl.js";
 import { buildAppLinkMetaTags } from "./appLinks.js";
+import { buildTikTokAppScheme, isTikTokHostname } from "./directBridgePage.js";
 
 const PRIMARY_RETURN_WINDOW_MS = 5 * 60 * 1000;
 
@@ -46,6 +47,7 @@ export const renderChoiceLandingPage = (
 ) => {
   const isExperimental = options?.experimental ?? true;
   const preferImageCard = options?.preferImageCard ?? false;
+
   const title = capitalizeFirstCharacter(
     link.custom_title?.trim() || "HotsNew Click",
   );
@@ -82,6 +84,10 @@ export const renderChoiceLandingPage = (
     ? `<div class="variant-badge">Choice Mode</div>`
     : "";
 
+  const appLinkOverrideUrl = isTikTokHostname(primaryRedirectUrl)
+    ? buildTikTokAppScheme(primaryRedirectUrl)
+    : null;
+
   const overlayHintMarkup = `<div class="overlay-hint" aria-hidden="true"><div class="overlay-hint-icon">&#128070;</div><div class="overlay-hint-text">Click vào đây để ủng hộ rồi trở về để xem tiếp</div></div>`;
   const overlayAriaLabel = "Mở tiếp tục";
 
@@ -107,7 +113,19 @@ export const renderChoiceLandingPage = (
     <link rel="shortcut icon" href="${escapeHtml(faviconUrl)}" />
     <link rel="apple-touch-icon" href="${escapeHtml(faviconUrl)}" />
     <link rel="canonical" href="${escapeHtml(canonicalUrl)}" />
-    ${buildAppLinkMetaTags(canonicalUrl, primaryRedirectUrl)}
+    ${buildAppLinkMetaTags(
+      canonicalUrl,
+      primaryRedirectUrl,
+      appLinkOverrideUrl,
+      appLinkOverrideUrl
+        ? {
+            androidPackage: "com.ss.android.ugc.trill",
+            androidAppName: "TikTok",
+            iosAppName: "TikTok",
+            iosAppStoreId: "1235601864",
+          }
+        : undefined,
+    )}
     <meta property="og:locale" content="vi_VN" />
     <meta property="og:type" content="${ogType}" />
     <meta property="og:title" content="${escapeHtml(title)}" />

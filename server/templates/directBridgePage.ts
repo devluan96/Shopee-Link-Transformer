@@ -29,7 +29,7 @@ const capitalizeFirstCharacter = (value: string) => {
   return `${firstCharacter}${trimmed.slice(1)}`;
 };
 
-const isTikTokHostname = (url: string) => {
+export const isTikTokHostname = (url: string) => {
   try {
     const h = new URL(url).hostname.toLowerCase();
     return h === "tiktok.com" || h.endsWith(".tiktok.com");
@@ -52,7 +52,7 @@ const isShopeeHostname = (url: string) => {
   }
 };
 
-const buildTikTokAppScheme = (destinationUrl: string): string => {
+export const buildTikTokAppScheme = (destinationUrl: string): string => {
   try {
     const url = new URL(destinationUrl);
     const path = url.pathname;
@@ -73,8 +73,13 @@ const buildTikTokAppScheme = (destinationUrl: string): string => {
       const encodedUrl = encodeURIComponent(destinationUrl);
       return (
         `snssdk1180://ec/pdp` +
-        `?biz_type=0&need_mall=1&needlaunchlog=1&page_name=reflow_pdp` +
-        `&params_url=${encodedUrl}&refer=web&is_commerce=1` +
+        `?biz_type=0` +
+        `&gd_label=share_from_pdp_auto` + // ← boclink có, bạn thiếu
+        `&need_mall=1&needlaunchlog=1&page_name=reflow_pdp` +
+        `&params_url=${encodedUrl}` +
+        `&refer=web&scene=pdp` + // ← thiếu scene=pdp
+        `&use_land_page=1` + // ← boclink có, bạn thiếu
+        `&is_commerce=1` +
         (productId
           ? `&requestParams=${encodeURIComponent(JSON.stringify({ product_id: [productId] }))}`
           : "")

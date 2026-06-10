@@ -48,7 +48,11 @@ import {
 } from "./services/deepLinkService.js";
 import { renderLinkLandingPage } from "./templates/landingPage.js";
 import { renderChoiceLandingPage } from "./templates/landingPageChoice.js";
-import { renderDirectBridgePage } from "./templates/directBridgePage.js";
+import {
+  renderDirectBridgePage,
+  buildTikTokAppScheme,
+  isTikTokHostname,
+} from "./templates/directBridgePage.js";
 import { isBlockedInAppBrowser } from "./services/deepLinkService.js";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -991,61 +995,7 @@ const handlePublicShortLinkRequest = async (
         }
       }
     }
-
-    // ====================================================================
-    // 🚀 BẮT ĐẦU: TẦNG XỬ LÝ BÈ KHÓA FACEBOOK / ZALO IN-APP BROWSER
-    // ====================================================================
-    const destinationUrl = effectiveLink.original_url;
-    const uaLower = userAgentString.toLowerCase();
-
-    // Chỉ xử lý Android in-app browser, iOS để fall through xuống directBridgePage
-    if (
-      isBlockedInAppBrowser(userAgentString) &&
-      !isPreviewBot &&
-      !uaLower.includes("iphone") &&
-      !uaLower.includes("ipad") &&
-      !uaLower.includes("ipod")
-    ) {
-      if (!shouldIgnoreTrackingRequest(req)) {
-        scheduleDirectPublicOpenTracking(
-          supabase,
-          req,
-          link,
-          effectiveLink,
-          userAgentString,
-          abVariant,
-        );
-      }
-
-      // Android Facebook → PDF trick
-      if (
-        uaLower.includes("android") &&
-        (uaLower.includes("fban") || uaLower.includes("fbav"))
-      ) {
-        res.setHeader("Content-Type", "application/pdf");
-        res.setHeader("Content-Disposition", 'inline; filename="redirect.pdf"');
-        return res.send("");
-      }
-
-      // Android Zalo → intent URL
-      if (uaLower.includes("android") && uaLower.includes("zalo")) {
-        const pkg = destinationUrl.includes("tiktok.com")
-          ? "com.ss.android.ugc.trill"
-          : "com.shopee.vn";
-        const intentUrl =
-          "intent://" +
-          destinationUrl.replace(/^https?:\/\//, "") +
-          "#Intent;scheme=https;package=" +
-          pkg +
-          ";S.browser_fallback_url=" +
-          encodeURIComponent(destinationUrl) +
-          ";end";
-        return res.redirect(302, intentUrl);
-      }
-    }
-    // ====================================================================
-    // 🛑 KẾT THÚC: TẦNG XỬ LÝ BÈ KHÓA IN-APP BROWSER
-    // ====================================================================
+    // Thay bằng: để directBridgePage xử lý tất cả UA
 
     // LUỒNG TÍNH TOÁN REDIRECT THÔNG THƯỜNG CỦA BẠN (GIỮ NGUYÊN)
     const hasVideoLanding = Boolean(effectiveLink.video_url?.trim());
@@ -1154,11 +1104,6 @@ const handlePublicShortLinkRequest = async (
       );
     }
 
-    const redirectResponse = sendPrimaryRedirectResponse(
-      res,
-      primaryRedirectUrl,
-      effectiveLink.custom_title?.trim() || "HotsNew Click",
-    );
     scheduleDirectPublicOpenTracking(
       supabase,
       req,
@@ -1167,7 +1112,14 @@ const handlePublicShortLinkRequest = async (
       typeof userAgent === "string" ? userAgent : "",
       abVariant,
     );
-    return redirectResponse;
+    return res
+      .status(200)
+      .type("html")
+      .send(
+        renderDirectBridgePage(effectiveLink, canonicalUrl, {
+          primaryRedirectUrl,
+        }),
+      );
   } catch (e: any) {
     console.error("[REDIRECT ERROR]", {
       shortCode,
@@ -1182,13 +1134,11 @@ const handlePublicShortLinkRequest = async (
 };
 
 app.get("/r/:shortCode", async (req, res) => {
-  const { shortCode } = req.params;
   const supabase = getSupabase();
-
   const { data: link } = await supabase
     .from("links")
     .select("original_url")
-    .eq("short_code", shortCode)
+    .eq("short_code", req.params.shortCode)
     .maybeSingle();
 
   if (!link) return res.status(404).end();
