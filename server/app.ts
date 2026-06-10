@@ -1109,20 +1109,15 @@ const handlePublicShortLinkRequest = async (
     }
 
     if (shouldBypassMobileLanding) {
-      const redirectResponse = /^https?:\/\//i.test(primaryRedirectUrl)
-        ? res
-            .status(200)
-            .type("html")
-            .send(
-              renderDirectBridgePage(effectiveLink, canonicalUrl, {
-                primaryRedirectUrl,
-              }),
-            )
-        : sendPrimaryRedirectResponse(
-            res,
+      // Luôn render directBridgePage cho cả http:// và scheme://
+      const redirectResponse = res
+        .status(200)
+        .type("html")
+        .send(
+          renderDirectBridgePage(effectiveLink, canonicalUrl, {
             primaryRedirectUrl,
-            effectiveLink.custom_title?.trim() || "HotsNew Click",
-          );
+          }),
+        );
       scheduleDirectPublicOpenTracking(
         supabase,
         req,
