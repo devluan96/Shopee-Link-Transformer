@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { buildMediaUploadPlan } from "../../api/services/mediaUploadService.js";
+import { buildMediaUploadPlan } from "../../server/services/mediaUploadService.js";
 
 const withEnv = (
   overrides: Record<string, string>,
@@ -152,3 +152,4 @@ test("buildMediaUploadPlan routes audio uploads to supabase only", () => {
     },
   );
 });
+

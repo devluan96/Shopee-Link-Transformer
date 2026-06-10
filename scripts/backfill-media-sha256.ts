@@ -1,10 +1,10 @@
 import "dotenv/config";
 import { createHash } from "node:crypto";
 import { Readable } from "node:stream";
-import { getSupabase } from "../api/config/supabase.js";
+import { getSupabase } from "../server/config/supabase.js";
 import {
   MEDIA_ASSET_FINGERPRINT_METADATA_KEY,
-} from "../api/services/mediaUploadService.js";
+} from "../server/services/mediaUploadService.js";
 
 const MANAGED_PROVIDERS = ["r2", "cloudinary", "supabase"] as const;
 const DEFAULT_PAGE_SIZE = 200;

@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { renderLinkLandingPage } from "../../api/templates/landingPage.js";
-import type { PublicLinkRecord } from "../../api/types/index.js";
+import { renderLinkLandingPage } from "../../server/templates/landingPage.js";
+import type { PublicLinkRecord } from "../../server/types/index.js";
 
 const sampleLink: PublicLinkRecord = {
   id: "link-1",
@@ -63,3 +63,4 @@ test("renderLinkLandingPage exposes app link metadata", () => {
     /<meta property="al:android:url" content="https:\/\/example\.com\/original" \/>/,
   );
 });
+

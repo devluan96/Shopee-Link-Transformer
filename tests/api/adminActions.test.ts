@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { updateUserRole } from "../../api/services/userService.js";
-import { logAdminAction } from "../../api/services/securityService.js";
+import { updateUserRole } from "../../server/services/userService.js";
+import { logAdminAction } from "../../server/services/securityService.js";
 
 test("updateUserRole updates the target profile role", async () => {
   let capturedRole: string | null = null;
@@ -79,3 +79,4 @@ test("logAdminAction writes an audit record for admin actions", async () => {
     role: "admin",
   });
 });
+
