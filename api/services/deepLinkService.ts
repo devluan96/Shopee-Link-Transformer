@@ -135,15 +135,9 @@ const resolveTemplateForDevice = (
 
   for (const template of candidateTemplates) {
     if (!template) continue;
-
     try {
       const resolvedUrl = applyDeepLinkTemplate(template, destinationUrl);
-      if (devicePlatform === "ios") {
-        if (!isHttpUrl(resolvedUrl)) {
-          continue;
-        }
-      }
-
+      // Bỏ filter isHttpUrl — cho phép scheme snssdk://, shopee:// pass qua
       return resolvedUrl;
     } catch {
       continue;

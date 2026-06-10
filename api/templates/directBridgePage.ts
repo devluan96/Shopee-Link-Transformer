@@ -93,7 +93,6 @@ const buildAppLinkOverride = (destinationUrl: string): string | null => {
   }
   if (isShopeeHostname(destinationUrl)) {
     return `shopee://deep_link?url=${encodeURIComponent(destinationUrl)}`;
-    // Không return null nữa
   }
   return null;
 };
@@ -200,61 +199,54 @@ export const renderDirectBridgePage = (
   </head>
     <body>
    <script>
-      (() => {
-        const appUrl = "${escapeJsString(jsSchemeUrl)}";  // ← dùng scheme cho JS
-        const webUrl = "${escapeJsString(webFallbackUrl)}";
-        const ua     = navigator.userAgent || "";
+    (() => {
+      const appUrl = "${escapeJsString(appLinkOverrideUrl || "")}";
+      const webUrl = "${escapeJsString(webFallbackUrl)}";
+      const ua     = navigator.userAgent || "";
 
-        const isFbBrowser    = /FBAN|FBAV|FB_IAB|FBIOS/i.test(ua);
-        const isZalo         = /ZaloApp/i.test(ua);
-        const isInAppBrowser = isFbBrowser || isZalo;
-        const isIOS          = /iphone|ipad|ipod/i.test(ua);
-        const isAndroid      = /android/i.test(ua);
+      const isIOS     = /iphone|ipad|ipod/i.test(ua);
+      const isAndroid = /android/i.test(ua);
+      const isFbBrowser = /FBAN|FBAV|FB_IAB|FBIOS|FB4A/i.test(ua);
+      const isZalo    = /ZaloApp/i.test(ua);
+      const isInApp   = isFbBrowser || isZalo;
 
-        if (isInAppBrowser && isIOS) {
-          if (appUrl) {
-            // Có scheme (TikTok) → thử navigate scheme trước
-            window.location.href = appUrl;
-            setTimeout(() => window.location.replace(webUrl), 2000);
-          } else {
-            // Shopee (không có custom scheme) → dùng Universal Link trực tiếp
-            // Mở bằng _blank để thoát khỏi WebView Facebook → Safari/browser ngoài
-            const a = document.createElement("a");
-            a.href = webUrl;
-            a.target = "_blank";
-            a.rel = "noopener noreferrer";
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            // Fallback nếu _blank bị block
-            setTimeout(() => window.location.replace(webUrl), 1500);
-          }
-          return;
-        }
+      // Android in-app → Intent URL
+      if (isInApp && isAndroid) {
+        const pkg = "${escapeJsString(isTikTok ? TIKTOK_ANDROID_PACKAGE : SHOPEE_ANDROID_PACKAGE)}";
+        const intentUrl =
+          "intent://" + webUrl.replace(/^https?:\/\//, "") +
+          "#Intent;scheme=https;package=" + pkg +
+          ";S.browser_fallback_url=" + encodeURIComponent(webUrl) + ";end";
+        window.location.href = intentUrl;
+        setTimeout(() => window.location.replace(webUrl), 2000);
+        return;
+      }
 
-        // Facebook/Zalo Android → Intent URL
-        if (isInAppBrowser && isAndroid) {
-          const pkg = "${escapeJsString(isTikTok ? TIKTOK_ANDROID_PACKAGE : SHOPEE_ANDROID_PACKAGE)}";
-          const intentUrl =
-            "intent://" +
-            webUrl.replace(/^https?:\/\//, "") +
-            "#Intent;scheme=https;package=" + pkg + ";" +
-            "S.browser_fallback_url=" + encodeURIComponent(webUrl) + ";end";
-          window.location.href = intentUrl;
-          setTimeout(() => window.location.replace(webUrl), 2000);
-          return;
-        }
-
-        if (!appUrl) {
+      // iOS — luôn thử scheme trực tiếp
+      // Facebook đọc al:ios:url = scheme → nhảy thẳng app không cần JS
+      // JS chỉ là fallback khi meta tag không được đọc
+      if (isIOS) {
+        if (appUrl) {
+          window.location.href = appUrl;
+          setTimeout(() => {
+            if (!document.hidden) window.location.replace(webUrl);
+          }, 2500);
+        } else {
           window.location.replace(webUrl);
-          return;
         }
+        return;
+      }
 
-        const timer = setTimeout(() => window.location.replace(webUrl), 1500);
-        window.addEventListener("blur", () => clearTimeout(timer));
-        window.addEventListener("pagehide", () => clearTimeout(timer));
-        window.location.href = appUrl;
-      })();
+      // Desktop/browser thường
+      if (!appUrl) {
+        window.location.replace(webUrl);
+        return;
+      }
+      const timer = setTimeout(() => window.location.replace(webUrl), 1500);
+      window.addEventListener("blur", () => clearTimeout(timer));
+      window.addEventListener("pagehide", () => clearTimeout(timer));
+      window.location.href = appUrl;
+    })();
     </script>
   </body>
 </html>`;
