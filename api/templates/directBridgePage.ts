@@ -92,7 +92,8 @@ const buildAppLinkOverride = (destinationUrl: string): string | null => {
     return buildTikTokAppScheme(destinationUrl);
   }
   if (isShopeeHostname(destinationUrl)) {
-    return null; // ← Shopee không cần override scheme
+    return `shopee://deep_link?url=${encodeURIComponent(destinationUrl)}`;
+    // Không return null nữa
   }
   return null;
 };
