@@ -87,19 +87,12 @@ const buildTikTokAppScheme = (destinationUrl: string): string => {
   }
 };
 
-const buildShopeeAppScheme = (destinationUrl: string): string => {
-  // Shopee app nhận universal link thẳng
-  // scheme: shopee:// không stable, dùng deep link qua itms-apps cho iOS
-  // Cách đáng tin nhất: trả về URL gốc, để Universal Link iOS tự xử lý
-  return destinationUrl;
-};
-
 const buildAppLinkOverride = (destinationUrl: string): string | null => {
   if (isTikTokHostname(destinationUrl)) {
     return buildTikTokAppScheme(destinationUrl);
   }
   if (isShopeeHostname(destinationUrl)) {
-    return buildShopeeAppScheme(destinationUrl);
+    return null; // ← Shopee không cần override scheme
   }
   return null;
 };
@@ -174,7 +167,7 @@ export const renderDirectBridgePage = (
       canonicalUrl,
       webFallbackUrl,
       appLinkOverrideUrl,
-      appLinkOverrideUrl ? appMeta : undefined,
+      appMeta, // ← luôn truyền, kể cả khi appLinkOverrideUrl = null
     )}
     <meta property="og:locale" content="vi_VN" />
     <meta property="og:type" content="website" />
@@ -195,28 +188,18 @@ export const renderDirectBridgePage = (
     <body>
     <script>
       (() => {
-        const appUrl   = "${escapeJsString(appLinkOverrideUrl || "")}";
-        const webUrl   = "${escapeJsString(webFallbackUrl)}";
-        const ua       = navigator.userAgent || "";
+        const appUrl = "${escapeJsString(appLinkOverrideUrl || "")}";
+        const webUrl = "${escapeJsString(webFallbackUrl)}";
+        const ua     = navigator.userAgent || "";
 
-        // Detect Facebook / Zalo in-app browser
-        const isFbBrowser  = /FBAN|FBAV|FB_IAB|FBIOS/i.test(ua);
-        const isZalo       = /ZaloApp/i.test(ua);
+        const isFbBrowser    = /FBAN|FBAV|FB_IAB|FBIOS/i.test(ua);
+        const isZalo         = /ZaloApp/i.test(ua);
         const isInAppBrowser = isFbBrowser || isZalo;
+        const isIOS          = /iphone|ipad|ipod/i.test(ua);
+        const isAndroid      = /android/i.test(ua);
 
-        // Không có app scheme → redirect web thẳng
-        if (!appUrl) {
-          window.location.replace(webUrl);
-          return;
-        }
-
-        // Trong Facebook in-app browser: dùng intent URL (Android)
-        // hoặc universal link để bypass popup
-        if (isInAppBrowser) {
-        const isAndroid = /android/i.test(ua);
-        const isIOS     = /iphone|ipad|ipod/i.test(ua);
-
-        if (isIOS) {
+        // Facebook/Zalo iOS → _blank trick thoát WebView → Safari → Universal Link → app
+        if (isInAppBrowser && isIOS) {
           const a = document.createElement("a");
           a.href = webUrl;
           a.target = "_blank";
@@ -228,27 +211,29 @@ export const renderDirectBridgePage = (
           return;
         }
 
-        if (isAndroid) {
+        // Facebook/Zalo Android → Intent URL
+        if (isInAppBrowser && isAndroid) {
+          const pkg = "${escapeJsString(isTikTok ? TIKTOK_ANDROID_PACKAGE : SHOPEE_ANDROID_PACKAGE)}";
           const intentUrl =
             "intent://" +
             webUrl.replace(/^https?:\/\//, "") +
-            "#Intent;scheme=https;package=com.ss.android.ugc.trill;" +
+            "#Intent;scheme=https;package=" + pkg + ";" +
             "S.browser_fallback_url=" + encodeURIComponent(webUrl) + ";end";
           window.location.href = intentUrl;
           setTimeout(() => window.location.replace(webUrl), 2000);
           return;
         }
-      }
 
-        // Trình duyệt thông thường: thử app scheme trước, fallback web
-        const timer = setTimeout(() => {
+        // Không có app scheme (Shopee) → redirect web thẳng, iOS Universal Link tự xử lý
+        if (!appUrl) {
           window.location.replace(webUrl);
-        }, 1500);
+          return;
+        }
 
-        // Nếu app mở được, page sẽ bị blur → clear timer
+        // Có app scheme (TikTok) → thử scheme, fallback web
+        const timer = setTimeout(() => window.location.replace(webUrl), 1500);
         window.addEventListener("blur", () => clearTimeout(timer));
         window.addEventListener("pagehide", () => clearTimeout(timer));
-
         window.location.href = appUrl;
       })();
     </script>
