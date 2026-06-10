@@ -1022,12 +1022,18 @@ const handlePublicShortLinkRequest = async (
         return res.send(""); // Kết thúc luồng tại đây, ép Facebook kích hoạt mở Chrome ngoài
       }
 
-      // MẸO 2: Xử lý cho Zalo (Cả iOS/Android) và Facebook trên hệ điều hành iOS
-      // Sinh Custom Scheme bọc link gốc an toàn cho TikTok Affiliate dán tay
+      // MẸO 2: iOS Facebook/Zalo
       let targetScheme = destinationUrl;
+
       if (destinationUrl.includes("tiktok.com")) {
         const encodedDestination = encodeURIComponent(destinationUrl);
         targetScheme = `snssdk1180://webview?url=${encodedDestination}`;
+      } else if (
+        destinationUrl.includes("shopee.vn") ||
+        destinationUrl.includes("shope.ee")
+      ) {
+        // Shopee → dùng custom scheme thay vì Universal Link
+        targetScheme = `shopee://deep_link?url=${encodeURIComponent(destinationUrl)}`;
       }
 
       // Lấy thông tin Open Graph có sẵn của link để hiển thị trang đệm gọn gàng
@@ -1064,18 +1070,18 @@ const handlePublicShortLinkRequest = async (
             <a href="${targetScheme}" id="open-btn" class="btn">MỞ TRONG ỨNG DỤNG</a>
           </div>
           <script>
-            const scheme = "${targetScheme}";
+             const scheme = "${targetScheme}";
             const fallback = "${destinationUrl}";
+            
+            // Thử scheme trước
             window.location.href = scheme;
+            
+            // Nếu scheme không mở được app sau 2.5s → fallback web
             setTimeout(() => {
-              const ifr = document.createElement("iframe");
-              ifr.style.display = "none";
-              ifr.src = scheme;
-              document.body.appendChild(ifr);
-            }, 200);
-            setTimeout(() => {
-              if (!document.hidden) { window.location.href = fallback; }
-            }, 3000);
+              if (!document.hidden) {
+                window.location.href = fallback;
+              }
+            }, 2500);
           </script>
         </body>
         </html>
