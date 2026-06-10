@@ -1123,7 +1123,28 @@ const handlePublicShortLinkRequest = async (
     const clickTrackingUrl = `${publicBaseUrl}/api/v1/links/${link.id}/track`;
 
     if (shouldReturnInspectResponse(req)) {
-      // ... Giữ nguyên phần log debug inspect dữ liệu của bạn ...
+      const inspectData = {
+        route: "public-slug",
+        userAgent: userAgentString,
+        isPreviewBot,
+        hasVideoLanding,
+        shouldBypassMobileLanding,
+        shouldRenderPreviewPage,
+        originalUrl: effectiveLink.original_url,
+        primaryRedirectUrl,
+        secondaryRedirectUrl,
+        canonicalUrl,
+        deepLinkProfiles,
+      };
+
+      if (shouldReturnInspectHtmlResponse(req)) {
+        return res
+          .status(200)
+          .type("html")
+          .send(renderInspectDebugPage("Inspect: public-slug", inspectData));
+      }
+
+      return res.json(inspectData);
     }
 
     if (shouldBypassMobileLanding) {

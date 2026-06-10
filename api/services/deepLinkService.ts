@@ -115,7 +115,8 @@ const inferDevicePlatform = (userAgent?: string | null) => {
   return "desktop";
 };
 
-const isHttpUrl = (value?: string | null) => /^https?:\/\//i.test((value || "").trim());
+const isHttpUrl = (value?: string | null) =>
+  /^https?:\/\//i.test((value || "").trim());
 
 const resolveTemplateForDevice = (
   platform: DeepLinkPlatform,
