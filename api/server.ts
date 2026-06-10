@@ -49,6 +49,7 @@ import {
 import { renderLinkLandingPage } from "./templates/landingPage.js";
 import { renderChoiceLandingPage } from "./templates/landingPageChoice.js";
 import { renderDirectBridgePage } from "./templates/directBridgePage.js";
+import { isBlockedInAppBrowser } from "./services/deepLinkService.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -69,9 +70,7 @@ const PUBLIC_MARKETING_PATHS = [
   "/discover/cach-rut-gon-link-tiktok",
   "/discover/cach-theo-doi-click-affiliate",
 ] as const;
-
 // Thêm hàm bổ trợ kiểm tra In-App Browser Facebook / Zalo ở đầu file
-const isBlockedInAppBrowser = (_userAgent?: string | null) => false;
 
 const parseCookieHeader = (cookieHeader?: string) => {
   const cookieMap = new Map<string, string>();
