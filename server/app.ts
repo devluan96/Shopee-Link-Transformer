@@ -998,9 +998,14 @@ const handlePublicShortLinkRequest = async (
     const destinationUrl = effectiveLink.original_url;
     const uaLower = userAgentString.toLowerCase();
 
-    // Chỉ can thiệp bẻ khóa nếu không phải là Bot thu thập dữ liệu (PreviewBot)
-    if (isBlockedInAppBrowser(userAgentString) && !isPreviewBot) {
-      // Thực hiện ghi nhận Click Tracking ngầm trước khi văng app hoặc render
+    // Chỉ xử lý Android in-app browser, iOS để fall through xuống directBridgePage
+    if (
+      isBlockedInAppBrowser(userAgentString) &&
+      !isPreviewBot &&
+      !uaLower.includes("iphone") &&
+      !uaLower.includes("ipad") &&
+      !uaLower.includes("ipod")
+    ) {
       if (!shouldIgnoreTrackingRequest(req)) {
         scheduleDirectPublicOpenTracking(
           supabase,
@@ -1012,80 +1017,31 @@ const handlePublicShortLinkRequest = async (
         );
       }
 
-      // MẸO 1: Phá băng Facebook App trên các dòng điện thoại Android
+      // Android Facebook → PDF trick
       if (
         uaLower.includes("android") &&
         (uaLower.includes("fban") || uaLower.includes("fbav"))
       ) {
         res.setHeader("Content-Type", "application/pdf");
         res.setHeader("Content-Disposition", 'inline; filename="redirect.pdf"');
-        return res.send(""); // Kết thúc luồng tại đây, ép Facebook kích hoạt mở Chrome ngoài
+        return res.send("");
       }
 
-      // MẸO 2: iOS Facebook/Zalo
-      let targetScheme = destinationUrl;
-
-      if (destinationUrl.includes("tiktok.com")) {
-        const encodedDestination = encodeURIComponent(destinationUrl);
-        targetScheme = `snssdk1180://webview?url=${encodedDestination}`;
-      } else if (
-        destinationUrl.includes("shopee.vn") ||
-        destinationUrl.includes("shope.ee")
-      ) {
-        // Thử Universal Link thay vì custom scheme
-        targetScheme = destinationUrl; // giữ nguyên https://
+      // Android Zalo → intent URL
+      if (uaLower.includes("android") && uaLower.includes("zalo")) {
+        const pkg = destinationUrl.includes("tiktok.com")
+          ? "com.ss.android.ugc.trill"
+          : "com.shopee.vn";
+        const intentUrl =
+          "intent://" +
+          destinationUrl.replace(/^https?:\/\//, "") +
+          "#Intent;scheme=https;package=" +
+          pkg +
+          ";S.browser_fallback_url=" +
+          encodeURIComponent(destinationUrl) +
+          ";end";
+        return res.redirect(302, intentUrl);
       }
-
-      // Lấy thông tin Open Graph có sẵn của link để hiển thị trang đệm gọn gàng
-      const title = effectiveLink.custom_title || "Đang mở ứng dụng...";
-      const description =
-        effectiveLink.custom_description ||
-        "Hệ thống đang chuyển hướng tới ứng dụng.";
-      const imageUrl = effectiveLink.custom_image_url || "";
-
-      return res.status(200).type("html").send(`
-        <!DOCTYPE html>
-        <html>
-        <head>
-          <meta charset="UTF-8">
-          <meta name="viewport" content="width=device-width, initial-scale=1.0">
-          <title>${escapeHtml(title)}</title>
-          <meta property="og:title" content="${escapeHtml(title)}" />
-          <meta property="og:description" content="${escapeHtml(description)}" />
-          <meta property="og:image" content="${escapeHtml(imageUrl)}" />
-          <meta property="og:type" content="website" />
-          <style>
-            body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; text-align: center; padding-top: 60px; background: #f8f9fa; }
-            .card { max-width: 360px; margin: 0 auto; background: white; padding: 30px; border-radius: 16px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
-            .loader { border: 4px solid #f3f3f3; border-top: 4px solid #FE2C55; border-radius: 50%; width: 36px; height: 36px; animation: spin 1s linear infinite; margin: 20px auto; }
-            @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-            .btn { display: inline-block; padding: 14px 28px; background: #FE2C55; color: white; text-decoration: none; border-radius: 8px; font-weight: bold; margin-top: 20px; box-shadow: 0 4px 10px rgba(254,44,85,0.2); }
-          </style>
-        </head>
-        <body>
-          <div class="card">
-            <div class="loader"></div>
-            <h3>Đang mở ứng dụng...</h3>
-            <p style="color:#666; font-size:14px; line-height:1.4;">Hệ thống đang mở ứng dụng gốc để hiển thị thông tin sản phẩm.</p>
-            <a href="${targetScheme}" id="open-btn" class="btn">MỞ TRONG ỨNG DỤNG</a>
-          </div>
-          <script>
-             const scheme = "${targetScheme}";
-            const fallback = "${destinationUrl}";
-            
-            // Thử scheme trước
-            window.location.href = scheme;
-            
-            // Nếu scheme không mở được app sau 2.5s → fallback web
-            setTimeout(() => {
-              if (!document.hidden) {
-                window.location.href = fallback;
-              }
-            }, 2500);
-          </script>
-        </body>
-        </html>
-      `);
     }
     // ====================================================================
     // 🛑 KẾT THÚC: TẦNG XỬ LÝ BÈ KHÓA IN-APP BROWSER
