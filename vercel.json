@@ -1,10 +1,9 @@
 {
   "version": 2,
-  "buildCommand": "npm run build",
-  "outputDirectory": "dist",
   "functions": {
     "api/index.ts": {
-      "regions": ["hkg1"]
+      "regions": ["hkg1"],
+      "includeFiles": "api/**/*.ts"
     }
   },
   "rewrites": [
