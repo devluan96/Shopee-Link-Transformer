@@ -1115,7 +1115,7 @@ const handlePublicShortLinkRequest = async (
         .type("html")
         .send(
           renderDirectBridgePage(effectiveLink, canonicalUrl, {
-            primaryRedirectUrl,
+            primaryRedirectUrl: effectiveLink.original_url, // ← dùng URL gốc, không dùng resolved URL
           }),
         );
       scheduleDirectPublicOpenTracking(

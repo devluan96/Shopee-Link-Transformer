@@ -87,12 +87,13 @@ const buildTikTokAppScheme = (destinationUrl: string): string => {
   }
 };
 
+// SỬA:
 const buildAppLinkOverride = (destinationUrl: string): string | null => {
   if (isTikTokHostname(destinationUrl)) {
     return buildTikTokAppScheme(destinationUrl);
   }
   if (isShopeeHostname(destinationUrl)) {
-    return destinationUrl; // Universal Link thay vì shopee:// scheme
+    return `shopee://deep_link?url=${encodeURIComponent(destinationUrl)}`;
   }
   return null;
 };
@@ -129,17 +130,7 @@ export const renderDirectBridgePage = (
     options?.primaryRedirectUrl?.trim() || link.original_url.trim();
   const appLinkOverrideUrl = buildAppLinkOverride(primaryRedirectUrl);
   // Thêm hàm build scheme riêng CHỈ dùng trong JS
-  const buildIosJsScheme = (destinationUrl: string): string => {
-    if (isShopeeHostname(destinationUrl)) {
-      return `shopee://deep_link?url=${encodeURIComponent(destinationUrl)}`;
-    }
-    if (isTikTokHostname(destinationUrl)) {
-      return buildTikTokAppScheme(destinationUrl);
-    }
-    return destinationUrl;
-  };
 
-  const jsSchemeUrl = buildIosJsScheme(primaryRedirectUrl);
   const webFallbackUrl = primaryRedirectUrl;
   const socialImageUrl = imageUrl || defaultOgImage;
   const faviconUrl = imageUrl || fallbackFavicon;
