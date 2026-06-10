@@ -129,8 +129,8 @@ export const renderDirectBridgePage = (
   const primaryRedirectUrl =
     options?.primaryRedirectUrl?.trim() || link.original_url.trim();
   const appLinkOverrideUrl = buildAppLinkOverride(primaryRedirectUrl);
-  // Thêm hàm build scheme riêng CHỈ dùng trong JS
 
+  // Thêm hàm build scheme riêng CHỈ dùng trong JS
   const webFallbackUrl = primaryRedirectUrl;
   const socialImageUrl = imageUrl || defaultOgImage;
   const faviconUrl = imageUrl || fallbackFavicon;
