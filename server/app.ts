@@ -1109,15 +1109,6 @@ const handlePublicShortLinkRequest = async (
     }
 
     if (shouldBypassMobileLanding) {
-      // Luôn render directBridgePage cho cả http:// và scheme://
-      const redirectResponse = res
-        .status(200)
-        .type("html")
-        .send(
-          renderDirectBridgePage(effectiveLink, canonicalUrl, {
-            primaryRedirectUrl: effectiveLink.original_url, // ← dùng URL gốc, không dùng resolved URL
-          }),
-        );
       scheduleDirectPublicOpenTracking(
         supabase,
         req,
@@ -1126,7 +1117,10 @@ const handlePublicShortLinkRequest = async (
         userAgentString,
         abVariant,
       );
-      return redirectResponse;
+      return res
+        .status(302)
+        .setHeader("Location", effectiveLink.original_url)
+        .end();
     }
 
     if (shouldRenderPreviewPage && !shouldBypassMobileLanding) {
