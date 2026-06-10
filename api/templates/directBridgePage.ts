@@ -186,7 +186,7 @@ export const renderDirectBridgePage = (
     <meta name="twitter:image" content="${escapeHtml(socialImageUrl)}" />
   </head>
     <body>
-    <script>
+   <script>
       (() => {
         const appUrl = "${escapeJsString(appLinkOverrideUrl || "")}";
         const webUrl = "${escapeJsString(webFallbackUrl)}";
@@ -199,17 +199,27 @@ export const renderDirectBridgePage = (
         const isAndroid      = /android/i.test(ua);
 
         if (isInAppBrowser && isIOS) {
-          const a = document.createElement("a");
-          a.href = webUrl;
-          a.target = "_blank";
-          a.rel = "noopener noreferrer";
-          document.body.appendChild(a);
-          a.click();
-          document.body.removeChild(a);
-          setTimeout(() => window.location.replace(webUrl), 1500);
+          if (appUrl) {
+            // Có scheme (TikTok) → thử navigate scheme trước
+            window.location.href = appUrl;
+            setTimeout(() => window.location.replace(webUrl), 2000);
+          } else {
+            // Shopee (không có custom scheme) → dùng Universal Link trực tiếp
+            // Mở bằng _blank để thoát khỏi WebView Facebook → Safari/browser ngoài
+            const a = document.createElement("a");
+            a.href = webUrl;
+            a.target = "_blank";
+            a.rel = "noopener noreferrer";
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            // Fallback nếu _blank bị block
+            setTimeout(() => window.location.replace(webUrl), 1500);
+          }
           return;
         }
 
+        // Facebook/Zalo Android → Intent URL
         if (isInAppBrowser && isAndroid) {
           const pkg = "${escapeJsString(isTikTok ? TIKTOK_ANDROID_PACKAGE : SHOPEE_ANDROID_PACKAGE)}";
           const intentUrl =
