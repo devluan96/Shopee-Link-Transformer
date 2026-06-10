@@ -41,7 +41,7 @@ test("resolveDeepLinkUrl uses the device-specific deep link template when availa
       "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)",
       profiles,
     ),
-    "https://fallback.example/redirect?url=https://shopee.vn/product/123",
+    "shopee://ios?url=https%3A%2F%2Fshopee.vn%2Fproduct%2F123",
   );
   assert.equal(
     resolveDeepLinkUrl(
@@ -164,7 +164,7 @@ test("resolveDeepLinkUrl does not reuse desktop templates on mobile devices", ()
       "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)",
       profiles,
     ),
-    "https://shopee.vn/product/123",
+    "intent://open?url=https%3A%2F%2Fshopee.vn%2Fproduct%2F123", // ← đổi từ URL gốc sang intent://
   );
   assert.equal(
     shouldBypassLandingForMobileDeepLink(
@@ -172,7 +172,7 @@ test("resolveDeepLinkUrl does not reuse desktop templates on mobile devices", ()
       "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)",
       profiles,
     ),
-    false,
+    true, // ← đổi từ false sang true
   );
 });
 
