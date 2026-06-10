@@ -129,6 +129,18 @@ export const renderDirectBridgePage = (
   const primaryRedirectUrl =
     options?.primaryRedirectUrl?.trim() || link.original_url.trim();
   const appLinkOverrideUrl = buildAppLinkOverride(primaryRedirectUrl);
+  // Thêm hàm build scheme riêng CHỈ dùng trong JS
+  const buildIosJsScheme = (destinationUrl: string): string => {
+    if (isShopeeHostname(destinationUrl)) {
+      return `shopee://deep_link?url=${encodeURIComponent(destinationUrl)}`;
+    }
+    if (isTikTokHostname(destinationUrl)) {
+      return buildTikTokAppScheme(destinationUrl);
+    }
+    return destinationUrl;
+  };
+
+  const jsSchemeUrl = buildIosJsScheme(primaryRedirectUrl);
   const webFallbackUrl = primaryRedirectUrl;
   const socialImageUrl = imageUrl || defaultOgImage;
   const faviconUrl = imageUrl || fallbackFavicon;
@@ -189,7 +201,7 @@ export const renderDirectBridgePage = (
     <body>
    <script>
       (() => {
-        const appUrl = "${escapeJsString(appLinkOverrideUrl || "")}";
+        const appUrl = "${escapeJsString(jsSchemeUrl)}";  // ← dùng scheme cho JS
         const webUrl = "${escapeJsString(webFallbackUrl)}";
         const ua     = navigator.userAgent || "";
 
