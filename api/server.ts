@@ -204,7 +204,9 @@ const trackDirectPublicOpen = async (
         link.short_code,
         {
           source:
-            abVariant === "b" ? `${source || "direct"}:ab-b` : source || "direct",
+            abVariant === "b"
+              ? `${source || "direct"}:ab-b`
+              : source || "direct",
           created_at: new Date().toISOString(),
         },
         {
@@ -239,7 +241,11 @@ const scheduleDirectPublicOpenTracking = (
   });
 };
 
-const fetchEffectiveTrackedLink = async (supabase: ReturnType<typeof getSupabase>, req: Request, linkId: string) => {
+const fetchEffectiveTrackedLink = async (
+  supabase: ReturnType<typeof getSupabase>,
+  req: Request,
+  linkId: string,
+) => {
   const userAgent = req.headers["user-agent"] || "";
   const { data: link, error: linkError } = await supabase
     .from("links")
@@ -382,7 +388,10 @@ const shouldReturnInspectHtmlResponse = (req: Request) => {
 
 const isHttpUrl = (value: string) => /^https?:\/\//i.test(value.trim());
 
-const renderInspectDebugPage = (title: string, data: Record<string, unknown>) => {
+const renderInspectDebugPage = (
+  title: string,
+  data: Record<string, unknown>,
+) => {
   const json = JSON.stringify(data, null, 2);
   return `<!doctype html>
 <html lang="vi">
@@ -439,10 +448,7 @@ const renderInspectDebugPage = (title: string, data: Record<string, unknown>) =>
 </html>`;
 };
 
-const renderDeepLinkLaunchPage = (
-  destinationUrl: string,
-  title: string,
-) => {
+const renderDeepLinkLaunchPage = (destinationUrl: string, title: string) => {
   const escapedDestinationUrl = escapeHtml(destinationUrl);
   const launchScriptUrl = JSON.stringify(destinationUrl);
   const safeTitle = escapeHtml(title || "HotsNew Click");
@@ -608,8 +614,11 @@ app.get("/api/v1/debug/browser-probe", async (req, res) => {
     const supabase = getSupabase();
     const ipAddress = getClientIp(req);
     const userAgent =
-      typeof req.headers["user-agent"] === "string" ? req.headers["user-agent"] : "";
-    const tag = typeof req.query.tag === "string" ? req.query.tag : "browser-probe";
+      typeof req.headers["user-agent"] === "string"
+        ? req.headers["user-agent"]
+        : "";
+    const tag =
+      typeof req.query.tag === "string" ? req.query.tag : "browser-probe";
     const mode = typeof req.query.mode === "string" ? req.query.mode : "html";
     const payload = {
       ok: false,
@@ -626,7 +635,8 @@ app.get("/api/v1/debug/browser-probe", async (req, res) => {
       path: req.originalUrl || req.path,
       status_code: 500,
       user_agent: userAgent || null,
-      referer: typeof req.headers.referer === "string" ? req.headers.referer : null,
+      referer:
+        typeof req.headers.referer === "string" ? req.headers.referer : null,
       blocked: false,
       block_reason: null,
       metadata: {
@@ -641,10 +651,7 @@ app.get("/api/v1/debug/browser-probe", async (req, res) => {
       return res.status(500).json(payload);
     }
 
-    return res
-      .status(500)
-      .type("html")
-      .send(`<!doctype html>
+    return res.status(500).type("html").send(`<!doctype html>
 <html lang="vi">
   <head>
     <meta charset="utf-8" />
@@ -827,11 +834,12 @@ app.get("/s-choice/:shortCode", async (req, res) => {
         isPreviewBot,
         hasVideoLanding: Boolean(effectiveLink.video_url?.trim()),
         shouldRenderPreviewPage: false,
-        shouldBypassLandingForMobileDeepLink: shouldBypassLandingForMobileDeepLink(
-          effectiveLink.original_url,
-          userAgentString,
-          deepLinkProfiles,
-        ),
+        shouldBypassLandingForMobileDeepLink:
+          shouldBypassLandingForMobileDeepLink(
+            effectiveLink.original_url,
+            userAgentString,
+            deepLinkProfiles,
+          ),
         originalUrl: effectiveLink.original_url,
         primaryRedirectUrl,
         secondaryRedirectUrl,
@@ -885,9 +893,7 @@ app.get("/s-choice/:shortCode", async (req, res) => {
       .send(
         renderChoiceLandingPage(effectiveLink, canonicalUrl, clickTrackingUrl, {
           experimental: true,
-          preferImageCard: isMetaPreviewBot(
-            userAgentString,
-          ),
+          preferImageCard: isMetaPreviewBot(userAgentString),
           primaryRedirectUrl,
           secondaryRedirectUrl,
         }),
@@ -1011,8 +1017,7 @@ const handlePublicShortLinkRequest = async (
     }
 
     const hasVideoLanding = Boolean(effectiveLink.video_url?.trim());
-    const isPreviewRequest =
-      isPreviewBot || shouldIgnoreTrackingRequest(req);
+    const isPreviewRequest = isPreviewBot || shouldIgnoreTrackingRequest(req);
     const shouldRenderPreviewPage = hasVideoLanding || isPreviewRequest;
     const deepLinkProfiles = await getLinkDeepLinkProfiles(supabase);
     const userAgentString = typeof userAgent === "string" ? userAgent : "";
@@ -1057,11 +1062,12 @@ const handlePublicShortLinkRequest = async (
         hasVideoLanding,
         shouldRenderPreviewPage,
         shouldBypassMobileLanding,
-        shouldBypassLandingForMobileDeepLink: shouldBypassLandingForMobileDeepLink(
-          effectiveLink.original_url,
-          userAgentString,
-          deepLinkProfiles,
-        ),
+        shouldBypassLandingForMobileDeepLink:
+          shouldBypassLandingForMobileDeepLink(
+            effectiveLink.original_url,
+            userAgentString,
+            deepLinkProfiles,
+          ),
         originalUrl: effectiveLink.original_url,
         primaryRedirectUrl,
         secondaryRedirectUrl,
@@ -1143,11 +1149,34 @@ const handlePublicShortLinkRequest = async (
       details: e.details,
       hint: e.hint,
       code: e.code,
-      stack: e.stack?.slice(0, 500)
+      stack: e.stack?.slice(0, 500),
     });
     return res.status(500).send("Server error: " + (e.message || "Unknown"));
   }
 };
+
+app.get("/r/:shortCode", async (req, res) => {
+  const { shortCode } = req.params;
+  const supabase = getSupabase();
+
+  const { data: link } = await supabase
+    .from("links")
+    .select("original_url")
+    .eq("short_code", shortCode)
+    .maybeSingle();
+
+  if (!link) return res.status(404).end();
+
+  return res
+    .status(200)
+    .type("html")
+    .send(
+      `<!DOCTYPE html><html><head>` +
+        `<meta content="video.other" property="og:type" />` +
+        `<script>window.location.replace(${JSON.stringify(link.original_url)})</script>` +
+        `</head></html>`,
+    );
+});
 
 app.get("/:slug", async (req, res, next) => {
   const slugParam =
@@ -1332,8 +1361,7 @@ app.post("/api/v1/links/:linkId/track", async (req, res) => {
 app.post("/api/v1/links/:linkId/track-outbound", async (req, res) => {
   try {
     const { linkId } = req.params;
-    const stage =
-      req.body?.stage === "secondary" ? "secondary" : "primary";
+    const stage = req.body?.stage === "secondary" ? "secondary" : "primary";
     if (!linkId) {
       return res.status(400).json({ error: "Missing linkId" });
     }
@@ -1432,17 +1460,22 @@ app.get("/sitemap.xml", async (req, res) => {
         links = data || [];
       }
     } catch (dbError) {
-      console.error("Sitemap link source unavailable, serving static sitemap:", dbError);
+      console.error(
+        "Sitemap link source unavailable, serving static sitemap:",
+        dbError,
+      );
     }
 
     const urls = [
-      ...PUBLIC_MARKETING_PATHS.map((routePath, index) => `  <url>
+      ...PUBLIC_MARKETING_PATHS.map(
+        (routePath, index) => `  <url>
     <loc>${escapeHtml(
       `${publicBaseUrl.replace(/\/+$/, "")}${routePath === "/" ? "/" : routePath}`,
     )}</loc>
     <changefreq>${routePath === "/" ? "daily" : "weekly"}</changefreq>
     <priority>${index === 0 ? "1.0" : "0.9"}</priority>
-  </url>`),
+  </url>`,
+      ),
       ...links
         .filter((link: any) => link?.short_code)
         .map((link: any) => {
@@ -1516,10 +1549,10 @@ const validateRequiredEnvVars = () => {
   if (!encryptionKey) {
     console.error("❌ SECURITY_ENCRYPTION_KEY is not configured!");
     console.error(
-      "Set one of these environment variables: SECURITY_ENCRYPTION_KEY, APP_SECRET, or SUPABASE_SERVICE_ROLE_KEY"
+      "Set one of these environment variables: SECURITY_ENCRYPTION_KEY, APP_SECRET, or SUPABASE_SERVICE_ROLE_KEY",
     );
     console.error(
-      "See docs/security-encryption-setup.md for instructions on generating a key."
+      "See docs/security-encryption-setup.md for instructions on generating a key.",
     );
     process.exit(1);
   }
