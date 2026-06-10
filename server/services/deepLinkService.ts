@@ -9,7 +9,14 @@ export type DeepLinkDeviceTarget = {
   desktop?: string;
 };
 
-export type DeepLinkProfiles = Partial<Record<DeepLinkPlatform, DeepLinkDeviceTarget>>;
+export const isBlockedInAppBrowser = (userAgent?: string | null) => {
+  const ua = (userAgent || "").toLowerCase();
+  return ua.includes("fban") || ua.includes("fbav") || ua.includes("zalo");
+};
+
+export type DeepLinkProfiles = Partial<
+  Record<DeepLinkPlatform, DeepLinkDeviceTarget>
+>;
 type DeepLinkDevicePlatform = "ios" | "android" | "desktop";
 
 const APP_SETTINGS_KEY = "link_deeplink_profiles";
@@ -21,7 +28,9 @@ const normalizeTemplate = (value?: string | null) => {
   return trimmed.slice(0, MAX_TEMPLATE_LENGTH);
 };
 
-const normalizeTarget = (value?: Partial<DeepLinkDeviceTarget> | null): DeepLinkDeviceTarget => {
+const normalizeTarget = (
+  value?: Partial<DeepLinkDeviceTarget> | null,
+): DeepLinkDeviceTarget => {
   const ios = normalizeTemplate(value?.ios);
   const android = normalizeTemplate(value?.android);
   const desktop = normalizeTemplate(value?.desktop);
@@ -36,7 +45,9 @@ const normalizeTarget = (value?: Partial<DeepLinkDeviceTarget> | null): DeepLink
 };
 
 export const normalizeDeepLinkProfiles = (
-  value?: Partial<Record<DeepLinkPlatform, Partial<DeepLinkDeviceTarget>>> | null,
+  value?: Partial<
+    Record<DeepLinkPlatform, Partial<DeepLinkDeviceTarget>>
+  > | null,
 ): DeepLinkProfiles => {
   if (!value || typeof value !== "object") return {};
 
@@ -78,7 +89,9 @@ export const updateLinkDeepLinkProfiles = async (
   return normalizedProfiles;
 };
 
-const inferDestinationPlatform = (value?: string | null): DeepLinkPlatform | null => {
+const inferDestinationPlatform = (
+  value?: string | null,
+): DeepLinkPlatform | null => {
   if (!value) return null;
   try {
     const hostname = new URL(value).hostname.trim().toLowerCase();
@@ -102,14 +115,8 @@ const inferDevicePlatform = (userAgent?: string | null) => {
   return "desktop";
 };
 
-const isHttpUrl = (value?: string | null) => /^https?:\/\//i.test((value || "").trim());
-const isCustomSchemeUrl = (value?: string | null) =>
-  /^[a-z][a-z0-9+.-]*:\/\//i.test((value || "").trim());
-
-const buildTikTokIosScheme = (destinationUrl: string) => {
-  const encodedDestinationUrl = encodeURIComponent(destinationUrl);
-  return `snssdk1180://ec/pdp?biz_type=0&need_mall=1&needlaunchlog=1&page_name=reflow_pdp&params_url=${encodedDestinationUrl}&refer=web&scene=pdp&use_land_page=1`;
-};
+const isHttpUrl = (value?: string | null) =>
+  /^https?:\/\//i.test((value || "").trim());
 
 const resolveTemplateForDevice = (
   platform: DeepLinkPlatform,
@@ -121,28 +128,16 @@ const resolveTemplateForDevice = (
 
   const candidateTemplates =
     devicePlatform === "ios"
-      ? platform === "tiktok"
-        ? [buildTikTokIosScheme(destinationUrl), profile.ios, profile.desktop]
-        : [profile.ios, profile.desktop]
+      ? [profile.ios, profile.desktop]
       : devicePlatform === "android"
         ? [profile.android, profile.desktop]
         : [profile.desktop];
 
   for (const template of candidateTemplates) {
     if (!template) continue;
-
     try {
       const resolvedUrl = applyDeepLinkTemplate(template, destinationUrl);
-      if (devicePlatform === "ios") {
-        if (platform === "tiktok" && isCustomSchemeUrl(resolvedUrl)) {
-          return resolvedUrl;
-        }
-
-        if (!isHttpUrl(resolvedUrl)) {
-          continue;
-        }
-      }
-
+      // Bỏ filter isHttpUrl — cho phép scheme snssdk://, shopee:// pass qua
       return resolvedUrl;
     } catch {
       continue;
@@ -215,8 +210,12 @@ export const resolveDeepLinkUrl = (
 
   const devicePlatform = inferDevicePlatform(userAgent);
   return (
-    resolveTemplateForDevice(platform, profile, devicePlatform, destinationUrl) ||
-    destinationUrl
+    resolveTemplateForDevice(
+      platform,
+      profile,
+      devicePlatform,
+      destinationUrl,
+    ) || destinationUrl
   );
 };
 

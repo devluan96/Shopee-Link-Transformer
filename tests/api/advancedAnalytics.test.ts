@@ -4,7 +4,7 @@ import {
   buildAnalyticsEvents,
   filterClicksByAnalyticsPeriod,
   matchesLinkAnalyticsSource,
-} from "../../api/services/advancedAnalytics.js";
+} from "../../server/services/advancedAnalytics.js";
 
 test("matchesLinkAnalyticsSource detects Shopee and TikTok links from stored destinations", () => {
   assert.equal(
@@ -92,3 +92,4 @@ test("buildAnalyticsEvents enriches outbound events from the nearest tracked cli
   assert.equal(events[0].browser, "Chrome");
   assert.equal(events[0].os, "Android");
 });
+

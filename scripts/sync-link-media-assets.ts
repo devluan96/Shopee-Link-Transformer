@@ -1,6 +1,6 @@
 import "dotenv/config";
-import { getSupabase } from "../api/config/supabase.js";
-import { normalizeFolderName } from "../api/services/mediaUploadService.js";
+import { getSupabase } from "../server/config/supabase.js";
+import { normalizeFolderName } from "../server/services/mediaUploadService.js";
 
 type LinkRow = {
   id: string;

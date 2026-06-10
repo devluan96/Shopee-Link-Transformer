@@ -5,7 +5,7 @@ import {
   resolveDeepLinkUrl,
   shouldBypassLandingForMobileDeepLink,
   shouldBypassPublicLandingForMobileDeepLink,
-} from "../../api/services/deepLinkService.js";
+} from "../../server/services/deepLinkService.js";
 
 test("applyDeepLinkTemplate replaces url placeholders", () => {
   const destinationUrl = "https://shopee.vn/product/123?campaign=summer sale";
@@ -41,7 +41,7 @@ test("resolveDeepLinkUrl uses the device-specific deep link template when availa
       "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)",
       profiles,
     ),
-    "https://fallback.example/redirect?url=https://shopee.vn/product/123",
+    "shopee://ios?url=https%3A%2F%2Fshopee.vn%2Fproduct%2F123",
   );
   assert.equal(
     resolveDeepLinkUrl(
@@ -57,7 +57,7 @@ test("resolveDeepLinkUrl uses the device-specific deep link template when availa
       "Mozilla/5.0 (iPad; CPU OS 17_0 like Mac OS X)",
       profiles,
     ),
-    "snssdk1180://ec/pdp?biz_type=0&need_mall=1&needlaunchlog=1&page_name=reflow_pdp&params_url=https%3A%2F%2Fwww.tiktok.com%2F%40demo%2Fvideo%2F123&refer=web&scene=pdp&use_land_page=1",
+    "tiktok://ios?url=https%3A%2F%2Fwww.tiktok.com%2F%40demo%2Fvideo%2F123",
   );
   assert.equal(
     resolveDeepLinkUrl(
@@ -164,7 +164,7 @@ test("resolveDeepLinkUrl does not reuse desktop templates on mobile devices", ()
       "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)",
       profiles,
     ),
-    "https://shopee.vn/product/123",
+    "intent://open?url=https%3A%2F%2Fshopee.vn%2Fproduct%2F123", // ← đổi từ URL gốc sang intent://
   );
   assert.equal(
     shouldBypassLandingForMobileDeepLink(
@@ -172,7 +172,7 @@ test("resolveDeepLinkUrl does not reuse desktop templates on mobile devices", ()
       "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)",
       profiles,
     ),
-    false,
+    true, // ← đổi từ false sang true
   );
 });
 
@@ -228,7 +228,7 @@ test("resolveDeepLinkUrl allows iOS to fall back to a rendered desktop template 
   );
 });
 
-test("resolveDeepLinkUrl builds a TikTok iOS scheme when no explicit iOS template is configured", () => {
+test("resolveDeepLinkUrl keeps TikTok iOS on HTTPS when no explicit iOS template is configured", () => {
   const profiles = {
     tiktok: {
       enabled: true,
@@ -242,7 +242,7 @@ test("resolveDeepLinkUrl builds a TikTok iOS scheme when no explicit iOS templat
       "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)",
       profiles,
     ),
-    "snssdk1180://ec/pdp?biz_type=0&need_mall=1&needlaunchlog=1&page_name=reflow_pdp&params_url=https%3A%2F%2Fwww.tiktok.com%2F%40demo%2Fvideo%2F123&refer=web&scene=pdp&use_land_page=1",
+    "https://www.tiktok.com/@demo/video/123",
   );
 });
 
@@ -295,3 +295,4 @@ test("shouldBypassPublicLandingForMobileDeepLink keeps video landing pages on mo
     false,
   );
 });
+

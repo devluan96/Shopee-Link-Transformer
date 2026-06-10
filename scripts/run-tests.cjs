@@ -5,7 +5,7 @@ const ts = require("typescript");
 
 const repoRoot = process.cwd();
 const tempRoot = path.join(repoRoot, ".tmp-test-build");
-const sourceRoots = ["api", "tests/api"];
+const sourceRoots = ["api", "server", "tests/api"];
 const compiledTests = [];
 
 const removeDir = (target) => {

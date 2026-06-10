@@ -2,7 +2,8 @@
   "version": 2,
   "functions": {
     "api/index.ts": {
-      "regions": ["hkg1"]
+      "regions": ["hkg1"],
+      "includeFiles": "server/**/*.ts"
     }
   },
   "rewrites": [
@@ -11,6 +12,7 @@
     { "source": "/sitemap.xml", "destination": "/api/index.ts" },
     { "source": "/s-choice/(.*)", "destination": "/api/index.ts" },
     { "source": "/s/(.*)", "destination": "/api/index.ts" },
+    { "source": "/r/(.*)", "destination": "/api/index.ts" },
     { "source": "/:slug", "destination": "/api/index.ts" },
     { "source": "/(.*)", "destination": "/index.html" }
   ]

@@ -4,7 +4,7 @@ import {
   DEFAULT_OUTPUT_DOMAIN,
   DEFAULT_OUTPUT_DOMAINS,
   normalizeOutputDomains,
-} from "../../api/config/outputDomains.js";
+} from "../../server/config/outputDomains.js";
 
 test("normalizes configured output domains and removes invalid entries", () => {
   assert.deepEqual(
@@ -27,3 +27,4 @@ test("exports a usable default output domain", () => {
   assert.ok(DEFAULT_OUTPUT_DOMAINS.length >= 1);
   assert.equal(DEFAULT_OUTPUT_DOMAINS[0], DEFAULT_OUTPUT_DOMAIN);
 });
+

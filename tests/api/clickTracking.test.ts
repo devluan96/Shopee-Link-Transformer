@@ -4,7 +4,7 @@ import {
   attachTrackedSourcesToLinks,
   countDisplayableOutboundClicks,
   fetchOutboundEventsForWorkspaceIds,
-} from "../../api/utils/clickTracking.js";
+} from "../../server/utils/clickTracking.js";
 
 test("attachTrackedSourcesToLinks counts TikTok outbound clicks separately", async () => {
   const mockOutboundEvents = [
@@ -208,3 +208,4 @@ test("countDisplayableOutboundClicks matches link card totals", () => {
 
   assert.equal(total, 2);
 });
+

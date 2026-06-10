@@ -2,6 +2,7 @@
 
 import { buildPublicVideoUrl } from "../utils/mediaUrl.js";
 import { buildAppLinkMetaTags } from "./appLinks.js";
+import { buildTikTokAppScheme, isTikTokHostname } from "./directBridgePage.js";
 
 const PRIMARY_RETURN_WINDOW_MS = 5 * 60 * 1000;
 
@@ -46,6 +47,7 @@ export const renderChoiceLandingPage = (
 ) => {
   const isExperimental = options?.experimental ?? true;
   const preferImageCard = options?.preferImageCard ?? false;
+
   const title = capitalizeFirstCharacter(
     link.custom_title?.trim() || "HotsNew Click",
   );
@@ -63,8 +65,10 @@ export const renderChoiceLandingPage = (
   const fallbackFavicon = `${originBase}/logo-app-192.png`;
   const faviconUrl = imageUrl || fallbackFavicon;
   const socialImageUrl = imageUrl || defaultOgImage;
-  const primaryRedirectUrl = options?.primaryRedirectUrl?.trim() || link.original_url.trim();
-  const secondaryRedirectUrl = options?.secondaryRedirectUrl?.trim() || secondaryUrl;
+  const primaryRedirectUrl =
+    options?.primaryRedirectUrl?.trim() || link.original_url.trim();
+  const secondaryRedirectUrl =
+    options?.secondaryRedirectUrl?.trim() || secondaryUrl;
   const outboundTrackingUrl =
     clickTrackingUrl.slice(-6) === "/track"
       ? `${clickTrackingUrl.slice(0, -6)}/track-outbound`
@@ -79,6 +83,10 @@ export const renderChoiceLandingPage = (
   const variantBadgeMarkup = isExperimental
     ? `<div class="variant-badge">Choice Mode</div>`
     : "";
+
+  const appLinkOverrideUrl = isTikTokHostname(primaryRedirectUrl)
+    ? buildTikTokAppScheme(primaryRedirectUrl)
+    : null;
 
   const overlayHintMarkup = `<div class="overlay-hint" aria-hidden="true"><div class="overlay-hint-icon">&#128070;</div><div class="overlay-hint-text">Click vào đây để ủng hộ rồi trở về để xem tiếp</div></div>`;
   const overlayAriaLabel = "Mở tiếp tục";
@@ -105,7 +113,19 @@ export const renderChoiceLandingPage = (
     <link rel="shortcut icon" href="${escapeHtml(faviconUrl)}" />
     <link rel="apple-touch-icon" href="${escapeHtml(faviconUrl)}" />
     <link rel="canonical" href="${escapeHtml(canonicalUrl)}" />
-    ${buildAppLinkMetaTags(canonicalUrl, primaryRedirectUrl)}
+    ${buildAppLinkMetaTags(
+      canonicalUrl,
+      primaryRedirectUrl,
+      appLinkOverrideUrl,
+      appLinkOverrideUrl
+        ? {
+            androidPackage: "com.ss.android.ugc.trill",
+            androidAppName: "TikTok",
+            iosAppName: "TikTok",
+            iosAppStoreId: "1235601864",
+          }
+        : undefined,
+    )}
     <meta property="og:locale" content="vi_VN" />
     <meta property="og:type" content="${ogType}" />
     <meta property="og:title" content="${escapeHtml(title)}" />
@@ -261,7 +281,7 @@ export const renderChoiceLandingPage = (
 
     <a id="overlay" class="overlay delayed-hidden" href="${escapeHtml(primaryRedirectUrl)}" aria-label="${overlayAriaLabel}">${overlayHintMarkup}</a>
 
-    <script>
+      <script>
       (() => {
         const overlay = document.getElementById("overlay");
         const mediaPanel = document.querySelector(".media-panel");
@@ -275,6 +295,7 @@ export const renderChoiceLandingPage = (
         const secondaryStateKey = "${escapeJsString(secondaryStateKey)}";
         const secondaryStateCookieName =
           "${escapeJsString(`hn_choice_state_${link.short_code}`)}";
+        const canonicalUrl = "${escapeJsString(canonicalUrl)}";
 
         let overlayHandled = false;
         let overlayVisible = false;
@@ -282,6 +303,100 @@ export const renderChoiceLandingPage = (
         let previewPlaybackMs = 0;
         let previewPlaybackStartedAt = 0;
         let previewPlaybackIntervalId = null;
+
+        // ====================================================================
+        // 🚀 KHỞI TẠO: LOGIC ĐỊNH DẠNG USER-AGENT & CẤU TRÚC CUSTOM SCHEME DEEPLINK
+        // ====================================================================
+        const ua = navigator.userAgent.toLowerCase();
+        const isFacebook = ua.includes("fban") || ua.includes("fbav") || ua.includes("fb_iab") || ua.includes("fb4a");
+        const isZalo = ua.includes("zalo") || ua.includes("zalowebview");
+        const isAndroid = ua.includes("android");
+        const isBlockedInApp = isFacebook || isZalo;
+
+        // THAY THẾ đoạn "MẸO 1" bằng:
+        if (isFacebook && isAndroid) {
+          // Dùng intent URL thay vì blob trick — reliable hơn
+          const intentUrl =
+            "intent://" +
+            primaryRedirectUrl.replace(/^https?:\/\//, "") +
+            "#Intent;scheme=https;package=com.ss.android.ugc.trill;" +
+            "S.browser_fallback_url=" + encodeURIComponent(primaryRedirectUrl) + ";end";
+          window.location.href = intentUrl;
+          setTimeout(() => {
+            window.location.replace(primaryRedirectUrl);
+          }, 2000);
+          return;
+        }
+
+        // Thay hàm buildAppScheme hiện tại
+        const buildAppScheme = (targetUrl) => {
+          if (!targetUrl) return "";
+          try {
+            const url = new URL(targetUrl);
+            const path = url.pathname;
+
+            if (targetUrl.includes("tiktok.com")) {
+              const videoMatch = path.match(/\/video\/(\d+)/);
+              if (videoMatch) return "snssdk1233://aweme/detail/?aweme_id=" + videoMatch[1];
+
+              const profileMatch = path.match(/\/@([\w.]+)\/?$/);
+              if (profileMatch) return "snssdk1233://user/profile/?uniqueId=" + profileMatch[1];
+
+              return "snssdk1233://browser/open?url=" + encodeURIComponent(targetUrl);
+            }
+
+            if (targetUrl.includes("shopee.vn") || targetUrl.includes("shope.ee")) {
+              // Short link → để Universal Link tự xử lý, không dùng scheme
+              return targetUrl;
+            }
+          } catch(e) {}
+          return targetUrl;
+        };
+
+
+        // Và thay triggerAppOpen:
+        const triggerAppOpen = (schemeUrl, fallbackUrl) => {
+          const ua = navigator.userAgent || "";
+          const isAndroid = /android/i.test(ua);
+          const isFacebook = /FBAN|FBAV|FB_IAB|FBIOS|FB4A/i.test(ua);
+          const isZalo = /ZaloApp|zalo/i.test(ua);
+          const isInApp = isFacebook || isZalo;
+
+          if (isInApp && isAndroid) {
+            // Thoát Facebook browser qua Intent URL
+            const intentUrl =
+              "intent://" +
+              fallbackUrl.replace(/^https?:\/\//, "") +
+              "#Intent;scheme=https;package=com.ss.android.ugc.trill;S.browser_fallback_url=" +
+              encodeURIComponent(fallbackUrl) + ";end";
+            window.location.href = intentUrl;
+            return;
+          }
+
+          // THÊM: Facebook/Zalo iOS → _blank trick
+          const isIOS = /iphone|ipad|ipod/i.test(ua);
+          if (isInApp && isIOS) {
+            const a = document.createElement("a");
+            a.href = fallbackUrl;
+            a.target = "_blank";
+            a.rel = "noopener noreferrer";
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            setTimeout(() => window.location.replace(fallbackUrl), 1500);
+            return;
+          }
+
+          // Trình duyệt thường
+          let didLeave = false;
+          window.addEventListener("blur", () => { didLeave = true; }, { once: true });
+          setTimeout(() => {
+            if (!didLeave && !document.hidden) window.location.href = fallbackUrl;
+          }, 1800);
+
+          window.location.href = schemeUrl;
+        };
+        // ====================================================================
 
         const getPreviewPlaybackMs = () =>
           previewPlaybackMs +
@@ -477,6 +592,7 @@ export const renderChoiceLandingPage = (
               Number.isFinite(secondaryOpenedAt) &&
               secondaryOpenedAt > 0 &&
               secondaryAgeMs >= 0 &&
+
               secondaryAgeMs <= ${PRIMARY_RETURN_WINDOW_MS}
             ) {
               stopPreviewPlaybackTracking();
@@ -520,13 +636,28 @@ export const renderChoiceLandingPage = (
             clearLandingState();
           }
         };
-
         const handleOverlayContinue = () => {
           if (overlayHandled) return;
           overlayHandled = true;
           persistPrimaryOpened();
           armPrimaryClickTracking();
           hideOverlay();
+
+          const ua = navigator.userAgent || "";
+          const isFb   = /FBAN|FBAV|FB_IAB|FBIOS|FB4A/i.test(ua);
+          const isZalo = /ZaloApp|zalo/i.test(ua);
+          const isIOS  = /iphone|ipad|ipod/i.test(ua);
+
+          if ((isFb || isZalo) && isIOS) {
+            const a = document.createElement("a");
+            a.href = primaryRedirectUrl;
+            a.target = "_blank";
+            a.rel = "noopener noreferrer";
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            return;
+          }
         };
 
         const handleSecondaryPlayIntent = () => {
@@ -612,18 +743,18 @@ export const renderChoiceLandingPage = (
           mediaPanel.dataset.videoOrientation = orientation;
         };
 
-        if (overlay) {
-          overlay.addEventListener("click", handleOverlayContinue);
-          overlay.addEventListener("keydown", (event) => {
-            if (event.key === " ") {
-              event.preventDefault();
-              handleOverlayContinue();
-              if (overlay instanceof HTMLAnchorElement) {
-                overlay.click();
-              }
+       if (overlay) {
+          overlay.addEventListener("click", (e) => {
+            const ua = navigator.userAgent || "";
+            const isFb   = /FBAN|FBAV|FB_IAB|FBIOS|FB4A/i.test(ua);
+            const isZalo = /ZaloApp|zalo/i.test(ua);
+            const isIOS  = /iphone|ipad|ipod/i.test(ua);
+
+            if ((isFb || isZalo) && isIOS) {
+              e.preventDefault(); // chặn <a href> mở trong WebView
             }
+            handleOverlayContinue();
           });
-        }
 
         if (heroVideo instanceof HTMLVideoElement) {
           const startVideoPreview = () => {

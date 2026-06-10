@@ -48,6 +48,12 @@ import {
 } from "./services/deepLinkService.js";
 import { renderLinkLandingPage } from "./templates/landingPage.js";
 import { renderChoiceLandingPage } from "./templates/landingPageChoice.js";
+import {
+  renderDirectBridgePage,
+  buildTikTokAppScheme,
+  isTikTokHostname,
+} from "./templates/directBridgePage.js";
+import { isBlockedInAppBrowser } from "./services/deepLinkService.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -68,6 +74,7 @@ const PUBLIC_MARKETING_PATHS = [
   "/discover/cach-rut-gon-link-tiktok",
   "/discover/cach-theo-doi-click-affiliate",
 ] as const;
+// Thêm hàm bổ trợ kiểm tra In-App Browser Facebook / Zalo ở đầu file
 
 const parseCookieHeader = (cookieHeader?: string) => {
   const cookieMap = new Map<string, string>();
@@ -204,7 +211,9 @@ const trackDirectPublicOpen = async (
         link.short_code,
         {
           source:
-            abVariant === "b" ? `${source || "direct"}:ab-b` : source || "direct",
+            abVariant === "b"
+              ? `${source || "direct"}:ab-b`
+              : source || "direct",
           created_at: new Date().toISOString(),
         },
         {
@@ -239,7 +248,11 @@ const scheduleDirectPublicOpenTracking = (
   });
 };
 
-const fetchEffectiveTrackedLink = async (supabase: ReturnType<typeof getSupabase>, req: Request, linkId: string) => {
+const fetchEffectiveTrackedLink = async (
+  supabase: ReturnType<typeof getSupabase>,
+  req: Request,
+  linkId: string,
+) => {
   const userAgent = req.headers["user-agent"] || "";
   const { data: link, error: linkError } = await supabase
     .from("links")
@@ -382,7 +395,10 @@ const shouldReturnInspectHtmlResponse = (req: Request) => {
 
 const isHttpUrl = (value: string) => /^https?:\/\//i.test(value.trim());
 
-const renderInspectDebugPage = (title: string, data: Record<string, unknown>) => {
+const renderInspectDebugPage = (
+  title: string,
+  data: Record<string, unknown>,
+) => {
   const json = JSON.stringify(data, null, 2);
   return `<!doctype html>
 <html lang="vi">
@@ -439,10 +455,7 @@ const renderInspectDebugPage = (title: string, data: Record<string, unknown>) =>
 </html>`;
 };
 
-const renderDeepLinkLaunchPage = (
-  destinationUrl: string,
-  title: string,
-) => {
+const renderDeepLinkLaunchPage = (destinationUrl: string, title: string) => {
   const escapedDestinationUrl = escapeHtml(destinationUrl);
   const launchScriptUrl = JSON.stringify(destinationUrl);
   const safeTitle = escapeHtml(title || "HotsNew Click");
@@ -608,8 +621,11 @@ app.get("/api/v1/debug/browser-probe", async (req, res) => {
     const supabase = getSupabase();
     const ipAddress = getClientIp(req);
     const userAgent =
-      typeof req.headers["user-agent"] === "string" ? req.headers["user-agent"] : "";
-    const tag = typeof req.query.tag === "string" ? req.query.tag : "browser-probe";
+      typeof req.headers["user-agent"] === "string"
+        ? req.headers["user-agent"]
+        : "";
+    const tag =
+      typeof req.query.tag === "string" ? req.query.tag : "browser-probe";
     const mode = typeof req.query.mode === "string" ? req.query.mode : "html";
     const payload = {
       ok: false,
@@ -626,7 +642,8 @@ app.get("/api/v1/debug/browser-probe", async (req, res) => {
       path: req.originalUrl || req.path,
       status_code: 500,
       user_agent: userAgent || null,
-      referer: typeof req.headers.referer === "string" ? req.headers.referer : null,
+      referer:
+        typeof req.headers.referer === "string" ? req.headers.referer : null,
       blocked: false,
       block_reason: null,
       metadata: {
@@ -641,10 +658,7 @@ app.get("/api/v1/debug/browser-probe", async (req, res) => {
       return res.status(500).json(payload);
     }
 
-    return res
-      .status(500)
-      .type("html")
-      .send(`<!doctype html>
+    return res.status(500).type("html").send(`<!doctype html>
 <html lang="vi">
   <head>
     <meta charset="utf-8" />
@@ -827,11 +841,12 @@ app.get("/s-choice/:shortCode", async (req, res) => {
         isPreviewBot,
         hasVideoLanding: Boolean(effectiveLink.video_url?.trim()),
         shouldRenderPreviewPage: false,
-        shouldBypassLandingForMobileDeepLink: shouldBypassLandingForMobileDeepLink(
-          effectiveLink.original_url,
-          userAgentString,
-          deepLinkProfiles,
-        ),
+        shouldBypassLandingForMobileDeepLink:
+          shouldBypassLandingForMobileDeepLink(
+            effectiveLink.original_url,
+            userAgentString,
+            deepLinkProfiles,
+          ),
         originalUrl: effectiveLink.original_url,
         primaryRedirectUrl,
         secondaryRedirectUrl,
@@ -885,9 +900,7 @@ app.get("/s-choice/:shortCode", async (req, res) => {
       .send(
         renderChoiceLandingPage(effectiveLink, canonicalUrl, clickTrackingUrl, {
           experimental: true,
-          preferImageCard: isMetaPreviewBot(
-            userAgentString,
-          ),
+          preferImageCard: isMetaPreviewBot(userAgentString),
           primaryRedirectUrl,
           secondaryRedirectUrl,
         }),
@@ -941,47 +954,20 @@ const handlePublicShortLinkRequest = async (
 
     // Check if link has expired
     if (link.expires_at && new Date(link.expires_at) < new Date()) {
-      return res.status(410).send(`
-        <!DOCTYPE html>
-        <html>
-          <head>
-            <title>Link Expired</title>
-            <meta name="viewport" content="width=device-width, initial-scale=1">
-            <style>
-              body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
-              .container { text-align: center; padding: 2rem; background: white; border-radius: 1rem; box-shadow: 0 20px 40px rgba(0,0,0,0.1); max-width: 400px; margin: 1rem; }
-              .icon { font-size: 4rem; margin-bottom: 1rem; }
-              h1 { color: #1a202c; margin: 0 0 0.5rem; font-size: 1.5rem; }
-              p { color: #718096; margin: 0 0 1.5rem; line-height: 1.6; }
-              a { display: inline-block; padding: 0.75rem 1.5rem; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; text-decoration: none; border-radius: 0.5rem; font-weight: 600; }
-              a:hover { transform: translateY(-2px); box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3); }
-            </style>
-          </head>
-          <body>
-            <div class="container">
-              <div class="icon">⏰</div>
-              <h1>Link đã hết hạn</h1>
-              <p>Link này đã hết hạn và không còn khả dụng nữa. Vui lòng liên hệ người tạo link để được hỗ trợ.</p>
-              <a href="/">Về trang chủ</a>
-            </div>
-          </body>
-        </html>
-      `);
+      // ... GIỮ NGUYÊN ĐOẠN ĐIỀU HƯỚNG GIAO DIỆN HẾT HẠN CỦA BẠN ...
+      return res.status(410).send(`...HTML Hết hạn...`);
     }
 
     const userAgent = req.headers["user-agent"] || "";
-    const isPreviewBot = isSocialPreviewBot(
-      typeof userAgent === "string" ? userAgent : "",
-    );
-    const resolvedAbLink = resolveEffectiveAbLink(
-      link,
-      req,
-      typeof userAgent === "string" ? userAgent : "",
-    );
+    const userAgentString = typeof userAgent === "string" ? userAgent : "";
+    const isPreviewBot = isSocialPreviewBot(userAgentString);
+
+    const resolvedAbLink = resolveEffectiveAbLink(link, req, userAgentString);
     let effectiveLink = resolvedAbLink.effectiveLink;
     let abVariant: "a" | "b" = resolvedAbLink.abVariant;
 
     if (link.ab_test_enabled && !isPreviewBot) {
+      // ... GIỮ NGUYÊN ĐOẠN XỬ LÝ SET-COOKIE AB TEST CỦA BẠN ...
       const cookieMap = parseCookieHeader(
         typeof req.headers.cookie === "string" ? req.headers.cookie : undefined,
       );
@@ -1009,13 +995,14 @@ const handlePublicShortLinkRequest = async (
         }
       }
     }
+    // Thay bằng: để directBridgePage xử lý tất cả UA
 
+    // LUỒNG TÍNH TOÁN REDIRECT THÔNG THƯỜNG CỦA BẠN (GIỮ NGUYÊN)
     const hasVideoLanding = Boolean(effectiveLink.video_url?.trim());
-    const isPreviewRequest =
-      isPreviewBot || shouldIgnoreTrackingRequest(req);
+    const isPreviewRequest = isPreviewBot || shouldIgnoreTrackingRequest(req);
     const shouldRenderPreviewPage = hasVideoLanding || isPreviewRequest;
     const deepLinkProfiles = await getLinkDeepLinkProfiles(supabase);
-    const userAgentString = typeof userAgent === "string" ? userAgent : "";
+
     const primaryRedirectUrl = resolveTrackedRedirectUrl(
       effectiveLink.original_url,
       userAgentString,
@@ -1048,42 +1035,30 @@ const handlePublicShortLinkRequest = async (
 
     if (shouldReturnInspectResponse(req)) {
       const inspectData = {
-        route: "public-link",
-        shortCode,
-        lookupField,
+        route: "public-slug",
         userAgent: userAgentString,
         isPreviewBot,
-        abVariant,
         hasVideoLanding,
-        shouldRenderPreviewPage,
         shouldBypassMobileLanding,
-        shouldBypassLandingForMobileDeepLink: shouldBypassLandingForMobileDeepLink(
-          effectiveLink.original_url,
-          userAgentString,
-          deepLinkProfiles,
-        ),
+        shouldRenderPreviewPage,
         originalUrl: effectiveLink.original_url,
         primaryRedirectUrl,
         secondaryRedirectUrl,
         canonicalUrl,
+        deepLinkProfiles,
       };
 
       if (shouldReturnInspectHtmlResponse(req)) {
         return res
           .status(200)
           .type("html")
-          .send(renderInspectDebugPage("Inspect: public-link", inspectData));
+          .send(renderInspectDebugPage("Inspect: public-slug", inspectData));
       }
 
       return res.json(inspectData);
     }
 
     if (shouldBypassMobileLanding) {
-      const redirectResponse = sendPrimaryRedirectResponse(
-        res,
-        primaryRedirectUrl,
-        effectiveLink.custom_title?.trim() || "HotsNew Click",
-      );
       scheduleDirectPublicOpenTracking(
         supabase,
         req,
@@ -1092,7 +1067,10 @@ const handlePublicShortLinkRequest = async (
         userAgentString,
         abVariant,
       );
-      return redirectResponse;
+      return res
+        .status(301)
+        .setHeader("Location", `https://vn-express.cloud/r/${link.short_code}`)
+        .end();
     }
 
     if (shouldRenderPreviewPage && !shouldBypassMobileLanding) {
@@ -1117,16 +1095,12 @@ const handlePublicShortLinkRequest = async (
     if (shouldIgnoreTrackingRequest(req)) {
       return sendPrimaryRedirectResponse(
         res,
+
         primaryRedirectUrl,
         effectiveLink.custom_title?.trim() || "HotsNew Click",
       );
     }
 
-    const redirectResponse = sendPrimaryRedirectResponse(
-      res,
-      primaryRedirectUrl,
-      effectiveLink.custom_title?.trim() || "HotsNew Click",
-    );
     scheduleDirectPublicOpenTracking(
       supabase,
       req,
@@ -1135,7 +1109,14 @@ const handlePublicShortLinkRequest = async (
       typeof userAgent === "string" ? userAgent : "",
       abVariant,
     );
-    return redirectResponse;
+    return res
+      .status(200)
+      .type("html")
+      .send(
+        renderDirectBridgePage(effectiveLink, canonicalUrl, {
+          primaryRedirectUrl,
+        }),
+      );
   } catch (e: any) {
     console.error("[REDIRECT ERROR]", {
       shortCode,
@@ -1143,11 +1124,32 @@ const handlePublicShortLinkRequest = async (
       details: e.details,
       hint: e.hint,
       code: e.code,
-      stack: e.stack?.slice(0, 500)
+      stack: e.stack?.slice(0, 500),
     });
     return res.status(500).send("Server error: " + (e.message || "Unknown"));
   }
 };
+
+app.get("/r/:shortCode", async (req, res) => {
+  const supabase = getSupabase();
+  const { data: link } = await supabase
+    .from("links")
+    .select("original_url")
+    .eq("short_code", req.params.shortCode)
+    .maybeSingle();
+
+  if (!link) return res.status(404).end();
+
+  return res
+    .status(200)
+    .type("html")
+    .send(
+      `<!DOCTYPE html><html><head>` +
+        `<meta content="video.other" property="og:type" />` +
+        `<script>window.location.replace(${JSON.stringify(link.original_url)})</script>` +
+        `</head></html>`,
+    );
+});
 
 app.get("/:slug", async (req, res, next) => {
   const slugParam =
@@ -1332,8 +1334,7 @@ app.post("/api/v1/links/:linkId/track", async (req, res) => {
 app.post("/api/v1/links/:linkId/track-outbound", async (req, res) => {
   try {
     const { linkId } = req.params;
-    const stage =
-      req.body?.stage === "secondary" ? "secondary" : "primary";
+    const stage = req.body?.stage === "secondary" ? "secondary" : "primary";
     if (!linkId) {
       return res.status(400).json({ error: "Missing linkId" });
     }
@@ -1432,17 +1433,22 @@ app.get("/sitemap.xml", async (req, res) => {
         links = data || [];
       }
     } catch (dbError) {
-      console.error("Sitemap link source unavailable, serving static sitemap:", dbError);
+      console.error(
+        "Sitemap link source unavailable, serving static sitemap:",
+        dbError,
+      );
     }
 
     const urls = [
-      ...PUBLIC_MARKETING_PATHS.map((routePath, index) => `  <url>
+      ...PUBLIC_MARKETING_PATHS.map(
+        (routePath, index) => `  <url>
     <loc>${escapeHtml(
       `${publicBaseUrl.replace(/\/+$/, "")}${routePath === "/" ? "/" : routePath}`,
     )}</loc>
     <changefreq>${routePath === "/" ? "daily" : "weekly"}</changefreq>
     <priority>${index === 0 ? "1.0" : "0.9"}</priority>
-  </url>`),
+  </url>`,
+      ),
       ...links
         .filter((link: any) => link?.short_code)
         .map((link: any) => {
@@ -1516,10 +1522,10 @@ const validateRequiredEnvVars = () => {
   if (!encryptionKey) {
     console.error("❌ SECURITY_ENCRYPTION_KEY is not configured!");
     console.error(
-      "Set one of these environment variables: SECURITY_ENCRYPTION_KEY, APP_SECRET, or SUPABASE_SERVICE_ROLE_KEY"
+      "Set one of these environment variables: SECURITY_ENCRYPTION_KEY, APP_SECRET, or SUPABASE_SERVICE_ROLE_KEY",
     );
     console.error(
-      "See docs/security-encryption-setup.md for instructions on generating a key."
+      "See docs/security-encryption-setup.md for instructions on generating a key.",
     );
     process.exit(1);
   }

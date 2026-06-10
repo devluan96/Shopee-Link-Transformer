@@ -5,7 +5,7 @@ import {
   buildPrettyLinkUrl,
   isCandidatePublicSlugPath,
   normalizeLinkSlug,
-} from "../../api/utils/linkPaths.js";
+} from "../../server/utils/linkPaths.js";
 
 test("normalizes a Vietnamese slug without accents", () => {
   assert.equal(
@@ -60,3 +60,4 @@ test("builds a full pretty URL", () => {
     "https://hotsnew.click/trich-xuat-camera-goc-quay-khac-vu-nam-thanh-nien-ngao-da",
   );
 });
+

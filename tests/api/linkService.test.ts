@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { deleteLink } from "../../api/services/linkService.js";
-import { insertOutboundEvent } from "../../api/utils/clickTracking.js";
+import { deleteLink } from "../../server/services/linkService.js";
+import { insertOutboundEvent } from "../../server/utils/clickTracking.js";
 
 test("insertOutboundEvent persists workspace scope", async () => {
   let insertedPayload: Record<string, unknown> | null = null;
@@ -99,3 +99,4 @@ test("deleteLink keeps click history rows intact", async () => {
 
   assert.deepEqual(deletedTables, ["notification_logs", "links"]);
 });
+

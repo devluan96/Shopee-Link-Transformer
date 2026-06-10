@@ -4,7 +4,7 @@ import {
   ADMIN_FEATURE_LIMITS,
   PLAN_FEATURE_LIMITS,
   getFeatureLimitsForProfile,
-} from "../../api/services/featureLimitService.js";
+} from "../../server/services/featureLimitService.js";
 
 test("monthly and yearly plans expose different feature quotas", () => {
   assert.equal(PLAN_FEATURE_LIMITS.monthly.dailyVideoUploads, 10);
@@ -25,3 +25,4 @@ test("admin profile receives unlimited feature limits", () => {
 
   assert.deepEqual(limits, ADMIN_FEATURE_LIMITS);
 });
+

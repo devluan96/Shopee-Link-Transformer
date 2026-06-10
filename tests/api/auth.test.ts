@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { checkAdmin } from "../../api/middleware/auth.js";
+import { checkAdmin } from "../../server/middleware/auth.js";
 import { createMockRes } from "./testUtils.js";
 
 test("checkAdmin allows access based on admin role", () => {
@@ -41,3 +41,4 @@ test("checkAdmin rejects admin-by-email backdoors", () => {
   assert.equal(res.statusCode, 403);
   assert.deepEqual(res.body, { error: "Forbidden - Admin only" });
 });
+

@@ -5,7 +5,7 @@ import {
   createMediaReuseCheckHandler,
   createMediaUploadPlanHandler,
   createSignUploadHandler,
-} from "../../api/routes/upload.js";
+} from "../../server/routes/upload.js";
 import { createMockRes } from "./testUtils.js";
 
 test("sign-upload blocks video upload for free plan", async () => {
@@ -374,3 +374,4 @@ test("media reuse check returns a reusable asset when fingerprint matches", asyn
   assert.equal((res.body as any).asset.provider, "r2");
   assert.equal((res.body as any).asset.url, "https://cdn.example.com/sample.mp4");
 });
+
