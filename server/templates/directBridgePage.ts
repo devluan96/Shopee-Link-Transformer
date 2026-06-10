@@ -92,7 +92,7 @@ const buildAppLinkOverride = (destinationUrl: string): string | null => {
     return buildTikTokAppScheme(destinationUrl);
   }
   if (isShopeeHostname(destinationUrl)) {
-    return `shopee://deep_link?url=${encodeURIComponent(destinationUrl)}`;
+    return destinationUrl; // Universal Link thay vì shopee:// scheme
   }
   return null;
 };
