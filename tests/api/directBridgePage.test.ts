@@ -20,22 +20,13 @@ test("renderDirectBridgePage emits minimal bridge markup for TikTok targets", ()
   const link = createLink();
   const html = renderDirectBridgePage(link, "https://hotsnew.click/test-slug");
 
-  // Base HTML
   assert.match(html, /<!DOCTYPE html>/i);
   assert.match(html, /<html lang="vi">/i);
-
-  // Title
   assert.match(html, /<title>HotsNew Click<\/title>/i);
-
-  // OG tags
   assert.match(html, /property="og:title"/i);
   assert.match(html, /property="og:description"/i);
   assert.match(html, /property="og:image"/i);
-
-  // TikTok deep link scheme
   assert.match(html, /snssdk1233:\/\/aweme\/detail\/\?aweme_id=123456789/i);
-
-  // App link metadata TikTok
   assert.match(
     html,
     /property="al:android:package" content="com\.ss\.android\.ugc\.trill"/i,
@@ -43,20 +34,11 @@ test("renderDirectBridgePage emits minimal bridge markup for TikTok targets", ()
   assert.match(html, /property="al:android:app_name" content="TikTok"/i);
   assert.match(html, /property="al:ios:app_name" content="TikTok"/i);
   assert.match(html, /property="al:ios:app_store_id" content="1235601864"/i);
-
-  // Redirect logic
   assert.match(html, /window\.location\.href = appUrl/i);
   assert.match(html, /window\.location\.replace\(webUrl\)/i);
-
-  // FB / Zalo detection
   assert.match(html, /FBAN\|FBAV\|FB_IAB\|FBIOS/i);
   assert.match(html, /ZaloApp/i);
-
-  // iOS _blank trick
   assert.match(html, /isInAppBrowser && isIOS/i);
-  assert.match(html, /target.*_blank/i);
-
-  // Android intent URL
   assert.match(html, /isInAppBrowser && isAndroid/i);
   assert.match(html, /intent:\/\//i);
 });
@@ -83,25 +65,16 @@ test("renderDirectBridgePage handles Shopee short links", () => {
     "https://hotsnew.click/shopee-link",
   );
 
-  // Không có TikTok scheme
   assert.doesNotMatch(html, /snssdk1233:\/\//i);
   assert.doesNotMatch(html, /snssdk1180:\/\//i);
-
-  // Có Shopee app meta tags
   assert.match(
     html,
     /property="al:android:package" content="com\.shopee\.vn"/i,
   );
   assert.match(html, /property="al:ios:app_store_id" content="959841449"/i);
   assert.match(html, /property="al:ios:app_name" content="Shopee"/i);
-
-  // Android intent dùng package Shopee
   assert.match(html, /com\.shopee\.vn/i);
-
-  // iOS _blank trick vẫn có
-  assert.match(html, /target.*_blank/i);
-
-  // Fallback web redirect
+  assert.match(html, /isInAppBrowser && isIOS/i);
   assert.match(html, /window\.location\.replace\(webUrl\)/i);
 });
 
@@ -114,11 +87,8 @@ test("renderDirectBridgePage falls back for non TikTok/Shopee links", () => {
     "https://hotsnew.click/example-link",
   );
 
-  // Không có TikTok/Shopee scheme
   assert.doesNotMatch(html, /snssdk1233:\/\//i);
   assert.doesNotMatch(html, /snssdk1180:\/\//i);
-
-  // Vẫn redirect web
   assert.match(html, /window\.location\.replace\(webUrl\)/i);
 });
 

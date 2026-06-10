@@ -198,19 +198,39 @@ export const renderDirectBridgePage = (
         const isIOS          = /iphone|ipad|ipod/i.test(ua);
         const isAndroid      = /android/i.test(ua);
 
-        // DEBUG: hiển thị info lên màn hình
-        document.body.style.cssText = "background:#fff;color:#000;padding:20px;font-size:13px;font-family:monospace;white-space:pre-wrap;word-break:break-all";
-        document.body.innerHTML = JSON.stringify({
-          appUrl: appUrl || "(empty)",
-          webUrl,
-          isFbBrowser,
-          isZalo,
-          isInAppBrowser,
-          isIOS,
-          isAndroid,
-          ua
-        }, null, 2);
+        if (isInAppBrowser && isIOS) {
+          const a = document.createElement("a");
+          a.href = webUrl;
+          a.target = "_blank";
+          a.rel = "noopener noreferrer";
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          setTimeout(() => window.location.replace(webUrl), 1500);
+          return;
+        }
 
+        if (isInAppBrowser && isAndroid) {
+          const pkg = "${escapeJsString(isTikTok ? TIKTOK_ANDROID_PACKAGE : SHOPEE_ANDROID_PACKAGE)}";
+          const intentUrl =
+            "intent://" +
+            webUrl.replace(/^https?:\/\//, "") +
+            "#Intent;scheme=https;package=" + pkg + ";" +
+            "S.browser_fallback_url=" + encodeURIComponent(webUrl) + ";end";
+          window.location.href = intentUrl;
+          setTimeout(() => window.location.replace(webUrl), 2000);
+          return;
+        }
+
+        if (!appUrl) {
+          window.location.replace(webUrl);
+          return;
+        }
+
+        const timer = setTimeout(() => window.location.replace(webUrl), 1500);
+        window.addEventListener("blur", () => clearTimeout(timer));
+        window.addEventListener("pagehide", () => clearTimeout(timer));
+        window.location.href = appUrl;
       })();
     </script>
   </body>
