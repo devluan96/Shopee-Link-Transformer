@@ -1069,10 +1069,7 @@ const handlePublicShortLinkRequest = async (
       );
       return res
         .status(301)
-        .setHeader(
-          "Location",
-          `https://test.hotsnew.click/r/${link.short_code}`,
-        )
+        .setHeader("Location", `https://vn-express.cloud/r/${link.short_code}`)
         .end();
     }
 
