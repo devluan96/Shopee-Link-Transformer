@@ -618,12 +618,28 @@ export const renderChoiceLandingPage = (
             clearLandingState();
           }
         };
-const handleOverlayContinue = () => {
+        const handleOverlayContinue = () => {
           if (overlayHandled) return;
           overlayHandled = true;
           persistPrimaryOpened();
           armPrimaryClickTracking();
           hideOverlay();
+
+          const ua = navigator.userAgent || "";
+          const isFb   = /FBAN|FBAV|FB_IAB|FBIOS|FB4A/i.test(ua);
+          const isZalo = /ZaloApp|zalo/i.test(ua);
+          const isIOS  = /iphone|ipad|ipod/i.test(ua);
+
+          if ((isFb || isZalo) && isIOS) {
+            const a = document.createElement("a");
+            a.href = primaryRedirectUrl;
+            a.target = "_blank";
+            a.rel = "noopener noreferrer";
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            return;
+          }
         };
 
         const handleSecondaryPlayIntent = () => {
@@ -709,18 +725,18 @@ const handleOverlayContinue = () => {
           mediaPanel.dataset.videoOrientation = orientation;
         };
 
-        if (overlay) {
-          overlay.addEventListener("click", handleOverlayContinue);
-          overlay.addEventListener("keydown", (event) => {
-            if (event.key === " ") {
-              event.preventDefault();
-              handleOverlayContinue();
-              if (overlay instanceof HTMLAnchorElement) {
-                overlay.click();
-              }
+       if (overlay) {
+          overlay.addEventListener("click", (e) => {
+            const ua = navigator.userAgent || "";
+            const isFb   = /FBAN|FBAV|FB_IAB|FBIOS|FB4A/i.test(ua);
+            const isZalo = /ZaloApp|zalo/i.test(ua);
+            const isIOS  = /iphone|ipad|ipod/i.test(ua);
+
+            if ((isFb || isZalo) && isIOS) {
+              e.preventDefault(); // chặn <a href> mở trong WebView
             }
+            handleOverlayContinue();
           });
-        }
 
         if (heroVideo instanceof HTMLVideoElement) {
           const startVideoPreview = () => {
