@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { renderChoiceLandingPage } from "../../api/templates/landingPageChoice.js";
-import type { PublicLinkRecord } from "../../api/types/index.js";
+import { renderChoiceLandingPage } from "../../server/templates/landingPageChoice.js";
+import type { PublicLinkRecord } from "../../server/types/index.js";
 
 const sampleLink: PublicLinkRecord = {
   id: "link-1",
@@ -150,3 +150,4 @@ test("renderChoiceLandingPage ignores invalid persisted secondary state", () => 
   assert.match(html, /rawState === "null"/);
   assert.match(html, /clearLandingState\(\);/);
 });
+

@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import {
   renderPublicLinkNotFoundPage,
   shouldReturnPublicLinkNotFound,
-} from "../../api/utils/publicFallback.js";
+} from "../../server/utils/publicFallback.js";
 
 test("returns slug 404 only for public single-segment paths", () => {
   assert.equal(shouldReturnPublicLinkNotFound("/slug-khong-ton-tai"), true);
@@ -18,3 +18,4 @@ test("renders not found html with escaped path", () => {
   assert.match(html, /\/slug-&lt;script&gt;/);
   assert.doesNotMatch(html, /<script>/);
 });
+

@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { buildPublicVideoUrl } from "../../api/utils/mediaUrl.js";
+import { buildPublicVideoUrl } from "../../server/utils/mediaUrl.js";
 
 test("buildPublicVideoUrl keeps direct video URLs unchanged", () => {
   const directUrl =
@@ -22,3 +22,4 @@ test("buildPublicVideoUrl trims surrounding spaces", () => {
     "https://cdn.example.com/videos/demo-video.mp4",
   );
 });
+

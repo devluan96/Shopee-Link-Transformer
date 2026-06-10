@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import {
   isSafeWebhookUrl,
   sendWebhookNotification,
-} from "../../api/services/notificationService.js";
+} from "../../server/services/notificationService.js";
 
 test("isSafeWebhookUrl accepts public https endpoints and rejects unsafe URLs", () => {
   assert.equal(isSafeWebhookUrl("https://example.com/webhook"), true);
@@ -39,3 +39,4 @@ test("sendWebhookNotification short-circuits unsafe endpoints without fetching",
     globalThis.fetch = originalFetch;
   }
 });
+

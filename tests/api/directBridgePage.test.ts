@@ -1,8 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { renderDirectBridgePage } from "../../api/templates/directBridgePage.js";
-import type { PublicLinkRecord } from "../../api/types/index.js";
+import { renderDirectBridgePage } from "../../server/templates/directBridgePage.js";
+import type { PublicLinkRecord } from "../../server/types/index.js";
 
 const createLink = (
   overrides: Partial<PublicLinkRecord> = {},
@@ -106,3 +106,4 @@ test("renderDirectBridgePage escapes html safely", () => {
   assert.match(html, /&lt;script&gt;/i);
   assert.match(html, /&quot;quoted&quot;/i);
 });
+

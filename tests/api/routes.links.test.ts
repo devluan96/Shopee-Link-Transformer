@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { createConvertHandler, createDeleteLinkHandler } from "../../api/routes/links.js";
+import { createConvertHandler, createDeleteLinkHandler } from "../../server/routes/links.js";
 import { createMockRes } from "./testUtils.js";
 
 test("convert blocks when daily link quota is exhausted", async () => {
@@ -280,3 +280,4 @@ test("delete handler deletes link successfully", async () => {
   assert.deepEqual(deletedArgs, ["link-99", "user-1"]);
   assert.deepEqual(res.body, { success: true });
 });
+

@@ -3,13 +3,13 @@ import assert from "node:assert/strict";
 import {
   buildZaloPayAppTransId,
   isZaloPayAppTransOwnedByUser,
-} from "../../api/services/paymentService.js";
-import { SUBSCRIPTION_PRICING } from "../../api/config/constants.js";
-import { createZaloPayStatusHandler } from "../../api/routes/payment.js";
+} from "../../server/services/paymentService.js";
+import { SUBSCRIPTION_PRICING } from "../../server/config/constants.js";
+import { createZaloPayStatusHandler } from "../../server/routes/payment.js";
 import {
   buildTransferContent,
   getManualPaymentPlanMeta,
-} from "../../api/services/manualPaymentService.js";
+} from "../../server/services/manualPaymentService.js";
 import { createMockRes } from "./testUtils.js";
 
 test("ZaloPay app trans id is tied to the owning user", () => {
@@ -105,3 +105,4 @@ test("ZaloPay status handler updates the authenticated user's subscription when 
   assert.equal(capturedUpdate?.plan, "yearly");
   assert.ok(capturedUpdate?.expiry);
 });
+

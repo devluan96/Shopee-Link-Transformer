@@ -5,7 +5,7 @@ import {
   resolveDeepLinkUrl,
   shouldBypassLandingForMobileDeepLink,
   shouldBypassPublicLandingForMobileDeepLink,
-} from "../../api/services/deepLinkService.js";
+} from "../../server/services/deepLinkService.js";
 
 test("applyDeepLinkTemplate replaces url placeholders", () => {
   const destinationUrl = "https://shopee.vn/product/123?campaign=summer sale";
@@ -295,3 +295,4 @@ test("shouldBypassPublicLandingForMobileDeepLink keeps video landing pages on mo
     false,
   );
 });
+

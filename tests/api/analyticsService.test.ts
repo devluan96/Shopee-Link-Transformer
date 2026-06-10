@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import {
   summarizeFocusedAnalytics,
   summarizeOutboundEvents,
-} from "../../api/services/analyticsService.js";
+} from "../../server/services/analyticsService.js";
 
 const daysAgoIso = (daysAgo: number) => {
   const date = new Date();
@@ -232,3 +232,4 @@ test("summaries ignore non-Shopee and non-TikTok outbound events", () => {
     [{ date: "2026-05-21", clicks: 2 }],
   );
 });
+

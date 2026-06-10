@@ -3,7 +3,7 @@
   "functions": {
     "api/index.ts": {
       "regions": ["hkg1"],
-      "includeFiles": "api/**/*.ts"
+      "includeFiles": "server/**/*.ts"
     }
   },
   "rewrites": [

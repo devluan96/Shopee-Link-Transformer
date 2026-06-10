@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { ensureSameShopeeHostname } from "../../api/utils/normalizers.js";
+import { ensureSameShopeeHostname } from "../../server/utils/normalizers.js";
 
 test("allows Shopee secondary when primary link is TikTok", () => {
   assert.doesNotThrow(() => {
@@ -22,3 +22,4 @@ test("blocks mismatched Shopee hosts when both primary and secondary are Shopee"
     /Shopee/i,
   );
 });
+

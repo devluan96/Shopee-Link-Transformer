@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import {
   isMetaPreviewBot,
   isSocialPreviewBot,
-} from "../../api/utils/socialPreview.js";
+} from "../../server/utils/socialPreview.js";
 
 test("detects legacy Facebook preview bot", () => {
   assert.equal(
@@ -64,3 +64,4 @@ test("does not mark Zalo in-app browser as a social preview bot", () => {
     false,
   );
 });
+
