@@ -57,7 +57,7 @@ test("resolveDeepLinkUrl uses the device-specific deep link template when availa
       "Mozilla/5.0 (iPad; CPU OS 17_0 like Mac OS X)",
       profiles,
     ),
-    "https://desktop.example/redirect?url=https%3A%2F%2Fwww.tiktok.com%2F%40demo%2Fvideo%2F123",
+    "tiktok://ios?url=https%3A%2F%2Fwww.tiktok.com%2F%40demo%2Fvideo%2F123",
   );
   assert.equal(
     resolveDeepLinkUrl(

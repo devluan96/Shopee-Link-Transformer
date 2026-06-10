@@ -38,8 +38,8 @@ test("renderDirectBridgePage emits minimal bridge markup for TikTok targets", ()
   assert.match(html, /window\.location\.replace\(webUrl\)/i);
   assert.match(html, /FBAN\|FBAV\|FB_IAB\|FBIOS/i);
   assert.match(html, /ZaloApp/i);
-  assert.match(html, /isInApp.*isIOS/i);
-  assert.match(html, /isInApp.*isAndroid/i);
+  assert.match(html, /if \(isIOS\)/i);
+  assert.match(html, /isInApp && isAndroid/i);
   assert.match(html, /intent:\/\//i);
 });
 
@@ -74,7 +74,7 @@ test("renderDirectBridgePage handles Shopee short links", () => {
   assert.match(html, /property="al:ios:app_store_id" content="959841449"/i);
   assert.match(html, /property="al:ios:app_name" content="Shopee"/i);
   assert.match(html, /com\.shopee\.vn/i);
-  assert.match(html, /isInApp.*isIOS/i);
+  assert.match(html, /if \(isIOS\)/i);
   assert.match(html, /window\.location\.replace\(webUrl\)/i);
 });
 
