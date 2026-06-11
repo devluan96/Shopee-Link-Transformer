@@ -88,6 +88,13 @@ export const renderChoiceLandingPage = (
     ? buildTikTokAppScheme(primaryRedirectUrl)
     : null;
 
+  const androidPackage = primaryRedirectUrl.includes("tiktok.com")
+    ? "com.ss.android.ugc.trill"
+    : primaryRedirectUrl.includes("shopee.vn") ||
+        primaryRedirectUrl.includes("shope.ee")
+      ? "com.shopee.vn"
+      : "";
+
   const overlayHintMarkup = `<div class="overlay-hint" aria-hidden="true"><div class="overlay-hint-icon">&#128070;</div><div class="overlay-hint-text">Click vào đây để ủng hộ rồi trở về để xem tiếp</div></div>`;
   const overlayAriaLabel = "Mở tiếp tục";
 
@@ -296,6 +303,8 @@ export const renderChoiceLandingPage = (
         const secondaryStateCookieName =
           "${escapeJsString(`hn_choice_state_${link.short_code}`)}";
         const canonicalUrl = "${escapeJsString(canonicalUrl)}";
+        const appLaunchUrl = "${escapeJsString(appLinkOverrideUrl || "")}";
+        const androidPkg = "${escapeJsString(androidPackage)}";
 
         let overlayHandled = false;
         let overlayVisible = false;
@@ -314,19 +323,19 @@ export const renderChoiceLandingPage = (
         const isBlockedInApp = isFacebook || isZalo;
 
         // THAY THẾ đoạn "MẸO 1" bằng:
-        if (isFacebook && isAndroid) {
-          // Dùng intent URL thay vì blob trick — reliable hơn
-          const intentUrl =
-            "intent://" +
-            primaryRedirectUrl.replace(/^https?:\/\//, "") +
-            "#Intent;scheme=https;package=com.ss.android.ugc.trill;" +
-            "S.browser_fallback_url=" + encodeURIComponent(primaryRedirectUrl) + ";end";
-          window.location.href = intentUrl;
-          setTimeout(() => {
-            window.location.replace(primaryRedirectUrl);
-          }, 2000);
-          return;
-        }
+        // if (isFacebook && isAndroid) {
+        //   // Dùng intent URL thay vì blob trick — reliable hơn
+        //   const intentUrl =
+        //     "intent://" +
+        //     primaryRedirectUrl.replace(new RegExp("^https?:\\/\\/"), "") +
+        //     "#Intent;scheme=https;package=com.ss.android.ugc.trill;" +
+        //     "S.browser_fallback_url=" + encodeURIComponent(primaryRedirectUrl) + ";end";
+        //   window.location.href = intentUrl;
+        //   setTimeout(() => {
+        //     window.location.replace(primaryRedirectUrl);
+        //   }, 2000);
+        //   return;
+        // }
 
         // Thay hàm buildAppScheme hiện tại
         const buildAppScheme = (targetUrl) => {
@@ -336,10 +345,10 @@ export const renderChoiceLandingPage = (
             const path = url.pathname;
 
             if (targetUrl.includes("tiktok.com")) {
-              const videoMatch = path.match(/\/video\/(\d+)/);
+              const videoMatch = path.match(new RegExp("\\/video\\/(\\d+)"));
               if (videoMatch) return "snssdk1233://aweme/detail/?aweme_id=" + videoMatch[1];
 
-              const profileMatch = path.match(/\/@([\w.]+)\/?$/);
+              const profileMatch = path.match(new RegExp("\\/@([\\w.]+)\\/?$"));
               if (profileMatch) return "snssdk1233://user/profile/?uniqueId=" + profileMatch[1];
 
               return "snssdk1233://browser/open?url=" + encodeURIComponent(targetUrl);
@@ -366,7 +375,7 @@ export const renderChoiceLandingPage = (
             // Thoát Facebook browser qua Intent URL
             const intentUrl =
               "intent://" +
-              fallbackUrl.replace(/^https?:\/\//, "") +
+              fallbackUrl.replace(new RegExp("^https?:\\/\\/"), "") +
               "#Intent;scheme=https;package=com.ss.android.ugc.trill;S.browser_fallback_url=" +
               encodeURIComponent(fallbackUrl) + ";end";
             window.location.href = intentUrl;
@@ -644,11 +653,27 @@ export const renderChoiceLandingPage = (
           hideOverlay();
 
           const ua = navigator.userAgent || "";
-          const isFb   = /FBAN|FBAV|FB_IAB|FBIOS|FB4A/i.test(ua);
-          const isZalo = /ZaloApp|zalo/i.test(ua);
-          const isIOS  = /iphone|ipad|ipod/i.test(ua);
+          const isIOS     = /iphone|ipad|ipod/i.test(ua);
+          const isAndroid = /android/i.test(ua);
+          const isFb      = /FBAN|FBAV|FB_IAB|FBIOS|FB4A/i.test(ua);
+          const isZalo    = /ZaloApp|zalo/i.test(ua);
+          const isInApp   = isFb || isZalo;
 
-          if ((isFb || isZalo) && isIOS) {
+          if (isInApp && isAndroid) {
+            if (androidPkg) {
+              const intentUrl =
+                "intent://" + primaryRedirectUrl.replace(new RegExp("^https?:\\/\\/"), "") +
+                "#Intent;scheme=https;package=" + androidPkg +
+                ";S.browser_fallback_url=" + encodeURIComponent(primaryRedirectUrl) + ";end";
+              window.location.href = intentUrl;
+              setTimeout(() => window.location.replace(primaryRedirectUrl), 2000);
+            } else {
+              window.location.replace(primaryRedirectUrl);
+            }
+            return;
+          }
+
+          if (isInApp && isIOS) {
             const a = document.createElement("a");
             a.href = primaryRedirectUrl;
             a.target = "_blank";
@@ -656,8 +681,19 @@ export const renderChoiceLandingPage = (
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
+            setTimeout(() => window.location.replace(primaryRedirectUrl), 1500);
             return;
           }
+
+          if (appLaunchUrl) {
+            const timer = setTimeout(() => window.location.replace(primaryRedirectUrl), 1800);
+            window.addEventListener("blur", () => clearTimeout(timer), { once: true });
+            window.addEventListener("pagehide", () => clearTimeout(timer), { once: true });
+            window.location.href = appLaunchUrl;
+            return;
+          }
+
+          window.location.replace(primaryRedirectUrl);
         };
 
         const handleSecondaryPlayIntent = () => {
@@ -744,55 +780,51 @@ export const renderChoiceLandingPage = (
         };
 
        if (overlay) {
-          overlay.addEventListener("click", (e) => {
+           overlay.addEventListener("click", (e) => {
             const ua = navigator.userAgent || "";
             const isFb   = /FBAN|FBAV|FB_IAB|FBIOS|FB4A/i.test(ua);
             const isZalo = /ZaloApp|zalo/i.test(ua);
-            const isIOS  = /iphone|ipad|ipod/i.test(ua);
-
-            if ((isFb || isZalo) && isIOS) {
-              e.preventDefault(); // chặn <a href> mở trong WebView
-            }
+            if (isFb || isZalo) e.preventDefault();
             handleOverlayContinue();
           });
 
-        if (heroVideo instanceof HTMLVideoElement) {
-          const startVideoPreview = () => {
-            if (awaitingSecondaryPlay) return;
-            heroVideo.muted = true;
-            heroVideo.defaultMuted = true;
-            heroVideo.playsInline = true;
-            heroVideo.autoplay = true;
-            heroVideo.loop = true;
-            heroVideo.controls = true;
-            const playAttempt = heroVideo.play();
-            if (playAttempt && typeof playAttempt.catch === "function") {
-              playAttempt.catch(() => {});
-            }
-          };
+          if (heroVideo instanceof HTMLVideoElement) {
+            const startVideoPreview = () => {
+              if (awaitingSecondaryPlay) return;
+              heroVideo.muted = true;
+              heroVideo.defaultMuted = true;
+              heroVideo.playsInline = true;
+              heroVideo.autoplay = true;
+              heroVideo.loop = true;
+              heroVideo.controls = true;
+              const playAttempt = heroVideo.play();
+              if (playAttempt && typeof playAttempt.catch === "function") {
+                playAttempt.catch(() => {});
+              }
+            };
 
-          syncLandingState();
-          heroVideo.addEventListener("playing", startPreviewPlaybackTracking);
-          heroVideo.addEventListener("timeupdate", maybeShowOverlayAfterPlayback);
-          heroVideo.addEventListener("pause", stopPreviewPlaybackTracking);
-          heroVideo.addEventListener("waiting", stopPreviewPlaybackTracking);
-          heroVideo.addEventListener("seeking", stopPreviewPlaybackTracking);
-          heroVideo.addEventListener("stalled", stopPreviewPlaybackTracking);
-          heroVideo.addEventListener("ended", stopPreviewPlaybackTracking);
-          heroVideo.addEventListener("play", handleSecondaryPlayIntent);
-          heroVideo.addEventListener("canplay", startVideoPreview, { once: true });
-          heroVideo.addEventListener("loadedmetadata", syncHeroVideoOrientation);
-          heroVideo.addEventListener("resize", syncHeroVideoOrientation);
-          startVideoPreview();
-          syncHeroVideoOrientation();
-          startPreviewPlaybackTracking();
-          maybeShowOverlayAfterPlayback();
-        } else {
-          syncLandingState();
-          if (!overlayHandled && !awaitingSecondaryPlay) {
-            showOverlay();
+            syncLandingState();
+            heroVideo.addEventListener("playing", startPreviewPlaybackTracking);
+            heroVideo.addEventListener("timeupdate", maybeShowOverlayAfterPlayback);
+            heroVideo.addEventListener("pause", stopPreviewPlaybackTracking);
+            heroVideo.addEventListener("waiting", stopPreviewPlaybackTracking);
+            heroVideo.addEventListener("seeking", stopPreviewPlaybackTracking);
+            heroVideo.addEventListener("stalled", stopPreviewPlaybackTracking);
+            heroVideo.addEventListener("ended", stopPreviewPlaybackTracking);
+            heroVideo.addEventListener("play", handleSecondaryPlayIntent);
+            heroVideo.addEventListener("canplay", startVideoPreview, { once: true });
+            heroVideo.addEventListener("loadedmetadata", syncHeroVideoOrientation);
+            heroVideo.addEventListener("resize", syncHeroVideoOrientation);
+            startVideoPreview();
+            syncHeroVideoOrientation();
+            startPreviewPlaybackTracking();
+            maybeShowOverlayAfterPlayback();
+          } else {
+            syncLandingState();
+            if (!overlayHandled && !awaitingSecondaryPlay) {
+              showOverlay();
+            }
           }
-        }
 
         window.addEventListener("pageshow", syncLandingState);
         document.addEventListener("visibilitychange", () => {
@@ -802,6 +834,7 @@ export const renderChoiceLandingPage = (
         });
         window.addEventListener("focus", syncLandingState);
         syncLandingState();
+        }
       })();
     </script>
   </body>
