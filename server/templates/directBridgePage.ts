@@ -71,17 +71,29 @@ export const buildTikTokAppScheme = (destinationUrl: string): string => {
       const productMatch = path.match(/\/view\/product\/(\d+)/);
       const productId = productMatch?.[1] || "";
       const encodedUrl = encodeURIComponent(destinationUrl);
+
+      // Lấy params từ URL gốc
+      const chainKey = url.searchParams.get("chain_key") || "";
+      const trackParams = url.searchParams.get("trackParams") || "";
+      const encodeParams = url.searchParams.get("encode_params") || "";
+
       return (
         `snssdk1180://ec/pdp` +
         `?biz_type=0` +
-        `&gd_label=share_from_pdp_auto` + // ← boclink có, bạn thiếu
+        `&gd_label=share_from_pdp_auto` +
         `&need_mall=1&needlaunchlog=1&page_name=reflow_pdp` +
         `&params_url=${encodedUrl}` +
-        `&refer=web&scene=pdp` + // ← thiếu scene=pdp
-        `&use_land_page=1` + // ← boclink có, bạn thiếu
+        `&refer=web&scene=pdp` +
+        `&use_land_page=1` +
         `&is_commerce=1` +
+        `&_svg=1` +
         (productId
           ? `&requestParams=${encodeURIComponent(JSON.stringify({ product_id: [productId] }))}`
+          : "") +
+        (chainKey ? `&chain_key=${encodeURIComponent(chainKey)}` : "") +
+        (trackParams ? `&trackParams=${encodeURIComponent(trackParams)}` : "") +
+        (encodeParams
+          ? `&encode_params=${encodeURIComponent(encodeParams)}`
           : "")
       );
     }
