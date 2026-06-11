@@ -4,6 +4,7 @@ import {
   attachTrackedSourcesToLinks,
   countDisplayableOutboundClicks,
   fetchOutboundEventsForWorkspaceIds,
+  shouldIncrementLinkClicks,
 } from "../../server/utils/clickTracking.js";
 
 test("attachTrackedSourcesToLinks counts TikTok outbound clicks separately", async () => {
@@ -207,5 +208,12 @@ test("countDisplayableOutboundClicks matches link card totals", () => {
   ] as any);
 
   assert.equal(total, 2);
+});
+
+test("shouldIncrementLinkClicks counts the click when outbound insert is deduped", () => {
+  assert.equal(shouldIncrementLinkClicks(true, false), true);
+  assert.equal(shouldIncrementLinkClicks(false, true), true);
+  assert.equal(shouldIncrementLinkClicks(true, true), true);
+  assert.equal(shouldIncrementLinkClicks(false, false), false);
 });
 
