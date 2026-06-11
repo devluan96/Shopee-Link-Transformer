@@ -246,6 +246,24 @@ test("resolveDeepLinkUrl keeps TikTok iOS on HTTPS when no explicit iOS template
   );
 });
 
+test("resolveDeepLinkUrl falls back to the original web URL on desktop when the desktop template is not HTTP", () => {
+  const profiles = {
+    shopee: {
+      enabled: true,
+      desktop: "intent://open?url={{encodedUrl}}",
+    },
+  };
+
+  assert.equal(
+    resolveDeepLinkUrl(
+      "https://shopee.vn/product/123",
+      "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
+      profiles,
+    ),
+    "https://shopee.vn/product/123",
+  );
+});
+
 test("shouldBypassPublicLandingForMobileDeepLink skips preview requests and allows mobile direct opens", () => {
   const profiles = {
     shopee: {

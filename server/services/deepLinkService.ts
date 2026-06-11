@@ -209,14 +209,19 @@ export const resolveDeepLinkUrl = (
   if (!profile?.enabled) return destinationUrl;
 
   const devicePlatform = inferDevicePlatform(userAgent);
-  return (
+  const resolvedUrl =
     resolveTemplateForDevice(
       platform,
       profile,
       devicePlatform,
       destinationUrl,
-    ) || destinationUrl
-  );
+    ) || destinationUrl;
+
+  if (devicePlatform === "desktop" && !isHttpUrl(resolvedUrl)) {
+    return destinationUrl;
+  }
+
+  return resolvedUrl;
 };
 
 export const shouldUseDeepLinkSplash = (
