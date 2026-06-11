@@ -12,6 +12,11 @@ import { LinkOutboundEvent } from "../types/index.js";
 const TRACKING_DEDUPE_WINDOW_MS = 60 * 1000;
 const PAGE_SIZE = 1000;
 
+export const shouldIncrementLinkClicks = (
+  clickInserted: boolean,
+  outboundInserted: boolean,
+) => clickInserted || outboundInserted;
+
 const getRecentIsoTime = () =>
   new Date(Date.now() - TRACKING_DEDUPE_WINDOW_MS).toISOString();
 
