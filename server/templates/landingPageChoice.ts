@@ -327,7 +327,7 @@ export const renderChoiceLandingPage = (
         //   // Dùng intent URL thay vì blob trick — reliable hơn
         //   const intentUrl =
         //     "intent://" +
-        //     primaryRedirectUrl.replace(/^https?:\/\//, "") +
+        //     primaryRedirectUrl.replace(new RegExp("^https?:\\/\\/"), "") +
         //     "#Intent;scheme=https;package=com.ss.android.ugc.trill;" +
         //     "S.browser_fallback_url=" + encodeURIComponent(primaryRedirectUrl) + ";end";
         //   window.location.href = intentUrl;
@@ -345,10 +345,10 @@ export const renderChoiceLandingPage = (
             const path = url.pathname;
 
             if (targetUrl.includes("tiktok.com")) {
-              const videoMatch = path.match(/\/video\/(\d+)/);
+              const videoMatch = path.match(new RegExp("\\/video\\/(\\d+)"));
               if (videoMatch) return "snssdk1233://aweme/detail/?aweme_id=" + videoMatch[1];
 
-              const profileMatch = path.match(/\/@([\w.]+)\/?$/);
+              const profileMatch = path.match(new RegExp("\\/@([\\w.]+)\\/?$"));
               if (profileMatch) return "snssdk1233://user/profile/?uniqueId=" + profileMatch[1];
 
               return "snssdk1233://browser/open?url=" + encodeURIComponent(targetUrl);
@@ -375,7 +375,7 @@ export const renderChoiceLandingPage = (
             // Thoát Facebook browser qua Intent URL
             const intentUrl =
               "intent://" +
-              fallbackUrl.replace(/^https?:\/\//, "") +
+              fallbackUrl.replace(new RegExp("^https?:\\/\\/"), "") +
               "#Intent;scheme=https;package=com.ss.android.ugc.trill;S.browser_fallback_url=" +
               encodeURIComponent(fallbackUrl) + ";end";
             window.location.href = intentUrl;
@@ -662,7 +662,7 @@ export const renderChoiceLandingPage = (
           if (isInApp && isAndroid) {
             if (androidPkg) {
               const intentUrl =
-                "intent://" + primaryRedirectUrl.replace(/^https?:\/\//, "") +
+                "intent://" + primaryRedirectUrl.replace(new RegExp("^https?:\\/\\/"), "") +
                 "#Intent;scheme=https;package=" + androidPkg +
                 ";S.browser_fallback_url=" + encodeURIComponent(primaryRedirectUrl) + ";end";
               window.location.href = intentUrl;

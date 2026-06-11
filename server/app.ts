@@ -10,7 +10,6 @@ import { PORT } from "./config/constants.js";
 import { getSupabase } from "./config/supabase.js";
 
 // Middleware
-import { authenticate } from "./middleware/auth.js";
 import { auditAccessLogs, blockBlockedIps } from "./middleware/security.js";
 
 // Routes
@@ -46,14 +45,8 @@ import {
   shouldBypassLandingForMobileDeepLink,
   shouldBypassPublicLandingForMobileDeepLink,
 } from "./services/deepLinkService.js";
-import { renderLinkLandingPage } from "./templates/landingPage.js";
 import { renderChoiceLandingPage } from "./templates/landingPageChoice.js";
-import {
-  renderDirectBridgePage,
-  buildTikTokAppScheme,
-  isTikTokHostname,
-} from "./templates/directBridgePage.js";
-import { isBlockedInAppBrowser } from "./services/deepLinkService.js";
+import { renderDirectBridgePage } from "./templates/directBridgePage.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
