@@ -650,6 +650,7 @@ export const renderChoiceLandingPage = (
           overlayHandled = true;
           persistPrimaryOpened();
           armPrimaryClickTracking();
+          trackPrimaryClick();
           hideOverlay();
 
           const ua = navigator.userAgent || "";

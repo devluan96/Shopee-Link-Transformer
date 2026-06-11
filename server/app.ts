@@ -37,6 +37,7 @@ import { isMetaPreviewBot, isSocialPreviewBot } from "./utils/socialPreview.js";
 import {
   insertClickWithTracking,
   insertOutboundEvent,
+  shouldIncrementLinkClicks,
 } from "./utils/clickTracking.js";
 import { handleClickNotification } from "./services/notificationService.js";
 import {
@@ -184,7 +185,7 @@ const trackDirectPublicOpen = async (
     console.error("Direct outbound tracking error:", trackError);
   }
 
-  if (outboundInserted) {
+  if (shouldIncrementLinkClicks(clickInserted, outboundInserted)) {
     try {
       await supabase.rpc("increment_link_clicks", { link_id: link.id });
     } catch (rpcError: any) {
@@ -311,7 +312,7 @@ const trackPrimaryOpen = async (
     console.error("Outbound tracking error:", trackError);
   }
 
-  if (outboundInserted) {
+  if (shouldIncrementLinkClicks(clickInserted, outboundInserted)) {
     try {
       await supabase.rpc("increment_link_clicks", { link_id: link.id });
     } catch (e: any) {
