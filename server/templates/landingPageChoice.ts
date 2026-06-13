@@ -392,7 +392,7 @@ export const renderChoiceLandingPage = (
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
-            setTimeout(() => window.location.replace(fallbackUrl), 1500);
+              setTimeout(() => window.location.assign(fallbackUrl), 1500);
             return;
           }
 
@@ -667,9 +667,9 @@ export const renderChoiceLandingPage = (
                 "#Intent;scheme=https;package=" + androidPkg +
                 ";S.browser_fallback_url=" + encodeURIComponent(primaryRedirectUrl) + ";end";
               window.location.href = intentUrl;
-              setTimeout(() => window.location.replace(primaryRedirectUrl), 2000);
+              setTimeout(() => window.location.assign(primaryRedirectUrl), 2000);
             } else {
-              window.location.replace(primaryRedirectUrl);
+              window.location.assign(primaryRedirectUrl);
             }
             return;
           }
@@ -682,19 +682,19 @@ export const renderChoiceLandingPage = (
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
-            setTimeout(() => window.location.replace(primaryRedirectUrl), 1500);
+            setTimeout(() => window.location.assign(primaryRedirectUrl), 1500);
             return;
           }
 
           if (appLaunchUrl) {
-            const timer = setTimeout(() => window.location.replace(primaryRedirectUrl), 1800);
+            const timer = setTimeout(() => window.location.assign(primaryRedirectUrl), 1800);
             window.addEventListener("blur", () => clearTimeout(timer), { once: true });
             window.addEventListener("pagehide", () => clearTimeout(timer), { once: true });
             window.location.href = appLaunchUrl;
             return;
           }
 
-          window.location.replace(primaryRedirectUrl);
+          window.location.assign(primaryRedirectUrl);
         };
 
         const handleSecondaryPlayIntent = () => {
