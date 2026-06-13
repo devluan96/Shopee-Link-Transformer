@@ -105,6 +105,34 @@ test("buildMediaUploadPlan prioritizes r2 when video upload preference is r2", (
   );
 });
 
+test("buildMediaUploadPlan skips r2 when public base url is missing", () => {
+  withEnv(
+    {
+      CLOUDFLARE_ACCOUNT_ID: "acct-123",
+      R2_ACCESS_KEY_ID: "r2-key",
+      R2_SECRET_ACCESS_KEY: "r2-secret",
+      R2_BUCKET_NAME: "media",
+      CLOUDINARY_CLOUD_NAME: "demo-cloud-1",
+      CLOUDINARY_API_KEY: "demo-key-1",
+      CLOUDINARY_API_SECRET: "demo-secret-1",
+      SUPABASE_UPLOAD_BUCKET: "media",
+      MEDIA_UPLOAD_PROVIDER_ORDER: "cloudinary,supabase",
+      DISABLE_CLOUDINARY_UPLOAD: "false",
+    },
+    () => {
+      const providers = buildMediaUploadPlan("video", { fileSize: 1024 });
+      assert.deepEqual(
+        providers.map((provider) =>
+          provider.provider === "cloudinary"
+            ? `cloudinary:${provider.cloudName}`
+            : provider.provider,
+        ),
+        ["cloudinary:demo-cloud-1", "supabase"],
+      );
+    },
+  );
+});
+
 test("buildMediaUploadPlan keeps cloudinary first for image uploads", () => {
   withEnv(
     {

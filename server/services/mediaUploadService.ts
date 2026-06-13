@@ -265,14 +265,21 @@ const getR2Config = () => {
 export const computeBufferSha256 = (buffer: Buffer) =>
   crypto.createHash("sha256").update(buffer).digest("hex");
 
-const getR2Client = () => {
+type R2ClientConfig = {
+  client: S3Client;
+  bucket: string;
+  publicBaseUrl: string;
+};
+
+const getR2Client = (): R2ClientConfig | null => {
   const config = getR2Config();
 
   if (
     !config.accountId ||
     !config.accessKeyId ||
     !config.secretAccessKey ||
-    !config.bucket
+    !config.bucket ||
+    !config.publicBaseUrl
   ) {
     return null;
   }
@@ -287,7 +294,7 @@ const getR2Client = () => {
       },
     }),
     bucket: config.bucket,
-    publicBaseUrl: config.publicBaseUrl || null,
+    publicBaseUrl: config.publicBaseUrl,
   };
 };
 
@@ -340,15 +347,15 @@ export const findReusableMediaAssetByFingerprint = async (
     return null;
   }
 
+  const rawTags = Array.isArray(data.tags) ? (data.tags as unknown[]) : [];
+
   return {
     path: data.object_path || "",
     url: data.public_url || "",
     provider,
     resourceType: normalizedResourceType,
     folderName: normalizeFolderName(data.folder_name || "root") || "root",
-    tags: Array.isArray(data.tags)
-      ? data.tags.map((tag) => String(tag).trim()).filter(Boolean)
-      : [],
+    tags: rawTags.map((tag: unknown) => String(tag).trim()).filter(Boolean),
     fileName: data.file_name || data.object_path?.split("/").pop() || "upload.bin",
     sizeBytes:
       Number.isFinite(Number(data.size_bytes)) && Number(data.size_bytes) >= 0
