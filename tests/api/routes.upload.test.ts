@@ -358,6 +358,7 @@ test("media reuse check returns a reusable asset when fingerprint matches", asyn
           }),
         }),
       }) as never,
+    inspectReusableMediaAssetUrl: async () => "available",
   });
 
   const res = createMockRes();
@@ -373,5 +374,86 @@ test("media reuse check returns a reusable asset when fingerprint matches", asyn
   assert.equal((res.body as any).reused, true);
   assert.equal((res.body as any).asset.provider, "r2");
   assert.equal((res.body as any).asset.url, "https://cdn.example.com/sample.mp4");
+});
+
+test("media reuse check skips stale assets whose public URL is no longer available", async () => {
+  const deletedFilters: Array<[string, unknown]> = [];
+  const handler = createMediaReuseCheckHandler({
+    getSupabase: () =>
+      ({
+        from: (table: string) => {
+          assert.equal(table, "media_assets");
+          return {
+            select: () => ({
+              eq: () => ({
+                eq: () => ({
+                  in: () => ({
+                    filter: () => ({
+                      order: () => ({
+                        limit: () => ({
+                          maybeSingle: async () => ({
+                            data: {
+                              object_path: "legacy/sample.mp4",
+                              public_url:
+                                "https://res.cloudinary.com/locked/video/upload/v1/sample.mp4",
+                              provider: "cloudinary",
+                              resource_type: "video",
+                              folder_name: "videos",
+                              tags: [],
+                              file_name: "sample.mp4",
+                              size_bytes: 1234,
+                              modified_at: "2026-06-06T00:00:00.000Z",
+                              mime_type: "video/mp4",
+                              metadata: { sha256: "abc123", public_id: "sample" },
+                              created_at: "2026-06-06T00:00:00.000Z",
+                              updated_at: "2026-06-06T00:00:00.000Z",
+                            },
+                            error: null,
+                          }),
+                        }),
+                      }),
+                    }),
+                  }),
+                }),
+              }),
+            }),
+            delete: () => ({
+              eq: (column: string, value: unknown) => {
+                deletedFilters.push([column, value]);
+                return {
+                  eq: (nextColumn: string, nextValue: unknown) => {
+                    deletedFilters.push([nextColumn, nextValue]);
+                    return {
+                      eq: async (lastColumn: string, lastValue: unknown) => {
+                        deletedFilters.push([lastColumn, lastValue]);
+                        return { error: null };
+                      },
+                    };
+                  },
+                };
+              },
+            }),
+          };
+        },
+      }) as never,
+    inspectReusableMediaAssetUrl: async () => "missing",
+  });
+
+  const res = createMockRes();
+  await handler(
+    {
+      authUser: { id: "user-1" },
+      body: { resourceType: "video", fingerprint: "abc123" },
+    } as any,
+    res as any,
+  );
+
+  assert.equal(res.statusCode, 200);
+  assert.equal((res.body as any).reused, false);
+  assert.deepEqual(deletedFilters, [
+    ["user_id", "user-1"],
+    ["provider", "cloudinary"],
+    ["object_path", "legacy/sample.mp4"],
+  ]);
 });
 

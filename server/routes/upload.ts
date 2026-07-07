@@ -476,11 +476,44 @@ export const createMediaUploadCompleteHandler = (
 type MediaReuseCheckRouteDeps = {
   getSupabase: typeof getSupabase;
   findReusableMediaAssetByFingerprint: typeof findReusableMediaAssetByFingerprint;
+  inspectReusableMediaAssetUrl: typeof inspectReusableMediaAssetUrl;
+};
+
+type ReusableMediaAssetAvailability = "available" | "missing" | "unknown";
+
+const inspectReusableMediaAssetUrl = async (
+  url: string,
+): Promise<ReusableMediaAssetAvailability> => {
+  const trimmedUrl = url.trim();
+  if (!trimmedUrl) {
+    return "missing";
+  }
+
+  try {
+    const response = await fetch(trimmedUrl, {
+      method: "HEAD",
+      redirect: "follow",
+      signal: AbortSignal.timeout(4000),
+    });
+
+    if (response.ok) {
+      return "available";
+    }
+
+    if ([401, 403, 404, 410].includes(response.status)) {
+      return "missing";
+    }
+
+    return "unknown";
+  } catch {
+    return "unknown";
+  }
 };
 
 const defaultMediaReuseCheckRouteDeps: MediaReuseCheckRouteDeps = {
   getSupabase,
   findReusableMediaAssetByFingerprint,
+  inspectReusableMediaAssetUrl,
 };
 
 export const createMediaReuseCheckHandler = (
@@ -520,6 +553,22 @@ export const createMediaReuseCheckHandler = (
       );
 
       if (!asset) {
+        return res.json({ reused: false });
+      }
+
+      const assetAvailability = await resolvedDeps.inspectReusableMediaAssetUrl(
+        asset.url,
+      );
+
+      if (assetAvailability === "missing") {
+        await resolvedDeps
+          .getSupabase()
+          .from("media_assets")
+          .delete()
+          .eq("user_id", userId)
+          .eq("provider", asset.provider)
+          .eq("object_path", asset.path);
+
         return res.json({ reused: false });
       }
 
